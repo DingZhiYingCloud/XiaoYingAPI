@@ -26,8 +26,7 @@ logs/
 *.db
 *.sqlite3
 
-# 媒体文件
-media/
+# 媒体文件,允许提交media/目录下的文件
 uploads/
 
 # 系统文件
