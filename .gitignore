@@ -1,0 +1,46 @@
+*.egg-info
+*.idea
+*.
+
+
+build
+dist
+.pytest_cache
+__pycache__
+.vscode
+.venv
+*.apk
+
+# 环境文件
+.env
+.env.*
+
+# 敏感文件（实际敏感的配置）
+**/env.json
+
+# 日志文件
+*.log
+logs/
+
+# 数据库文件
+*.db
+*.sqlite3
+
+# 媒体文件
+media/
+uploads/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 依赖文件
+node_modules/
+
+TuLianVenv/
+
+unpackage/
+
+migrations/
+
+Test/
