@@ -48,7 +48,8 @@ ROOT_URLCONF = 'XiaoYingAPI.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        # 全局模板目录:用于覆盖 Django 内置模板(如 admin/base_site.html 自定义 favicon)
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
