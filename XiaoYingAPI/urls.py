@@ -7,7 +7,8 @@ from django.views.generic import RedirectView
 from django.views.static import serve
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('admin/', admin.site.urls), # 管理员站点
+    path('api/', include('API.apis.urls')), # API路由
 ]
 
 # 静态文件 & 媒体文件服务
