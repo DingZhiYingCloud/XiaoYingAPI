@@ -2,4 +2,5 @@
 Django # Django 框架,用来构建后端API与前端交互
 django-cors-headers # 跨域请求头,用来允许各种前端访问后端API
 requests # HTTP 库,用来发送 HTTP 请求
-
+lxml # 用来解析 HTML 文档,提取其中的信息
+pycryptodome # 用来进行加密操作,如解密 URL
