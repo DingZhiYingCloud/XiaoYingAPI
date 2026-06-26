@@ -26,8 +26,8 @@ logs/
 *.db
 *.sqlite3
 
-# 媒体文件,允许提交media/目录下的文件
-uploads/
+# 媒体文件:仅忽略 media/uploads/ 下的用户上传内容,允许提交 API/apis/uploads/ 代码目录
+/media/uploads/
 
 # 系统文件
 .DS_Store

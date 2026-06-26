@@ -135,3 +135,10 @@ EMAIL_USE_SSL = True                # 启用SSL加密传输
 EMAIL_HOST_USER = os.getenv('QQ邮箱账号', '')        # 发件邮箱账号
 EMAIL_HOST_PASSWORD = os.getenv('QQ邮箱授权码', '')  # 发件邮箱授权码
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER  # 默认发件人地址(与发件账号一致)
+
+
+# ==================== 文件上传配置 ====================
+# 单次上传请求体最大大小(110MB，预留10MB余量给表单字段)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 110 * 1024 * 1024  # 115343360 字节
+# 内存中允许的最大文件大小，超过则写入临时文件(110MB)
+FILE_UPLOAD_MAX_MEMORY_SIZE = 110 * 1024 * 1024  # 115343360 字节
