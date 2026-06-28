@@ -7,5 +7,6 @@ urlpatterns = [
     path('music/', include('API.apis.musics.urls')), # 音乐服务路由
     path('upload/', include('API.apis.uploads.urls')), # 文件上传服务路由
     path('video_analysis/', include('API.apis.VideoAnalysis.urls')), # 视频分析服务路由
+    path('ai/', include('API.apis.ai.urls')), # AI服务路由
 ]
 

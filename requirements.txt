@@ -4,3 +4,4 @@ django-cors-headers # 跨域请求头,用来允许各种前端访问后端API
 requests # HTTP 库,用来发送 HTTP 请求
 lxml # 用来解析 HTML 文档,提取其中的信息
 pycryptodome # 用来进行加密操作,如解密 URL
+python-dotenv # 用来加载环境变量,如数据库连接信息
