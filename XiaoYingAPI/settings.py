@@ -126,14 +126,14 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # ==================== 邮箱 SMTP 配置 ====================
 # 使用 QQ 邮箱作为默认发件邮箱
 # 凭据从项目根目录的 .env 文件读取:
-#   QQ邮箱账号     - QQ邮箱地址(发件人)
-#   QQ邮箱授权码   - QQ邮箱SMTP授权码(非登录密码,需在QQ邮箱设置中开启SMTP服务后获取)
+#   QQ_MAIL_ACCOUNT     - QQ邮箱地址(发件人)
+#   QQ_MAIL_AUTH_CODE   - QQ邮箱SMTP授权码(非登录密码,需在QQ邮箱设置中开启SMTP服务后获取)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'  # 使用SMTP后端发送真实邮件
 EMAIL_HOST = 'smtp.qq.com'          # QQ邮箱SMTP服务器地址
 EMAIL_PORT = 465                    # QQ邮箱SMTP SSL端口
 EMAIL_USE_SSL = True                # 启用SSL加密传输
-EMAIL_HOST_USER = os.getenv('QQ邮箱账号', '')        # 发件邮箱账号
-EMAIL_HOST_PASSWORD = os.getenv('QQ邮箱授权码', '')  # 发件邮箱授权码
+EMAIL_HOST_USER = os.getenv('QQ_MAIL_ACCOUNT', '')        # 发件邮箱账号
+EMAIL_HOST_PASSWORD = os.getenv('QQ_MAIL_AUTH_CODE', '')  # 发件邮箱授权码
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER  # 默认发件人地址(与发件账号一致)
 
 
