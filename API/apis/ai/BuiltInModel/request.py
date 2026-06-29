@@ -63,7 +63,6 @@ def deepseek_view(request):
         system_prompt = system_prompt.strip()
     api_key = request.POST.get('api_key', '').strip() or None
     stream_str = request.POST.get('stream', 'false').strip().lower()
-
     # stream 参数校验
     if stream_str not in ('true', 'false'):
         return _json_response(
