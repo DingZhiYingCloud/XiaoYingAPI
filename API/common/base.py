@@ -5,6 +5,7 @@ Django数据库迁移命令
 py manage.py makemigrations
 py manage.py migrate
 python manage.py collectstatic --noinput
+source .venv/bin/activate
 """
 
 class BaseModel(models.Model):
