@@ -2,8 +2,8 @@ from django.db import models
 
 """
 Django数据库迁移命令
-py manage.py makemigrations
-py manage.py migrate
+python manage.py makemigrations
+python manage.py migrate
 python manage.py collectstatic --noinput
 source .venv/bin/activate
 """
