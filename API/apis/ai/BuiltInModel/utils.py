@@ -1,6 +1,9 @@
 """DeepSeek AI 对话 API 调用封装
 
-本模块封装对 DeepSeek Chat API 的调用，支持流式与非流式两种模式。
+本模块封装对 DeepSeek Chat API 的调用，支持：
+- 流式与非流式两种模式
+- 前缀续写（Prefix Completion，Beta 功能）
+
 API Key 优先级：用户传入 > .env 配置的默认密钥。
 """
 import json
@@ -8,8 +11,15 @@ import os
 
 import requests
 
-# DeepSeek Chat API 基础地址（标准 OpenAI 兼容接口）
-DEEPSEEK_CHAT_URL = "https://api.deepseek.com/chat/completions"
+# 从 .env 读取 DeepSeek API 根地址，兼容末尾带 /beta 的情况
+# 标准接口与 Beta 接口共用同一域名根，仅路径前缀不同
+_BASE_URL = os.getenv('DEEPSEEK_API_URL', 'https://api.deepseek.com').rstrip('/')
+# 去掉可能的 /beta 后缀，得到根 URL（用于派生标准/Beta 两条 URL）
+_API_ROOT = _BASE_URL[:-5] if _BASE_URL.endswith('/beta') else _BASE_URL
+# 标准 Chat API URL（用于普通对话）
+DEEPSEEK_CHAT_URL = f"{_API_ROOT}/chat/completions"
+# Beta Chat API URL（用于前缀续写等 Beta 功能）
+DEEPSEEK_BETA_CHAT_URL = f"{_API_ROOT}/beta/chat/completions"
 # 默认模型
 DEFAULT_MODEL = "deepseek-chat"
 
@@ -123,7 +133,8 @@ def _handle_api_error(resp):
         return resp.text or f"HTTP {resp.status_code}"
 
 
-def chat_completion(messages, api_key=None, model=DEFAULT_MODEL, timeout=120):
+def chat_completion(messages, api_key=None, model=DEFAULT_MODEL, timeout=120,
+                    prefix=False, stop=None):
     """
     非流式调用 DeepSeek Chat API，返回完整响应。
 
@@ -131,6 +142,12 @@ def chat_completion(messages, api_key=None, model=DEFAULT_MODEL, timeout=120):
     :param api_key: 用户自定义 API Key，可选
     :param model: 模型名称，默认 deepseek-chat
     :param timeout: 请求超时时间（秒），默认 120（AI 生成较慢）
+    :param prefix: 是否启用前缀续写模式，默认 False
+                   开启后自动切换到 Beta 接口 URL
+                   注意: messages 末尾应由调用方放置
+                   {"role":"assistant","content":"前缀内容","prefix":True}
+    :param stop: 停止词列表，可选。前缀续写常用 stop 避免模型多余输出
+                 例如 ["```"] 让模型输出到代码块结束符即停止
     :return: tuple[bool, Any]
         - 成功: (True, {"reply": str, "model": str, "usage": dict})
         - 失败: (False, 错误信息str)
@@ -139,6 +156,8 @@ def chat_completion(messages, api_key=None, model=DEFAULT_MODEL, timeout=120):
     if not key:
         return False, 'DeepSeek API Key 未配置，请在 .env 中设置 DEEPSEEK_API_KEY 或在请求时传入 api_key'
 
+    # 前缀续写模式使用 Beta 接口地址
+    url = DEEPSEEK_BETA_CHAT_URL if prefix else DEEPSEEK_CHAT_URL
     headers = {
         "Authorization": f"Bearer {key}",
         "Content-Type": "application/json",
@@ -148,10 +167,13 @@ def chat_completion(messages, api_key=None, model=DEFAULT_MODEL, timeout=120):
         "messages": messages,
         "stream": False,
     }
+    # 前缀续写场景常配合 stop 参数避免模型输出额外内容
+    if stop:
+        payload["stop"] = stop
 
     try:
         resp = requests.post(
-            DEEPSEEK_CHAT_URL, json=payload, headers=headers, timeout=timeout
+            url, json=payload, headers=headers, timeout=timeout
         )
     except requests.RequestException as e:
         return False, f'请求 DeepSeek API 失败: {e}'
@@ -177,7 +199,8 @@ def chat_completion(messages, api_key=None, model=DEFAULT_MODEL, timeout=120):
     }
 
 
-def stream_chat_completion(messages, api_key=None, model=DEFAULT_MODEL, timeout=120):
+def stream_chat_completion(messages, api_key=None, model=DEFAULT_MODEL, timeout=120,
+                           prefix=False, stop=None):
     """
     流式调用 DeepSeek Chat API，生成器逐块 yield SSE 格式数据。
 
@@ -195,6 +218,8 @@ def stream_chat_completion(messages, api_key=None, model=DEFAULT_MODEL, timeout=
     :param api_key: 用户自定义 API Key，可选
     :param model: 模型名称，默认 deepseek-chat
     :param timeout: 请求超时时间（秒），默认 120
+    :param prefix: 是否启用前缀续写模式，默认 False
+    :param stop: 停止词列表，可选
     :yield: SSE 格式字符串
     :raises ValueError: API Key 未配置时抛出
     """
@@ -202,6 +227,8 @@ def stream_chat_completion(messages, api_key=None, model=DEFAULT_MODEL, timeout=
     if not key:
         raise ValueError('DeepSeek API Key 未配置')
 
+    # 前缀续写模式使用 Beta 接口地址
+    url = DEEPSEEK_BETA_CHAT_URL if prefix else DEEPSEEK_CHAT_URL
     headers = {
         "Authorization": f"Bearer {key}",
         "Content-Type": "application/json",
@@ -211,10 +238,12 @@ def stream_chat_completion(messages, api_key=None, model=DEFAULT_MODEL, timeout=
         "messages": messages,
         "stream": True,
     }
+    if stop:
+        payload["stop"] = stop
 
     try:
         resp = requests.post(
-            DEEPSEEK_CHAT_URL,
+            url,
             json=payload,
             headers=headers,
             stream=True,

@@ -52,8 +52,23 @@ def deepseek_view(request):
                                不传则使用 .env 中的 DEEPSEEK_API_KEY
         stream        (选填): 是否开启流式对话，接受 "true" / "false"，默认 "false"
                                开启后响应格式变为 SSE(text/event-stream)
+        prefix        (选填): 是否开启前缀续写模式(Beta)，接受 "true" / "false"，默认 "false"
+                               开启后:
+                                 1. 自动切换到 DeepSeek Beta 接口
+                                 2. 在 messages 末尾追加一条 assistant 消息，
+                                    content 取自 prefix_content，并标记 prefix=True
+                                 3. 模型会从该前缀内容继续续写
+        prefix_content(选填): 前缀续写的起点文本，prefix=true 时必填
+                               例如 "```python\n" 可强制模型续写 Python 代码
+        stop          (选填): 停止词，JSON 数组字符串或纯文本，可选
+                               前缀续写常用 stop 避免模型输出多余内容
+                               例如 ["```"] 让模型输出到代码块结束符即停止
+                               - JSON 数组: "[\"```\", \"END\"]"
+                               - 单个字符串: "```" (会自动包装为单元素数组)
 
-    注意: content 和 messages 至少提供一个，否则返回参数缺失错误。
+    注意:
+        - content 和 messages 至少提供一个，否则返回参数缺失错误
+        - prefix=true 时 prefix_content 必填
     """
     # ---------- 1. 参数获取与校验 ----------
     content = request.POST.get('content', '').strip()
@@ -63,6 +78,10 @@ def deepseek_view(request):
         system_prompt = system_prompt.strip()
     api_key = request.POST.get('api_key', '').strip() or None
     stream_str = request.POST.get('stream', 'false').strip().lower()
+    prefix_str = request.POST.get('prefix', 'false').strip().lower()
+    prefix_content = request.POST.get('prefix_content', '').strip()
+    stop_raw = request.POST.get('stop', '').strip()
+
     # stream 参数校验
     if stream_str not in ('true', 'false'):
         return _json_response(
@@ -70,6 +89,46 @@ def deepseek_view(request):
             msg='参数格式错误: stream 仅接受 true 或 false',
         )
     stream = stream_str == 'true'
+
+    # prefix 参数校验
+    if prefix_str not in ('true', 'false'):
+        return _json_response(
+            StatusCode.PARAM_FORMAT_ERROR,
+            msg='参数格式错误: prefix 仅接受 true 或 false',
+        )
+    prefix = prefix_str == 'true'
+
+    # 前缀续写模式必填 prefix_content
+    if prefix and not prefix_content:
+        return _json_response(
+            StatusCode.PARAM_MISSING,
+            msg='参数缺失: prefix_content(前缀续写内容，prefix=true 时必填)',
+        )
+
+    # 解析 stop 参数: 兼容 JSON 数组字符串与纯文本
+    stop_list = None
+    if stop_raw:
+        try:
+            parsed = json.loads(stop_raw)
+            if isinstance(parsed, list):
+                # 校验数组元素必须为字符串
+                if not all(isinstance(s, str) for s in parsed):
+                    return _json_response(
+                        StatusCode.PARAM_FORMAT_ERROR,
+                        msg='参数格式错误: stop 数组内所有元素必须为字符串',
+                    )
+                stop_list = parsed
+            elif isinstance(parsed, str):
+                # JSON 字符串（如 "\"```\""），自动包装为单元素数组
+                stop_list = [parsed]
+            else:
+                return _json_response(
+                    StatusCode.PARAM_FORMAT_ERROR,
+                    msg='参数格式错误: stop 必须为字符串或字符串数组',
+                )
+        except json.JSONDecodeError:
+            # 不是合法 JSON，当作纯字符串处理
+            stop_list = [stop_raw]
 
     # ---------- 2. 构建 messages ----------
     try:
@@ -85,24 +144,33 @@ def deepseek_view(request):
             msg=f'参数值非法: {e}',
         )
 
+    # 前缀续写模式: 在 messages 末尾追加 assistant 前缀消息
+    # DeepSeek 要求最后一条消息 role 为 assistant 且 prefix=True
+    if prefix:
+        messages.append({
+            "role": "assistant",
+            "content": prefix_content,
+            "prefix": True,
+        })
+
     # ---------- 3. 调用 DeepSeek API ----------
     if stream:
         # 流式模式: 返回 StreamingHttpResponse
-        return _handle_stream_response(messages, api_key)
+        return _handle_stream_response(messages, api_key, prefix=prefix, stop=stop_list)
     else:
         # 非流式模式: 返回 JsonResponse
-        return _handle_normal_response(messages, api_key)
+        return _handle_normal_response(messages, api_key, prefix=prefix, stop=stop_list)
 
 
-def _handle_normal_response(messages, api_key):
+def _handle_normal_response(messages, api_key, prefix=False, stop=None):
     """非流式对话: 调用 API 获取完整回复，返回统一 JSON 响应。"""
-    success, result = utils.chat_completion(messages, api_key=api_key)
+    success, result = utils.chat_completion(messages, api_key=api_key, prefix=prefix, stop=stop)
     if not success:
         return _json_response(StatusCode.EXTERNAL_API_FAILED, msg=result)
     return _json_response(StatusCode.SUCCESS, data=result)
 
 
-def _handle_stream_response(messages, api_key):
+def _handle_stream_response(messages, api_key, prefix=False, stop=None):
     """
     流式对话: 返回 SSE(Server-Sent Events) 流。
 
@@ -116,7 +184,7 @@ def _handle_stream_response(messages, api_key):
     """
     def sse_generator():
         try:
-            yield from utils.stream_chat_completion(messages, api_key=api_key)
+            yield from utils.stream_chat_completion(messages, api_key=api_key, prefix=prefix, stop=stop)
         except ValueError as e:
             # 流启动阶段出错（Key 未配置/网络不通/API 返回错误）
             yield f"data: {json.dumps({'code': StatusCode.EXTERNAL_API_FAILED, 'msg': str(e)}, ensure_ascii=False)}\n\n"
