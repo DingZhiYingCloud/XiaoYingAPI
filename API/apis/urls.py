@@ -10,5 +10,8 @@ urlpatterns = [
     path('ai/', include('API.apis.ai.urls')), # AI服务路由
     path('spider_verification/', include('API.apis.SpiderVerification.urls')), # 爬虫验证服务路由
     path('bing/', include('API.apis.bing.urls')), # Bing服务路由
+    path('dlt/', include('API.apis.DaiLianTong.urls')), # 代练通服务路由
+    path('dlwz/', include('API.apis.DaiLianWanZi.urls')), # 代练丸子服务路由
+    path('ddddocr/', include('API.apis.DdddocrRecognizer.urls')), # ddddocr 验证码识别服务路由
 ]
 
