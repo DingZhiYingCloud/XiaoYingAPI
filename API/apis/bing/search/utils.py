@@ -6,11 +6,16 @@
 
 依赖: requests, lxml
 """
+import os
 import re
 import uuid
 
 import requests
 from lxml import etree
+
+# ==================== 代理配置 ====================
+# 从 .env 读取 BING_PROXY_URL，留空/无值则不使用代理
+_PROXY_URL = (os.environ.get('BING_PROXY_URL') or '').strip()
 
 # ==================== 必应搜索配置 ====================
 BING_SEARCH_URL = "https://cn.bing.com/search"
@@ -60,6 +65,18 @@ _HEADERS = {
     "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
     "Connection": "keep-alive",
 }
+
+
+def _get_session():
+    """创建 requests Session，自动配置代理（若 .env 中配置了 BING_PROXY_URL）"""
+    session = requests.Session()
+    session.headers.update(_HEADERS)
+    if _PROXY_URL:
+        session.proxies.update({
+            "http": _PROXY_URL,
+            "https": _PROXY_URL,
+        })
+    return session
 
 
 def _is_url_blacklisted(url):
@@ -147,10 +164,10 @@ def search_bing(query, count=10, offset=0):
         - 失败: (False, error_msg)
     """
     try:
-        resp = requests.get(
+        session = _get_session()
+        resp = session.get(
             BING_SEARCH_URL,
             params={"q": query, "first": offset + 1},
-            headers=_HEADERS,
             timeout=SEARCH_TIMEOUT,
         )
         resp.raise_for_status()
@@ -178,9 +195,9 @@ def _crawl_one(url):
         return False, f"该网站在爬虫黑名单中，禁止抓取: {url}"
 
     try:
-        resp = requests.get(
+        session = _get_session()
+        resp = session.get(
             url,
-            headers=_HEADERS,
             timeout=CRAWL_TIMEOUT,
         )
         resp.raise_for_status()

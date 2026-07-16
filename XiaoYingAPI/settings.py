@@ -14,8 +14,8 @@ ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 
 # 跨域设置
 SECURE_CROSS_ORIGIN_OPENER_POLICY = "None"
-# 跨域请求配置，允许所有源的跨域请求
-CORS_ORIGIN_ALLOW_ALL = True
+# 跨域请求配置，允许所有源的跨域请求（由 .env 中 CORS_ORIGIN_ALLOW_ALL 控制）
+CORS_ORIGIN_ALLOW_ALL = os.getenv('CORS_ORIGIN_ALLOW_ALL', 'False').lower() in ('true', '1', 'yes')
 
 
 # 应用定义配置

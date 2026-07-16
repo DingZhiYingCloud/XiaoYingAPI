@@ -1,4 +1,4 @@
--i https://pypi.tuna.tsinghua.edu.cn/simple
+
 Django 
 django-cors-headers 
 requests 
@@ -6,3 +6,4 @@ lxml
 pycryptodome
 python-dotenv 
 ddddocr
+httpx
