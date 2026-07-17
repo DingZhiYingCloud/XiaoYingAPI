@@ -6,20 +6,17 @@
 
 依赖: requests, lxml
 """
-import os
 import re
 import uuid
 
 import requests
 from lxml import etree
 
-# ==================== 代理配置 ====================
-# 从 .env 读取 BING_PROXY_URL，留空/无值则不使用代理
-_PROXY_URL = (os.environ.get('BING_PROXY_URL') or '').strip()
-
 # ==================== 必应搜索配置 ====================
 BING_SEARCH_URL = "https://cn.bing.com/search"
 SEARCH_TIMEOUT = 15
+# 默认代理（可选），格式 "http://user:pass@ip:port"
+SEARCH_PROXY = "http://qluw18a:qluw18a@36.133.221.141:2018"
 
 # ==================== 网页抓取配置 ====================
 CRAWL_TIMEOUT = 30
@@ -65,18 +62,6 @@ _HEADERS = {
     "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
     "Connection": "keep-alive",
 }
-
-
-def _get_session():
-    """创建 requests Session，自动配置代理（若 .env 中配置了 BING_PROXY_URL）"""
-    session = requests.Session()
-    session.headers.update(_HEADERS)
-    if _PROXY_URL:
-        session.proxies.update({
-            "http": _PROXY_URL,
-            "https": _PROXY_URL,
-        })
-    return session
 
 
 def _is_url_blacklisted(url):
@@ -153,22 +138,27 @@ def _parse_search_results(html, query):
     }
 
 
-def search_bing(query, count=10, offset=0):
+def search_bing(query, count=10, offset=0, proxy=SEARCH_PROXY):
     """执行必应中文搜索
 
     :param query: 搜索关键词
     :param count: 返回结果数量（1-50），默认 10
     :param offset: 结果偏移量，用于翻页，默认 0
+    :param proxy: 代理地址，格式 "http://user:pass@ip:port" 或 None（不使用代理）
     :return: tuple[bool, Any]
         - 成功: (True, dict{query, results, totalResults})
         - 失败: (False, error_msg)
     """
     try:
-        session = _get_session()
-        resp = session.get(
+        proxies = None
+        if proxy:
+            proxies = {"http": proxy, "https": proxy}
+        resp = requests.get(
             BING_SEARCH_URL,
             params={"q": query, "first": offset + 1},
+            headers=_HEADERS,
             timeout=SEARCH_TIMEOUT,
+            proxies=proxies,
         )
         resp.raise_for_status()
     except requests.RequestException as e:
@@ -195,9 +185,9 @@ def _crawl_one(url):
         return False, f"该网站在爬虫黑名单中，禁止抓取: {url}"
 
     try:
-        session = _get_session()
-        resp = session.get(
+        resp = requests.get(
             url,
+            headers=_HEADERS,
             timeout=CRAWL_TIMEOUT,
         )
         resp.raise_for_status()
