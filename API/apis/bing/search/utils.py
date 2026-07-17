@@ -1,22 +1,36 @@
-"""必应搜索 & 网页抓取封装
+"""
+必应搜索 & 网页抓取封装
 
 本模块提供两个功能（对应 bing-cn MCP）:
     1. search_bing(query, count, offset) — 搜索必应中文站，返回结构化结果
     2. crawl_webpage(url) — 抓取网页纯文本内容（含黑名单过滤）
 
+代理策略:
+    每次请求从静态代理池随机选取一个代理，确保与 API 端增删操作实时同步；
+    无可用代理时直连。
+
 依赖: requests, lxml
 """
+import os
+import random
 import re
+import sys
 import uuid
 
 import requests
 from lxml import etree
 
+# ── 静态代理IP 池 ──
+_SPIDER_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__),
+    '..', '..', '..', '..', 'SpiderServices'))
+if _SPIDER_ROOT not in sys.path:
+    sys.path.insert(0, _SPIDER_ROOT)
+
+from ProxyIp.ProxyIP_Static.home import StaticIPService
+
 # ==================== 必应搜索配置 ====================
 BING_SEARCH_URL = "https://cn.bing.com/search"
 SEARCH_TIMEOUT = 15
-# 默认代理（可选），格式 "http://user:pass@ip:port"
-SEARCH_PROXY = "http://qluw18a:qluw18a@36.133.221.141:2018"
 
 # ==================== 网页抓取配置 ====================
 CRAWL_TIMEOUT = 30
@@ -50,6 +64,30 @@ ARTICLE_SELECTORS = [
     '//*[contains(@class,"main-content")]',
     '//*[@id="content"]',
 ]
+
+def _get_random_proxy():
+    """从静态代理池随机选取一个代理
+
+    每次调用重新读取 JSON 文件，确保与 API 端增删操作同步。
+    文件极小（通常 < 1 KB），IO 开销可忽略。
+
+    :return: dict(proxies) 供 requests.get(proxies=...) 使用，无可用代理时返回 None
+        格式: {"http": "http://user:pass@ip:port", "https": "http://user:pass@ip:port"}
+    """
+    try:
+        # 每次重新实例化，确保 JSON 文件变动（API 增删）能同步
+        proxies = StaticIPService().get_all()
+        if not proxies:
+            return None
+        proxy = random.choice(proxies)
+        auth = ""
+        if proxy.get("username") and proxy.get("password"):
+            auth = f"{proxy['username']}:{proxy['password']}@"
+        proxy_url = f"http://{auth}{proxy['ip']}:{proxy['port']}"
+        return {"http": proxy_url, "https": proxy_url}
+    except Exception:
+        return None
+
 
 # ==================== 通用 ====================
 _HEADERS = {
@@ -138,27 +176,25 @@ def _parse_search_results(html, query):
     }
 
 
-def search_bing(query, count=10, offset=0, proxy=SEARCH_PROXY):
+def search_bing(query, count=10, offset=0):
     """执行必应中文搜索
+
+    每次请求从静态代理池随机选取一个代理，无代理时直连。
 
     :param query: 搜索关键词
     :param count: 返回结果数量（1-50），默认 10
     :param offset: 结果偏移量，用于翻页，默认 0
-    :param proxy: 代理地址，格式 "http://user:pass@ip:port" 或 None（不使用代理）
     :return: tuple[bool, Any]
         - 成功: (True, dict{query, results, totalResults})
         - 失败: (False, error_msg)
     """
     try:
-        proxies = None
-        if proxy:
-            proxies = {"http": proxy, "https": proxy}
         resp = requests.get(
             BING_SEARCH_URL,
             params={"q": query, "first": offset + 1},
             headers=_HEADERS,
             timeout=SEARCH_TIMEOUT,
-            proxies=proxies,
+            proxies=_get_random_proxy(),
         )
         resp.raise_for_status()
     except requests.RequestException as e:
@@ -178,6 +214,8 @@ def search_bing(query, count=10, offset=0, proxy=SEARCH_PROXY):
 def _crawl_one(url):
     """抓取单个网页的纯文本内容
 
+    每次请求从静态代理池随机选取一个代理，无代理时直连。
+
     :param url: 网页 URL
     :return: tuple[bool, str] (成功/失败, 内容或错误信息)
     """
@@ -189,6 +227,7 @@ def _crawl_one(url):
             url,
             headers=_HEADERS,
             timeout=CRAWL_TIMEOUT,
+            proxies=_get_random_proxy(),
         )
         resp.raise_for_status()
         # 自动检测编码，避免 GB2312 等非 UTF-8 页面乱码

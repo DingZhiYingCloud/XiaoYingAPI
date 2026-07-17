@@ -2,14 +2,66 @@ import requests
 import json
 import re
 import hashlib
+import sys
+import os
+import importlib.util
 from urllib.parse import quote
 from lxml import etree
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
 
 
+# ── 静态代理加载（动态，每次调用重新读取 JSON） ──
+def _get_static_proxy():
+    """
+    从 ProxyIP_Static 获取一个可用静态代理。
+
+    使用 importlib.util 加载 ProxyIP 包（兼容 Python 3.14 的 PathFinder 问题），
+    每次调用重新读取 JSON 文件，确保与 API 端增删操作实时同步。
+
+    :return: {"http": proxy_url, "https": proxy_url} 或 None（无代理时直连）
+    """
+    try:
+        _root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # SpiderServices
+        _init = os.path.join(_root, "ProxyIP", "__init__.py")
+        if not os.path.exists(_init):
+            return None
+
+        spec = importlib.util.spec_from_file_location("ProxyIP", _init)
+        if not spec:
+            return None
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        sys.modules["ProxyIP"] = mod
+
+        from ProxyIP.ProxyIP_Static.home import StaticIPService
+        static = StaticIPService()
+        if static.count == 0:
+            return None
+
+        p = static.get_all()[0]
+        if p.get("username") and p.get("password"):
+            proxy_url = f"http://{p['username']}:{p['password']}@{p['ip']}:{p['port']}"
+        else:
+            proxy_url = f"http://{p['ip']}:{p['port']}"
+        return {"http": proxy_url, "https": proxy_url}
+    except Exception:
+        return None
+
+
 class Music2t58Spider:
-    """爱听音乐网(2t58.com)首页数据爬虫"""
+    """
+    爱听音乐网(2t58.com)数据爬虫。
+
+    代理策略:
+        每次 HTTP 请求前从 ProxyIP_Static 动态获取最新静态代理，
+        确保与 API 端增删操作实时同步；无可用代理时直连。
+
+    支持自定义代理或强制直连:
+        spider = Music2t58Spider()              # 自动：有静态IP就用，没有就直连
+        spider = Music2t58Spider(proxy=False)   # 强制直连
+        spider = Music2t58Spider(proxy={"http": "http://127.0.0.1:8080", "https": "..."})
+    """
 
     # ---------- 基础配置 ----------
     BASE_URL = "https://www.2t58.com"
@@ -32,9 +84,37 @@ class Music2t58Spider:
     # 说明: 网站通过 CryptoJS.SHA256(该明文) 生成 32 字节密钥，再用 AES-ECB/Pkcs7 解密 Hex 密文
     DECRYPT_KEY = "SklaBTy1aTSEEtMjAyNg"
 
-    def __init__(self):
+    def __init__(self, proxy: dict = None):
+        """
+        :param proxy: 代理策略。
+            None（默认）：自动，每次请求动态获取静态代理，无则直连；
+            False：强制直连，不走任何代理；
+            dict：自定义固定代理，如 {"http": "...", "https": "..."}。
+        """
         self.session = requests.Session()
         self.session.headers.update(self.HEADERS)
+
+        if proxy is None:
+            self._proxy_mode = "auto"       # 每次请求动态决定
+        elif proxy is False:
+            self._proxy_mode = "direct"     # 强制直连
+        else:
+            self._proxy_mode = "custom"     # 自定义固定代理
+            self.session.proxies = proxy
+
+    def _refresh_proxy(self):
+        """
+        刷新 session 的代理配置。
+        auto 模式：从 ProxyIP_Static 动态获取，无则移除代理用直连。
+        direct/custom 模式：不操作。
+        """
+        if self._proxy_mode == "auto":
+            proxy = _get_static_proxy()
+            if proxy:
+                self.session.proxies = proxy
+            else:
+                self.session.proxies = {}    # 移除代理，直连
+        # direct 和 custom 模式不做任何操作
 
     # ---------- 内部方法 ----------
 
@@ -71,6 +151,7 @@ class Music2t58Spider:
         :return: 页面 HTML 文本
         :raises requests.RequestException: 请求失败时抛出
         """
+        self._refresh_proxy()
         resp = self.session.get(url, timeout=self.TIMEOUT)
         html_text = resp.text
         # 检测是否命中人机验证页
@@ -344,6 +425,7 @@ class Music2t58Spider:
             "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
         }
         try:
+            self._refresh_proxy()
             resp = self.session.post(
                 self.PLAY_API,
                 data={"id": song_id, "type": "music"},
@@ -376,6 +458,7 @@ class Music2t58Spider:
         if not cid:
             return ""
         try:
+            self._refresh_proxy()
             resp = self.session.get(
                 self.LRC_API, params={"cid": cid}, timeout=self.TIMEOUT
             )
