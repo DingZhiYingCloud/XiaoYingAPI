@@ -6,7 +6,8 @@
 架构:
   ProxyIPService (home.py)          # 主入口，聚合+验证+返回
     ├── ProxyVerification/          # IP 可用性验证工具
-    ├── ProxyIP_66daili/            # 66免费代理IP 源（动态爬虫）
+    ├── ProxyIP_66daili/            # 66免费代理IP 源（动态爬虫，存活不确定）
+    ├── ProxyIP_qy/                 # 青雨代理IP 源（国内动态短期，存活 1-3 分钟）
     ├── ProxyIP_Static/             # 静态代理IP 源（JSON 文件）
     └── ...（后续可添加更多代理源）
 
@@ -21,8 +22,10 @@
     result = service.get_available_proxies(count=5)
     # 静态代理
     result = service.get_available_proxies(count=3, sources=["static"])
+    # 青雨短期代理
+    result = service.get_available_proxies(count=10, sources=["qy"])
     # 混合源
-    result = service.get_available_proxies(count=5, sources=["66daili", "static"])
+    result = service.get_available_proxies(count=5, sources=["66daili", "static", "qy"])
 """
 
 import sys
@@ -45,7 +48,7 @@ def _ensure_subpackage(parent_name, child_path):
 
 
 _PKG_DIR = os.path.dirname(os.path.abspath(__file__))
-for _sub in ["ProxyIP_66daili", "ProxyVerification", "ProxyIP_Static"]:
+for _sub in ["ProxyIP_66daili", "ProxyVerification", "ProxyIP_Static", "ProxyIP_qy"]:
     _ensure_subpackage(
         f"ProxyIP.{_sub}",
         os.path.join(_PKG_DIR, _sub, "__init__.py"),
@@ -56,6 +59,7 @@ from .utils import response_dict
 from .ProxyVerification.home import ProxyVerifier
 from .ProxyIP_66daili.home import ProxyIP66daili
 from .ProxyIP_Static.home import StaticIPService
+from .ProxyIP_qy.home import ProxyIPQy
 
 
 class ProxyIPService:
@@ -64,6 +68,7 @@ class ProxyIPService:
     SOURCE_MAP = {
         "66daili": ProxyIP66daili,
         "static": StaticIPService,
+        "qy": ProxyIPQy,
     }
     """代理源映射表：source_name -> CrawlerClass
     后续新增代理源时只需在此注册即可。"""
@@ -199,3 +204,16 @@ if __name__ == "__main__":
     print(f"返回数量: {len(result['data']['proxies'])}")
     for p in result["data"]["proxies"]:
         print(f"  {p['proxy']} - {p['speed_ms']}ms")
+
+    print()
+
+    print("===== 模式4: 青雨短期代理 qy（verify=False，存活1-3分钟）=====")
+    result = service.get_available_proxies(count=3, sources=["qy"], verify=False)
+    print(f"状态: {'成功' if result['code'] == 0 else '失败'}")
+    print(f"原始爬取: {result['data']['total_fetched']}")
+    print(f"返回数量: {len(result['data']['proxies'])}")
+    for p in result["data"]["proxies"]:
+        info = f"{p['ip']}:{p['port']}"
+        if p.get("end_time"):
+            info += f" | 失效时间: {p['end_time']}"
+        print(f"  {info}")

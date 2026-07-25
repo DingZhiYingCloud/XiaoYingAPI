@@ -20,8 +20,8 @@ _API_ROOT = _BASE_URL[:-5] if _BASE_URL.endswith('/beta') else _BASE_URL
 DEEPSEEK_CHAT_URL = f"{_API_ROOT}/chat/completions"
 # Beta Chat API URL（用于前缀续写等 Beta 功能）
 DEEPSEEK_BETA_CHAT_URL = f"{_API_ROOT}/beta/chat/completions"
-# 默认模型
-DEFAULT_MODEL = "deepseek-chat"
+# 默认模型（2026-07 起 DeepSeek 弃用 deepseek-chat，改用 v4 系列）
+DEFAULT_MODEL = "deepseek-v4-flash"
 
 # ==================== 系统提示词 ====================
 # 当用户未提供自定义 system_prompt 时，使用此默认值

@@ -65,6 +65,8 @@ def deepseek_view(request):
                                例如 ["```"] 让模型输出到代码块结束符即停止
                                - JSON 数组: "[\"```\", \"END\"]"
                                - 单个字符串: "```" (会自动包装为单元素数组)
+        model         (选填): 模型名称，默认 deepseek-v4-flash
+                               可选值: deepseek-v4-flash(快速版)、deepseek-v4-pro(专业版)
 
     注意:
         - content 和 messages 至少提供一个，否则返回参数缺失错误
@@ -81,6 +83,7 @@ def deepseek_view(request):
     prefix_str = request.POST.get('prefix', 'false').strip().lower()
     prefix_content = request.POST.get('prefix_content', '').strip()
     stop_raw = request.POST.get('stop', '').strip()
+    model = request.POST.get('model', '').strip() or None
 
     # stream 参数校验
     if stream_str not in ('true', 'false'):
@@ -156,21 +159,21 @@ def deepseek_view(request):
     # ---------- 3. 调用 DeepSeek API ----------
     if stream:
         # 流式模式: 返回 StreamingHttpResponse
-        return _handle_stream_response(messages, api_key, prefix=prefix, stop=stop_list)
+        return _handle_stream_response(messages, api_key, model=model, prefix=prefix, stop=stop_list)
     else:
         # 非流式模式: 返回 JsonResponse
-        return _handle_normal_response(messages, api_key, prefix=prefix, stop=stop_list)
+        return _handle_normal_response(messages, api_key, model=model, prefix=prefix, stop=stop_list)
 
 
-def _handle_normal_response(messages, api_key, prefix=False, stop=None):
+def _handle_normal_response(messages, api_key, model=None, prefix=False, stop=None):
     """非流式对话: 调用 API 获取完整回复，返回统一 JSON 响应。"""
-    success, result = utils.chat_completion(messages, api_key=api_key, prefix=prefix, stop=stop)
+    success, result = utils.chat_completion(messages, api_key=api_key, model=model or utils.DEFAULT_MODEL, prefix=prefix, stop=stop)
     if not success:
         return _json_response(StatusCode.EXTERNAL_API_FAILED, msg=result)
     return _json_response(StatusCode.SUCCESS, data=result)
 
 
-def _handle_stream_response(messages, api_key, prefix=False, stop=None):
+def _handle_stream_response(messages, api_key, model=None, prefix=False, stop=None):
     """
     流式对话: 返回 SSE(Server-Sent Events) 流。
 
@@ -184,7 +187,7 @@ def _handle_stream_response(messages, api_key, prefix=False, stop=None):
     """
     def sse_generator():
         try:
-            yield from utils.stream_chat_completion(messages, api_key=api_key, prefix=prefix, stop=stop)
+            yield from utils.stream_chat_completion(messages, api_key=api_key, model=model or utils.DEFAULT_MODEL, prefix=prefix, stop=stop)
         except ValueError as e:
             # 流启动阶段出错（Key 未配置/网络不通/API 返回错误）
             yield f"data: {json.dumps({'code': StatusCode.EXTERNAL_API_FAILED, 'msg': str(e)}, ensure_ascii=False)}\n\n"
