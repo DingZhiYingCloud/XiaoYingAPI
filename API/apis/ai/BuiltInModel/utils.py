@@ -8,6 +8,7 @@ API Key 优先级：用户传入 > .env 配置的默认密钥。
 """
 import json
 import os
+import time
 
 import requests
 
@@ -133,6 +134,47 @@ def _handle_api_error(resp):
         return resp.text or f"HTTP {resp.status_code}"
 
 
+# ── 重试配置 ──
+_MAX_RETRIES = 3
+"""最大重试次数（含首次请求，即最多实际发 _MAX_RETRIES 次）"""
+_RETRY_DELAYS = [2, 4, 8]
+"""指数退避间隔（秒），依次为 2s、4s、8s"""
+_RETRYABLE_STATUSES = {502, 503, 504}
+"""可重试的 HTTP 状态码（网关/服务暂时不可用）"""
+
+
+def _request_with_retry(method, url, **kwargs):
+    """带指数退避重试的 HTTP 请求
+
+    仅在以下情况重试:
+        - 网络异常 (requests.RequestException)
+        - 服务端 5xx 临时错误 (502/503/504)
+    业务错误 (4xx) 不重试，直接返回。
+
+    :param method: 请求方法，如 'POST'
+    :param url: 请求 URL
+    :param kwargs: 传给 requests.request 的额外参数
+    :return: (requests.Response|None, str|None)
+        - (resp, None) — 请求成功或拿到非可重试状态码
+        - (None, error_msg) — 所有重试耗尽
+    """
+    last_error = None
+    for attempt in range(_MAX_RETRIES):
+        try:
+            resp = requests.request(method, url, **kwargs)
+            if resp.status_code not in _RETRYABLE_STATUSES:
+                return resp, None
+            last_error = f"HTTP {resp.status_code}"
+        except requests.RequestException as e:
+            last_error = str(e)
+            resp = None
+
+        if attempt < _MAX_RETRIES - 1:
+            time.sleep(_RETRY_DELAYS[attempt])
+
+    return resp, last_error
+
+
 def chat_completion(messages, api_key=None, model=DEFAULT_MODEL, timeout=120,
                     prefix=False, stop=None):
     """
@@ -172,11 +214,14 @@ def chat_completion(messages, api_key=None, model=DEFAULT_MODEL, timeout=120,
         payload["stop"] = stop
 
     try:
-        resp = requests.post(
-            url, json=payload, headers=headers, timeout=timeout
+        resp, err = _request_with_retry(
+            'POST', url, json=payload, headers=headers, timeout=timeout
         )
     except requests.RequestException as e:
         return False, f'请求 DeepSeek API 失败: {e}'
+
+    if resp is None:
+        return False, f'DeepSeek API 请求失败（重试 {_MAX_RETRIES} 次后放弃）: {err}'
 
     if resp.status_code != 200:
         return False, f'DeepSeek API 返回错误 ({resp.status_code}): {_handle_api_error(resp)}'
@@ -242,15 +287,16 @@ def stream_chat_completion(messages, api_key=None, model=DEFAULT_MODEL, timeout=
         payload["stop"] = stop
 
     try:
-        resp = requests.post(
-            url,
-            json=payload,
-            headers=headers,
-            stream=True,
-            timeout=timeout,
+        resp, err = _request_with_retry(
+            'POST', url,
+            json=payload, headers=headers,
+            stream=True, timeout=timeout,
         )
     except requests.RequestException as e:
-        raise ValueError(f'请求 DeepSeek API 失败: {e}')
+        raise ValueError(f'请求 DeepSeek API 失败: {e}') from e
+
+    if resp is None:
+        raise ValueError(f'DeepSeek API 请求失败（重试 {_MAX_RETRIES} 次后放弃）: {err}')
 
     if resp.status_code != 200:
         error_msg = _handle_api_error(resp)
