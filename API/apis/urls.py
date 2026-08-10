@@ -14,5 +14,6 @@ urlpatterns = [
     path('dlwz/', include('API.apis.DaiLianWanZi.urls')), # 代练丸子服务路由
     path('ddddocr/', include('API.apis.DdddocrRecognizer.urls')), # ddddocr 验证码识别服务路由
     path('ProxyIp/', include('API.apis.ProxyIp.urls')), # 代理IP服务路由
+    path('seo/', include('API.apis.seo.urls')),         # SEO服务路由(友情链接等)
 ]
 

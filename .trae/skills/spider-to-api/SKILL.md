@@ -20,9 +20,12 @@ description: "基于爬虫文件分析并生成符合项目规范的API服务(�
 >
 > 最终交付物应包括完整的 API 实现代码、路由配置文件以及所有接口的 curl 调用命令集合。你还要告诉我每一个参数的意思,我好写进api文档的参数说明中。
 
+> 注意：用户会手动提供 Apifox 目标目录 ID（如 `93022755`）。若用户未提供，API 开发验证通过后主动询问目录 ID，再进行 Apifox 文档同步。
+
 ## 总体原则
 
 - **强制遵循现有项目代码风格**：三件套结构（`request.py` / `utils.py` / `urls.py`）、统一 JSON 响应格式、复用项目现有 `StatusCode` 状态码体系
+- **Apifox 文档自动同步**：API 服务开发验证通过后，必须自动在用户指定的 Apifox 目录 ID 下创建/更新接口文档（详见「第六步：Apifox 文档同步」）
 - **精准修改**：只触碰必须修改的内容，不重构无关代码，不"改进"相邻代码
 - **简洁至上**：用最少的代码解决问题，不做无根据的推测，不为一次性代码创建抽象
 - **路径通用化**：不硬编码任何具体项目路径，所有路径由用户输入动态决定
@@ -125,7 +128,39 @@ description: "基于爬虫文件分析并生成符合项目规范的API服务(�
 2. **路由解析验证**：用 `django.urls.resolve` 验证每个路由路径能正确解析到对应视图函数
 3. **依赖验证**：若爬虫引入了新依赖（如 `lxml`、`pycryptodome`），需确认已安装且导入正常
 
-### 第六步：交付文档
+### 第六步：Apifox 文档同步（自动）
+
+API 服务开发并验证通过后，**必须自动**在 Apifox 中为该服务创建/更新接口文档，用户会手动提供目标目录 ID（如 `93022755`）。
+
+**前置条件**：
+
+- 用户提供 Apifox 目录 ID；若未提供，主动询问后再执行
+- Apifox CLI 已登录（未登录时让用户提供 API 访问令牌：`apifox login --with-token <TOKEN>`）
+
+**同步流程**：
+
+1. **确认目录**：执行 `apifox folder list --project <projectId>` 找到用户指定的目录 ID，确认存在
+2. **检查已有接口**：执行 `apifox endpoint list --project <projectId> --folder-id <目录ID>`，区分「新建接口」与「更新已有接口」
+3. **获取 schema**：执行 `apifox cli-schema get endpoint-create`（创建）或 `apifox cli-schema get endpoint-update`（更新），了解字段格式
+4. **生成 JSON 数据文件**：每个接口一个文件，字段含 `name`、`method`、`path`、`description`、`folderId`、`parameters`、`requestBody`、`responses`、`responseExamples`
+5. **校验**：执行 `apifox cli-schema validate <schemaKey> --file <path>`，全部通过后才执行真实写入
+6. **创建/更新接口**：`apifox endpoint create --project <projectId> --file <path>`；更新用 `apifox endpoint update <endpointId> --project <projectId> --file <path>`
+7. **验证结果**：`apifox endpoint list --project <projectId> --folder-id <目录ID>` 确认所有接口已就位
+8. **清理临时文件**：删除生成的临时 JSON 文件
+
+**文档内容要求（与接口代码严格一致）**：
+
+- 请求体类型：本项目约定使用 `application/x-www-form-urlencoded` 表单（非 JSON），除非用户明确要求
+- 每个接口的请求参数、响应结构、示例数据必须与 `request.py`/`utils.py` 的实际实现一致
+- 响应示例覆盖成功与常见错误场景（参数缺失 20001、格式错误 20002、值非法 20003、外部服务失败 40001、资源不存在 20030 等）
+
+**禁止事项**：
+
+- 禁止不经 schema 校验直接创建/更新接口
+- 禁止在接口已存在时重复创建（应优先 update）
+- 禁止输出/记录 API 访问令牌等敏感信息
+
+### 第七步：交付文档
 
 交付说明必须包含以下章节：
 
@@ -168,6 +203,7 @@ description: "基于爬虫文件分析并生成符合项目规范的API服务(�
 - **禁止**为不可能出现的场景写错误处理
 - **禁止**重复定义（能定义一次的就定义一次，其他地方用变量）
 - **禁止**省略验证步骤直接交付
+- **禁止**跳过第六步（Apifox 文档同步），API 开发完成后必须自动同步文档
 - **禁止**创建未被要求的文档文件（如 README.md）
 
 ## 统一响应格式参考
