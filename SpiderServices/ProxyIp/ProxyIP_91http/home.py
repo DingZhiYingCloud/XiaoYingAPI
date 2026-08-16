@@ -64,14 +64,18 @@ class ProxyIP91http:
             - sep: int, 分隔符（默认 1=换行）
             - auto_white: int, 自动添加白名单（默认 1）
             - time: int, 返回过期时间（默认 1）
+            - username: str, 认证用户名（账号密码认证，无需白名单）
+            - password: str, 认证密码（账号密码认证，无需白名单）
         :return: dict 含:
             - code: 0 成功，1 失败
             - message: 描述信息
             - data: {
-                proxies: [{ip, port, protocol, region, expire_time}, ...],
+                proxies: [{ip, port, protocol, region, expire_time, proxy?}, ...],
                 total: 返回总数,
                 fetched: 返回数,
               }
+            其中 proxy 仅在传入 username+password 时生成，
+            格式: http://username:password@ip:port（可直接用于 requests proxies）
         """
         # 构建请求参数
         params = {
@@ -84,6 +88,13 @@ class ProxyIP91http:
             "auto_white": kwargs.get("auto_white", 1),
             "time": kwargs.get("time", 1),
         }
+        # 账号密码认证参数（可选，传了则无需白名单）
+        username = kwargs.get("username")
+        password = kwargs.get("password")
+        if username:
+            params["username"] = username
+        if password:
+            params["password"] = password
         # num 确保整数且 >= 1
         try:
             params["num"] = max(1, int(params["num"]))
@@ -112,7 +123,7 @@ class ProxyIP91http:
             )
 
         proxy_list = data.get("data", {}).get("proxy_list", [])
-        proxies = self._parse_proxy_list(proxy_list)
+        proxies = self._parse_proxy_list(proxy_list, username=username, password=password)
 
         return response_dict(
             code=0,
@@ -121,15 +132,21 @@ class ProxyIP91http:
         )
 
     @staticmethod
-    def _parse_proxy_list(items: list) -> list:
+    def _parse_proxy_list(items: list, username: str = None, password: str = None) -> list:
         """
         解析 proxy_list 数组。
 
         字段格式: {"ip": "x.x.x.x", "port": xxxx, "expire_time": "..."}
 
         :param items: proxy_list 数组
-        :return: [{ip, port, protocol, region, expire_time}, ...]
+        :param username: 认证用户名（可选）
+        :param password: 认证密码（可选）
+        :return: [{ip, port, protocol, region, expire_time, proxy?}, ...]
+                 当 username+password 均传入时，额外生成 proxy 字段:
+                 http://username:password@ip:port（账号密码认证，无需白名单）
         """
+        # 账号密码认证：二者需同时存在才生成带认证的代理 URL
+        has_auth = bool(username and password)
         proxies = []
         for item in items:
             if not isinstance(item, dict):
@@ -143,11 +160,15 @@ class ProxyIP91http:
                 continue
             port = port.split(".")[0]
 
-            proxies.append({
+            proxy_item = {
                 "ip": ip,
                 "port": port,
                 "protocol": "HTTP",
                 "region": "国内动态",
                 "expire_time": expire_time,
-            })
+            }
+            if has_auth:
+                proxy_item["proxy"] = f"http://{username}:{password}@{ip}:{port}"
+
+            proxies.append(proxy_item)
         return proxies

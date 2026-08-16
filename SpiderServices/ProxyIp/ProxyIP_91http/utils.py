@@ -8,8 +8,8 @@
 API_URL = "http://api.91http.com/v1/get-ip"
 
 # 默认参数（对应购买订单）
-DEFAULT_TRADE_NO = "A643756888790"
-DEFAULT_SECRET = "q2GAPu38LDWbiORd"
+DEFAULT_TRADE_NO = "A672438907529"
+DEFAULT_SECRET = "9ksFvLoAnw9jIYdI"
 
 # 请求超时（秒）
 REQUEST_TIMEOUT = 15

@@ -42,6 +42,14 @@ def get_91http_proxies_view(request):
         protocol   (选填, int): 协议类型，1=HTTP 2=HTTPS 3=SOCKS5 4=HTTP(S)，默认 1
         auto_white (选填, int): 自动添加白名单，1=是 0=否，默认 1
         time       (选填, int): 返回过期时间，1=是 0=否，默认 1
+        username   (选填, str): 认证用户名，账号密码认证模式（与 password 同时传，需成对出现）
+        password   (选填, str): 认证密码，账号密码认证模式（与 username 同时传，需成对出现）
+
+    认证方式说明:
+        - 白名单认证: 不传 username/password，需先在 91HTTP 后台添加本机公网 IP 白名单
+        - 账号密码认证: 传 username/password，返回的每条代理会附带 proxy 字段
+          （http://username:password@ip:port），无需白名单即可直接使用
+        - 二者选其一即可，修改授权信息后约 5 分钟生效
     """
     # ── 参数解析 ──
     num_str = request.GET.get("num", "10").strip()
@@ -50,6 +58,13 @@ def get_91http_proxies_view(request):
     protocol_str = request.GET.get("protocol", "").strip() or None
     auto_white_str = request.GET.get("auto_white", "").strip() or None
     time_str = request.GET.get("time", "").strip() or None
+    username = request.GET.get("username", "").strip() or None
+    password = request.GET.get("password", "").strip() or None
+
+    # ── username/password 成对校验 ──
+    if bool(username) != bool(password):
+        return _json_response(StatusCode.PARAM_MISSING,
+                               msg="参数缺失: username 和 password 必须同时传入（账号密码认证）")
 
     # ── num 验证 ──
     try:
@@ -94,6 +109,7 @@ def get_91http_proxies_view(request):
     ok, data = utils.get_91http_proxies(
         num=num, trade_no=trade_no, secret=secret,
         protocol=protocol, auto_white=auto_white, time=time,
+        username=username, password=password,
     )
     if not ok:
         return _json_response(StatusCode.EXTERNAL_API_FAILED, msg=data)
