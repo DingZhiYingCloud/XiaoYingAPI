@@ -11,6 +11,10 @@ urlpatterns = [
     path('api/', include('API.apis.urls')), # API路由
 ]
 
+# 全局 JSON 兜底：未匹配路由返回 JSON 404、未捕获异常返回 JSON 500
+handler404 = 'API.common.views.handler404'
+handler500 = 'API.common.views.handler500'
+
 # 静态文件 & 媒体文件服务
 # DEBUG=True 时 Django 自动通过 static() 辅助函数服务
 # DEBUG=False 时 static() 返回空列表，需要手动添加路由

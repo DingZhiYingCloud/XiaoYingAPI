@@ -41,6 +41,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware', # 认证中间件,用来处理用户认证相关的请求和响应
     'django.contrib.messages.middleware.MessageMiddleware', # 消息中间件,用来处理消息相关的请求和响应
     'django.middleware.clickjacking.XFrameOptionsMiddleware', # 用来处理点击劫持攻击的中间件
+    'API.common.middleware.ApiJson404Middleware', # /api/ 路径未匹配路由时返回 JSON 404（兜底）
 ]
 
 ROOT_URLCONF = 'XiaoYingAPI.urls'
