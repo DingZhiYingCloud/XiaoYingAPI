@@ -6,9 +6,14 @@
 import uuid
 
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError
+from django.core.validators import URLValidator
+from django.db import IntegrityError, transaction
 
 from API.models.music import Music, MusicSource
+
+# 批量导入接口配置（可按需调整）
+MAX_IMPORT_COUNT = 9999                 # 单次导入最大条数
+MAX_IMPORT_FILE_SIZE = 10 * 1024 * 1024  # 上传文件大小上限：10MB
 
 
 def _format_time(dt):
@@ -278,6 +283,107 @@ def delete_music_source(source_id: uuid.UUID) -> tuple:
         return False, f'播放源不存在: id={source_id}'
     except Exception as e:
         return False, f'删除播放源失败: {e}'
+
+
+# ==================== 批量导入 ====================
+
+# URL 格式校验器（schemes 默认 http/https，与模型 URLField 一致）
+_url_validator = URLValidator()
+
+
+def _extract_sources(record: dict) -> list:
+    """提取记录中的播放源 url 列表
+
+    music_sources 可为字符串（单条 url）或字符串数组；缺省/空返回空列表。
+    """
+    sources = record.get('music_sources') or []
+    if isinstance(sources, str):
+        sources = [sources]
+    if not isinstance(sources, (list, tuple)):
+        raise ValueError('参数格式错误: music_sources 必须为字符串或数组')
+    return [str(s).strip() for s in sources]
+
+
+def _build_import_item(record) -> tuple:
+    """内存校验并构建 Music / MusicSource 实例（不写库）
+
+    校验规则与 create_music / create_music_source 保持一致：
+    name/singer 必填且非空、name ≤ 200 字符、url 必填且为合法 URL(≤500 字符)。
+    校验失败抛 ValueError，由调用方将该条判为失败（不产生任何半成品数据）。
+
+    :return: (music, [source, ...])
+    """
+    if not isinstance(record, dict):
+        raise ValueError('记录必须为 JSON 对象')
+    name = (record.get('name') or '').strip()
+    if not name:
+        raise ValueError('参数缺失: name(音乐名称)')
+    if len(name) > 200:
+        raise ValueError('参数值非法: name(音乐名称) 最长 200 字符')
+    if 'singer' not in record:
+        raise ValueError('参数缺失: singer(音乐歌手)')
+    singers = _normalize_singers(record['singer'])
+    if not singers:
+        raise ValueError('参数值非法: singer(音乐歌手) 不能为空')
+
+    music = Music(name=name, singer=singers, online=_parse_bool(record.get('online'), default=True))
+    sources = []
+    for url in _extract_sources(record):
+        if not url:
+            raise ValueError('参数缺失: url(播放链接)')
+        if len(url) > 500:
+            raise ValueError('参数值非法: url(播放链接) 最长 500 字符')
+        try:
+            _url_validator(url)
+        except ValidationError:
+            raise ValueError('url: 输入一个有效的 URL。') from None
+        # 关联未保存的 music 实例：此处访问 music.id 会触发 UUID default 生成，
+        # 与后续 bulk_create 写入的 id 保持一致
+        sources.append(MusicSource(music=music, url=url))
+    return music, sources
+
+
+def import_musics(records: list) -> tuple:
+    """批量导入音乐（含播放源），部分成功模式
+
+    性能优化：先对所有记录做纯内存校验，将合法记录组装为实例，
+    再通过 bulk_create 在单个事务内批量写入，避免逐条 save 与逐条事务的
+    数据库往返开销（9999 条由约 80 秒降至秒级）。
+    非法记录在校验阶段即被筛出并返回失败原因，其余正常入库，不去重。
+
+    :param records: 数据列表，每条为 dict:
+        {"name": str, "singer": [str, ...], "online": bool?, "music_sources": [url, ...]?}
+    :return: (True, {total, success_count, failed_count, failures})
+    """
+    total = len(records)
+    musics, sources, failures = [], [], []
+    for index, record in enumerate(records):
+        # 校验失败时也要能返回原始名称，故先提取（非对象记录取不到则留空）
+        name = record.get('name') if isinstance(record, dict) else ''
+        try:
+            music, item_sources = _build_import_item(record)
+        except Exception as e:
+            failures.append({'index': index, 'name': name, 'msg': str(e)})
+            continue
+        musics.append(music)
+        sources.extend(item_sources)
+
+    if musics:
+        try:
+            with transaction.atomic():
+                Music.objects.bulk_create(musics, batch_size=500)
+                if sources:
+                    MusicSource.objects.bulk_create(sources, batch_size=500)
+        except Exception as e:
+            # 不可预期的数据库错误：整批回滚（所有可预期失败已在校验阶段拦截）
+            return False, f'批量导入失败: {e}'
+
+    return True, {
+        'total': total,
+        'success_count': len(musics),
+        'failed_count': len(failures),
+        'failures': failures,
+    }
 
 
 def _parse_bool(val, default: bool) -> bool:

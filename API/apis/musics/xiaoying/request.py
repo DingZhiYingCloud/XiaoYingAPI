@@ -13,6 +13,7 @@
 
 说明: 播放源不提供独立列表/详情查询接口，通过「获取音乐详情」接口返回指定音乐的播放源。
 """
+import json
 import uuid
 
 from django.http import JsonResponse, QueryDict
@@ -184,3 +185,48 @@ def music_source_detail_view(request, source_id: uuid.UUID):
     if not ok:
         return _json_response(StatusCode.NOT_FOUND, msg=msg)
     return _json_response(StatusCode.SUCCESS, data=None, msg='删除成功')
+
+
+# ==================== 批量导入 ====================
+
+@require_http_methods(['POST'])
+def music_import_view(request):
+    """批量导入音乐（上传 JSON 文件）
+
+    请求体类型: multipart/form-data，字段名 file，内容为 JSON 数组:
+        [{"name": "晴天", "singer": ["周杰伦"], "online": true, "music_sources": ["https://..."]}]
+    用途: 爬虫爬取完一批音乐后，一次导入（音乐+播放源），避免逐条调用创建接口。
+
+    规则:
+        - 单次最多导入 utils.MAX_IMPORT_COUNT(9999) 条，文件不超过 10MB
+        - 部分成功: 单条记录失败（含其播放源）整体回滚，响应返回失败原因，其余正常入库
+        - 不去重，直接插入新记录
+    返回: data 为 {total, success_count, failed_count, failures: [{index, name, msg}]}
+    """
+    upload = request.FILES.get('file')
+    if not upload:
+        return _json_response(StatusCode.PARAM_MISSING, msg='参数缺失: file(JSON 文件)')
+    if upload.size > utils.MAX_IMPORT_FILE_SIZE:
+        max_mb = utils.MAX_IMPORT_FILE_SIZE // (1024 * 1024)
+        return _json_response(StatusCode.PARAM_VALUE_INVALID, msg=f'参数值非法: 文件大小不能超过 {max_mb}MB')
+
+    try:
+        records = json.loads(upload.read().decode('utf-8'))
+    except UnicodeDecodeError:
+        return _json_response(StatusCode.PARAM_FORMAT_ERROR, msg='参数格式错误: 文件必须为 UTF-8 编码')
+    except json.JSONDecodeError as e:
+        return _json_response(StatusCode.PARAM_FORMAT_ERROR, msg=f'参数格式错误: JSON 解析失败: {e}')
+
+    if not isinstance(records, list):
+        return _json_response(StatusCode.PARAM_FORMAT_ERROR, msg='参数格式错误: JSON 顶层必须为数组')
+    if not records:
+        return _json_response(StatusCode.PARAM_VALUE_INVALID, msg='参数值非法: 导入列表不能为空')
+    if len(records) > utils.MAX_IMPORT_COUNT:
+        return _json_response(StatusCode.PARAM_VALUE_INVALID,
+                              msg=f'参数值非法: 单次最多导入 {utils.MAX_IMPORT_COUNT} 条')
+
+    ok, data = utils.import_musics(records)
+    if not ok:
+        return _json_response(StatusCode.INTERNAL_ERROR, msg=data)
+    return _json_response(StatusCode.SUCCESS, data=data,
+                          msg=f'导入完成：成功 {data["success_count"]} 条，失败 {data["failed_count"]} 条')

@@ -72,6 +72,11 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+        # 提升 SQLite 并发写容错：等待写锁最长 20 秒，避免批量/并发导入时报 database is locked
+        'OPTIONS': {'timeout': 20},
+        # 单元测试使用独立文件库：Django 默认的内存共享库在并发写场景下会立即报锁错误（不走等待），
+        # 文件库的写锁排队行为正常，保证并发导入测试稳定
+        'TEST': {'NAME': BASE_DIR / 'test_db.sqlite3'},
     }
 }
 

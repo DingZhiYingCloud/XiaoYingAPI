@@ -18,4 +18,8 @@ urlpatterns = [
     path('music_sources/', request.music_source_create_view, name='xiaoying_music_source_create_slash'),
     path('music_sources/<uuid:source_id>', request.music_source_detail_view, name='xiaoying_music_source_detail'),
     path('music_sources/<uuid:source_id>/', request.music_source_detail_view, name='xiaoying_music_source_detail_slash'),
+
+    # 批量导入: POST 上传 JSON 文件（音乐+播放源一次性入库）
+    path('import', request.music_import_view, name='xiaoying_music_import'),
+    path('import/', request.music_import_view, name='xiaoying_music_import_slash'),
 ]
