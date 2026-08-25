@@ -16,12 +16,25 @@ def _format_time(dt):
     return dt.strftime('%Y-%m-%d %H:%M:%S') if dt else None
 
 
+def _normalize_singers(singer) -> list:
+    """歌手统一为列表
+
+    兼容旧数据（CharField 时期存的字符串）与列表数据，
+    API 返回时一律为列表形式，如 ["周杰伦", "蔡依林"]。
+    """
+    if isinstance(singer, str):
+        return [singer] if singer else []
+    if isinstance(singer, (list, tuple)):
+        return [s for s in singer if s]
+    return []
+
+
 def _music_to_dict(music: Music) -> dict:
     """将 Music 实例序列化为字典"""
     return {
         'id': str(music.id),
         'name': music.name,
-        'singer': music.singer,
+        'singer': _normalize_singers(music.singer),
         'online': music.online,
         'create_time': _format_time(music.create_time),
         'updated_time': _format_time(music.updated_time),
@@ -109,20 +122,22 @@ def get_music(music_id: uuid.UUID) -> tuple:
 def create_music(data: dict) -> tuple:
     """创建音乐
 
-    :param data: 字段字典，必须包含 name 和 singer
+    :param data: 字段字典，必须包含 name 和 singer（singer 支持字符串或列表，至少一个歌手）
     :return: (True, music_dict) 或 (False, msg)
     """
     name = (data.get('name') or '').strip()
-    singer = (data.get('singer') or '').strip()
     if not name:
         return False, '参数缺失: name(音乐名称)'
-    if not singer:
+    if 'singer' not in data:
         return False, '参数缺失: singer(音乐歌手)'
+    singers = _normalize_singers(data['singer'])
+    if not singers:
+        return False, '参数值非法: singer(音乐歌手) 不能为空'
 
     try:
         music = Music(
             name=name,
-            singer=singer,
+            singer=singers,
             online=_parse_bool(data.get('online'), default=True),
         )
         music.full_clean()
@@ -138,6 +153,7 @@ def update_music(music_id: uuid.UUID, data: dict) -> tuple:
     """更新音乐（部分字段）
 
     只更新 data 中出现的字段，未传入的字段保持不变。
+    singer 为整体替换：传 singer 时将歌手列表整体更新。
     """
     try:
         music = Music.objects.get(id=music_id)
@@ -146,9 +162,13 @@ def update_music(music_id: uuid.UUID, data: dict) -> tuple:
     except Exception as e:
         return False, f'查询音乐失败: {e}'
 
-    for field in ['name', 'singer']:
-        if field in data:
-            setattr(music, field, (data[field] or '').strip() if isinstance(data[field], str) else data[field])
+    if 'name' in data:
+        music.name = (data['name'] or '').strip()
+    if 'singer' in data:
+        singers = _normalize_singers(data['singer'])
+        if not singers:
+            return False, '参数值非法: singer(音乐歌手) 不能为空'
+        music.singer = singers
     if 'online' in data:
         music.online = _parse_bool(data['online'], default=music.online)
 

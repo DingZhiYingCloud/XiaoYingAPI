@@ -36,15 +36,25 @@ def _parse_body(request):
 
     注意: Django 的 request.POST 仅自动解析 POST 方法的表单数据，
     PATCH 等其它方法需手动从 request.body 解析。
+    singer 支持重复 key 传多值（singer=周杰伦&singer=蔡依林），返回列表。
     """
     if request.method == 'POST':
-        return request.POST.dict(), None
-    if request.body:
+        qd = request.POST
+    elif request.body:
         try:
-            return QueryDict(request.body.decode('utf-8')).dict(), None
+            qd = QueryDict(request.body.decode('utf-8'))
         except Exception as e:
             return None, f'表单解析失败: {e}'
-    return {}, None
+    else:
+        return {}, None
+
+    data = qd.dict()
+    # 多值字段：singer 支持重复 key（singer=周杰伦&singer=蔡依林），保留为列表。
+    # 注意：qd.dict() 会残留重复 key 的最后一个值，这里显式覆盖为过滤后的列表；
+    # 传了空值（singer= 或全空格）时保留空列表，便于视图区分"未传"与"传了空值"。
+    if 'singer' in qd:
+        data['singer'] = [s.strip() for s in qd.getlist('singer') if s.strip()]
+    return data, None
 
 
 # ==================== Music 接口 ====================

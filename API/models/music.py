@@ -8,7 +8,8 @@
     Music:
         id          - 音乐唯一ID（UUID 主键，音乐名称/歌手可重复，唯独 ID 不可重复）
         name        - 音乐名称（必填，可重复）
-        singer      - 音乐歌手（必填，可重复）
+        singer      - 音乐歌手（必填，可重复，列表格式，一首歌可有多个歌手）
+                      存储为 JSON 数组，如 ["周杰伦", "蔡依林"]；API 返回时统一为列表形式
         online      - 是否在线（True=在线，False=离线，默认 True）
                       查询接口默认只返回在线音乐，离线音乐不返回（过滤逻辑在 API 层处理）
         create_time - 创建时间（继承 BaseModel，自动填充）
@@ -23,19 +24,33 @@
 """
 import uuid
 
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 
 from API.common.base import BaseModel
 
 
+class RawJSONEncoder(DjangoJSONEncoder):
+    """JSON 编码器：关闭 Unicode 转义（ensure_ascii=False）
+
+    若使用默认编码器，中文会以 \\uXXXX 转义形式入库（如 "\\u5468\\u6770\\u4f26"），
+    导致 singer__icontains 这类基于数据库文本的 LIKE 模糊搜索失效。
+    关闭转义后数据库内存的是原始中文，可按歌手名模糊搜索。
+    """
+    def __init__(self, *args, **kwargs):
+        kwargs['ensure_ascii'] = False
+        super().__init__(*args, **kwargs)
+
+
 class Music(BaseModel):
     """音乐元数据（模型 A）
 
-    一首音乐可对应多条播放源（MusicSource，一对多）。
+    一首音乐可对应多条播放源（MusicSource，一对多）；
+    一首音乐可有多个歌手（singer 为 JSON 数组）。
     """
     id = models.UUIDField('音乐ID', primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField('音乐名称', max_length=200)
-    singer = models.CharField('音乐歌手', max_length=200)
+    singer = models.JSONField('音乐歌手', default=list, encoder=RawJSONEncoder)
     online = models.BooleanField('是否在线', default=True, db_index=True)
 
     class Meta:
