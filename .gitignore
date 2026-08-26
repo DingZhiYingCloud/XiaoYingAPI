@@ -22,6 +22,9 @@ __pycache__
 *.log
 logs/
 
+# 爬虫运行时产物（结果/缓存/待处理队列，随抓取不断变化）
+SpiderServices/*/output/
+
 # 数据库文件
 *.db
 *.sqlite3

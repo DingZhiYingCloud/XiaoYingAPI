@@ -5,10 +5,14 @@ import hashlib
 import sys
 import os
 import importlib.util
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 from lxml import etree
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
+
+# 站点域名统一从 cli.config.SITE_BASE 读取（支持环境变量 MUSIC_SITE / CLI --site 切换，避免写死）
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from cli import config  # noqa: E402
 
 
 # ── 静态代理加载（动态，每次调用重新读取 JSON） ──
@@ -51,7 +55,7 @@ def _get_static_proxy():
 
 class Music2t58Spider:
     """
-    爱听音乐网(2t58.com)数据爬虫。
+    爱听音乐网数据爬虫（站点域名统一来自 cli.config.SITE_BASE，支持多域名切换）。
 
     代理策略:
         每次 HTTP 请求前从 ProxyIP_Static 动态获取最新静态代理，
@@ -64,21 +68,22 @@ class Music2t58Spider:
     """
 
     # ---------- 基础配置 ----------
-    BASE_URL = "https://www.2t58.com"
+    # 域名统一来自 cli.config.SITE_BASE（实例化时动态绑定，见 __init__）
+    BASE_URL = config.SITE_BASE
     HEADERS = {
         "User-Agent": (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
             "AppleWebKit/537.36 (KHTML, like Gecko) "
             "Chrome/120.0.0.0 Safari/537.36"
         ),
-        "Referer": "https://www.2t58.com/",
+        "Referer": config.SITE_BASE + "/",
     }
     # 请求超时时间（秒）
     TIMEOUT = 15
 
     # ---------- 歌曲详情页相关配置 ----------
-    # 播放链接/歌词接口
-    PLAY_API = "https://www.2t58.com/js/play.php"
+    # 播放链接/歌词接口（域名随 SITE_BASE 动态）
+    PLAY_API = config.SITE_BASE + "/js/play.php"
     LRC_API = "https://js.eev3.com/lrc.php"
     # AES 解密密钥（提取自 playen.js 的 decodeUrl 函数，经 SHA256 后用于 AES-ECB）
     # 说明: 网站通过 CryptoJS.SHA256(该明文) 生成 32 字节密钥，再用 AES-ECB/Pkcs7 解密 Hex 密文
@@ -91,8 +96,11 @@ class Music2t58Spider:
             False：强制直连，不走任何代理；
             dict：自定义固定代理，如 {"http": "...", "https": "..."}。
         """
+        # 域名以实例化时刻的 config.SITE_BASE 为准（--site / 环境变量切换后重建实例即可生效）
+        self.BASE_URL = config.SITE_BASE
+        self.PLAY_API = config.SITE_BASE + "/js/play.php"
         self.session = requests.Session()
-        self.session.headers.update(self.HEADERS)
+        self.session.headers.update({**self.HEADERS, "Referer": config.SITE_BASE + "/"})
 
         if proxy is None:
             self._proxy_mode = "auto"       # 每次请求动态决定
@@ -288,31 +296,61 @@ class Music2t58Spider:
 
         return {"name": name, "cover": cover, "intro": intro}
 
-    def _parse_singer_songs(self, tree):
+    @staticmethod
+    def _li_song_link(li):
         """
-        解析歌手详情页"最新歌曲"列表。
-        结构: div.play_list > ul > li > div.name > a（a 标签文本即 "歌手 - 歌名"）
+        从歌曲列表 li 中提取主歌曲链接（兼容新旧模板）。
 
-        :param tree: lxml etree 对象
+        旧模板(2t58): li > div.name > a（无 title，文本即 "歌手 - 歌名"）
+        新模板(aat.cx): li > a.url 或 li > div.pic > a（带 title="歌手 - 歌名"）
+
+        :param li: lxml li 元素
+        :return: 歌曲 <a> 元素；无匹配时返回 None
+        """
+        for xpath in ('.//a[contains(@class, "url")]',
+                      './/div[@class="pic"]/a',
+                      './/div[@class="name"]/a'):
+            nodes = li.xpath(xpath)
+            if nodes:
+                return nodes[0]
+        return None
+
+    def _parse_li_songs(self, li_nodes):
+        """
+        从歌曲 li 列表解析歌曲（歌手页/随机推荐/搜索共用，兼容新旧模板）。
+
+        :param li_nodes: 歌曲 li 列表
         :return: list[dict] 每项含 song_name / artists / song_url
         """
-        li_nodes = tree.xpath('//div[@class="play_list"]//ul/li')
         result = []
         for li in li_nodes:
-            name_a = li.xpath('.//div[@class="name"]/a')
-            if not name_a:
+            name_a = self._li_song_link(li)
+            if name_a is None:
                 continue
-            # 歌手详情页的 a 标签无 title 属性，文本内容即标题
-            title = name_a[0].text.strip() if name_a[0].text else ""
+            # 标题优先取 title 属性，缺失时退回 a 文本
+            title = (name_a.get("title") or "").strip() or (name_a.text or "").strip()
             if not title:
                 continue
             artists, song_name = self._parse_song_title(title)
             result.append({
                 "song_name": song_name,
                 "artists": artists,
-                "song_url": self.BASE_URL + name_a[0].get("href", ""),
+                "song_url": self.BASE_URL + name_a.get("href", ""),
             })
         return result
+
+    def _parse_singer_songs(self, tree):
+        """
+        解析歌手详情页"最新歌曲"列表（兼容新旧模板）。
+        旧模板(2t58): div.play_list > ul > li；新模板(aat.cx): div.video_list.lkmusic_list > ul > li
+
+        :param tree: lxml etree 对象
+        :return: list[dict] 每项含 song_name / artists / song_url
+        """
+        li_nodes = tree.xpath(
+            '//div[contains(@class, "play_list") or contains(@class, "video_list")]//ul/li'
+        )
+        return self._parse_li_songs(li_nodes)
 
     def _parse_pagination(self, tree, current_url):
         """
@@ -374,12 +412,13 @@ class Music2t58Spider:
     def _extract_song_id(url):
         """
         从歌曲详情页 URL 中提取歌曲 id。
-        URL 格式: https://www.2t58.com/song/d3dkc2t3.html -> d3dkc2t3
+        旧模板(2t58): /song/d3dkc2t3.html -> d3dkc2t3
+        新模板(aat.cx): /t/646d74335933686a.html -> 646d74335933686a
 
         :param url: 歌曲详情页 URL
         :return: 歌曲 id 字符串；无法提取时返回 None
         """
-        match = re.search(r"/song/([A-Za-z0-9]+)\.html", url)
+        match = re.search(r"/(?:song|t)/([A-Za-z0-9]+)\.html", url)
         return match.group(1) if match else None
 
     def _decrypt_play_url(self, encrypted):
@@ -424,10 +463,13 @@ class Music2t58Spider:
             "Referer": page_url,
             "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
         }
+        # play.php 域名与歌曲页同域（支持多域名镜像：song_url 可能是任一域名）
+        site = urlsplit(page_url)
+        play_api = f"{site.scheme}://{site.netloc}/js/play.php"
         try:
             self._refresh_proxy()
             resp = self.session.post(
-                self.PLAY_API,
+                play_api,
                 data={"id": song_id, "type": "music"},
                 headers=headers,
                 timeout=self.TIMEOUT,
@@ -441,9 +483,13 @@ class Music2t58Spider:
             # 接口返回失败
             return {"play_url": "", "cover": "", "cid": ""}
 
-        encrypted_url = data.get("url", "")
+        raw_url = data.get("url", "")
+        # 兼容两种模板:
+        # 旧模板(2t58): url 为 AES-ECB 加密的 Hex 密文，需解密
+        # 新模板(aat.cx): url 直接返回明文直链，原样使用
+        play_url = self._decrypt_play_url(raw_url) if re.fullmatch(r"[0-9a-fA-F]+", raw_url) else raw_url
         return {
-            "play_url": self._decrypt_play_url(encrypted_url),
+            "play_url": play_url,
             "cover": data.get("pic", ""),
             "cid": str(data.get("lkid", "")),
         }
@@ -502,34 +548,18 @@ class Music2t58Spider:
 
     def _parse_daily_recommend(self, tree):
         """
-        解析"每日推荐"歌曲列表。
-        结构: div.play_list > div.title > h1(含"每日推荐") 的后续 ul > li
-        每个 li: div.name > a，文本格式 "歌手 - 歌名"，href 为歌曲链接
+        解析"随机推荐"歌曲列表（兼容新旧模板；旧版标题为"每日推荐"）。
+        结构: div.video_list(或 play_list) > div.title > h1(含"随机推荐"/"每日推荐") 的后续 ul > li
 
         :param tree: lxml etree 对象
         :return: list[dict] 每项含 song_name / artists / song_url
         """
         li_nodes = tree.xpath(
-            '//div[@class="play_list"]'
-            '//div[@class="title"]/h1[contains(text(), "每日推荐")]'
-            '/ancestor::div[@class="play_list"]//ul/li'
+            '//div[contains(@class, "play_list") or contains(@class, "video_list")]'
+            '//div[@class="title"]/h1[contains(text(), "随机推荐") or contains(text(), "每日推荐")]'
+            '/ancestor::div[contains(@class, "play_list") or contains(@class, "video_list")]//ul/li'
         )
-        result = []
-        for li in li_nodes:
-            name_a = li.xpath('.//div[@class="name"]/a')
-            if not name_a:
-                continue
-            # a 标签无 title 属性，文本内容即 "歌手 - 歌名"
-            title = name_a[0].text.strip() if name_a[0].text else ""
-            if not title:
-                continue
-            artists, song_name = self._parse_song_title(title)
-            result.append({
-                "song_name": song_name,
-                "artists": artists,
-                "song_url": self.BASE_URL + name_a[0].get("href", ""),
-            })
-        return result
+        return self._parse_li_songs(li_nodes)
 
     # ---------- 对外接口 ----------
 
@@ -556,7 +586,7 @@ class Music2t58Spider:
         获取歌手详情页数据：基本信息、最新歌曲列表、分页信息。
 
         :param url: 歌手歌曲列表页 URL，如
-            "https://www.2t58.com/singer/bm1z/1.html"
+            "https://www.aat.cx/singer/bm1z/1.html"
         :return: dict 含:
             - singer: 歌手基本信息 {name, cover, intro}
             - songs: 最新歌曲列表 [{song_name, artists, song_url}]
@@ -574,15 +604,15 @@ class Music2t58Spider:
 
     def get_song_detail(self, url):
         """
-        获取音乐详情页数据：基本信息、播放链接、歌词、每日推荐。
+        获取音乐详情页数据：基本信息、播放链接、歌词、随机推荐。
 
         :param url: 歌曲详情页 URL，如
-            "https://www.2t58.com/song/d3dkc2t3.html"
+            "https://www.aat.cx/t/646d74335933686a.html"
         :return: dict 含:
             - song: 基本信息 {cover, artists, song_name}
             - play_url: 在线播放链接（AES 解密后的直链，解密失败为空字符串）
             - lyrics: LRC 格式歌词文本（请求失败为空字符串）
-            - daily_recommend: 每日推荐列表 [{song_name, artists, song_url}]
+            - daily_recommend: 随机推荐列表 [{song_name, artists, song_url}]
         :raises requests.RequestException: 请求页面失败时抛出
         """
         # 1. 获取页面 HTML（自动处理人机验证，建立 session）
@@ -636,7 +666,7 @@ class Music2t58Spider:
         搜索音乐：根据关键词获取歌曲列表、分页、总结果数。
         搜索 URL 格式: /so/{URL编码后的关键词}/{页码}.html
         示例: keyword="王小草", page=1 ->
-            https://www.2t58.com/so/%E7%8E%8B%E5%B0%8F%E8%8D%89/1.html
+            https://www.aat.cx/so/%E7%8E%8B%E5%B0%8F%E8%8D%89/1.html
 
         :param keyword: 搜索关键词，如 "王小草"
         :param page: 页码，从 1 开始，默认 1
@@ -672,14 +702,14 @@ if __name__ == "__main__":
     # 示例2: 获取歌手详情（基本信息 + 最新歌曲 + 分页）
     # url 参数说明: /singer/{歌手ID}/{页码}.html
     # singer_data = spider.get_singer_detail(
-    #     "https://www.2t58.com/singer/bm1z/1.html"
+    #     "https://www.aat.cx/singer/bm1z/1.html"
     # )
     # print(json.dumps(singer_data, ensure_ascii=False, indent=2))
 
     # 示例3: 获取音乐详情（基本信息 + 播放链接 + 歌词 + 每日推荐）
-    # url 参数说明: /song/{歌曲ID}.html
+    # url 参数说明: /t/{歌曲ID}.html
     # song_data = spider.get_song_detail(
-    #     "https://www.2t58.com/song/d3dkc2t3.html"
+    #     "https://www.aat.cx/t/646d74335933686a.html"
     # )
     # print(json.dumps(song_data, ensure_ascii=False, indent=2))
 
