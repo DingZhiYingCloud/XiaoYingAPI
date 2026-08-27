@@ -1,0 +1,144 @@
+{
+  "name": "请求检测",
+  "type": "http",
+  "method": "post",
+  "path": "/api/request_detect/detect",
+  "folderId": 94388150,
+  "status": "released",
+  "description": "识别一个请求是爬虫/蜘蛛/真人/直接访问。返回三分类 type（human 真人 / spider 搜索引擎蜘蛛 / unknown 脚本爬虫或未知来源）、多标签布尔、置信度、命中原因、Referer 来源分析，以及该类型对应的全部 Python 代码片段（供客户端中间件 exec 执行）。\n\n调用方式（特征上报模式）：其他项目收到请求后，把该请求的请求头信息（headers JSON）上报到本接口，获取判定结果后自行处理。参数全部可选，未传视为「没有」。",
+  "requestBody": {
+    "type": "application/x-www-form-urlencoded",
+    "parameters": [
+      {
+        "id": "headers#0",
+        "name": "headers",
+        "required": false,
+        "type": "text",
+        "description": "原请求头 JSON 字符串，如 {\"User-Agent\":\"...\",\"Referer\":\"...\"}。推荐传此参数，自动提取 UA/Referer/Sec-Fetch-* 等"
+      },
+      {
+        "id": "user_agent#1",
+        "name": "user_agent",
+        "required": false,
+        "type": "string",
+        "description": "User-Agent 字符串（与 headers 二选一，headers 优先）"
+      },
+      {
+        "id": "referer#2",
+        "name": "referer",
+        "required": false,
+        "type": "string",
+        "description": "Referer 字符串（与 headers 二选一，headers 优先）"
+      },
+      {
+        "id": "ip#3",
+        "name": "ip",
+        "required": false,
+        "type": "string",
+        "description": "客户端 IP（仅记录输出，不参与判定，暂不做 IP 信誉）"
+      },
+      {
+        "id": "site#4",
+        "name": "site",
+        "required": false,
+        "type": "string",
+        "description": "调用方域名（可选），用于判断 referer 是否为同站导航"
+      }
+    ]
+  },
+  "responses": [
+    {
+      "id": 0,
+      "name": "成功",
+      "code": 200,
+      "contentType": "json",
+      "description": "识别成功（code=10000）",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "状态码，10000 成功"
+          },
+          "msg": {
+            "type": "string",
+            "description": "提示信息"
+          },
+          "data": {
+            "type": "object",
+            "description": "判定结果",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["human", "spider", "unknown"],
+                "description": "请求类型: human 真人 / spider 搜索引擎蜘蛛 / unknown 脚本爬虫或未知"
+              },
+              "is_spider": {
+                "type": "boolean",
+                "description": "是否为蜘蛛或脚本爬虫"
+              },
+              "is_human": {
+                "type": "boolean",
+                "description": "是否为真人浏览器"
+              },
+              "is_direct_access": {
+                "type": "boolean",
+                "description": "是否直接访问（无 Referer）"
+              },
+              "confidence": {
+                "type": "integer",
+                "description": "人类置信度 0-99"
+              },
+              "reasons": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "命中原因列表"
+              },
+              "referer": {
+                "type": "object",
+                "description": "Referer 来源分析: present/raw/host/type(direct|search_engine|external|same_site)/source_name/source_type"
+              },
+              "code_files": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "filename": {
+                      "type": "string"
+                    },
+                    "content": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "description": "该类型对应的全部 Python 代码片段（客户端 exec 执行）"
+              },
+              "ip": {
+                "type": ["string", "null"],
+                "description": "客户端 IP（仅记录）"
+              },
+              "ua": {
+                "type": ["string", "null"],
+                "description": "User-Agent（仅记录）"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "responseExamples": [
+    {
+      "name": "脚本爬虫示例",
+      "description": "UA 命中 python-requests，判定为 unknown",
+      "data": "{\n  \"code\": 10000,\n  \"msg\": \"识别成功\",\n  \"data\": {\n    \"type\": \"unknown\",\n    \"is_spider\": true,\n    \"is_human\": false,\n    \"is_direct_access\": true,\n    \"confidence\": 15,\n    \"reasons\": [\n      \"UA 命中脚本爬虫特征: python-requests\",\n      \"缺少 Sec-Fetch-* 系列头\",\n      \"无 Referer（直接访问）\"\n    ],\n    \"referer\": {\n      \"present\": false,\n      \"raw\": null,\n      \"host\": null,\n      \"type\": \"direct\",\n      \"source_name\": null,\n      \"source_type\": null\n    },\n    \"code_files\": [\n      {\n        \"filename\": \"example.py\",\n        \"content\": \"# 爬虫/未知（unknown）类型代码示例\\nlogger.info('unknown 类型代码执行: confidence=%s', detect_result.get('confidence'))\\n\"\n      }\n    ],\n    \"ip\": null,\n    \"ua\": \"python-requests/2.31.0\"\n  }\n}"
+    },
+    {
+      "name": "真人浏览器示例",
+      "description": "Chrome UA + 必应来源，判定为 human",
+      "data": "{\n  \"code\": 10000,\n  \"msg\": \"识别成功\",\n  \"data\": {\n    \"type\": \"human\",\n    \"is_spider\": false,\n    \"is_human\": true,\n    \"is_direct_access\": false,\n    \"confidence\": 99,\n    \"reasons\": [\n      \"UA 为浏览器: Chrome\",\n      \"存在 Sec-Fetch-* 系列头（浏览器特征）\",\n      \"来自搜索引擎: 必应\"\n    ],\n    \"referer\": {\n      \"present\": true,\n      \"raw\": \"https://www.bing.com/search?q=test\",\n      \"host\": \"bing.com\",\n      \"type\": \"search_engine\",\n      \"source_name\": \"必应\",\n      \"source_type\": \"search_engine\"\n    },\n    \"code_files\": [\n      {\n        \"filename\": \"example.py\",\n        \"content\": \"logger.info('human 类型代码执行: confidence=%s 来源=%s', detect_result.get('confidence'), detect_result.get('referer'))\\n\"\n      }\n    ],\n    \"ip\": null,\n    \"ua\": \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36\"\n  }\n}"
+    }
+  ]
+}

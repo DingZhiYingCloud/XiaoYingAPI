@@ -46,3 +46,5 @@ unpackage/
 migrations/
 
 Test/
+
+admin/
