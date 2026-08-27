@@ -15,6 +15,5 @@ urlpatterns = [
     path('ddddocr/', include('API.apis.DdddocrRecognizer.urls')), # ddddocr 验证码识别服务路由
     path('ProxyIp/', include('API.apis.ProxyIp.urls')), # 代理IP服务路由
     path('seo/', include('API.apis.seo.urls')),         # SEO服务路由(友情链接等)
-    path('request_detect/', include('API.apis.request_detect.urls')), # 请求身份识别服务路由
 ]
 

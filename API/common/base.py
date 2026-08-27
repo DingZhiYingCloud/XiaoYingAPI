@@ -6,6 +6,8 @@ python manage.py makemigrations
 python manage.py migrate
 python manage.py collectstatic --noinput
 source .venv/bin/activate
+
+1P面板: pip install -r requirements.txt && python manage.py makemigrations && python manage.py migrate && python manage.py runserver 0.0.0.0:10000
 """
 
 class BaseModel(models.Model):
