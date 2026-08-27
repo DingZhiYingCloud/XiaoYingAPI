@@ -1,5 +1,6 @@
 
 Django 
+django-simpleui==2026.1.13 
 django-cors-headers 
 requests 
 lxml

@@ -22,6 +22,7 @@ CORS_ORIGIN_ALLOW_ALL = os.getenv('CORS_ORIGIN_ALLOW_ALL', 'False').lower() in (
 # https://docs.djangoproject.com/en/5.2/ref/settings/#installed-apps
 
 INSTALLED_APPS = [
+    'simpleui', # 后台主题(simpleui),必须在 django.contrib.admin 之前
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -127,6 +128,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # 媒体文件配置
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+
+# ==================== SimpleUI 后台主题配置 ====================
+# 隐藏后台主页中的 "Simpleui 主页" 信息卡片（版本号/报告问题/Gitee/Github 链接）
+SIMPLEUI_HOME_INFO = False
 
 
 # ==================== 邮箱 SMTP 配置 ====================
