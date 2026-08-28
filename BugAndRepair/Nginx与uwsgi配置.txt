@@ -1,0 +1,24 @@
+# ===================== 静态资源配置开始 =====================
+location /static/ {
+    alias /www/XiaoYing/XiaoYingAPI/static/;
+    expires 30d; # 浏览器缓存30天
+    add_header Cache-Control "public, no-transform";
+    access_log off; # 关闭静态文件日志，减少磁盘IO
+}
+location /media/ {
+    alias /www/XiaoYing/XiaoYingAPI/media/;
+    expires 30d; # 浏览器缓存30天
+    add_header Cache-Control "public, no-transform";
+    access_log off; # 关闭静态文件日志，减少磁盘IO
+}
+
+# ===================== 静态资源配置结束 =====================
+
+
+
+
+# ===================== UWSGI配置开始 =====================
+static-map2 = /static=/www/wwwroot/TongHuaShun
+env = LANG=C.UTF-8
+
+# ===================== UWSGI配置结束 =====================
