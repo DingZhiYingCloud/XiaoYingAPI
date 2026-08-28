@@ -12,6 +12,10 @@ location /media/ {
     access_log off; # 关闭静态文件日志，减少磁盘IO
 }
 
+location = /BingSiteAuth.xml {
+    root /www/XiaoYing/SEO-I4;
+}
+
 # ===================== 静态资源配置结束 =====================
 
 
