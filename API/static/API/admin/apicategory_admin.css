@@ -144,3 +144,59 @@
     color: #a8abb2;
     cursor: not-allowed;
 }
+
+/* ---------- 详情页：帮助文本排版（兼容各版本 simpleui，与本地保持一致） ----------
+   不同版本 simpleui / forms.css 对 .help 的间距规则不一致（线上旧版会把帮助文本
+   挤到左侧）。此处统一固定为「左缩进 + 上间距」，保证两端显示一致。
+   */
+#content-main .form-row .help,
+#content-main .form-row div.help,
+#content-main .checkbox-row + div.help,
+#content-main .checkbox-row div.help,
+#content-main .aligned div.help {
+    margin-left: 160px !important;
+    padding-left: 10px !important;
+    margin-top: 6px !important;
+    margin-bottom: 0 !important;
+    color: #909399 !important;
+    font-size: 12px !important;
+    line-height: 1.5 !important;
+}
+
+/* ---------- 列表页：折叠按钮 ---------- */
+#changelist table tbody th .apicat-tree .apicat-toggle,
+#changelist table tbody td .apicat-tree .apicat-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-right: 6px;
+    padding: 0;
+    border: 1px solid #c0c4cc;
+    border-radius: 4px;
+    background: #fff;
+    color: #606266;
+    font-size: 10px;
+    line-height: 1;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s;
+    vertical-align: middle;
+}
+#changelist table tbody th .apicat-tree .apicat-toggle:hover,
+#changelist table tbody td .apicat-tree .apicat-toggle:hover {
+    border-color: #409eff;
+    color: #409eff;
+    background: #ecf5ff;
+}
+/* 折叠后按钮箭头旋转指示 */
+#changelist table tbody th .apicat-tree .apicat-toggle.collapsed,
+#changelist table tbody td .apicat-tree .apicat-toggle.collapsed {
+    background: #f0f2f5;
+    border-color: #dcdfe6;
+}
+/* 折叠状态：子行隐藏 */
+#changelist table tbody tr.apicat-hidden {
+    display: none;
+}

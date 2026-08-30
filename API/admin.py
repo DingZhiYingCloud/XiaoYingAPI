@@ -12,10 +12,13 @@ API 应用管理后台配置
 """
 
 import logging
+import os
 
 from django.apps import apps
+from django.conf import settings
 from django.contrib import admin
 from django.db import models
+from django.forms import Media
 from django.http import HttpResponse
 from django.template import Context, Template
 from django.urls import path
@@ -74,6 +77,20 @@ LIST_PER_PAGE = 20
 
 # 仪表盘最近记录显示数量
 DASHBOARD_RECENT_LIMIT = 5
+
+
+def static_mtime_version(rel_path):
+    """计算静态文件修改时间戳作为版本号（秒级），实现缓存破击强制刷新。
+
+    文件更新后 mtime 自动变化，CSS/JS URL 的 ?v= 参数随之改变，
+    浏览器将重新拉取最新资源，避免线上/本地样式不一致的缓存问题。
+    文件缺失时返回 0，不阻断页面加载。
+    """
+    abs_path = os.path.join(apps.get_app_config('API').path, 'static', rel_path)
+    try:
+        return int(os.path.getmtime(abs_path))
+    except OSError:
+        return 0
 
 
 # ============================================================
@@ -404,8 +421,12 @@ class ApiCategoryAdmin(SmartModelAdmin):
     search_fields = ('name', 'path_prefix')
     ordering = ('path_prefix',)
 
-    class Media:
-        css = {'all': ('API/admin/apicategory_admin.css',)}
+    @property
+    def media(self):
+        """CSS/JS 动态注入：URL 附加文件 mtime 版本号，更新后强制浏览器刷新"""
+        css_url = f'{settings.STATIC_URL}API/admin/apicategory_admin.css?v={static_mtime_version("API/admin/apicategory_admin.css")}'
+        js_url = f'{settings.STATIC_URL}API/admin/apicategory_admin.js?v={static_mtime_version("API/admin/apicategory_admin.js")}'
+        return super().media + Media(css={'all': (css_url,)}, js=(js_url,))
 
     @staticmethod
     def _depth(obj):

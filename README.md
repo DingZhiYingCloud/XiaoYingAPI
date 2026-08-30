@@ -228,7 +228,7 @@ python manage.py rebuild_category_tree
 1. `.env` 中 `ALLOWED_HOSTS` 必须包含线上域名，修改后需完全重启 uwsgi（仅 `--reload` 不生效）。
 2. 先按第六章创建 `API/migrations` 文件夹，再执行迁移。
 3. 静态文件在 `DEBUG=False` 时由 WhiteNoise 中间件服务（`collectstatic` 收集到 `static/` 后生效），媒体文件由 Django `serve` 视图提供。
-4. 后台自定义样式（如分类页 `apicategory_admin.css`）存放在应用内 `API/static/`，`collectstatic` 自动收集；重装 simpleui 不影响效果，但部署后需重新执行 `collectstatic` 并重启服务。
+4. **后台自定义样式/脚本（如分类页 `apicategory_admin.css`、`apicategory_admin.js`）存放在应用内 `API/static/`**，源码随 git 上传，但 `collectstatic` 产物（`static/` 目录）被 `.gitignore` 忽略、**不随代码更新**。每次修改后台样式后，部署必须重新执行 `collectstatic` 并重启服务，否则线上仍显示旧样式（典型症状：线上与本地页面样式不一致）。
 
 ---
 
