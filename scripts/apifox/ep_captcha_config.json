@@ -1,0 +1,40 @@
+{
+  "name": "获取图形认证配置",
+  "type": "http",
+  "method": "get",
+  "path": "/api/captcha_auth/aliyun/config",
+  "status": "released",
+  "folderId": 94598272,
+  "description": "## 功能说明\n\n获取图形认证配置接口：下发阿里云图形认证的 `appId`（验证ID），供 H5 前端初始化 SDK 使用。\n\n**appId 为公开标识**，仅用于前端 SDK 初始化（`initAlicom4({ captchaId: app_id })`），不包含任何机密信息；机密密钥 `appKey` 仅存于服务端，绝不下发客户端。\n\n## 鉴权\n\n本接口为公开接口，无需签名鉴权（appId 本身公开，无敏感信息）。\n\n## 前端接入示例\n\n```js\n// 获取 appId 后初始化 SDK\nconst { data } = await fetch('/api/captcha_auth/aliyun/config').then(r => r.json());\ninitAlicom4({ captchaId: data.app_id, product: 'bind' }, function (captchaObj) {\n  captchaObj.onNextReady(function () {\n    // 验证码就绪后可调用 captchaObj.showCaptcha() 调起验证\n  });\n  captchaObj.onSuccess(function () {\n    // 用户验证成功后，通过 captchaObj.getValidate() 获取二次校验参数\n    const validate = captchaObj.getValidate();\n    // validate 含 lot_number / captcha_output / pass_token / gen_time\n  });\n});\n```\n\n## 请求方式\n\n- GET 请求，无参数\n- 不支持 POST 方法（返回 405）",
+  "responses": [
+    {
+      "id": "0",
+      "name": "获取成功",
+      "code": 200,
+      "contentType": "json",
+      "description": "成功返回图形认证 appId",
+      "jsonSchema": {
+        "type": "object",
+        "required": ["code", "msg", "data"],
+        "properties": {
+          "code": { "type": "integer", "description": "状态码，10000=成功" },
+          "msg": { "type": "string", "description": "获取成功" },
+          "data": {
+            "type": "object",
+            "required": ["app_id"],
+            "properties": {
+              "app_id": { "type": "string", "description": "阿里云图形认证验证ID（appId），32 位，前端 SDK 初始化用" }
+            }
+          }
+        }
+      },
+      "responseExample": {
+        "code": 10000,
+        "msg": "获取成功",
+        "data": {
+          "app_id": "296d0fabf47beeacfe50cbc01f8cd4d7"
+        }
+      }
+    }
+  ]
+}

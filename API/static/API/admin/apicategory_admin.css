@@ -1,0 +1,146 @@
+/* ============================================================
+   API服务分类（ApiCategory）后台专用样式
+   通过 ApiCategoryAdmin.Media 注入，仅作用于分类列表页/详情页。
+   样式存放在应用内 static 目录，collectstatic 自动收集，
+   不依赖 simpleui 包内文件，重新部署/重装 UI 后效果不丢失。
+   ============================================================ */
+
+/* ---------- 列表页：树形层级清晰展示 ---------- */
+#changelist table tbody th .apicat-tree,
+#changelist table tbody td .apicat-tree {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+    line-height: 1.4;
+}
+/* 一级分类：加粗 + 背景浅色块，一眼区分 */
+#changelist table tbody th .apicat-tree.depth-0,
+#changelist table tbody td .apicat-tree.depth-0 {
+    padding-left: 8px;
+    font-weight: 700;
+    color: #303133;
+    background: #f0f5fa;
+    border-left: 3px solid #409eff;
+}
+/* 二级分类：缩进 + 柔和底色 */
+#changelist table tbody th .apicat-tree.depth-1,
+#changelist table tbody td .apicat-tree.depth-1 {
+    padding-left: 28px;
+    color: #495060;
+    background: #fafbfc;
+    border-left: 3px solid #c8d9e8;
+}
+/* 三级及以上：继续缩进，颜色递减 */
+#changelist table tbody th .apicat-tree.depth-2,
+#changelist table tbody td .apicat-tree.depth-2 {
+    padding-left: 52px;
+    color: #606266;
+}
+#changelist table tbody th .apicat-tree.depth-3,
+#changelist table tbody td .apicat-tree.depth-3 {
+    padding-left: 76px;
+    color: #909399;
+}
+/* 树形连接线（└─ 示意子级归属） */
+#changelist table tbody th .apicat-tree .tree-guide,
+#changelist table tbody td .apicat-tree .tree-guide {
+    color: #b0b7c3;
+    font-size: 12px;
+    user-select: none;
+}
+#changelist table tbody th .apicat-tree.depth-0 .tree-guide,
+#changelist table tbody td .apicat-tree.depth-0 .tree-guide {
+    display: none; /* 一级不显示引导线 */
+}
+
+/* ---------- 列表页：认证模式彩色标签 ---------- */
+#changelist table tbody th .apicat-mode,
+#changelist table tbody td .apicat-mode {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    line-height: 1.6;
+    font-weight: 500;
+    white-space: nowrap;
+}
+#changelist table tbody th .apicat-mode.mode-inherit,
+#changelist table tbody td .apicat-mode.mode-inherit {
+    background: #f0f2f5;
+    color: #606266;
+    border: 1px solid #dcdfe6;
+}
+#changelist table tbody th .apicat-mode.mode-auth,
+#changelist table tbody td .apicat-mode.mode-auth {
+    background: #fef0f0;
+    color: #f56c6c;
+    border: 1px solid #fbc4c4;
+}
+#changelist table tbody th .apicat-mode.mode-open,
+#changelist table tbody td .apicat-mode.mode-open {
+    background: #f0f9eb;
+    color: #67c23a;
+    border: 1px solid #c2e7b0;
+}
+
+/* ---------- 列表页：启用状态圆点 ---------- */
+#changelist table tbody th .apicat-status,
+#changelist table tbody td .apicat-status {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    vertical-align: middle;
+}
+#changelist table tbody th .apicat-status.status-on,
+#changelist table tbody td .apicat-status.status-on {
+    background: #67c23a;
+    box-shadow: 0 0 0 3px rgba(103, 194, 58, 0.15);
+}
+#changelist table tbody th .apicat-status.status-off,
+#changelist table tbody td .apicat-status.status-off {
+    background: #c0c4cc;
+    box-shadow: 0 0 0 3px rgba(192, 196, 204, 0.2);
+}
+
+/* ---------- 详情页：原生下拉框美化 ---------- */
+/* 上级分类 / 认证模式 等所有 select，统一替换为自定义样式 */
+#content-main .form-row select,
+#content-main .aligned select,
+#content-main select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    height: 36px;
+    min-width: 200px;
+    padding: 0 34px 0 12px;
+    border: 1px solid #dcdfe6;
+    border-radius: 6px;
+    background-color: #ffffff;
+    color: #303133;
+    font-size: 14px;
+    cursor: pointer;
+    /* 自定义下拉箭头（SVG data URI，不依赖外部图标库） */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23606266' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+/* 悬停与聚焦状态 */
+#content-main select:hover {
+    border-color: #c0c4cc;
+}
+#content-main select:focus {
+    outline: none;
+    border-color: #409eff;
+    box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.18);
+}
+/* 禁用状态 */
+#content-main select:disabled {
+    background-color: #f5f7fa;
+    color: #a8abb2;
+    cursor: not-allowed;
+}

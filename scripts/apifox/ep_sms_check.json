@@ -1,0 +1,161 @@
+{
+  "name": "核验短信验证码",
+  "type": "http",
+  "method": "post",
+  "path": "/api/sms_verify/aliyun/check",
+  "status": "released",
+  "folderId": 94598161,
+  "description": "## 功能说明\n\n核验短信验证码接口：核验指定手机号的短信验证码是否正确（需与发送时使用同一方案）。\n\n**核验结果语义**：接口请求成功即返回 `code=10000`，业务结果以 `data.verify_result` 为准：\n- `PASS`：核验成功（`passed=true`）\n- `UNKNOWN`：核验失败，验证码错误或已过期（`passed=false`）\n\n## 签名机制\n\n调用本接口必须携带签名公共参数（`app_id` / `timestamp` / `nonce` / `sign`），否则返回 20011。只有已在用户中心注册的接入项目才能调用。\n\n- `app_id`：接入项目 APPID（系统自动生成（app_ 前缀），创建后固定不可修改）\n- `timestamp`：当前 10 位时间戳（秒），与服务器时间差必须在 ±5 分钟内\n- `nonce`：随机字符串，每次请求唯一，用于防重放\n- `sign`：HMAC-SHA256 签名，算法见「签名算法」\n\n### 签名算法\n\n1. 取除 `sign` 外的**所有参数**（含 app_id / timestamp / nonce / 业务参数）\n2. 按键名 ASCII 升序排序\n3. 拼接为 `key=value&key=value...`\n4. 以 `app_secret` 为密钥做 HMAC-SHA256，输出小写 hex\n\n### 签名示例（Python）\n\n```python\nimport hashlib, hmac, time, secrets, urllib.parse\n\ndef build_sign(params: dict, app_secret: str) -> str:\n    items = sorted((k, str(v)) for k, v in params.items() if k != 'sign' and v not in (None, ''))\n    raw = '&'.join(f'{k}={v}' for k, v in items)\n    return hmac.new(app_secret.encode(), raw.encode(), hashlib.sha256).hexdigest()\n\nparams = {\n    'app_id': 'app_5f3a9c2b7e6d8f1a2b3c4d5e6f7a8b9c',\n    'timestamp': str(int(time.time())),\n    'nonce': secrets.token_hex(8),\n    'phone': '13712992620',\n    'verify_code': '5826',\n}\nparams['sign'] = build_sign(params, 'sk_9c8b7a6f5e4d3c2b1a0f9e8d7c6b5a4f0e1d2c3b4a596877')\nprint(urllib.parse.urlencode(params))\n```\n\n## 约束规则\n\n| 参数 | 规则 |\n|------|------|\n| phone | 必填，11 位纯数字（国内手机号） |\n| verify_code | 必填，待核验的验证码 |\n| case_auth_policy | 选填，大小写核验策略：1=不区分大小写 2=区分，默认 1 |\n| scheme_name | 选填，方案名称（必须与发送时一致），留空用默认方案 |\n| out_id | 选填，外部流水号 |\n| 签名四参数 | 必填，app_id / timestamp / nonce / sign |\n\n## 请求方式\n\n- 请求体：`application/x-www-form-urlencoded`（表单）\n- 不支持 GET 方法（返回 405）\n\n## 注意事项\n\n- 验证码核验成功（PASS）后通常立即失效\n- 只有发送时使用系统生成验证码（##code## 占位符）的验证码才能被核验\n- 验证码不匹配时仍返回 code=10000，请以 data.verify_result 判断业务结果",
+  "requestBody": {
+    "type": "application/x-www-form-urlencoded",
+    "description": "核验验证码表单参数（含签名公共参数）",
+    "parameters": [
+      {
+        "id": "phone#0",
+        "name": "phone",
+        "required": true,
+        "description": "接收短信的手机号，11 位纯数字",
+        "type": "string",
+        "example": "13712992620"
+      },
+      {
+        "id": "verify_code#1",
+        "name": "verify_code",
+        "required": true,
+        "description": "待核验的验证码",
+        "type": "string",
+        "example": "5826"
+      },
+      {
+        "id": "case_auth_policy#2",
+        "name": "case_auth_policy",
+        "required": false,
+        "description": "大小写核验策略：1=不区分大小写 2=区分，默认 1",
+        "type": "integer",
+        "example": "1"
+      },
+      {
+        "id": "scheme_name#3",
+        "name": "scheme_name",
+        "required": false,
+        "description": "方案名称（必须与发送时一致），留空使用默认方案",
+        "type": "string",
+        "example": ""
+      },
+      {
+        "id": "out_id#4",
+        "name": "out_id",
+        "required": false,
+        "description": "外部流水号",
+        "type": "string",
+        "example": "12345678"
+      },
+      {
+        "id": "app_id#5",
+        "name": "app_id",
+        "required": true,
+        "description": "接入项目 APPID（系统自动生成（app_ 前缀），创建后固定不可修改，公开标识）",
+        "type": "string",
+        "example": "app_5f3a9c2b7e6d8f1a2b3c4d5e6f7a8b9c"
+      },
+      {
+        "id": "timestamp#6",
+        "name": "timestamp",
+        "required": true,
+        "description": "10 位时间戳（秒），与服务器时间差须在 ±5 分钟内，防重放",
+        "type": "string",
+        "example": "1725000000"
+      },
+      {
+        "id": "nonce#7",
+        "name": "nonce",
+        "required": true,
+        "description": "随机字符串，每次请求唯一",
+        "type": "string",
+        "example": "a1b2c3d4e5f6a7b8"
+      },
+      {
+        "id": "sign#8",
+        "name": "sign",
+        "required": true,
+        "description": "HMAC-SHA256 签名（小写 hex），密钥为项目 app_secret",
+        "type": "string",
+        "example": "3f9a7c1e...（64 位小写 hex）"
+      }
+    ]
+  },
+  "responses": [
+    {
+      "id": "0",
+      "name": "核验完成",
+      "code": 200,
+      "contentType": "json",
+      "description": "接口请求成功（无论验证码是否匹配），业务结果以 data.verify_result 为准",
+      "jsonSchema": {
+        "type": "object",
+        "required": ["code", "msg", "data"],
+        "properties": {
+          "code": { "type": "integer", "description": "状态码，10000=请求成功" },
+          "msg": { "type": "string", "description": "核验完成" },
+          "data": {
+            "type": "object",
+            "required": ["verify_result", "passed"],
+            "properties": {
+              "verify_result": { "type": "string", "description": "PASS=核验成功 / UNKNOWN=核验失败（验证码错误或过期）" },
+              "passed": { "type": "boolean", "description": "verify_result 的布尔等价：true=核验成功 false=失败" },
+              "out_id": { "type": "string", "description": "外部流水号（透传）" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "1",
+      "name": "签名失败",
+      "code": 200,
+      "contentType": "json",
+      "description": "签名参数缺失/错误/过期/未注册项目/项目停用",
+      "jsonSchema": {
+        "type": "object",
+        "required": ["code", "msg", "data"],
+        "properties": {
+          "code": { "type": "integer", "description": "20011=认证失败" },
+          "msg": { "type": "string", "description": "失败原因" },
+          "data": { "type": "null" }
+        }
+      }
+    },
+    {
+      "id": "2",
+      "name": "参数错误",
+      "code": 200,
+      "contentType": "json",
+      "description": "参数缺失(20001)/格式错误(20002)/值非法(20003)",
+      "jsonSchema": {
+        "type": "object",
+        "required": ["code", "msg", "data"],
+        "properties": {
+          "code": { "type": "integer", "description": "20001/20002/20003" },
+          "msg": { "type": "string", "description": "具体错误描述" },
+          "data": { "type": "null" }
+        }
+      }
+    },
+    {
+      "id": "3",
+      "name": "阿里云调用失败",
+      "code": 200,
+      "contentType": "json",
+      "description": "阿里云返回错误（非验证码不匹配类错误），错误信息透传",
+      "jsonSchema": {
+        "type": "object",
+        "required": ["code", "msg", "data"],
+        "properties": {
+          "code": { "type": "integer", "description": "40001=外部API调用失败" },
+          "msg": { "type": "string", "description": "阿里云错误码与描述" },
+          "data": { "type": "null" }
+        }
+      }
+    }
+  ]
+}

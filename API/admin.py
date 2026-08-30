@@ -19,6 +19,10 @@ from django.db import models
 from django.http import HttpResponse
 from django.template import Context, Template
 from django.urls import path
+from django.utils.html import format_html
+from django.utils.safestring import mark_safe
+
+from API.models.Auth.category import ApiCategory
 
 logger = logging.getLogger(__name__)
 
@@ -379,6 +383,69 @@ def _custom_get_urls():
 
 
 admin.site.get_urls = _custom_get_urls
+
+
+# ============================================================
+# 3.5 API 服务分类（分类树）专属后台
+# ============================================================
+
+class ApiCategoryAdmin(SmartModelAdmin):
+    """API 服务分类：树形层级展示 + 认证模式醒目显示
+
+    层级与后端 API/apis/ 目录一致（同 Apifox 文件夹）；认证模式三态：
+    inherit=跟随上级 / auth=需要认证 / open=开放。
+
+    样式固化在应用内 static（API/admin/apicategory_admin.css），
+    collectstatic 自动收集，不依赖 simpleui 包内文件，重装 UI 后效果不丢失。
+    """
+
+    list_display = ('indented_name', 'path_prefix', 'auth_mode_tag', 'status_tag', 'create_time')
+    list_filter = ('auth_mode', 'status')
+    search_fields = ('name', 'path_prefix')
+    ordering = ('path_prefix',)
+
+    class Media:
+        css = {'all': ('API/admin/apicategory_admin.css',)}
+
+    @staticmethod
+    def _depth(obj):
+        """计算分类节点的层级深度（一级=0）"""
+        depth = 0
+        node = obj
+        while node.parent_id:
+            depth += 1
+            node = node.parent
+        return depth
+
+    @admin.display(description='分类名称')
+    def indented_name(self, obj):
+        """按层级输出树形结构：缩进 + 引导线 + 层级底色"""
+        depth = self._depth(obj)
+        guide = mark_safe('<span class="tree-guide">└─</span>') if depth else ''
+        return format_html(
+            '<span class="apicat-tree depth-{depth}">{guide}{name}</span>',
+            depth=depth, guide=guide, name=obj.name,
+        )
+
+    @admin.display(description='认证模式')
+    def auth_mode_tag(self, obj):
+        """认证模式彩色标签：inherit=灰 / auth=红 / open=绿"""
+        label = dict(ApiCategory.AUTH_MODE_CHOICES).get(obj.auth_mode, obj.auth_mode)
+        return format_html(
+            '<span class="apicat-mode mode-{mode}">{label}</span>',
+            mode=obj.auth_mode, label=label,
+        )
+
+    @admin.display(description='启用')
+    def status_tag(self, obj):
+        """启用状态圆点：绿=启用 / 灰=停用"""
+        return format_html(
+            '<span class="apicat-status status-{state}"></span>',
+            state='on' if obj.status else 'off',
+        )
+
+
+admin.site.register(ApiCategory, ApiCategoryAdmin)
 
 
 # ============================================================

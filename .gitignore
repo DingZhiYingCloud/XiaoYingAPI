@@ -47,4 +47,6 @@ migrations/
 
 Test/
 
-admin/
+# collectstatic 产物目录（simpleui 等静态文件收集到此，部署时重新生成）
+/static/admin/
+/static/API/

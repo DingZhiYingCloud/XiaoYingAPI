@@ -1,0 +1,167 @@
+{
+  "name": "图形认证二次校验",
+  "type": "http",
+  "method": "post",
+  "path": "/api/captcha_auth/aliyun/verify",
+  "status": "released",
+  "folderId": 94598272,
+  "description": "## 功能说明\n\n图形认证二次校验接口：用户在 H5 前端完成阿里云图形验证后，前端通过 SDK 的 `getValidate()` 获取验证参数（lot_number / captcha_output / pass_token / gen_time），调用本接口上传。服务端使用 appKey 对 lot_number 生成 sign_token 后，上传到阿里云二次校验接口确认本次验证的有效性。\n\n**该接口为服务端核心校验**：仅完成前端验证而不调用本接口的业务流程是无效的，二次校验参数可被重放/伪造，必须在服务端校验。\n\n## 完整验证流程\n\n1. 前端调 `/api/captcha_auth/aliyun/config` 获取 appId\n2. 前端用 appId 初始化 SDK，用户完成图形验证\n3. 前端从 `captchaObj.getValidate()` 取出 4 个验证参数\n4. 前端将 4 个参数 POST 到本接口\n5. 服务端生成 sign_token 并调用阿里云二次校验接口，返回校验结果\n\n## 参数约束\n\n| 参数 | 必填 | 说明 |\n|------|------|------|\n| lot_number | 是 | 验证流水号，32 位（用户完成验证后由 SDK 生成，一次性） |\n| captcha_output | 是 | 验证输出信息（SDK 回调返回，一次性） |\n| pass_token | 是 | 验证通过标识（SDK 回调返回，一次性） |\n| gen_time | 是 | 验证通过时间戳（SDK getValidate() 返回，10 位秒级，一次性） |\n\n## 校验结果语义\n\n接口请求成功即返回 `code=10000`，业务结果以 `data.result` 为准：\n\n- `result=success`：验证有效（`passed=true`）\n- `result=fail`：验证无效（`passed=false`），如 pass_token 过期、流水号已使用等，具体原因见 `data.reason`\n\n仅当阿里云二次校验接口本身异常时才返回 `40001`（外部服务失败）。\n\n## 鉴权\n\n当前接口开放调用（不做签名校验）；`appKey` 由服务端持有，仅用于生成 sign_token，绝不下发客户端。\n\n## 请求方式\n\n- 请求体：`application/x-www-form-urlencoded`（表单）\n- 不支持 GET 方法（返回 405）",
+  "requestBody": {
+    "type": "application/x-www-form-urlencoded",
+    "description": "前端 SDK 验证通过后产生的验证参数",
+    "parameters": [
+      {
+        "id": "lot_number#0",
+        "name": "lot_number",
+        "required": true,
+        "description": "验证流水号，32 位（SDK 验证通过后生成，一次性）",
+        "type": "string",
+        "example": "424c60ea0f3b4301aac844ff0066709c"
+      },
+      {
+        "id": "captcha_output#1",
+        "name": "captcha_output",
+        "required": true,
+        "description": "验证输出信息（SDK 回调返回，一次性）",
+        "type": "string",
+        "example": "Z7diZnyxNCpKC0JzLv92...（base64 字符串）"
+      },
+      {
+        "id": "pass_token#2",
+        "name": "pass_token",
+        "required": true,
+        "description": "验证通过标识（SDK 回调返回，一次性）",
+        "type": "string",
+        "example": "fcb6b3dfba5cf99c5916e305203ecd73...（64 位 hex）"
+      },
+      {
+        "id": "gen_time#3",
+        "name": "gen_time",
+        "required": true,
+        "description": "验证通过时间戳（SDK getValidate() 返回，10 位秒级）",
+        "type": "string",
+        "example": "1788044650"
+      }
+    ]
+  },
+  "responses": [
+    {
+      "id": "0",
+      "name": "校验完成",
+      "code": 200,
+      "contentType": "json",
+      "description": "接口请求成功，校验结果以 data.result 为准",
+      "jsonSchema": {
+        "type": "object",
+        "required": ["code", "msg", "data"],
+        "properties": {
+          "code": { "type": "integer", "description": "状态码，10000=成功" },
+          "msg": { "type": "string", "description": "校验完成" },
+          "data": {
+            "type": "object",
+            "required": ["result", "passed", "reason", "captcha_args"],
+            "properties": {
+              "result": { "type": "string", "description": "success=验证有效 / fail=验证无效" },
+              "passed": { "type": "boolean", "description": "result 的布尔等价（true=通过）" },
+              "reason": { "type": "string", "description": "失败原因（如 pass_token expire），成功时为空" },
+              "captcha_args": { "type": "object", "description": "阿里云返回的验证输出参数（风控信息：验证形式/IP/场景等）" }
+            }
+          }
+        }
+      },
+      "responseExample": {
+        "code": 10000,
+        "msg": "校验完成",
+        "data": {
+          "result": "success",
+          "passed": true,
+          "reason": "",
+          "captcha_args": {
+            "used_type": "icon",
+            "user_ip": "77.83.241.169",
+            "lot_number": "424c60ea0f3b4301aac844ff0066709c",
+            "scene": "其他",
+            "client_type": "web"
+          }
+        }
+      }
+    },
+    {
+      "id": "1",
+      "name": "参数错误",
+      "code": 200,
+      "contentType": "json",
+      "description": "参数缺失(20001) / 格式错误(20002，lot_number 非 32 位)",
+      "jsonSchema": {
+        "type": "object",
+        "required": ["code", "msg", "data"],
+        "properties": {
+          "code": { "type": "integer", "description": "20001/20002" },
+          "msg": { "type": "string", "description": "具体错误描述（如：参数缺失: lot_number）" },
+          "data": { "type": "null" }
+        }
+      },
+      "responseExample": {
+        "code": 20001,
+        "msg": "参数缺失: lot_number",
+        "data": null
+      }
+    },
+    {
+      "id": "2",
+      "name": "校验失败",
+      "code": 200,
+      "contentType": "json",
+      "description": "接口请求成功但验证无效（pass_token 过期/流水号已用/流水号非法等）",
+      "jsonSchema": {
+        "type": "object",
+        "required": ["code", "msg", "data"],
+        "properties": {
+          "code": { "type": "integer", "description": "10000=接口调用成功" },
+          "msg": { "type": "string", "description": "校验完成" },
+          "data": {
+            "type": "object",
+            "required": ["result", "passed", "reason", "captcha_args"],
+            "properties": {
+              "result": { "type": "string", "description": "fail" },
+              "passed": { "type": "boolean", "description": "false" },
+              "reason": { "type": "string", "description": "失败原因（如 pass_token expire）" },
+              "captcha_args": { "type": "object", "description": "验证输出参数" }
+            }
+          }
+        }
+      },
+      "responseExample": {
+        "code": 10000,
+        "msg": "校验完成",
+        "data": {
+          "result": "fail",
+          "passed": false,
+          "reason": "pass_token expire",
+          "captcha_args": {}
+        }
+      }
+    },
+    {
+      "id": "3",
+      "name": "阿里云调用失败",
+      "code": 200,
+      "contentType": "json",
+      "description": "阿里云二次校验接口异常（请求失败/返回 status=error），错误信息透传",
+      "jsonSchema": {
+        "type": "object",
+        "required": ["code", "msg", "data"],
+        "properties": {
+          "code": { "type": "integer", "description": "40001=外部API调用失败" },
+          "msg": { "type": "string", "description": "错误信息（如：图形认证服务返回错误: -50005 illegal gen_time）" },
+          "data": { "type": "null" }
+        }
+      },
+      "responseExample": {
+        "code": 40001,
+        "msg": "图形认证服务返回错误: -50005 illegal gen_time",
+        "data": null
+      }
+    }
+  ]
+}

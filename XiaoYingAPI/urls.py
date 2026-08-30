@@ -17,13 +17,9 @@ handler500 = 'API.common.views.handler500'
 
 # 静态文件 & 媒体文件服务
 # DEBUG=True 时 Django 自动通过 static() 辅助函数服务
-# DEBUG=False 时 static() 返回空列表，需要手动添加路由
+# DEBUG=False 时静态文件由 WhiteNoise 中间件服务（Django 5.1+ 的 serve() 视图在 DEBUG=False 时返回 400），
+# 此处仅需为媒体文件补充路由
 if not settings.DEBUG:
-    # 静态文件：从 STATICFILES_DIRS 源目录直接服务
-    static_root = settings.STATICFILES_DIRS[0] if settings.STATICFILES_DIRS else settings.STATIC_ROOT
-    urlpatterns += [
-        re_path(r'^static/(?P<path>.*)$', serve, {'document_root': static_root}),
-    ]
     # 媒体文件：从 MEDIA_ROOT 直接服务
     urlpatterns += [
         re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),

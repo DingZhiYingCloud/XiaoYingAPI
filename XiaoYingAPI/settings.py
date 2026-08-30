@@ -35,6 +35,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware', # 全站批量设置安全相关 HTTP 响应头，防御多种浏览器层面攻击，是全站安全第一道防线
+    'whitenoise.middleware.WhiteNoiseMiddleware', # 生产模式静态文件服务（Django 5.1+ 的 serve() 视图在 DEBUG=False 时返回 400，WhiteNoise 为官方推荐替代）
     'django.contrib.sessions.middleware.SessionMiddleware', # 实现 Django 会话（Session）机制，维护用户服务端状态。
     'corsheaders.middleware.CorsMiddleware', # 跨域请求中间件
     'django.middleware.common.CommonMiddleware', # 用来处理如日志记录、请求计数等通用任务的中间件
@@ -42,6 +43,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware', # 认证中间件,用来处理用户认证相关的请求和响应
     'django.contrib.messages.middleware.MessageMiddleware', # 消息中间件,用来处理消息相关的请求和响应
     'django.middleware.clickjacking.XFrameOptionsMiddleware', # 用来处理点击劫持攻击的中间件
+    'API.common.middleware.ApiAuthMiddleware', # API 服务认证中间件：按 ApiCategory 分类树配置决定哪些 /api/ 服务需用户中心签名认证
     'API.common.middleware.ApiJson404Middleware', # /api/ 路径未匹配路由时返回 JSON 404（兜底）
 ]
 
@@ -154,3 +156,12 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER  # 默认发件人地址(与发件账号一
 DATA_UPLOAD_MAX_MEMORY_SIZE = 110 * 1024 * 1024  # 115343360 字节
 # 内存中允许的最大文件大小，超过则写入临时文件(110MB)
 FILE_UPLOAD_MAX_MEMORY_SIZE = 110 * 1024 * 1024  # 115343360 字节
+
+
+# ==================== 阿里云 AccessKey 配置 ====================
+# 账号级通用凭据，不限定具体服务，后续阿里云其他服务可复用
+# 凭据从项目根目录 .env 文件读取:
+#   ALIYUN_ACCESS_KEY_ID       - AccessKey ID
+#   ALIYUN_ACCESS_KEY_SECRET   - AccessKey Secret
+ALIYUN_ACCESS_KEY_ID = os.getenv('ALIYUN_ACCESS_KEY_ID', '')
+ALIYUN_ACCESS_KEY_SECRET = os.getenv('ALIYUN_ACCESS_KEY_SECRET', '')

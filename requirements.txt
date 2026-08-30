@@ -8,3 +8,4 @@ pycryptodome
 python-dotenv 
 ddddocr
 httpx
+whitenoise

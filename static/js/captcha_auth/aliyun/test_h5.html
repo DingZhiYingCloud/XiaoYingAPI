@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>阿里云图形认证 H5 联调测试页</title>
+  <style>
+    body { font-family: "Microsoft YaHei", sans-serif; max-width: 720px; margin: 40px auto; padding: 0 16px; color: #333; }
+    h1 { font-size: 22px; }
+    .card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; margin: 16px 0; }
+    #status { color: #666; font-size: 14px; }
+    button { background: #1677ff; color: #fff; border: none; border-radius: 4px; padding: 8px 20px; font-size: 15px; cursor: pointer; margin-right: 8px; }
+    button:hover { opacity: 0.9; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    pre { background: #f6f8fa; border: 1px solid #e0e0e0; border-radius: 6px; padding: 12px; overflow: auto; font-size: 13px; }
+    .tip { color: #999; font-size: 13px; }
+    .pass { color: #389e0d; font-weight: bold; }
+    .fail { color: #cf1322; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>阿里云图形认证 H5 联调测试</h1>
+  <p class="tip">极简接入演示：引入本项目托管的封装 JS（captcha-client.js），自动完成 SDK 加载、appId 获取、二次校验。</p>
+
+  <div class="card">
+    <div id="status">加载中...</div>
+  </div>
+
+  <button id="btn" disabled>开始图形验证</button>
+
+  <div class="card" id="resultCard" style="display:none;">
+    <h3>二次校验结果</h3>
+    <pre id="resultText"></pre>
+  </div>
+
+  <!-- 引入本项目封装客户端（内部自动加载阿里云官方 SDK ct4.js） -->
+  <script src="./captcha-client.js"></script>
+  <script>
+    function setStatus(text) {
+      document.getElementById('status').textContent = text;
+    }
+
+    // 极简接入：一行初始化
+    XYCaptcha.init({
+      onReady: function () {
+        setStatus('验证码已就绪，点击「开始图形验证」');
+        document.getElementById('btn').disabled = false;
+      },
+      onResult: function (data) {
+        setStatus(data.passed ? '图形验证 + 二次校验通过' : '验证未通过，请重新验证');
+        var el = document.getElementById('resultText');
+        el.className = data.passed ? 'pass' : 'fail';
+        el.textContent = JSON.stringify(data, null, 2);
+        document.getElementById('resultCard').style.display = 'block';
+      },
+      onError: function (msg) {
+        setStatus('初始化失败: ' + msg);
+      }
+    });
+
+    document.getElementById('btn').addEventListener('click', function () {
+      XYCaptcha.show();
+    });
+  </script>
+</body>
+</html>
