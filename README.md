@@ -117,7 +117,7 @@ pip install -r requirements.txt
 # 2. 配置环境变量
 #    复制 .env 参考项，至少填写 SECRET_KEY、ALLOWED_HOSTS（见第五章）
 
-# 3. 数据库迁移（⚠️ 先确认 API/migrations 文件夹存在，见第六章）
+# 3. 数据库迁移（migrations 目录随代码上传，见第六章）
 python manage.py makemigrations
 python manage.py migrate
 
@@ -159,16 +159,10 @@ python manage.py runserver 0.0.0.0:10000
 
 ## 六、数据库迁移（⚠️ 部署必读）
 
-本项目模型迁移文件位于 `API/migrations/`，但因 `.gitignore` 忽略了 `migrations/` 目录，**迁移文件不会随代码上传到服务器**。
-
-> 部署上线后，如果服务器上还没有 `API/migrations` 文件夹，必须先在 `/项目根目录/API` 下创建 `migrations` 文件夹，并在其中创建空的 `__init__.py` 文件，否则执行 `python manage.py migrate` 会直接失败。
+本项目模型迁移文件位于 `API/migrations/`。`.gitignore` 规则为「保留 `__init__.py`（迁移包占位，目录随代码上传）、忽略迁移文件本身」——**迁移文件不会随代码上传到服务器**，由线上 `makemigrations` 重新生成。
 
 ```bash
-# 部署后执行迁移前，先确认目录存在
-mkdir -p API/migrations
-touch API/migrations/__init__.py   # 必须创建空的 __init__.py
-
-# 再执行迁移
+# 部署后直接执行迁移（migrations 目录与 __init__.py 已随代码上传，无需手动创建）
 python manage.py makemigrations
 python manage.py migrate
 python manage.py collectstatic --noinput
@@ -176,6 +170,16 @@ python manage.py collectstatic --noinput
 
 > 提示：若 `makemigrations` 因环境缺失第三方模块（如 Crypto）报错，可加 `--skip-checks` 跳过检查：
 > `python manage.py makemigrations API --name <迁移名> --skip-checks`
+
+### 分类树重建（⚠️ 新部署必执行）
+
+「API服务分类」数据由数据迁移（扫描 `API/apis/` 目录）自动生成，但 `migrations/` 目录不入库，**线上 `migrate` 只会建空表、没有分类数据**（后台分类页显示 0 条）。部署完成后执行一次重建命令即可：
+
+```bash
+python manage.py rebuild_category_tree
+```
+
+该命令幂等、可重复执行：根据当前 `API/apis/` 目录实时扫描生成/同步分类树，不覆盖后台手动配置的认证模式与启用状态；后续新增服务目录后重新执行即可同步。
 
 ---
 
