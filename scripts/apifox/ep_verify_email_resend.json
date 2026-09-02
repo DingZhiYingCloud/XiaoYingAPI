@@ -1,0 +1,261 @@
+{
+  "id": 508545966,
+  "name": "重发邮箱验证邮件",
+  "type": "http",
+  "serverId": "",
+  "preProcessors": [],
+  "postProcessors": [],
+  "inheritPreProcessors": {},
+  "inheritPostProcessors": {},
+  "description": "## 功能说明\n\n重发邮箱验证邮件接口：重新发送注册验证邮件（**仅对已提交注册意向、尚未完成校验**的邮箱生效）。\n\n- 复用注册意向中的用户名 / 密码 / 批次，生成新验证码与激活链接重新发送\n- 未找到注册意向 → 20003「未找到注册意向，请先提交注册」\n- 60 秒冷却防刷（按验证方式 + 凭证全局生效）\n\n## 签名机制\n\n调用本接口必须携带签名公共参数（`app_id` / `timestamp` / `nonce` / `sign`），否则返回 20011。\n\n### 签名算法\n\n1. 取除 `sign` 外的**所有参数**（含 app_id / timestamp / nonce / 业务参数）\n2. 按键名 ASCII 升序排序\n3. 拼接为 `key=value&key=value...`\n4. 以 `app_secret` 为密钥做 HMAC-SHA256，输出小写 hex\n\n## 请求方式\n\n- 请求体：`application/x-www-form-urlencoded`（表单）\n- 不支持 GET 方法（返回 405）",
+  "operationId": "",
+  "sourceUrl": "",
+  "method": "post",
+  "path": "/api/user_center/users/verify/email/resend",
+  "tags": [],
+  "status": "released",
+  "requestBody": {
+    "type": "application/x-www-form-urlencoded",
+    "description": "重发验证码表单参数（含签名公共参数）",
+    "parameters": [
+      {
+        "id": "email#0",
+        "name": "email",
+        "required": true,
+        "description": "注册邮箱（需已提交注册意向且未完成校验）",
+        "example": "user@example.com",
+        "type": "string"
+      },
+      {
+        "id": "app_id#1",
+        "name": "app_id",
+        "required": true,
+        "description": "接入项目 APPID（系统自动生成（app_ 前缀），创建后固定不可修改，公开标识）",
+        "example": "app_5f3a9c2b7e6d8f1a2b3c4d5e6f7a8b9c",
+        "type": "string"
+      },
+      {
+        "id": "timestamp#2",
+        "name": "timestamp",
+        "required": true,
+        "description": "10 位时间戳（秒），与服务器时间差须在 ±5 分钟内，防重放",
+        "example": "1725000000",
+        "type": "string"
+      },
+      {
+        "id": "nonce#3",
+        "name": "nonce",
+        "required": true,
+        "description": "随机字符串，每次请求唯一",
+        "example": "a1b2c3d4e5f6a7b8",
+        "type": "string"
+      },
+      {
+        "id": "sign#4",
+        "name": "sign",
+        "required": true,
+        "description": "HMAC-SHA256 签名（小写 hex），密钥为项目 app_secret",
+        "example": "3f9a7c1e...（64 位小写 hex）",
+        "type": "string"
+      }
+    ]
+  },
+  "parameters": {},
+  "commonParameters": {},
+  "auth": {},
+  "responses": [
+    {
+      "id": "0",
+      "name": "发送成功",
+      "code": 200,
+      "contentType": "json",
+      "description": "验证码已重新下发，data 为 null",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "状态码"
+          },
+          "msg": {
+            "type": "string",
+            "description": "提示信息"
+          },
+          "data": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "id": "1",
+      "name": "参数缺失",
+      "code": 200,
+      "contentType": "json",
+      "description": "缺少必填参数（如 email）",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "状态码"
+          },
+          "msg": {
+            "type": "string",
+            "description": "提示信息"
+          },
+          "data": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "id": "2",
+      "name": "参数格式错误",
+      "code": 200,
+      "contentType": "json",
+      "description": "email 格式非法",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "状态码"
+          },
+          "msg": {
+            "type": "string",
+            "description": "提示信息"
+          },
+          "data": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "id": "3",
+      "name": "未找到注册意向",
+      "code": 200,
+      "contentType": "json",
+      "description": "该凭证未提交注册意向或意向已完成，请先调用注册接口",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "状态码"
+          },
+          "msg": {
+            "type": "string",
+            "description": "提示信息"
+          },
+          "data": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "id": "4",
+      "name": "发送过于频繁",
+      "code": 200,
+      "contentType": "json",
+      "description": "60 秒内重复发送（按验证方式 + 凭证全局冷却防刷）",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "状态码"
+          },
+          "msg": {
+            "type": "string",
+            "description": "提示信息"
+          },
+          "data": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "id": "5",
+      "name": "验证方式未启用",
+      "code": 200,
+      "contentType": "json",
+      "description": "对应验证方式未启用（后台「认证方式配置」控制）",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "状态码"
+          },
+          "msg": {
+            "type": "string",
+            "description": "提示信息"
+          },
+          "data": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "id": "6",
+      "name": "签名校验失败",
+      "code": 200,
+      "contentType": "json",
+      "description": "签名参数缺失 / 签名过期 / sign 不匹配 / app_id 未注册或已停用",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "状态码"
+          },
+          "msg": {
+            "type": "string",
+            "description": "提示信息"
+          },
+          "data": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ],
+  "responseExamples": [
+    {
+      "name": "发送成功示例",
+      "responseId": "0",
+      "data": "{\"code\": 10000, \"msg\": \"验证信息已重新发送\", \"data\": null}"
+    }
+  ],
+  "codeSamples": [],
+  "projectId": 8489877,
+  "moduleId": 8057065,
+  "folderId": 94597433,
+  "ordering": 70,
+  "responsibleId": 0,
+  "commonResponseStatus": {},
+  "advancedSettings": {
+    "disabledSystemHeaders": {},
+    "SSLValidate": false,
+    "followRedirects": true,
+    "enableJsonc": false
+  },
+  "customApiFields": {},
+  "oasExtensions": "",
+  "mockScript": {},
+  "createdAt": "2026-08-31T05:34:56.000Z",
+  "updatedAt": "2026-08-31T05:35:09.000Z",
+  "creatorId": 1000944356,
+  "editorId": 2337610,
+  "creatorUserId": 2337610,
+  "editorUserId": 2337610,
+  "visibility": "INHERITED",
+  "securityScheme": {},
+  "callbacks": ""
+}

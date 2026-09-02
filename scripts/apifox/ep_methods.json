@@ -1,0 +1,99 @@
+{
+  "id": 508545984,
+  "name": "获取可用注册/登录方式",
+  "type": "http",
+  "serverId": "",
+  "preProcessors": [],
+  "postProcessors": [],
+  "inheritPreProcessors": {},
+  "inheritPostProcessors": {},
+  "description": "## 功能说明\n\n获取当前可用的注册 / 登录方式（公开接口，免签名）。\n\n- 邮箱 / 手机号：**两步注册**（先验码后发号）+ **验证码登录**（免密码）\n- 用户名 + 密码：注册直接建号；账号 + 密码登录永远可用\n\n**返回结构**：\n- `methods`：当前启用的验证方式类型列表；空列表表示仅支持用户名 + 密码\n- `username`：用户名 + 密码方式是否可用（永远为 true，作为兜底方式）\n- 关闭方式 = **彻底停用**：存量用户也不能再用该方式注册新账号或登录",
+  "operationId": "",
+  "sourceUrl": "",
+  "method": "get",
+  "path": "/api/user_center/users/methods",
+  "tags": [],
+  "status": "released",
+  "requestBody": {
+    "type": "none",
+    "parameters": [],
+    "oasExtensions": ""
+  },
+  "parameters": {},
+  "commonParameters": {},
+  "auth": {},
+  "responses": [
+    {
+      "id": "0",
+      "name": "查询成功",
+      "code": 200,
+      "contentType": "json",
+      "description": "返回当前可用的注册/登录方式",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "状态码"
+          },
+          "msg": {
+            "type": "string",
+            "description": "提示信息"
+          },
+          "data": {
+            "type": "object",
+            "required": [
+              "methods",
+              "username"
+            ],
+            "properties": {
+              "methods": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "当前启用的验证方式类型列表（如 [\"email\", \"phone\"]，空列表表示仅支持用户名 + 密码）"
+              },
+              "username": {
+                "type": "boolean",
+                "description": "用户名 + 密码方式是否可用（永远为 true，兜底方式）"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "responseExamples": [
+    {
+      "name": "查询成功示例",
+      "responseId": "0",
+      "data": "{\"code\": 10000, \"msg\": \"查询成功\", \"data\": {\"methods\": [\"email\", \"phone\"], \"username\": true}}"
+    }
+  ],
+  "codeSamples": [],
+  "projectId": 8489877,
+  "moduleId": 8057065,
+  "folderId": 94597433,
+  "ordering": 100,
+  "responsibleId": 0,
+  "commonResponseStatus": {},
+  "advancedSettings": {
+    "disabledSystemHeaders": {},
+    "SSLValidate": false,
+    "followRedirects": true,
+    "enableJsonc": false
+  },
+  "customApiFields": {},
+  "oasExtensions": "",
+  "mockScript": {},
+  "createdAt": "2026-08-31T05:35:03.000Z",
+  "updatedAt": "2026-08-31T05:35:09.000Z",
+  "creatorId": 1000944356,
+  "editorId": 2337610,
+  "creatorUserId": 2337610,
+  "editorUserId": 2337610,
+  "visibility": "INHERITED",
+  "securityScheme": {},
+  "callbacks": ""
+}

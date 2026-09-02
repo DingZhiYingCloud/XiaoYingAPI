@@ -1,0 +1,134 @@
+{
+  "name": "反馈列表",
+  "type": "http",
+  "method": "get",
+  "path": "/api/feedback/list",
+  "status": "released",
+  "folderId": 94807317,
+  "description": "## 功能说明\n\n查询当前项目（app_id）下的反馈列表，按创建时间倒序，支持分页与状态筛选。子项目广场页据此渲染反馈列表。\n\n**数据隔离**：只返回当前接入项目（app_id）的反馈，子项目之间互不可见。\n\n**查询参数**：\n- `status`：状态筛选，可选值 pending(待处理) / processing(处理中) / resolved(已解决) / closed(已关闭)，缺省返回全部\n- `page`：页码，从 1 开始，默认 1\n- `page_size`：每页条数，默认 10，最大 100\n\n## 签名机制\n\n与「提交反馈」一致：携带 `app_id` / `timestamp` / `nonce` / `sign` 签名公共参数（本接口放 query），算法见「提交反馈」接口说明。\n\n## 请求方式\n\n- 查询参数（query string）：status / page / page_size + 签名公共参数\n- 不支持 POST 方法（返回 405）",
+  "parameters": {
+    "query": [
+      {
+        "id": "status#0",
+        "name": "status",
+        "required": false,
+        "description": "状态筛选：pending/processing/resolved/closed，缺省返回全部",
+        "type": "string",
+        "example": "pending"
+      },
+      {
+        "id": "page#1",
+        "name": "page",
+        "required": false,
+        "description": "页码，从 1 开始，默认 1",
+        "type": "integer",
+        "example": "1"
+      },
+      {
+        "id": "page_size#2",
+        "name": "page_size",
+        "required": false,
+        "description": "每页条数，默认 10，最大 100",
+        "type": "integer",
+        "example": "10"
+      },
+      {
+        "id": "app_id#3",
+        "name": "app_id",
+        "required": true,
+        "description": "接入项目 APPID（系统自动生成（app_ 前缀），创建后固定不可修改，公开标识）",
+        "type": "string",
+        "example": "app_5f3a9c2b7e6d8f1a2b3c4d5e6f7a8b9c"
+      },
+      {
+        "id": "timestamp#4",
+        "name": "timestamp",
+        "required": true,
+        "description": "10 位时间戳（秒），与服务器时间差须在 ±5 分钟内，防重放",
+        "type": "string",
+        "example": "1725000000"
+      },
+      {
+        "id": "nonce#5",
+        "name": "nonce",
+        "required": true,
+        "description": "随机字符串，每次请求唯一",
+        "type": "string",
+        "example": "a1b2c3d4e5f6a7b8"
+      },
+      {
+        "id": "sign#6",
+        "name": "sign",
+        "required": true,
+        "description": "HMAC-SHA256 签名（小写 hex），密钥为项目 app_secret",
+        "type": "string",
+        "example": "3f9a7c1e...（64 位小写 hex）"
+      }
+    ]
+  },
+  "responses": [
+    {
+      "id": "0",
+      "name": "查询成功",
+      "code": 200,
+      "contentType": "json",
+      "description": "返回分页后的反馈列表",
+      "jsonSchema": {
+        "type": "object",
+        "required": ["code", "msg", "data"],
+        "properties": {
+          "code": { "type": "integer", "description": "10000=成功" },
+          "msg": { "type": "string", "description": "查询成功" },
+          "data": {
+            "type": "object",
+            "required": ["total", "page", "page_size", "total_pages", "items"],
+            "properties": {
+              "total": { "type": "integer", "description": "反馈总数" },
+              "page": { "type": "integer", "description": "当前页码" },
+              "page_size": { "type": "integer", "description": "每页条数" },
+              "total_pages": { "type": "integer", "description": "总页数" },
+              "items": {
+                "type": "array",
+                "description": "反馈列表",
+                "items": {
+                  "type": "object",
+                  "required": ["feedback_id", "title", "status", "username", "reply_count", "create_time"],
+                  "properties": {
+                    "feedback_id": { "type": "string", "description": "反馈唯一 ID" },
+                    "title": { "type": "string", "description": "反馈标题" },
+                    "status": { "type": "string", "description": "状态：pending/processing/resolved/closed" },
+                    "username": { "type": "string", "description": "反馈提交者用户名" },
+                    "reply_count": { "type": "integer", "description": "追加数量（含站长回复）" },
+                    "create_time": { "type": "string", "description": "提交时间（yyyy-MM-dd HH:mm:ss）" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "1",
+      "name": "签名校验失败",
+      "code": 200,
+      "contentType": "json",
+      "description": "签名参数缺失 / 签名过期 / sign 不匹配 / app_id 未注册或已停用",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "description": "20011 认证失败" },
+          "msg": { "type": "string", "description": "签名相关错误提示" },
+          "data": { "type": "null" }
+        }
+      }
+    }
+  ],
+  "responseExamples": [
+    {
+      "name": "查询成功示例",
+      "responseId": "0",
+      "data": "{\n  \"code\": 10000,\n  \"msg\": \"查询成功\",\n  \"data\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"page_size\": 10,\n    \"total_pages\": 1,\n    \"items\": [\n      {\n        \"feedback_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n        \"title\": \"登录页白屏\",\n        \"status\": \"pending\",\n        \"username\": \"test_user\",\n        \"reply_count\": 1,\n        \"create_time\": \"2026-09-01 12:00:00\"\n      }\n    ]\n  }\n}"
+    }
+  ]
+}

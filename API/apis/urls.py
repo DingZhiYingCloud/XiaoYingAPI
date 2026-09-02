@@ -18,5 +18,6 @@ urlpatterns = [
     path('user_center/', include('API.apis.user_center.urls')), # 用户中心服务路由
     path('sms_verify/', include('API.apis.sms_verify.urls')),   # 验证码认证服务路由
     path('captcha_auth/', include('API.apis.captcha_auth.urls')), # 图形认证集成服务路由
+    path('feedback/', include('API.apis.feedback.urls')),       # 问题反馈中心服务路由
 ]
 

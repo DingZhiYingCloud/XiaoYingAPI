@@ -1,0 +1,176 @@
+{
+  "name": "评论回复列表（二级评论）",
+  "type": "http",
+  "method": "get",
+  "path": "/api/feedback/replies",
+  "status": "released",
+  "folderId": 94807317,
+  "description": "## 功能说明\n\n分页获取**某条评论的全部二级评论**，用于评论树翻页，防止海量回复撑爆详情接口响应。\n\n**评论语义**：一级评论=直接评论问题的评论（parent 为空）；二级评论=所有回复在别人评论底下的评论，**无论嵌套多深**。因此本接口返回 `parent_id` 的**全部子孙回复**（B 回复 A、C 回复 B、D 回复 C……全部返回），扁平列表按时间正序分页，**概念上不分三级/N级**；每条带 `parent_id` 标明它回复了谁。\n\n**典型用法**：\n- 查看一级评论 B 的全部二级评论：`parent_id = B 的 reply_id`（B 下的 C、D 无论多深都会返回）\n- 查看任意一条二级评论（如 C）的全部二级评论：`parent_id = C 的 reply_id`\n- 详情接口每条一级评论只内嵌二级评论首页（默认 5 条），全部二级评论用本接口按 `page` 翻页获取\n\n**限制**：\n- `feedback_id` 必须属于当前项目（app_id），`parent_id` 必须属于该反馈，否则返回「反馈不存在」/「父评论不存在或不属于当前反馈」\n\n## 签名机制\n\n与「提交反馈」一致：携带 `app_id` / `timestamp` / `nonce` / `sign` 签名公共参数（本接口放 query），算法见「提交反馈」接口说明。\n\n## 请求方式\n\n- 查询参数（query string）：feedback_id / parent_id / page? / page_size? + 签名公共参数\n- 不支持 POST 方法（返回 405）",
+  "parameters": {
+    "query": [
+      {
+        "id": "feedback_id#0",
+        "name": "feedback_id",
+        "required": true,
+        "description": "反馈唯一 ID（提交反馈接口返回的 feedback_id）",
+        "type": "string",
+        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+      },
+      {
+        "id": "parent_id#1",
+        "name": "parent_id",
+        "required": true,
+        "description": "被查看的评论 ID（该评论的全部二级评论）。可为任意层级评论的 reply_id",
+        "type": "string",
+        "example": "6b1f2e9a-3c4d-4e5f-8a9b-0c1d2e3f4a5b"
+      },
+      {
+        "id": "page#2",
+        "name": "page",
+        "required": false,
+        "description": "页码，从 1 开始，默认 1",
+        "type": "integer",
+        "example": "1"
+      },
+      {
+        "id": "page_size#3",
+        "name": "page_size",
+        "required": false,
+        "description": "每页条数，默认 20，最大 100",
+        "type": "integer",
+        "example": "20"
+      },
+      {
+        "id": "app_id#4",
+        "name": "app_id",
+        "required": true,
+        "description": "接入项目 APPID（系统自动生成（app_ 前缀），创建后固定不可修改，公开标识）",
+        "type": "string",
+        "example": "app_5f3a9c2b7e6d8f1a2b3c4d5e6f7a8b9c"
+      },
+      {
+        "id": "timestamp#5",
+        "name": "timestamp",
+        "required": true,
+        "description": "10 位时间戳（秒），与服务器时间差须在 ±5 分钟内，防重放",
+        "type": "string",
+        "example": "1725000000"
+      },
+      {
+        "id": "nonce#6",
+        "name": "nonce",
+        "required": true,
+        "description": "随机字符串，每次请求唯一",
+        "type": "string",
+        "example": "a1b2c3d4e5f6a7b8"
+      },
+      {
+        "id": "sign#7",
+        "name": "sign",
+        "required": true,
+        "description": "HMAC-SHA256 签名（小写 hex），密钥为项目 app_secret",
+        "type": "string",
+        "example": "3f9a7c1e...（64 位小写 hex）"
+      }
+    ]
+  },
+  "responses": [
+    {
+      "id": "0",
+      "name": "查询成功",
+      "code": 200,
+      "contentType": "json",
+      "description": "返回该评论的全部子孙回复（二级评论）分页列表，不分层级",
+      "jsonSchema": {
+        "type": "object",
+        "required": ["code", "msg", "data"],
+        "properties": {
+          "code": { "type": "integer", "description": "10000=成功" },
+          "msg": { "type": "string", "description": "查询成功" },
+          "data": {
+            "type": "object",
+            "required": ["parent_id", "total", "page", "page_size", "total_pages", "items"],
+            "properties": {
+              "parent_id": { "type": "string", "description": "被查看的评论 ID（即请求的 parent_id）" },
+              "total": { "type": "integer", "description": "二级评论总数（该评论全部子孙回复数，无论嵌套多深）" },
+              "page": { "type": "integer", "description": "当前页码" },
+              "page_size": { "type": "integer", "description": "每页条数" },
+              "total_pages": { "type": "integer", "description": "总页数" },
+              "items": {
+                "type": "array",
+                "description": "二级评论列表（全部子孙回复，扁平、按时间正序分页），每条不含递归嵌套",
+                "items": {
+                  "type": "object",
+                  "required": ["reply_id", "parent_id", "author_role", "username", "content", "create_time", "reply_total", "children_total", "replies"],
+                  "properties": {
+                    "reply_id": { "type": "string", "description": "评论唯一 ID，可作为回复的 parent_id" },
+                    "parent_id": { "type": "string", "description": "该评论回复的父评论 ID（标明它回复了谁）" },
+                    "author_role": { "type": "string", "description": "身份类型：user=子项目用户 / admin=站长" },
+                    "username": { "type": "string", "description": "评论者用户名（站长回复时为「站长」）" },
+                    "content": { "type": "string", "description": "评论内容" },
+                    "create_time": { "type": "string", "description": "评论时间（yyyy-MM-dd HH:mm:ss）" },
+                    "reply_total": { "type": "integer", "description": "该评论下的全部子孙回复数（二级评论总数）" },
+                    "children_total": { "type": "integer", "description": "直接子回复数（直接回复本条评论的条数）" },
+                    "replies": { "type": "array", "description": "固定为空数组（本接口不递归嵌套）" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "1",
+      "name": "参数缺失",
+      "code": 200,
+      "contentType": "json",
+      "description": "缺少 feedback_id / parent_id 或签名参数",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "description": "20001 参数缺失" },
+          "msg": { "type": "string", "description": "如：参数缺失: parent_id(评论ID)" },
+          "data": { "type": "null" }
+        }
+      }
+    },
+    {
+      "id": "2",
+      "name": "反馈或父评论不存在",
+      "code": 200,
+      "contentType": "json",
+      "description": "反馈不存在或不属于当前项目；或 parent_id 不存在 / 不属于当前反馈",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "description": "20030 资源不存在" },
+          "msg": { "type": "string", "description": "反馈不存在或不属于当前项目 / 父评论不存在或不属于当前反馈" },
+          "data": { "type": "null" }
+        }
+      }
+    },
+    {
+      "id": "3",
+      "name": "签名校验失败",
+      "code": 200,
+      "contentType": "json",
+      "description": "签名参数缺失 / 签名过期 / sign 不匹配 / app_id 未注册或已停用",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "description": "20011 认证失败" },
+          "msg": { "type": "string", "description": "签名相关错误提示" },
+          "data": { "type": "null" }
+        }
+      }
+    }
+  ],
+  "responseExamples": [
+    {
+      "name": "查询成功示例",
+      "responseId": "0",
+      "data": "{\n  \"code\": 10000,\n  \"msg\": \"查询成功\",\n  \"data\": {\n    \"parent_id\": \"6b1f2e9a-3c4d-4e5f-8a9b-0c1d2e3f4a5b\",\n    \"total\": 2,\n    \"page\": 1,\n    \"page_size\": 20,\n    \"total_pages\": 1,\n    \"items\": [\n      {\n        \"reply_id\": \"7c2f3e9b-4d5e-5f6a-9b0c-1d2e3f4a5b6c\",\n        \"parent_id\": \"6b1f2e9a-3c4d-4e5f-8a9b-0c1d2e3f4a5b\",\n        \"author_role\": \"user\",\n        \"username\": \"other_user\",\n        \"content\": \"C: 怎么解决的\",\n        \"create_time\": \"2026-09-01 12:06:00\",\n        \"reply_total\": 1,\n        \"children_total\": 1,\n        \"replies\": []\n      },\n      {\n        \"reply_id\": \"8d3f4e9c-5e6f-6a7b-9c0d-1e2f3a4b5c6d\",\n        \"parent_id\": \"7c2f3e9b-4d5e-5f6a-9b0c-1d2e3f4a5b6c\",\n        \"author_role\": \"user\",\n        \"username\": \"test_user\",\n        \"content\": \"D: 重启就好了\",\n        \"create_time\": \"2026-09-01 12:07:00\",\n        \"reply_total\": 0,\n        \"children_total\": 0,\n        \"replies\": []\n      }\n    ]\n  }\n}"
+    }
+  ]
+}

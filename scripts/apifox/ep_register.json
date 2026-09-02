@@ -1,11 +1,19 @@
 {
+  "id": 508279084,
   "name": "用户注册",
   "type": "http",
+  "serverId": "",
+  "preProcessors": [],
+  "postProcessors": [],
+  "inheritPreProcessors": {},
+  "inheritPostProcessors": {},
+  "description": "## 功能说明\n\n用户注册接口：子项目提交「用户名 + 密码」（必填）与可选的邮箱 / 手机号。\n\n- **纯用户名注册**：未提交 email / phone 时**直接创建账号**，一步完成\n- **两步注册（邮箱 / 手机号）**：提交 email / phone 时进入两步注册——\n  - 第一步：仅**下发验证码并暂存注册意向**（不创建账号、不发放账号）\n  - 第二步：客户端调用 `POST /users/verify/email` 或 `POST /users/verify/phone` 提交验证码，**校验通过后才创建账号、发放账号**\n\n**账号由系统分配**：纯数字、6-12 位、全局唯一、不可自定义、不可修改，仅在验证码校验通过后返回。\n\n**验证方式开关**：邮箱 / 手机号方式由后台「认证方式配置」控制，未启用时对应注册被拒绝（客户端可先调用 GET /api/user_center/users/methods 获取当前可用方式）。\n\n**同批次合并**：一次请求同时绑定邮箱 + 手机号时共享注册批次，任一凭证先校验通过即建号，另一凭证校验通过后合并到同一账号。\n\n## 签名机制\n\n调用本接口必须携带签名公共参数（`app_id` / `timestamp` / `nonce` / `sign`），否则返回 20011。\n\n### 签名算法\n\n1. 取除 `sign` 外的**所有参数**（含 app_id / timestamp / nonce / 业务参数）\n2. 按键名 ASCII 升序排序\n3. 拼接为 `key=value&key=value...`\n4. 以 `app_secret` 为密钥做 HMAC-SHA256，输出小写 hex\n\n## 请求方式\n\n- 请求体：`application/x-www-form-urlencoded`（表单）\n- 不支持 GET 方法（返回 405）",
+  "operationId": "",
+  "sourceUrl": "",
   "method": "post",
   "path": "/api/user_center/users/register",
+  "tags": [],
   "status": "released",
-  "folderId": 94597433,
-  "description": "## 功能说明\n\n用户注册接口：子项目携带「用户名 + 密码」为用户注册账号。\n\n**账号由系统分配**：纯数字、6-12 位、全局唯一、不可自定义、不可修改，注册成功后返回给调用方。\n\n## 签名机制\n\n调用本接口必须携带签名公共参数（`app_id` / `timestamp` / `nonce` / `sign`），否则返回 20011。\n\n- `app_id`：接入项目 APPID（系统自动生成（app_ 前缀），创建后固定不可修改）\n- `timestamp`：当前 10 位时间戳（秒），与服务器时间差必须在 ±5 分钟内\n- `nonce`：随机字符串，每次请求唯一，用于防重放\n- `sign`：HMAC-SHA256 签名，算法见「签名算法」\n\n### 签名算法\n\n1. 取除 `sign` 外的**所有参数**（含 app_id / timestamp / nonce / 业务参数）\n2. 按键名 ASCII 升序排序\n3. 拼接为 `key=value&key=value...`\n4. 以 `app_secret` 为密钥做 HMAC-SHA256，输出小写 hex\n\n### 签名示例（Python）\n\n```python\nimport hashlib, hmac, time, secrets, urllib.parse\n\ndef build_sign(params: dict, app_secret: str) -> str:\n    items = sorted((k, str(v)) for k, v in params.items() if k != 'sign' and v not in (None, ''))\n    raw = '&'.join(f'{k}={v}' for k, v in items)\n    return hmac.new(app_secret.encode(), raw.encode(), hashlib.sha256).hexdigest()\n\nparams = {\n    'app_id': 'app_5f3a9c2b7e6d8f1a2b3c4d5e6f7a8b9c',\n    'timestamp': str(int(time.time())),\n    'nonce': secrets.token_hex(8),\n    'username': 'test_user',\n    'password': '123456',\n}\nparams['sign'] = build_sign(params, 'sk_9c8b7a6f5e4d3c2b1a0f9e8d7c6b5a4f0e1d2c3b4a596877')\nprint(urllib.parse.urlencode(params))\n```\n\n## 约束规则\n\n| 参数 | 规则 |\n|------|------|\n| username | 必填，最长 50 字符，允许中文/英文/数字/特殊字符，前后空格自动去除 |\n| password | 必填，长度 6-64 字符，前后空格自动去除，存储为 PBKDF2 加盐哈希 |\n| 用户名重复 | 允许，不同用户可使用相同用户名（唯一标识是账号） |\n\n## 请求方式\n\n- 请求体：`application/x-www-form-urlencoded`（表单）\n- 不支持 GET 方法（返回 405）",
   "requestBody": {
     "type": "application/x-www-form-urlencoded",
     "description": "注册表单参数（含签名公共参数）",
@@ -13,73 +21,110 @@
       {
         "id": "username#0",
         "name": "username",
-        "required": true,
-        "description": "用户名，最长 50 字符，允许中文/英文/数字/特殊字符",
-        "type": "string",
-        "example": "test_user"
+        "required": false,
+        "description": "用户名（纯用户名注册时必填），最长 50 字符，允许中文/英文/数字/特殊字符",
+        "example": "test_user",
+        "type": "string"
       },
       {
-        "id": "password#1",
+        "id": "email#1",
+        "name": "email",
+        "required": false,
+        "description": "邮箱（两步注册时提供，需邮箱方式启用，全局唯一）",
+        "example": "user@example.com",
+        "type": "string"
+      },
+      {
+        "id": "phone#2",
+        "name": "phone",
+        "required": false,
+        "description": "手机号（两步注册时提供，需手机号方式启用，中国大陆 11 位纯数字，全局唯一）",
+        "example": "13800138000",
+        "type": "string"
+      },
+      {
+        "id": "password#3",
         "name": "password",
         "required": true,
-        "description": "密码，长度 6-64 字符",
-        "type": "string",
-        "example": "123456"
+        "description": "密码，长度 6-64 字符，存储为 PBKDF2 加盐哈希",
+        "example": "123456",
+        "type": "string"
       },
       {
-        "id": "app_id#2",
+        "id": "app_id#4",
         "name": "app_id",
         "required": true,
         "description": "接入项目 APPID（系统自动生成（app_ 前缀），创建后固定不可修改，公开标识）",
-        "type": "string",
-        "example": "app_5f3a9c2b7e6d8f1a2b3c4d5e6f7a8b9c"
+        "example": "app_5f3a9c2b7e6d8f1a2b3c4d5e6f7a8b9c",
+        "type": "string"
       },
       {
-        "id": "timestamp#3",
+        "id": "timestamp#5",
         "name": "timestamp",
         "required": true,
         "description": "10 位时间戳（秒），与服务器时间差须在 ±5 分钟内，防重放",
-        "type": "string",
-        "example": "1725000000"
+        "example": "1725000000",
+        "type": "string"
       },
       {
-        "id": "nonce#4",
+        "id": "nonce#6",
         "name": "nonce",
         "required": true,
         "description": "随机字符串，每次请求唯一",
-        "type": "string",
-        "example": "a1b2c3d4e5f6a7b8"
+        "example": "a1b2c3d4e5f6a7b8",
+        "type": "string"
       },
       {
-        "id": "sign#5",
+        "id": "sign#7",
         "name": "sign",
         "required": true,
         "description": "HMAC-SHA256 签名（小写 hex），密钥为项目 app_secret",
-        "type": "string",
-        "example": "3f9a7c1e...（64 位小写 hex）"
+        "example": "3f9a7c1e...（64 位小写 hex）",
+        "type": "string"
       }
     ]
   },
+  "parameters": {},
+  "commonParameters": {},
+  "auth": {},
   "responses": [
     {
       "id": "0",
-      "name": "注册成功",
+      "name": "注册成功（纯用户名直接建号）",
       "code": 200,
       "contentType": "json",
-      "description": "注册成功，返回系统分配的账号",
+      "description": "未提交 email/phone 时直接创建账号并发放账号",
       "jsonSchema": {
         "type": "object",
-        "required": ["code", "msg", "data"],
         "properties": {
-          "code": { "type": "integer", "description": "状态码，10000=成功" },
-          "msg": { "type": "string", "description": "提示信息" },
+          "code": {
+            "type": "integer",
+            "description": "状态码"
+          },
+          "msg": {
+            "type": "string",
+            "description": "提示信息"
+          },
           "data": {
             "type": "object",
-            "required": ["user_id", "account", "username"],
+            "required": [
+              "user_id",
+              "account",
+              "username"
+            ],
             "properties": {
-              "user_id": { "type": "string", "description": "用户唯一 ID（UUID 字符串）" },
-              "account": { "type": "string", "description": "系统分配的账号（纯数字 6-12 位，全局唯一）" },
-              "username": { "type": "string", "description": "用户名" }
+              "user_id": {
+                "type": "string",
+                "description": "用户唯一 ID（UUID 字符串）"
+              },
+              "account": {
+                "type": "string",
+                "description": "系统分配的账号（纯数字 6-12 位，全局唯一）"
+              },
+              "username": {
+                "type": "string",
+                "description": "用户名"
+              }
             }
           }
         }
@@ -87,36 +132,150 @@
     },
     {
       "id": "1",
-      "name": "参数缺失",
+      "name": "两步注册第一步成功（暂存意向，未发放账号）",
       "code": 200,
       "contentType": "json",
-      "description": "缺少必填参数（如 username / password）",
+      "description": "提交 email/phone 时仅下发验证码并暂存注册意向，**不创建账号**（data 无 user_id/account）",
       "jsonSchema": {
         "type": "object",
         "properties": {
-          "code": { "type": "integer", "description": "20001 参数缺失" },
-          "msg": { "type": "string", "description": "如：参数缺失: username(用户名)" },
-          "data": { "type": "null" }
+          "code": {
+            "type": "integer",
+            "description": "状态码"
+          },
+          "msg": {
+            "type": "string",
+            "description": "提示信息"
+          },
+          "data": {
+            "type": "object",
+            "required": [
+              "need_verify"
+            ],
+            "properties": {
+              "username": {
+                "type": "string",
+                "description": "用户名"
+              },
+              "email": {
+                "type": "string",
+                "description": "邮箱（注册邮箱时返回）"
+              },
+              "phone": {
+                "type": "string",
+                "description": "手机号（注册手机号时返回）"
+              },
+              "need_verify": {
+                "type": "boolean",
+                "description": "是否需完成验证（邮箱/手机号两步注册恒为 true）"
+              },
+              "verify_email_sent": {
+                "type": "boolean",
+                "description": "邮箱验证邮件是否已发送"
+              },
+              "verify_phone_sent": {
+                "type": "boolean",
+                "description": "手机号短信验证码是否已发送"
+              }
+            }
+          }
         }
       }
     },
     {
       "id": "2",
-      "name": "参数格式错误",
+      "name": "参数缺失",
       "code": 200,
       "contentType": "json",
-      "description": "参数格式不合法（如 username 超长、password 长度不符）",
+      "description": "缺少必填参数（如 username/email/phone 全缺、password 缺失）",
       "jsonSchema": {
         "type": "object",
         "properties": {
-          "code": { "type": "integer", "description": "20002 参数格式错误" },
-          "msg": { "type": "string", "description": "如：参数格式错误: password 长度必须在 6-64 字符之间" },
-          "data": { "type": "null" }
+          "code": {
+            "type": "integer",
+            "description": "状态码"
+          },
+          "msg": {
+            "type": "string",
+            "description": "提示信息"
+          },
+          "data": {
+            "type": "null"
+          }
         }
       }
     },
     {
       "id": "3",
+      "name": "参数格式错误",
+      "code": 200,
+      "contentType": "json",
+      "description": "参数长度/类型不合法（如 username 超 50 字符、email 格式非法、phone 非 11 位、password 长度不符）",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "状态码"
+          },
+          "msg": {
+            "type": "string",
+            "description": "提示信息"
+          },
+          "data": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "id": "4",
+      "name": "验证方式未启用",
+      "code": 200,
+      "contentType": "json",
+      "description": "提供 email/phone 但对应方式未启用（后台「认证方式配置」控制）",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "状态码"
+          },
+          "msg": {
+            "type": "string",
+            "description": "提示信息"
+          },
+          "data": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "id": "5",
+      "name": "凭证已被注册/已发起注册",
+      "code": 200,
+      "contentType": "json",
+      "description": "邮箱/手机号已被其他用户绑定，或已存在未完成的两步注册意向",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "状态码"
+          },
+          "msg": {
+            "type": "string",
+            "description": "提示信息"
+          },
+          "data": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "id": "6",
       "name": "签名校验失败",
       "code": 200,
       "contentType": "json",
@@ -124,28 +283,56 @@
       "jsonSchema": {
         "type": "object",
         "properties": {
-          "code": { "type": "integer", "description": "20011 认证失败" },
-          "msg": { "type": "string", "description": "如：签名参数缺失 / 签名过期: timestamp 超出有效窗口(±5分钟) / 签名校验失败: sign 不匹配 / 未注册的接入项目 / 接入项目已被停用" },
-          "data": { "type": "null" }
+          "code": {
+            "type": "integer",
+            "description": "状态码"
+          },
+          "msg": {
+            "type": "string",
+            "description": "提示信息"
+          },
+          "data": {
+            "type": "null"
+          }
         }
       }
     }
   ],
   "responseExamples": [
     {
-      "name": "注册成功示例",
-      "responseId": "0",
-      "data": "{\n  \"code\": 10000,\n  \"msg\": \"注册成功\",\n  \"data\": {\n    \"user_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n    \"account\": \"837120465\",\n    \"username\": \"test_user\"\n  }\n}"
-    },
-    {
-      "name": "参数缺失示例",
+      "name": "两步注册第一步成功示例",
       "responseId": "1",
-      "data": "{\n  \"code\": 20001,\n  \"msg\": \"参数缺失: username(用户名)\",\n  \"data\": null\n}"
+      "data": "{\"code\": 10000, \"msg\": \"验证信息已发送，请完成验证后发放账号\", \"data\": {\"username\": \"手机用户\", \"phone\": \"13800138000\", \"need_verify\": true, \"verify_phone_sent\": true}}"
     },
     {
-      "name": "签名校验失败示例",
-      "responseId": "3",
-      "data": "{\n  \"code\": 20011,\n  \"msg\": \"签名校验失败: sign 不匹配\",\n  \"data\": null\n}"
+      "name": "纯用户名注册成功示例",
+      "responseId": "0",
+      "data": "{\"code\": 10000, \"msg\": \"注册成功\", \"data\": {\"user_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\", \"account\": \"837120465\", \"username\": \"test_user\"}}"
     }
-  ]
+  ],
+  "codeSamples": [],
+  "projectId": 8489877,
+  "moduleId": 8057065,
+  "folderId": 94597433,
+  "ordering": 10,
+  "responsibleId": 0,
+  "commonResponseStatus": {},
+  "advancedSettings": {
+    "disabledSystemHeaders": {},
+    "SSLValidate": false,
+    "followRedirects": true,
+    "enableJsonc": false
+  },
+  "customApiFields": {},
+  "oasExtensions": "",
+  "mockScript": {},
+  "createdAt": "2026-08-29T19:30:01.000Z",
+  "updatedAt": "2026-08-31T05:34:33.000Z",
+  "creatorId": 1000944356,
+  "editorId": 1000944356,
+  "creatorUserId": 2337610,
+  "editorUserId": 2337610,
+  "visibility": "INHERITED",
+  "securityScheme": {},
+  "callbacks": ""
 }

@@ -26,6 +26,14 @@ class ApiJson404Middleware:
         return response
 
 
+# 公开 GET 路径（免签名）：邮箱激活链接位于验证邮件内，点击链接本身即一次性凭证，
+# 浏览器访问不带签名参数；注册/登录方式配置为客户端公开信息，均无需项目签名。
+PUBLIC_GET_PATHS = (
+    '/api/user_center/users/verify/email',
+    '/api/user_center/users/methods',
+)
+
+
 class ApiAuthMiddleware:
     """API 服务认证中间件
 
@@ -44,18 +52,21 @@ class ApiAuthMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        if request.path.startswith('/api/') and self._requires_auth(request.path):
-            params = request.POST.dict()
-            params.update({k: v for k, v in request.GET.items() if k not in params})
-            from API.apis.user_center.sign import verify_sign
-            ok, result = verify_sign(params)
-            if not ok:
-                return JsonResponse({
-                    'code': StatusCode.AUTH_FAILED,
-                    'msg': result,
-                    'data': None,
-                })
-            request.auth_app = result
+        if request.path.startswith('/api/'):
+            # 公开 GET 路径（如邮件内激活链接）免签名
+            is_public_get = request.method == 'GET' and request.path in PUBLIC_GET_PATHS
+            if not is_public_get and self._requires_auth(request.path):
+                params = request.POST.dict()
+                params.update({k: v for k, v in request.GET.items() if k not in params})
+                from API.apis.user_center.sign import verify_sign
+                ok, result = verify_sign(params)
+                if not ok:
+                    return JsonResponse({
+                        'code': StatusCode.AUTH_FAILED,
+                        'msg': result,
+                        'data': None,
+                    })
+                request.auth_app = result
         return self.get_response(request)
 
     @staticmethod

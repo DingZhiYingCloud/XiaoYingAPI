@@ -6,5 +6,5 @@ from django.urls import path, include
 # 域名前缀: /api/video_analysis/
 
 urlpatterns = [
-    path('seekin/', include('API.apis.VideoAnalysis.seekin.urls')), # 视频分析服务路由
+    path('douyin/', include('API.apis.VideoAnalysis.Douyin.urls')), # 抖音视频/图文解析服务路由
 ]

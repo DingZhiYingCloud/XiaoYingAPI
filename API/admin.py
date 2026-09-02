@@ -14,17 +14,22 @@ API 应用管理后台配置
 import logging
 import os
 
+from django import forms
 from django.apps import apps
 from django.conf import settings
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.db import models
 from django.forms import Media
 from django.http import HttpResponse
+from django.middleware.csrf import get_token
+from django.shortcuts import redirect
 from django.template import Context, Template
-from django.urls import path
+from django.urls import path, reverse
+from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
+from API.models import Feedback, FeedbackReply
 from API.models.Auth.category import ApiCategory
 
 logger = logging.getLogger(__name__)
@@ -467,6 +472,307 @@ class ApiCategoryAdmin(SmartModelAdmin):
 
 
 admin.site.register(ApiCategory, ApiCategoryAdmin)
+
+
+# ============================================================
+# 3.6 问题反馈中心专属后台（站长统一广场）
+# ============================================================
+
+# 反馈状态彩色标签样式（与 Feedback.STATUS_CHOICES 对应）
+FEEDBACK_STATUS_STYLE = {
+    'pending': '#e6a23c',    # 待处理：橙
+    'processing': '#409eff', # 处理中：蓝
+    'resolved': '#67c23a',   # 已解决：绿
+    'closed': '#909399',     # 已关闭：灰
+}
+
+# 评论展示配置（评论树预览 + 分页，防止海量评论撑爆详情页）
+FEEDBACK_PREVIEW_LIMIT = 10       # 详情页评论树预览条数，超出折叠至评论管理页
+FEEDBACK_REPLIES_PAGE_SIZE = 20   # 评论管理页每页条数（默认 20 / 页）
+
+
+def _fb_display_name(reply):
+    """评论者展示名（用户名 / 站长）"""
+    return reply.user.username if reply.user else '站长'
+
+
+def _fb_role_badge(reply):
+    """身份徽章：admin=站长（红）/ user=子项目用户（蓝）"""
+    label = '站长' if reply.author_role == 'admin' else '用户'
+    return format_html('<span class="fb-badge role-{role}">{label}</span>',
+                       role=reply.author_role, label=label)
+
+
+def _fb_comment_card(reply, reply_to_name=None, extra_actions=''):
+    """单条评论卡片（统一样式；content 经 format_html 自动转义，防 XSS）
+
+    reply_to_name: 被回复者展示名（None=不展示回复关系，用于详情页评论树；
+                   空字符串=回复问题本身）
+    extra_actions: 额外操作区 HTML（如删除按钮，由调用方保证安全）
+    """
+    time_str = timezone.localtime(reply.create_time).strftime('%Y-%m-%d %H:%M')
+    reply_to = ''
+    if reply_to_name is not None:
+        target = f'@{reply_to_name}' if reply_to_name else '问题本身'
+        reply_to = format_html('<span class="fb-reply-to">回复 {}</span>', target)
+    return format_html(
+        '<div class="fb-comment role-{role}">'
+        '<div class="fb-head">{badge}<span class="fb-name">{name}</span>{reply_to}'
+        '<span class="fb-time">{time}</span></div>'
+        '<div class="fb-content">{content}</div>'
+        '<div class="fb-actions">{extra}</div>'
+        '</div>',
+        role=reply.author_role,
+        badge=_fb_role_badge(reply),
+        name=_fb_display_name(reply),
+        reply_to=reply_to,
+        time=time_str,
+        content=reply.content,
+        extra=mark_safe(extra_actions),
+    )
+
+
+def _fb_tree_preview_html(replies):
+    """评论树预览：按嵌套缩进渲染前 N 条（时间正序，与 API「二级评论=全部子孙」
+    语义一致），超出 FEEDBACK_PREVIEW_LIMIT 截断"""
+    children = {}
+    for r in replies:
+        children.setdefault(r.parent_id, []).append(r)
+
+    parts = []
+    count = 0
+
+    def render(parent_id):
+        nonlocal count
+        for r in children.get(parent_id, ()):
+            if count >= FEEDBACK_PREVIEW_LIMIT:
+                return
+            count += 1
+            parts.append(_fb_comment_card(r))
+            if children.get(r.id):
+                parts.append(mark_safe('<div class="fb-children">'))
+                render(r.id)
+                parts.append(mark_safe('</div>'))
+
+    render(None)
+    return mark_safe(''.join(str(p) for p in parts))
+
+
+class FeedbackAdmin(SmartModelAdmin):
+    """问题反馈管理（站长统一广场：集中查看所有子项目反馈）
+
+    支持：按项目 / 状态 / 时间筛选、按标题内容用户搜索、状态流转、
+    详情页评论树预览（前 N 条）、独立评论管理页（分页 + 站长回复 + 删除）。
+    """
+
+    list_display = ('title', 'app', 'status_tag', 'user', 'reply_count', 'create_time')
+    list_filter = ('app', 'status', 'create_time')
+    search_fields = ('title', 'content', 'user__username', 'user__account')
+    list_select_related = ('app', 'user')
+    date_hierarchy = 'create_time'
+    readonly_fields = ('app', 'user', 'create_time', 'updated_time', 'replies_preview')
+    fieldsets = (
+        (None, {
+            'fields': ('app', 'user', 'title', 'content', 'status', 'replies_preview'),
+        }),
+        ('时间信息', {
+            'classes': ('collapse',),
+            'fields': ('create_time', 'updated_time'),
+        }),
+    )
+
+    @property
+    def media(self):
+        """评论样式注入：URL 附加文件 mtime 版本号，更新后强制浏览器刷新"""
+        css_url = f'{settings.STATIC_URL}API/admin/feedback_admin.css?v={static_mtime_version("API/admin/feedback_admin.css")}'
+        return super().media + Media(css={'all': (css_url,)})
+
+    # ---------- 列表展示 ----------
+
+    @admin.display(description='状态')
+    def status_tag(self, obj):
+        """状态彩色标签：待处理=橙 / 处理中=蓝 / 已解决=绿 / 已关闭=灰"""
+        color = FEEDBACK_STATUS_STYLE.get(obj.status, '#909399')
+        return format_html(
+            '<span style="color:#fff;background:{color};padding:2px 10px;'
+            'border-radius:10px;font-size:12px;">{label}</span>',
+            color=color, label=obj.get_status_display(),
+        )
+
+    @admin.display(description='追加数')
+    def reply_count(self, obj):
+        """追加数量（含站长回复）"""
+        return obj.reply_count
+
+    # ---------- 详情页评论树预览（只读，替代原内联表格） ----------
+
+    @admin.display(description='评论')
+    def replies_preview(self, obj):
+        """详情页只读评论树：嵌套缩进 + 身份徽章，只渲染前 N 条防止撑爆页面；
+        全部评论通过「评论管理页」分页查看与回复"""
+        if obj is None or obj.pk is None:
+            return '反馈保存后可在此查看评论树'
+        replies = list(obj.replies.select_related('user'))
+        if not replies:
+            return '暂无评论'
+        link = reverse('admin:feedback_replies', args=[obj.pk])
+        head = format_html(
+            '<div class="fb-comments-head"><span>评论树（时间正序，前 {} 条）</span>'
+            '<a class="fb-more" href="{}">评论管理 / 站长回复 →</a></div>',
+            min(len(replies), FEEDBACK_PREVIEW_LIMIT), link)
+        more = ''
+        if len(replies) > FEEDBACK_PREVIEW_LIMIT:
+            more = format_html(
+                '<div class="fb-preview-more">…其余 {} 条未展示，'
+                '请进入 <a href="{}">评论管理</a> 分页查看</div>',
+                len(replies) - FEEDBACK_PREVIEW_LIMIT, link)
+        return format_html('<div class="fb-comments">{}{}{}</div>',
+                           head, _fb_tree_preview_html(replies), more)
+
+    # ---------- 评论管理页（分页 + 站长回复 + 删除） ----------
+
+    def get_urls(self):
+        """扩展反馈管理路由：/admin/API/feedback/<id>/replies/ 评论管理页"""
+        urls = super().get_urls()
+        custom = [
+            path('<uuid:object_id>/replies/', self.admin_site.admin_view(self.replies_page),
+                 name='feedback_replies'),
+        ]
+        return custom + urls
+
+    @staticmethod
+    def _normalize_page(raw, total_pages=1):
+        """页码归一化：非数字 → 1，越界 → 边界值，不报错"""
+        try:
+            page = int(raw)
+        except (TypeError, ValueError):
+            page = 1
+        return max(1, min(page, total_pages))
+
+    def replies_page(self, request, object_id):
+        """评论管理页：全部评论按时间正序分页（一级+二级平铺，标注"回复了谁"，
+        与 API 二级评论语义一致）；站长可回复问题本身或任意评论（含深层），
+        仅 superuser 可删除（级联删除其全部子孙回复）"""
+        obj = self.get_object(request, str(object_id))
+        if obj is None:
+            return HttpResponse('反馈不存在', status=404)
+        base_url = reverse('admin:feedback_replies', args=[obj.pk])
+
+        # ---- POST：发布回复 / 删除评论 ----
+        if request.method == 'POST':
+            page = self._normalize_page(request.POST.get('page'))
+            action = request.POST.get('action')
+            if action == 'reply':
+                content = (request.POST.get('content') or '').strip()
+                parent_id = request.POST.get('parent_id') or ''
+                parent = None
+                if parent_id:
+                    parent = FeedbackReply.objects.filter(id=parent_id, feedback=obj).first()
+                if not content:
+                    messages.error(request, '回复内容不能为空')
+                elif parent_id and parent is None:
+                    messages.error(request, '父评论不存在或不属于当前反馈')
+                else:
+                    FeedbackReply.objects.create(
+                        feedback=obj, parent=parent,
+                        author_role='admin', user=None, content=content)
+                    messages.success(request, '回复已发布')
+            elif action == 'delete':
+                if not request.user.is_superuser:
+                    messages.error(request, '仅站长（superuser）可删除评论')
+                    return redirect(f'{base_url}?page={page}')
+                target = FeedbackReply.objects.filter(
+                    id=request.POST.get('reply_id'), feedback=obj).first()
+                if target is None:
+                    messages.error(request, '评论不存在或不属于当前反馈')
+                else:
+                    target.delete()  # 级联删除其全部子孙回复
+                    messages.success(request, '评论已删除（含其全部子孙回复）')
+            return redirect(f'{base_url}?page={page}')
+
+        # ---- GET：渲染评论管理页 ----
+        replies = list(obj.replies.select_related('user'))
+        total = len(replies)
+        total_pages = max(1, (total + FEEDBACK_REPLIES_PAGE_SIZE - 1) // FEEDBACK_REPLIES_PAGE_SIZE)
+        page = self._normalize_page(request.GET.get('page'), total_pages)
+        page_replies = replies[(page - 1) * FEEDBACK_REPLIES_PAGE_SIZE: page * FEEDBACK_REPLIES_PAGE_SIZE]
+
+        # 评论者名称映射（当前页"回复了谁"标注用）
+        name_map = {str(r.id): _fb_display_name(r) for r in replies}
+        csrf = get_token(request)
+
+        parts = []
+        parts.append(format_html(
+            '<!DOCTYPE html><html lang="zh-hans"><head><meta charset="UTF-8">'
+            '<title>评论管理 - {title}</title>'
+            '<link rel="stylesheet" href="{css}"></head><body><div class="fb-page">',
+            title=obj.title,
+            css=f'{settings.STATIC_URL}API/admin/feedback_admin.css?v={static_mtime_version("API/admin/feedback_admin.css")}',
+        ))
+        parts.append(format_html('<a class="fb-back" href="{}">← 返回反馈详情</a>',
+                                 reverse('admin:API_feedback_change', args=[obj.pk])))
+        parts.append(format_html('<h1 class="fb-title">{}</h1>', obj.title))
+        parts.append(format_html('<div class="fb-sub">{} · 状态：{} · 共 {} 条评论</div>',
+                                 obj.app, obj.get_status_display(), total))
+
+        # 操作结果提示
+        for m in messages.get_messages(request):
+            parts.append(format_html('<div class="fb-msg {}">{}</div>', m.tags, m))
+
+        # 站长回复表单（父评论下拉 = 当前反馈全部评论，按时间正序）
+        options = ['<option value="">回复问题本身（一级评论）</option>']
+        for r in replies:
+            options.append(format_html('<option value="{}">回复 @{}：{}</option>',
+                                       r.id, _fb_display_name(r), r.content[:20]))
+        parts.append(format_html(
+            '<form method="post" action="{}" class="fb-form">'
+            '<input type="hidden" name="csrfmiddlewaretoken" value="{}">'
+            '<input type="hidden" name="action" value="reply">'
+            '<input type="hidden" name="page" value="{}">'
+            '<h3>站长回复</h3>'
+            '<select name="parent_id">{}</select>'
+            '<textarea name="content" placeholder="回复内容（纯文本）"></textarea>'
+            '<button type="submit">发布回复</button>'
+            '</form>',
+            base_url, csrf, page, mark_safe(''.join(str(o) for o in options)),
+        ))
+
+        # 当前页评论列表
+        if page_replies:
+            for r in page_replies:
+                actions = ''
+                if request.user.is_superuser:
+                    actions = format_html(
+                        '<form method="post" action="{}" class="fb-del" '
+                        'onsubmit="return confirm(\'删除该评论及其全部子孙回复？\')">'
+                        '<input type="hidden" name="csrfmiddlewaretoken" value="{}">'
+                        '<input type="hidden" name="action" value="delete">'
+                        '<input type="hidden" name="reply_id" value="{}">'
+                        '<input type="hidden" name="page" value="{}">'
+                        '<button type="submit">删除</button></form>',
+                        base_url, csrf, r.id, page)
+                parent_name = name_map.get(str(r.parent_id), '') if r.parent_id else ''
+                parts.append(_fb_comment_card(r, reply_to_name=parent_name, extra_actions=actions))
+        else:
+            parts.append(mark_safe('<div class="fb-empty">暂无评论</div>'))
+
+        # 分页条
+        prev = format_html('<a href="{}?page={}">← 上一页</a>', base_url, page - 1) if page > 1 \
+            else mark_safe('<span class="fb-disabled">← 上一页</span>')
+        nxt = format_html('<a href="{}?page={}">下一页 →</a>', base_url, page + 1) if page < total_pages \
+            else mark_safe('<span class="fb-disabled">下一页 →</span>')
+        parts.append(format_html('<div class="fb-pager">{}<span>第 {} / {} 页（共 {} 条）</span>{}</div>',
+                                 prev, page, total_pages, total, nxt))
+
+        parts.append(mark_safe('</div></body></html>'))
+        return HttpResponse(''.join(str(p) for p in parts))
+
+    def has_delete_permission(self, request, obj=None):
+        """仅站长（superuser）可删除反馈与追加"""
+        return request.user.is_superuser
+
+
+admin.site.register(Feedback, FeedbackAdmin)
 
 
 # ============================================================

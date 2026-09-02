@@ -47,6 +47,38 @@ MIDDLEWARE = [
     'API.common.middleware.ApiJson404Middleware', # /api/ 路径未匹配路由时返回 JSON 404（兜底）
 ]
 
+
+# ==================== 环境模式与安全 Cookie 配置（单一开关） ====================
+# 通过 .env 的 XYAPI_COOKIE_ISOLATION 一个参数同时控制"本地/生产"两种模式：
+#   - 开启（XYAPI_COOKIE_ISOLATION=true）→ 本地开发模式：
+#       本机多项目共存时使用独立 Cookie 名（xyapi_sessionid/xyapi_csrftoken），
+#       避免与其它监听 127.0.0.1 的服务互相覆盖导致后台被迫重新登录；
+#       Cookie 不强制 Secure（本地 HTTP 访问）
+#   - 关闭（默认，生产部署不设置该参数）→ 生产模式：
+#       单项目部署无 Cookie 冲突，使用标准 Cookie 名；
+#       强制 HTTPS(Secure Cookie)，防止会话被中间人窃取劫持
+COOKIE_ISOLATION = os.getenv('XYAPI_COOKIE_ISOLATION', 'false').lower() in ('true', '1', 'yes')
+
+# 全局会话安全基线（Django 默认值，显式声明以明确行为）
+SESSION_COOKIE_HTTPONLY = True   # 会话 Cookie 禁止 JS 读取（防 XSS 窃取会话）
+SESSION_COOKIE_SAMESITE = 'Lax'  # 限制跨站请求携带会话 Cookie
+CSRF_COOKIE_SAMESITE = 'Lax'     # 限制跨站请求携带 CSRF Cookie
+# 注：CSRF_COOKIE_HTTPONLY 保持 Django 默认 False——csrftoken 非会话凭证，
+# 前端 JS 可能需要读取以用于 AJAX 请求，强制 HttpOnly 反而破坏正常功能。
+
+if COOKIE_ISOLATION:
+    # 本地开发：多项目共存时使用独立 Cookie 名，避免互相覆盖
+    SESSION_COOKIE_NAME = 'xyapi_sessionid'
+    CSRF_COOKIE_NAME = 'xyapi_csrftoken'
+else:
+    # 生产模式：标准 Cookie 名 + 强制 HTTPS Cookie，防会话劫持
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # 部署于 nginx 反代之后时，声明可信来源协议头（nginx 需设置 X-Forwarded-Proto: https）
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    # 若 Django 直接对外（无 nginx 反代），可开启强制 HTTPS 跳转；反代场景由 nginx 负责跳转
+    # SECURE_SSL_REDIRECT = True
+
 ROOT_URLCONF = 'XiaoYingAPI.urls'
 
 TEMPLATES = [
@@ -149,6 +181,19 @@ EMAIL_USE_SSL = True                # 启用SSL加密传输
 EMAIL_HOST_USER = os.getenv('QQ_MAIL_ACCOUNT', '')        # 发件邮箱账号
 EMAIL_HOST_PASSWORD = os.getenv('QQ_MAIL_AUTH_CODE', '')  # 发件邮箱授权码
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER  # 默认发件人地址(与发件账号一致)
+
+
+# ==================== 邮箱验证/登录配置 ====================
+# 邮箱注册验证形式: 'link' 仅验证链接 / 'code' 仅验证码 / 'both' 链接+验证码都提供
+# （后续可扩展为后台页面配置，当前用环境变量控制）
+EMAIL_VERIFY_MODE = os.getenv('EMAIL_VERIFY_MODE', 'both')
+# 邮箱验证有效期(分钟)
+EMAIL_VERIFY_EXPIRE_MINUTES = int(os.getenv('EMAIL_VERIFY_EXPIRE_MINUTES', '30'))
+
+
+# ==================== 手机号验证配置 ====================
+# 手机号短信验证码有效期(分钟)，与阿里云 SendSmsVerifyCode 的 valid_time 联动
+PHONE_VERIFY_EXPIRE_MINUTES = int(os.getenv('PHONE_VERIFY_EXPIRE_MINUTES', '5'))
 
 
 # ==================== 文件上传配置 ====================

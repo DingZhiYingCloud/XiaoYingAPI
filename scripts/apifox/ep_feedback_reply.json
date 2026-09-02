@@ -1,0 +1,169 @@
+{
+  "name": "追加/回复评论",
+  "type": "http",
+  "method": "post",
+  "path": "/api/feedback/reply",
+  "status": "released",
+  "folderId": 94807317,
+  "description": "## 功能说明\n\n对某条反馈追加评论，或**回复某条评论**（支持无限嵌套的评论树）：\n\n- `parent_id` 为空 → 一级评论（直接评论问题）\n- `parent_id` 非空 → 回复指定评论（可回复任意层级，如 A 提问题 → B 评论 → C 回复 B → D 回复 C）\n\n同一反馈下所有评论组成评论树，**项目内全部人可见**；站长在后台的回复同样进入评论树（以 `author_role` 区分身份）。\n\n**限制**：\n- 只能评论 / 回复当前项目（app_id）下的反馈，跨项目返回「反馈不存在或不属于当前项目」\n- `parent_id` 必须属于当前反馈，否则返回「父评论不存在或不属于当前反馈」\n\n**Token 校验规则**：\n- 必须携带用户登录 Token（绑定当前接入项目）\n- Token 必须属于当前接入项目（app_id），跨项目 Token 无效\n- Token 已过期 / 用户被封禁 / 项目被停用 时返回失效\n\n## 签名机制\n\n与「提交反馈」一致：携带 `app_id` / `timestamp` / `nonce` / `sign` 签名公共参数，算法见「提交反馈」接口说明。\n\n## 请求方式\n\n- 表单提交（application/x-www-form-urlencoded）：feedback_id / content / parent_id(可选) / token + 签名公共参数\n- 不支持 GET 方法（返回 405）",
+  "requestBody": {
+    "type": "application/x-www-form-urlencoded",
+    "parameters": [
+      {
+        "id": "feedback_id#0",
+        "name": "feedback_id",
+        "required": true,
+        "description": "反馈唯一 ID（提交反馈接口返回的 feedback_id）",
+        "type": "string",
+        "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+      },
+      {
+        "id": "content#1",
+        "name": "content",
+        "required": true,
+        "description": "评论内容（纯文本）",
+        "type": "text",
+        "example": "补充：Chrome 最新版也会复现"
+      },
+      {
+        "id": "parent_id#2",
+        "name": "parent_id",
+        "required": false,
+        "description": "被回复的评论 ID（可选）。为空=一级评论；非空=回复指定评论，支持任意层级嵌套。须属于当前反馈",
+        "type": "string",
+        "example": "6b1f2e9a-3c4d-4e5f-8a9b-0c1d2e3f4a5b"
+      },
+      {
+        "id": "token#3",
+        "name": "token",
+        "required": true,
+        "description": "用户登录 Token（绑定当前接入项目，用于校验评论人身份真实性）",
+        "type": "string",
+        "example": "5f4dcc3b5aa765d61d8327deb882cf99e6a3c8a4b1f9e2d4c6a8b0c1d2e3f4a5"
+      },
+      {
+        "id": "app_id#4",
+        "name": "app_id",
+        "required": true,
+        "description": "接入项目 APPID（系统自动生成（app_ 前缀），创建后固定不可修改，公开标识）",
+        "type": "string",
+        "example": "app_5f3a9c2b7e6d8f1a2b3c4d5e6f7a8b9c"
+      },
+      {
+        "id": "timestamp#5",
+        "name": "timestamp",
+        "required": true,
+        "description": "10 位时间戳（秒），与服务器时间差须在 ±5 分钟内，防重放",
+        "type": "string",
+        "example": "1725000000"
+      },
+      {
+        "id": "nonce#6",
+        "name": "nonce",
+        "required": true,
+        "description": "随机字符串，每次请求唯一",
+        "type": "string",
+        "example": "a1b2c3d4e5f6a7b8"
+      },
+      {
+        "id": "sign#7",
+        "name": "sign",
+        "required": true,
+        "description": "HMAC-SHA256 签名（小写 hex），密钥为项目 app_secret",
+        "type": "string",
+        "example": "3f9a7c1e...（64 位小写 hex）"
+      }
+    ]
+  },
+  "responses": [
+    {
+      "id": "0",
+      "name": "评论成功",
+      "code": 200,
+      "contentType": "json",
+      "description": "追加 / 回复评论成功",
+      "jsonSchema": {
+        "type": "object",
+        "required": ["code", "msg", "data"],
+        "properties": {
+          "code": { "type": "integer", "description": "10000=成功" },
+          "msg": { "type": "string", "description": "追加成功" },
+          "data": {
+            "type": "object",
+            "required": ["reply_id"],
+            "properties": {
+              "reply_id": { "type": "string", "description": "评论记录唯一 ID（UUID 字符串），可作为后续回复的 parent_id" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "1",
+      "name": "参数缺失",
+      "code": 200,
+      "contentType": "json",
+      "description": "缺少 feedback_id / content / token 或签名参数",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "description": "20001 参数缺失" },
+          "msg": { "type": "string", "description": "如：参数缺失: feedback_id(反馈ID)" },
+          "data": { "type": "null" }
+        }
+      }
+    },
+    {
+      "id": "2",
+      "name": "Token无效",
+      "code": 200,
+      "contentType": "json",
+      "description": "Token 不存在 / 不属于当前项目 / 已过期 / 用户封禁",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "description": "20010 未认证" },
+          "msg": { "type": "string", "description": "Token 相关错误提示" },
+          "data": { "type": "null" }
+        }
+      }
+    },
+    {
+      "id": "3",
+      "name": "反馈或父评论不存在",
+      "code": 200,
+      "contentType": "json",
+      "description": "反馈不存在或不属于当前项目；或 parent_id 不存在 / 不属于当前反馈",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "description": "20030 资源不存在" },
+          "msg": { "type": "string", "description": "反馈不存在或不属于当前项目 / 父评论不存在或不属于当前反馈" },
+          "data": { "type": "null" }
+        }
+      }
+    },
+    {
+      "id": "4",
+      "name": "签名校验失败",
+      "code": 200,
+      "contentType": "json",
+      "description": "签名参数缺失 / 签名过期 / sign 不匹配 / app_id 未注册或已停用",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "description": "20011 认证失败" },
+          "msg": { "type": "string", "description": "签名相关错误提示" },
+          "data": { "type": "null" }
+        }
+      }
+    }
+  ],
+  "responseExamples": [
+    {
+      "name": "评论成功示例",
+      "responseId": "0",
+      "data": "{\n  \"code\": 10000,\n  \"msg\": \"追加成功\",\n  \"data\": {\n    \"reply_id\": \"6b1f2e9a-3c4d-4e5f-8a9b-0c1d2e3f4a5b\"\n  }\n}"
+    }
+  ]
+}

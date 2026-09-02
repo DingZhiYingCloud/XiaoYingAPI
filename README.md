@@ -91,7 +91,7 @@ XiaoYingAPI/
 | 邮箱服务 | `/api/email/` | 邮箱 v1、VMEmail 虚拟邮箱收发 |
 | 音乐服务 | `/api/music/` | 爱听音乐网（2t58）、小影音乐 |
 | 文件上传 | `/api/upload/` | 通用文件上传 |
-| 视频分析 | `/api/video_analysis/` | 视频解析（seekin） |
+| 视频分析 | `/api/video_analysis/` | 视频解析（抖音） |
 | AI 服务 | `/api/ai/` | 内置模型服务 |
 | 爬虫验证 | `/api/spider_verification/` | 爬虫验证（sv4759） |
 | Bing 服务 | `/api/bing/` | 必应搜索、网页抓取、IndexNow 提交 |
@@ -154,6 +154,7 @@ python manage.py runserver 0.0.0.0:10000
 | `ALIYUN_ACCESS_KEY_ID` | 否 | 阿里云 AccessKey ID（短信/图形认证等用） |
 | `ALIYUN_ACCESS_KEY_SECRET` | 否 | 阿里云 AccessKey Secret |
 | `PROXY_STATIC_JSON_PATH` | 否 | 静态代理 IP JSON 文件路径，默认 `SpiderServices/ProxyIp/ProxyIP_Static/proxies.json` |
+| `XYAPI_COOKIE_ISOLATION` | 否 | **环境模式单一开关**：`true`=本地开发（独立 Cookie 名隔离多项目 + 不强制 HTTPS）；删除或 `false`=生产（标准 Cookie 名 + 强制 HTTPS Cookie），默认 `false`。生产部署务必不设置或设为 `false` |
 
 ---
 
@@ -224,11 +225,42 @@ python manage.py rebuild_category_tree
 - `Django部署上线操作手册.md` — 通用部署手册
 - `Nginx配置被PowerShell破坏导致子域名静态资源404.md` / `事故报告-Nginx无限重定向.md` — Nginx 相关事故修复
 
-关键点：
-1. `.env` 中 `ALLOWED_HOSTS` 必须包含线上域名，修改后需完全重启 uwsgi（仅 `--reload` 不生效）。
-2. 先按第六章创建 `API/migrations` 文件夹，再执行迁移。
-3. 静态文件在 `DEBUG=False` 时由 WhiteNoise 中间件服务（`collectstatic` 收集到 `static/` 后生效），媒体文件由 Django `serve` 视图提供。
-4. **后台自定义样式/脚本（如分类页 `apicategory_admin.css`、`apicategory_admin.js`）存放在应用内 `API/static/`**，源码随 git 上传，但 `collectstatic` 产物（`static/` 目录）被 `.gitignore` 忽略、**不随代码更新**。每次修改后台样式后，部署必须重新执行 `collectstatic` 并重启服务，否则线上仍显示旧样式（典型症状：线上与本地页面样式不一致）。
+### 1. 生产环境 `.env` 配置
+
+```bash
+SECRET_KEY=<生产环境重新生成，禁止使用开发值>
+DEBUG=False
+ALLOWED_HOSTS=api.你的域名.com
+# 生产环境不设置 XYAPI_COOKIE_ISOLATION（或设为 false）→ 自动进入生产安全模式：
+# 标准 Cookie 名 + 强制 HTTPS Cookie（SESSION/CSRF_COOKIE_SECURE=True）
+```
+
+> `XYAPI_COOKIE_ISOLATION` 为环境模式单一开关（见第五章）：本地开发设 `true`（独立 Cookie 名隔离 + 不强制 HTTPS）；**生产务必不设置或设为 `false`**，否则安全 Cookie 不会开启。
+
+### 2. Nginx 反代必须配置 HTTPS 协议头
+
+生产模式 Cookie 强制 Secure（仅 HTTPS 传输）。Nginx 必须向 Django 透传来源协议，否则浏览器会拒绝写入 Cookie（典型症状：后台登录成功但立即跳回登录页）：
+
+```nginx
+proxy_set_header X-Forwarded-Proto https;
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+proxy_set_header Host $host;
+```
+
+同时需为域名配置 HTTPS 证书（宝塔 SSL / Certbot）。若 Django 直接对外（无 Nginx 反代），需在 `settings.py` 取消注释 `SECURE_SSL_REDIRECT = True` 强制跳转 HTTPS。
+
+### 3. 数据库迁移
+
+按第六章操作：迁移文件不入库，线上由 `makemigrations` 重新生成；部署完成后执行 `rebuild_category_tree` 重建分类树数据。
+
+### 4. 静态文件与后台样式
+
+`DEBUG=False` 时静态文件由 WhiteNoise 服务（先执行 `collectstatic --noinput`）。后台自定义样式/脚本存放在应用内 `API/static/`，但 `collectstatic` 产物（`static/` 目录）不入库、不随代码更新——每次修改后台样式后必须重新 `collectstatic` 并重启 uwsgi，否则线上仍显示旧样式。
+
+### 5. 启动与验证
+
+- 修改 `ALLOWED_HOSTS` 等 `.env` 配置后需**完全重启 uwsgi**（仅 `--reload` 不生效）。
+- 验证清单：HTTPS 正常访问 → 后台登录成功且不跳回 → 浏览器 Cookie 带 `Secure` 标志 → 接口签名认证正常。
 
 ---
 

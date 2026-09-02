@@ -1,0 +1,187 @@
+{
+  "name": "发送登录验证码",
+  "type": "http",
+  "method": "post",
+  "path": "/api/user_center/users/login/send",
+  "status": "released",
+  "folderId": 94597433,
+  "description": "## 功能说明\n\n发送登录验证码接口：为已注册的邮箱 / 手机号下发**登录验证码**（验证码登录第一步）。\n\n- 邮箱：发送验证邮件（含 6 位验证码，无激活链接）\n- 手机号：发送短信验证码\n- 验证码有效期同注册（邮箱默认 30 分钟、手机号默认 5 分钟，后台可配），**一次性使用**\n\n**安全说明**：\n- 凭证未注册、账号封禁、验证方式未启用、60 秒内重复发送均返回 20003\n- 60 秒冷却防刷（按验证方式 + 凭证全局生效）\n\n**后续步骤**：拿到验证码后调用 `POST /api/user_center/users/login`（携带 email/phone + code）完成登录。\n\n## 签名机制\n\n调用本接口必须携带签名公共参数（`app_id` / `timestamp` / `nonce` / `sign`），否则返回 20011。\n\n### 签名算法\n\n1. 取除 `sign` 外的**所有参数**（含 app_id / timestamp / nonce / 业务参数）\n2. 按键名 ASCII 升序排序\n3. 拼接为 `key=value&key=value...`\n4. 以 `app_secret` 为密钥做 HMAC-SHA256，输出小写 hex\n\n## 请求方式\n\n- 请求体：`application/x-www-form-urlencoded`（表单）\n- 不支持 GET 方法（返回 405）",
+  "requestBody": {
+    "type": "application/x-www-form-urlencoded",
+    "description": "发送登录验证码表单参数（含签名公共参数）",
+    "parameters": [
+      {
+        "id": "email#0",
+        "name": "email",
+        "required": false,
+        "description": "邮箱（邮箱验证码登录时使用，需邮箱方式启用且该邮箱已注册）",
+        "example": "user@example.com",
+        "type": "string"
+      },
+      {
+        "id": "phone#1",
+        "name": "phone",
+        "required": false,
+        "description": "手机号（手机号验证码登录时使用，需手机号方式启用且该手机号已注册）",
+        "example": "13800138000",
+        "type": "string"
+      },
+      {
+        "id": "app_id#2",
+        "name": "app_id",
+        "required": true,
+        "description": "接入项目 APPID（系统自动生成（app_ 前缀），创建后固定不可修改，公开标识）",
+        "example": "app_5f3a9c2b7e6d8f1a2b3c4d5e6f7a8b9c",
+        "type": "string"
+      },
+      {
+        "id": "timestamp#3",
+        "name": "timestamp",
+        "required": true,
+        "description": "10 位时间戳（秒），与服务器时间差须在 ±5 分钟内，防重放",
+        "example": "1725000000",
+        "type": "string"
+      },
+      {
+        "id": "nonce#4",
+        "name": "nonce",
+        "required": true,
+        "description": "随机字符串，每次请求唯一",
+        "example": "a1b2c3d4e5f6a7b8",
+        "type": "string"
+      },
+      {
+        "id": "sign#5",
+        "name": "sign",
+        "required": true,
+        "description": "HMAC-SHA256 签名（小写 hex），密钥为项目 app_secret",
+        "example": "3f9a7c1e...（64 位小写 hex）",
+        "type": "string"
+      }
+    ]
+  },
+  "responses": [
+    {
+      "id": "0",
+      "name": "发送成功",
+      "code": 200,
+      "contentType": "json",
+      "description": "验证码已下发（邮件/短信），data 为 null",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "状态码"
+          },
+          "msg": {
+            "type": "string",
+            "description": "提示信息"
+          },
+          "data": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "id": "1",
+      "name": "参数缺失",
+      "code": 200,
+      "contentType": "json",
+      "description": "email/phone 全缺",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "状态码"
+          },
+          "msg": {
+            "type": "string",
+            "description": "提示信息"
+          },
+          "data": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "id": "2",
+      "name": "参数格式错误",
+      "code": 200,
+      "contentType": "json",
+      "description": "email 格式非法 / phone 非 11 位",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "状态码"
+          },
+          "msg": {
+            "type": "string",
+            "description": "提示信息"
+          },
+          "data": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "id": "3",
+      "name": "发送失败",
+      "code": 200,
+      "contentType": "json",
+      "description": "凭证未注册 / 账号封禁 / 验证方式未启用 / 60 秒内重复发送",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "状态码"
+          },
+          "msg": {
+            "type": "string",
+            "description": "提示信息"
+          },
+          "data": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "id": "4",
+      "name": "签名校验失败",
+      "code": 200,
+      "contentType": "json",
+      "description": "签名参数缺失 / 签名过期 / sign 不匹配 / app_id 未注册或已停用",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "状态码"
+          },
+          "msg": {
+            "type": "string",
+            "description": "提示信息"
+          },
+          "data": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ],
+  "responseExamples": [
+    {
+      "name": "发送成功示例",
+      "responseId": "0",
+      "data": "{\"code\": 10000, \"msg\": \"验证码已发送\", \"data\": null}"
+    }
+  ]
+}

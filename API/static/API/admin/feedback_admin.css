@@ -1,0 +1,111 @@
+/* ============================================================
+   问题反馈中心 admin 评论样式（站长统一广场）
+   作用于：反馈详情页评论树预览 + 评论管理页（/admin/API/feedback/<id>/replies/）
+   样式类前缀 fb-，避免与 Django admin / simpleui 原生样式冲突
+   ============================================================ */
+
+/* ---------- 详情页评论树预览 ---------- */
+.fb-comments { margin: 10px 0 4px; }
+.fb-comments-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px; font-size: 13px; font-weight: 600; color: #333;
+}
+.fb-more { font-size: 12px; color: #417690; text-decoration: none; }
+.fb-more:hover { text-decoration: underline; }
+.fb-preview-more { margin-top: 8px; font-size: 12px; color: #999; }
+.fb-preview-more a { color: #417690; }
+
+/* ---------- 评论卡片 ---------- */
+.fb-comment {
+    background: #fff; border: 1px solid #e4e8ec; border-radius: 8px;
+    padding: 10px 14px; margin-bottom: 8px;
+}
+.fb-comment.role-admin { border-left: 3px solid #d9534f; }
+.fb-comment.role-user  { border-left: 3px solid #409eff; }
+
+/* 嵌套子评论：缩进 + 引导线，底色微降以区分层级 */
+.fb-children {
+    margin: 8px 0 0 22px; padding-left: 12px;
+    border-left: 2px solid #eef2f5;
+}
+.fb-children .fb-comment { background: #fafbfc; }
+
+/* 卡片头：徽章 + 名称 + 回复对象 + 时间 */
+.fb-head {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+    font-size: 12px; color: #999;
+}
+.fb-badge {
+    color: #fff; border-radius: 9px; padding: 1px 8px;
+    font-size: 11px; line-height: 16px;
+}
+.fb-badge.role-user  { background: #409eff; }
+.fb-badge.role-admin { background: #d9534f; }
+.fb-name { font-weight: 600; color: #333; font-size: 13px; }
+.fb-reply-to { color: #417690; }
+.fb-time { color: #b3b9bf; }
+
+/* 评论正文：保留换行、长词折行 */
+.fb-content {
+    margin-top: 6px; font-size: 13px; color: #333; line-height: 1.6;
+    white-space: pre-wrap; word-break: break-word;
+}
+
+/* 操作区（删除按钮等） */
+.fb-actions { margin-top: 6px; }
+.fb-actions:empty { display: none; }
+.fb-del { display: inline; }
+.fb-del button {
+    background: none; border: none; padding: 0;
+    color: #c0392b; font-size: 12px; cursor: pointer;
+}
+.fb-del button:hover { text-decoration: underline; }
+
+/* ---------- 评论管理页 ---------- */
+.fb-page {
+    max-width: 960px; margin: 24px auto; padding: 0 16px;
+    font-family: -apple-system, "Microsoft YaHei", sans-serif;
+}
+.fb-back { display: inline-block; margin-bottom: 14px; color: #417690; text-decoration: none; font-size: 13px; }
+.fb-back:hover { text-decoration: underline; }
+.fb-title { margin: 0 0 4px; font-size: 20px; color: #333; }
+.fb-sub { color: #999; font-size: 12px; margin-bottom: 16px; }
+
+/* 操作结果提示 */
+.fb-msg { padding: 8px 12px; border-radius: 6px; margin-bottom: 10px; font-size: 13px; }
+.fb-msg.success { background: #e8f6e8; color: #2e7d32; }
+.fb-msg.error { background: #fdeaea; color: #c0392b; }
+.fb-msg.warning { background: #fdf6e4; color: #b7791f; }
+
+/* 站长回复表单 */
+.fb-form {
+    background: #fff; border: 1px solid #e4e8ec; border-radius: 8px;
+    padding: 14px 16px; margin-bottom: 16px;
+}
+.fb-form h3 { margin: 0 0 10px; font-size: 14px; color: #333; }
+.fb-form select, .fb-form textarea {
+    width: 100%; box-sizing: border-box; margin-bottom: 10px;
+    border: 1px solid #d5dade; border-radius: 6px;
+    padding: 6px 8px; font-size: 13px; color: #333;
+}
+.fb-form textarea { min-height: 72px; resize: vertical; font-family: inherit; }
+.fb-form button {
+    background: #417690; color: #fff; border: none; border-radius: 6px;
+    padding: 6px 18px; font-size: 13px; cursor: pointer;
+}
+.fb-form button:hover { background: #35617a; }
+
+/* 评论计数 */
+.fb-count { color: #666; font-size: 13px; margin: 12px 0 8px; font-weight: 600; }
+
+/* 分页条 */
+.fb-pager {
+    display: flex; align-items: center; gap: 12px;
+    margin: 14px 0; font-size: 13px; color: #666;
+}
+.fb-pager a { color: #417690; text-decoration: none; }
+.fb-pager a:hover { text-decoration: underline; }
+.fb-pager .fb-disabled { color: #ccc; }
+
+/* 空状态 */
+.fb-empty { color: #999; text-align: center; padding: 30px 0; }
