@@ -15,7 +15,7 @@ from django.db import connections
 from django.test import Client, TestCase, TransactionTestCase
 
 from API.apis.musics.xiaoying import utils
-from API.models.music import Music, MusicSource
+from API.models.Music.music import Music, MusicSource
 
 
 def _valid_record(name='晴天', singers=None, online=None, sources=None):

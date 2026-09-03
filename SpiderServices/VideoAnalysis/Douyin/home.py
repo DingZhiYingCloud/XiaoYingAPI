@@ -4,8 +4,7 @@
 自研级别解析（不调用第三方解析 API），直接与抖音官方接口交互：
     分享文本/短链 → 302 重定向提取 aweme_id
     → ttwid 注册接口获取 cookie
-    → 纯 Python 实现 a_bogus 签名（abogus.py）
-    → 请求 web detail API 获取无水印数据
+    → 请求 web detail API（无签名 + 失败重试）获取无水印数据
 
 返回统一结构:
     {title, cover, duration, medias: [{format, url, file_size}], images: [...]}
@@ -15,16 +14,18 @@
     result = spider.parse(share_text)  # share_text 为抖音完整分享文本或链接
 
 注意:
-    抖音反爬频繁改版（a_bogus 签名、接口路径），失效时需同步更新
-    abogus.py 与 utils.py 中的版本参数。
+    抖音反爬频繁改版。2026-09 实测旧 a_bogus 签名已失效（携带即 403
+    "Uifid Not Found"），当前采用无签名请求 + 刷新 ttwid 间隔重试策略
+    （见 _fetch_detail）。若抖音日后强制签名，需逆向新版算法更新 abogus.py
+    后恢复签名请求。
 """
 
 import re
+import time
 
 import requests
-from urllib.parse import urlencode, quote
+from urllib.parse import urlencode
 
-from .abogus import ABogus
 from .utils import (
     UA_STRING,
     BASE_PARAMS,
@@ -54,6 +55,14 @@ _QUALITY_MAP = {
 
 # 图文类型 aweme_type
 _IMAGE_TYPES = (2, 68)
+
+# detail 请求策略（抖音反爬现状，2026-09 实测）：
+# 旧版 a_bogus 签名已失效（携带即 403 "Uifid Not Found"），无签名请求有概率性风控。
+# 改为无签名请求 + 遇 403/空响应/异常刷新 ttwid 并间隔重试，规避临时风控。
+_DETAIL_MAX_RETRY = 3          # 失败后最多重试次数（含首次共 4 次请求）
+_DETAIL_RETRY_INTERVAL = 2.0   # 重试间隔（秒），避开连续请求触发风控
+_DETAIL_TIMEOUT = 8.0          # 单次 detail 请求超时（秒）——需小于客户端网关超时(15s)，
+                               # 避免多次重试累计超过调用方等待上限
 
 
 class DouyinVideoAnalysis:
@@ -171,7 +180,7 @@ class DouyinVideoAnalysis:
         if self._ttwid_ready:
             return
         # 访问主站获取 __ac_nonce
-        self.session.get(HOME_URL, timeout=REQUEST_TIMEOUT)
+        self.session.get(HOME_URL, timeout=_DETAIL_TIMEOUT)
         # 注册 ttwid
         self.session.post(
             TTWID_URL,
@@ -184,7 +193,7 @@ class DouyinVideoAnalysis:
                 "cbUrlProtocol": "https",
                 "union": True,
             },
-            timeout=REQUEST_TIMEOUT,
+            timeout=_DETAIL_TIMEOUT,
         )
         # ttwid 域与 douyin.com 不同，session 不会自动携带，需手动拼 Cookie 头
         self._cookies_str = "; ".join(
@@ -194,46 +203,54 @@ class DouyinVideoAnalysis:
 
     def _fetch_detail(self, video_id: str) -> dict:
         """
-        请求 web detail API 获取视频详情（a_bogus 签名）。
+        请求 web detail API 获取视频详情。
+
+        反爬现状（2026-09）：旧 a_bogus 签名已失效（携带即 403），
+        无签名请求存在概率性风控（实测约 50% 命中）。策略：无签名请求，
+        遇 403 / 空响应 / 异常响应时刷新 ttwid 并间隔重试，直至成功或重试耗尽。
 
         :param video_id: aweme_id
         :return: aweme_detail 字段 dict
-        :raises RuntimeError: 请求失败或数据缺失时抛出
+        :raises RuntimeError: 重试耗尽仍失败时抛出
         """
         self._ensure_ttwid()
-
-        api_url = self._sign_detail_url(video_id)
-        resp = self.session.get(
-            api_url,
-            headers=self._build_api_headers(video_id),
-            timeout=REQUEST_TIMEOUT,
-        )
-        resp.raise_for_status()
-
-        # 空响应（ttwid 失效/风控）→ 重置 ttwid 重试一次
-        if not resp.content:
-            self._ttwid_ready = False
-            self._ensure_ttwid()
-            api_url = self._sign_detail_url(video_id)
+        last_err = "未知原因"
+        for attempt in range(_DETAIL_MAX_RETRY + 1):
+            api_url = self._build_detail_url(video_id)
             resp = self.session.get(
                 api_url,
                 headers=self._build_api_headers(video_id),
-                timeout=REQUEST_TIMEOUT,
+                timeout=_DETAIL_TIMEOUT,
             )
-            resp.raise_for_status()
-            if not resp.content:
-                raise RuntimeError("抖音接口返回空数据（可能触发风控，请稍后重试）")
 
-        try:
-            data = resp.json()
-        except ValueError:
-            raise RuntimeError("抖音接口返回非 JSON 数据")
+            # 非 200 或空响应 → 风控拦截/ttwid 失效；仅首次失败刷新 ttwid，
+            # 其余重试只做间隔避让（403 多为 IP 级临时风控，重注册 ttwid 无益且耗时）
+            if resp.status_code != 200 or not resp.content:
+                last_err = f"接口返回 {resp.status_code} / 空响应（可能触发风控）"
+                if attempt == 0:
+                    self._ttwid_ready = False
+                    self._ensure_ttwid()
+                if attempt < _DETAIL_MAX_RETRY:
+                    time.sleep(_DETAIL_RETRY_INTERVAL)
+                continue
 
-        detail = data.get("aweme_detail")
-        if not detail:
-            raise RuntimeError(f"抖音接口未返回视频数据: {data.get('status_msg') or data.get('message') or '未知原因'}")
+            try:
+                data = resp.json()
+            except ValueError:
+                last_err = "接口返回非 JSON 数据"
+                if attempt < _DETAIL_MAX_RETRY:
+                    time.sleep(_DETAIL_RETRY_INTERVAL)
+                continue
 
-        return detail
+            detail = data.get("aweme_detail")
+            if not detail:
+                last_err = f"接口未返回视频数据: {data.get('status_msg') or data.get('message') or '未知原因'}"
+                if attempt < _DETAIL_MAX_RETRY:
+                    time.sleep(_DETAIL_RETRY_INTERVAL)
+                continue
+            return detail
+
+        raise RuntimeError(f"抖音接口多次请求失败: {last_err}")
 
     def _build_api_headers(self, video_id: str) -> dict:
         """构造 detail API 请求头（含手动拼接的 Cookie）"""
@@ -245,17 +262,17 @@ class DouyinVideoAnalysis:
             "Cookie": self._cookies_str,
         }
 
-    def _sign_detail_url(self, video_id: str) -> str:
+    def _build_detail_url(self, video_id: str) -> str:
         """
-        构造带 a_bogus 签名的 detail API URL。
+        构造 detail API URL（无 a_bogus 签名）。
 
-        注意: 先对参数 urlencode 拼接，再追加 a_bogus，避免二次编码导致签名失效。
+        抖音反爬升级后，旧版 a_bogus 签名携带即返回 403（ArgusSecurityPlugin），
+        因此直接以明文参数请求，靠重试 + 刷新 ttwid 规避概率性风控。
+        注：abogus.py 实现保留，待新版签名算法逆向完成后可恢复签名请求。
         """
         params = BASE_PARAMS.copy()
         params["aweme_id"] = video_id
-        param_str = urlencode(params)
-        a_bogus = ABogus().get_value(params)
-        return f"{API_DETAIL}?{param_str}&a_bogus={quote(a_bogus, safe='')}"
+        return f"{API_DETAIL}?{urlencode(params)}"
 
     # ---------- 数据组装 ----------
 

@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
 from django.db import IntegrityError, transaction
 
-from API.models.music import Music, MusicSource
+from API.models.Music.music import Music, MusicSource
 
 # 批量导入接口配置（可按需调整）
 MAX_IMPORT_COUNT = 9999                 # 单次导入最大条数

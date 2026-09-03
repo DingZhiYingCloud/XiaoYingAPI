@@ -62,11 +62,13 @@ XiaoYingAPI/
   - `middleware.py`：`ApiAuthMiddleware`（分类树签名认证）+ `ApiJson404Middleware`（/api/ 未匹配路径返回 JSON）
   - `base.py`：`BaseModel` 基础模型（含 create_time / updated_time 自动字段）
   - `sqlite_orm.py`：独立的 SQLite3 ORM 工具库（仅标准库，可单独复用） |
-| `API/models/` | **数据模型**：
+| `API/models/` | **数据模型**（按业务域目录组织，组织规则见 `API/models/数据库模型创建规则.md`）：
   - `Auth/category.py`：API 服务分类树（`ApiCategory`，自关联树形结构，三级认证模式）
   - `Projects/app.py`：接入项目管理（`UserApp`，自动生成 APPID/APPSECRET）
-  - `Users/user.py`：用户中心（`User` 用户主表 + `UserToken` 登录凭证）
-  - `music.py`：音乐数据模型（`Music` 元数据 + `MusicSource` 播放源） |
+  - `Users/user.py`：用户中心（`User` 用户主表 + `UserToken` 登录凭证 + `UserVerifyRecord` 验证记录）；`Users/auth_method.py`（`AuthMethod` 认证方式开关）
+  - `Email/email_template.py`：邮件模板（`EmailTemplate`，后台自定义验证邮件）
+  - `Feedback/feedback.py`：问题反馈（`Feedback` + `FeedbackReply` 追加评论树）
+  - `Music/music.py`：音乐数据模型（`Music` 元数据 + `MusicSource` 播放源） |
 | `API/middlewares/` | **独立中间件组件**：`cloak_guard/` 请求访问策略守卫（斗篷中间件），按「类型→动作」模型对 spider/human/direct/unknown 请求差异化处理，用于 SEO 斗篷场景。默认不启用（`CLOAK_GUARD_ENABLED=False`），需要时在 settings 注册 |
 | `API/static/` | **应用内静态文件**：`API/admin/apicategory_admin.css` 后台分类页专属样式，collectstatic 自动收集，不依赖 simpleui 包内文件 |
 | `API/tests/` | 单元测试目录（如 `test_music_import.py`） |
