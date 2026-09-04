@@ -10,8 +10,8 @@
     - sign_token = HMAC-SHA256(appKey, lot_number)
     - captcha_id 为 appId，拼接在 URL 后便于日志定位
 
-凭据: appId（公开标识）/ appKey（机密签名密钥）均为代码层常量写死，
-      不占用 .env 资源；appKey 仅用于服务端生成签名，绝不下发客户端。
+凭据: appId（公开标识）/ appKey（机密签名密钥）从 .env 读取（CAPTCHA_APP_ID/CAPTCHA_APP_KEY），
+      不硬编码进代码库；appKey 仅用于服务端生成签名，绝不下发客户端。
 
 对外统一返回 (success, data_or_err) 二元组:
     - 成功: (True, dict) 已映射为业务字段（result / passed / reason / captcha_args）
@@ -19,14 +19,19 @@
 """
 import hashlib
 import hmac
+import os
 
 import requests
 
-# ── 阿里云图形认证配置（代码层写死，不占用 .env 资源） ──
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# ── 阿里云图形认证配置（.env 读取，禁止硬编码） ──
 # appId：图形认证方案管理控制台创建方案后生成（公开标识，config 接口下发前端）
-CAPTCHA_APP_ID = '296d0fabf47beeacfe50cbc01f8cd4d7'
+CAPTCHA_APP_ID = os.getenv('CAPTCHA_APP_ID', '')
 # appKey：与 appId 配套的签名密钥（机密，仅服务端生成 sign_token 用）
-CAPTCHA_APP_KEY = '37abedd5e523708f667cbe9db257908e'
+CAPTCHA_APP_KEY = os.getenv('CAPTCHA_APP_KEY', '')
 
 # 二次校验接口地址
 CAPTCHA_VALIDATE_URL = 'https://captcha.alicaptcha.com/validate'

@@ -28,6 +28,27 @@ import uuid
 from django.db import IntegrityError, models
 
 from API.common.base import BaseModel
+from API.common.credential_crypto import decrypt_credential, encrypt_credential
+
+
+class EncryptedSecretField(models.CharField):
+    """落库自动 AES 加密的 CharField（S-06 整改）
+
+    Python 侧（含 admin 表单、业务代码）读写的都是明文；
+    Django 写库时自动加密、读库时自动解密。DB dump / 备份文件中仅见 enc:v1: 密文。
+    注：SQLite 不校验列长度，密文长度可自由存放；若未来迁移 MySQL 需调整列宽。
+    """
+
+    def get_prep_value(self, value):
+        value = super().get_prep_value(value)
+        if not value or (isinstance(value, str) and value.startswith('enc:v1:')):
+            return value
+        return encrypt_credential(value)
+
+    def from_db_value(self, value, expression, connection):
+        if not value:
+            return value
+        return decrypt_credential(value)
 
 
 class UserApp(BaseModel):
@@ -37,8 +58,8 @@ class UserApp(BaseModel):
                             help_text='应用名称全局唯一，不可重复')
     app_id = models.CharField('APPID', max_length=32, unique=True, db_index=True, blank=True,
                               help_text='公开标识，系统自动生成（app_ 前缀），创建后固定')
-    app_secret = models.CharField('APPSECRET', max_length=64, blank=True,
-                                  help_text='签名密钥，系统自动生成（sk_ 前缀），HMAC-SHA256 签名用，创建后固定')
+    app_secret = EncryptedSecretField('APPSECRET', max_length=200, blank=True,
+                                      help_text='签名密钥，系统自动生成（sk_ 前缀），HMAC-SHA256 签名用，创建后固定；落库 AES 加密存储（S-06）')
     token_expire_days = models.PositiveIntegerField('Token有效天数', default=7,
                                                     help_text='该项目的登录 Token 默认有效期（天），后台可修改')
     status = models.BooleanField('启用状态', default=True, db_index=True,

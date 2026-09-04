@@ -201,9 +201,11 @@ def round2():
         ('username 纯空格', {'username': '   ', 'password': PASS}, 20001),
         ('password 空字符串', {'username': 'x', 'password': ''}, 20001),
         ('username 超长(51)', {'username': 'a' * 51, 'password': PASS}, 20002),
-        ('password 过短(5)', {'username': 'x', 'password': '12345'}, 20002),
+        ('password 过短(7)', {'username': 'x', 'password': 'abc1234'}, 20002),
         ('password 过长(65)', {'username': 'x', 'password': 'p' * 65}, 20002),
-        ('password 恰好 6 位', {'username': 'x', 'password': '123456'}, 10000),
+        ('password 纯数字(8位无字母)', {'username': 'x', 'password': '12345678'}, 20002),
+        ('password 纯字母(8位无数字)', {'username': 'x', 'password': 'abcdefgh'}, 20002),
+        ('password 恰好 8 位(字母数字混合)', {'username': 'x', 'password': 'abc12345'}, 10000),
     ]
     for name, extra, expect_code in cases:
         r = _register(app, extra.get('username'), extra.get('password'))
@@ -308,18 +310,20 @@ def round3():
     r = _response(Client().get(f'{BASE}/projects/info', {'app_id': app[0]}))
     _check('项目信息-缺签名参数', r.get('code') == 20011)
 
-    # nonce 重复（同一 nonce 重新签名后应成功——本系统 nonce 不落库，仅时间戳防重放）
+    # nonce 去重（S-05 整改：nonce 服务端落库去重，同 nonce 即使更换时间戳也必须拒绝）
     nonce = 'same-nonce'
     params = _signed(app, {'username': '重放', 'password': PASS})
     params['nonce'] = nonce
     params['sign'] = build_sign(params, app[1])  # 覆盖 nonce 后必须重算签名
     r1 = _response(Client().post(f'{BASE}/users/register', params))
+    _check('重放-首次使用 nonce 正常通过', _is_success(r1), f'code={r1.get("code")} msg={r1.get("msg")}')
     time.sleep(1)
     params2 = _signed(app, {'username': '重放', 'password': PASS})
     params2['nonce'] = nonce
     params2['sign'] = build_sign(params2, app[1])
     r2 = _response(Client().post(f'{BASE}/users/register', params2))
-    _check('重放-同 nonce 重新签名可成功(时间戳不同)', _is_success(r2), f'code={r2.get("code")} msg={r2.get("msg")}')
+    _check('重放-同 nonce 更换时间戳仍被拒', r2.get('code') == 20011 and 'nonce' in r2.get('msg', ''),
+           f'code={r2.get("code")} msg={r2.get("msg")}')
 
 
 # ───────────────────────── 第四轮：认证安全 ─────────────────────────

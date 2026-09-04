@@ -1,16 +1,31 @@
 import os
 from pathlib import Path
+
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fallback-key-change-in-production')
+# S-08 整改：SECRET_KEY 必须通过 .env 提供，拒绝公开已知兜底值
+# （SECRET_KEY 现同时用于 app_secret 密文派生密钥，缺失即视为配置错误直接退出）
+SECRET_KEY = os.getenv('SECRET_KEY')
+if not SECRET_KEY:
+    raise ImproperlyConfigured(
+        '缺少 SECRET_KEY：请在项目 .env 中配置 SECRET_KEY 后启动。'
+        '该密钥用于 Django 签名及 S-06 凭据加密派生，请使用 50+ 位随机串并妥善备份。'
+    )
 
 DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
+# S-08 整改：ALLOWED_HOSTS 缺省不再使用通配 '*'（生产必须显式声明访问域名/IP），
+# 未配置时仅允许本机回环，避免错误 Host 头被放行
+_ALLOWED_RAW = os.getenv('ALLOWED_HOSTS', '')
+if _ALLOWED_RAW:
+    ALLOWED_HOSTS = [h.strip() for h in _ALLOWED_RAW.split(',') if h.strip()]
+else:
+    ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 # 跨域设置
 SECURE_CROSS_ORIGIN_OPENER_POLICY = "None"
@@ -39,12 +54,13 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware', # 实现 Django 会话（Session）机制，维护用户服务端状态。
     'corsheaders.middleware.CorsMiddleware', # 跨域请求中间件
     'django.middleware.common.CommonMiddleware', # 用来处理如日志记录、请求计数等通用任务的中间件
-    # 'django.middleware.csrf.CsrfViewMiddleware', # 用来处理CSRF攻击的中间件
+    'API.common.middleware.ApiCsrfExemptMiddleware', # CSRF 防护（S-07 整改）：/admin/ 等非 API 页面恢复校验，/api/ 前缀豁免（走签名认证）
     'django.contrib.auth.middleware.AuthenticationMiddleware', # 认证中间件,用来处理用户认证相关的请求和响应
     'django.contrib.messages.middleware.MessageMiddleware', # 消息中间件,用来处理消息相关的请求和响应
     'django.middleware.clickjacking.XFrameOptionsMiddleware', # 用来处理点击劫持攻击的中间件
     'API.common.middleware.ApiAuthMiddleware', # API 服务认证中间件：按 ApiCategory 分类树配置决定哪些 /api/ 服务需用户中心签名认证
     'API.common.middleware.ApiJson404Middleware', # /api/ 路径未匹配路由时返回 JSON 404（兜底）
+    'API.common.middleware.ApiRequestLogMiddleware', # 请求日志（A-05）：request_id + 耗时/状态码/auth_app 落 logs/app.log，异常入 error.log
 ]
 
 
@@ -210,3 +226,60 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 110 * 1024 * 1024  # 115343360 字节
 #   ALIYUN_ACCESS_KEY_SECRET   - AccessKey Secret
 ALIYUN_ACCESS_KEY_ID = os.getenv('ALIYUN_ACCESS_KEY_ID', '')
 ALIYUN_ACCESS_KEY_SECRET = os.getenv('ALIYUN_ACCESS_KEY_SECRET', '')
+
+
+# ==================== 日志配置（A-05 整改） ====================
+# 统一结构化日志落盘：所有请求（含耗时/状态码/request_id/app）进 app.log，
+# ERROR 及以上单独分流 error.log，便于按日志文件监控错误；
+# request_id 由 ApiRequestLogMiddleware 生成并回写响应头 X-Request-Id，
+# 一次故障可通过 request_id 关联 app.log/error.log 全链路追溯。
+LOG_DIR = BASE_DIR / 'logs'
+os.makedirs(LOG_DIR, exist_ok=True)
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'standard': {
+            'format': '{asctime} [{levelname}] {name} {message}',
+            'style': '{',
+        },
+        'request': {
+            # 请求日志行：request_id 置于行首，便于按 id grep 整条链路
+            'format': '{asctime} [{levelname}] {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'standard',
+        },
+        'app_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_DIR / 'app.log',
+            'maxBytes': 10 * 1024 * 1024,
+            'backupCount': 5,
+            'encoding': 'utf-8',
+            'formatter': 'request',
+        },
+        'error_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_DIR / 'error.log',
+            'maxBytes': 10 * 1024 * 1024,
+            'backupCount': 5,
+            'encoding': 'utf-8',
+            'formatter': 'standard',
+            'level': 'ERROR',
+        },
+    },
+    'loggers': {
+        '': {
+            'handlers': ['console', 'app_file', 'error_file'],
+            'level': 'INFO',
+        },
+        # 第三方库默认 WARNING，避免刷屏
+        'django': {'level': 'WARNING'},
+    },
+}
+

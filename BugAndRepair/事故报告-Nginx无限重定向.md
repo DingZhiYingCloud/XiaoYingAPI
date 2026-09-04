@@ -10,14 +10,14 @@
 | **修复时间** | 2026-07-20 11:30 CST |
 | **影响范围** | 小影CMS 所有域名 HTTPS 访问（约 60+ 域名） |
 | **影响表现** | 浏览器访问网站时持续 301 重定向，页面无法加载，显示"重定向过多"错误 |
-| **服务器** | 192.253.235.28 (Ubuntu 22.04 Nginx) |
-| **项目路径** | `/www/wwwroot/xiaoying/小影CMS通用版本` |
+| **服务器** | {SERVER_IP} (Ubuntu 22.04 Nginx) |
+| **项目路径** | `{PROJECT_ROOT}` |
 
 ---
 
 ## 二、事故现象
 
-用户通过浏览器访问 `https://xiaoyingclub.com/xiaoying_admin/login/` 时，浏览器提示"ERR_TOO_MANY_REDIRECTS"或"重定向过多"，页面始终无法加载。
+用户通过浏览器访问 `https://{DEPLOY_DOMAIN}/xiaoying_admin/login/` 时，浏览器提示"ERR_TOO_MANY_REDIRECTS"或"重定向过多"，页面始终无法加载。
 
 ---
 
@@ -45,13 +45,13 @@ server {
 ### 3.2 触发链路
 
 ```
-用户访问 https://xiaoyingclub.com/xxx
-    → DNS 解析到 192.253.235.28
+用户访问 https://{DEPLOY_DOMAIN}/xxx
+    → DNS 解析到 {SERVER_IP}
     → Nginx 在端口 443 上接收请求
     → 进入 SSL-START 区域
     → 检查 $isRedcert != 1 → TRUE（非 .well-known 请求）
     → 执行 rewrite ^(.*)$ https://$host$1 permanent
-    → 返回 301，Location: https://xiaoyingclub.com/xxx（与原 URL 完全一致！）
+    → 返回 301，Location: https://{DEPLOY_DOMAIN}/xxx（与原 URL 完全一致！）
     → 浏览器跟随 301 重定向
     → Nginx 再次在端口 443 上接收相同请求
     → 再次命中 rewrite
@@ -99,11 +99,11 @@ server {
 
 ```bash
 # 1. 备份原配置
-cp /www/server/panel/vhost/nginx/python_小影CMS通用版本.conf \
-   /www/server/panel/vhost/nginx/python_小影CMS通用版本.conf.bak
+cp {BT_NGINX_VHOST}/python_{PROJECT_NAME}.conf \
+   {BT_NGINX_VHOST}/python_{PROJECT_NAME}.conf.bak
 
 # 2. 编辑配置，删除 SSL-START 中的 rewrite 规则
-vim /www/server/panel/vhost/nginx/python_小影CMS通用版本.conf
+vim {BT_NGINX_VHOST}/python_{PROJECT_NAME}.conf
 
 # 3. 测试配置语法
 nginx -t
@@ -116,8 +116,8 @@ nginx -s reload
 
 | 测试项目 | 结果 |
 |---------|------|
-| HTTP 访问 `http://xiaoyingclub.com` | `301 → https://...` 正常跳转 ✅ |
-| HTTPS 访问 `https://xiaoyingclub.com` | `200 OK` 无重定向 ✅ |
+| HTTP 访问 `http://{DEPLOY_DOMAIN}` | `301 → https://...` 正常跳转 ✅ |
+| HTTPS 访问 `https://{DEPLOY_DOMAIN}` | `200 OK` 无重定向 ✅ |
 | 内部 uWSGI 直接访问 `127.0.0.1:10005` | `200 OK` 服务正常 ✅ |
 
 ---
@@ -126,10 +126,10 @@ nginx -s reload
 
 | 文件 | 说明 |
 |------|------|
-| `/www/server/panel/vhost/nginx/python_小影CMS通用版本.conf` | Nginx 站点配置（已修复） |
-| `/www/server/panel/vhost/nginx/python_小影CMS通用版本.conf.bak` | 修复前的原始配置备份 |
-| `/www/wwwroot/xiaoying/小影CMS通用版本/uwsgi.ini` | uWSGI 配置（未改动） |
-| `/www/wwwroot/xiaoying/小影CMS通用版本/gunicorn_conf.py` | Gunicorn 配置（未改动） |
+| `{BT_NGINX_VHOST}/python_{PROJECT_NAME}.conf` | Nginx 站点配置（已修复） |
+| `{BT_NGINX_VHOST}/python_{PROJECT_NAME}.conf.bak` | 修复前的原始配置备份 |
+| `{PROJECT_ROOT}/uwsgi.ini` | uWSGI 配置（未改动） |
+| `{PROJECT_ROOT}/gunicorn_conf.py` | Gunicorn 配置（未改动） |
 
 ---
 
@@ -141,10 +141,10 @@ nginx -s reload
 
 ```bash
 # 测试 HTTP 响应
-curl -sI http://192.253.235.28/xiaoying_admin/login/ -H "Host: xiaoyingclub.com" -w "\nHTTP Code: %{http_code}\n"
+curl -sI http://{SERVER_IP}/xiaoying_admin/login/ -H "Host: {DEPLOY_DOMAIN}" -w "\nHTTP Code: %{http_code}\n"
 
 # 测试 HTTPS 响应
-curl -sk https://192.253.235.28/xiaoying_admin/login/ -H "Host: xiaoyingclub.com" -o /dev/null -w "HTTP Code: %{http_code}\n"
+curl -sk https://{SERVER_IP}/xiaoying_admin/login/ -H "Host: {DEPLOY_DOMAIN}" -o /dev/null -w "HTTP Code: %{http_code}\n"
 ```
 
 - 如果 HTTPS 返回 `301` 而非 `200` → rewrite 规则有误
@@ -163,7 +163,7 @@ curl -v http://127.0.0.1:10005/xiaoying_admin/login/
 
 ```bash
 # 查看站点完整配置
-cat /www/server/panel/vhost/nginx/python_*通用版本*.conf
+cat {BT_NGINX_VHOST}/python_*通用版本*.conf
 
 # 关注以下三个区域：
 # 1. SSL-START → rewrite 是否缺少端口判断
@@ -175,7 +175,7 @@ cat /www/server/panel/vhost/nginx/python_*通用版本*.conf
 
 宝塔面板的"SSL"或"强制HTTPS"设置可能会重新生成配置，覆盖手动修改。如果修改后问题复现：
 
-1. 检查配置是否被宝塔还原：`grep -n "rewrite.*permanent" /www/server/panel/vhost/nginx/python_*通用版本*.conf`
+1. 检查配置是否被宝塔还原：`grep -n "rewrite.*permanent" {BT_NGINX_VHOST}/python_*通用版本*.conf`
 2. 可在宝塔面板中关闭"强制HTTPS"，然后在 HTTP_TO_HTTPS_START 中手动配置（含端口判断的版本）
 3. 或在宝塔面板中只监听 443（不勾选 80），避免混用
 
@@ -200,11 +200,11 @@ nginx -t
 nginx -s reload
 
 # 查看 Nginx 访问日志（定位重定向行为）
-tail -f /www/wwwlogs/小影CMS通用版本.log
+tail -f {LOG_ROOT}/{PROJECT_NAME}.log
 
 # 查看 Nginx 错误日志
-tail -f /www/wwwlogs/小影CMS通用版本.error.log
+tail -f {LOG_ROOT}/{PROJECT_NAME}.error.log
 
 # 查看 uWSGI 日志（确认后端是否正常）
-tail -f /www/wwwlogs/python/小影CMS通用版本/uwsgi.log
+tail -f {LOG_ROOT}/python/{PROJECT_NAME}/uwsgi.log
 ```

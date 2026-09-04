@@ -16,16 +16,14 @@ if _SPIDER_ROOT not in sys.path:
 from ProxyIp.ProxyIP_91http.home import ProxyIP91http
 
 
-def get_91http_proxies(num: int = 10, trade_no: str = None, secret: str = None,
-                        protocol: int = None, auto_white: int = None, time: int = None,
-                        username: str = None, password: str = None) -> tuple:
+def get_91http_proxies(num: int = 10, protocol: int = None, auto_white: int = None,
+                        time: int = None, username: str = None, password: str = None) -> tuple:
     """获取 91HTTP 动态代理IP
 
-    每次调用创建新实例（Session 无状态）。
+    每次调用创建新实例（Session 无状态）。订单号/密钥由平台侧 .env 唯一持有，
+    调用方不可覆盖。
 
     :param num: 返回 IP 数量，默认 10，必须 >= 1
-    :param trade_no: 订单号，不传则使用爬虫默认值
-    :param secret: 密钥，不传则使用爬虫默认值
     :param protocol: 协议类型，1=HTTP 2=HTTPS 3=SOCKS5 4=HTTP(S)
     :param auto_white: 自动添加白名单，1=是 0=否
     :param time: 返回过期时间，1=是 0=否
@@ -36,10 +34,6 @@ def get_91http_proxies(num: int = 10, trade_no: str = None, secret: str = None,
     try:
         spider = ProxyIP91http()
         kwargs = {"num": num}
-        if trade_no:
-            kwargs["trade_no"] = trade_no
-        if secret:
-            kwargs["secret"] = secret
         if protocol is not None:
             kwargs["protocol"] = protocol
         if auto_white is not None:

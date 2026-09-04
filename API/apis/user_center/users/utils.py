@@ -23,7 +23,6 @@
 
 所有函数返回 (success, data_or_msg) 二元组，异常内部捕获，调用方无需 try/except。
 """
-import random
 import secrets
 import uuid
 from datetime import timedelta
@@ -38,14 +37,16 @@ from django.utils import timezone
 
 from API.apis.emails.v1.utils import send_email
 from API.apis.sms_verify.aliyun.utils import send_verify_code as aliyun_send_verify_code
+from API.common.credential_crypto import hash_token
+from API.common.security_guard import code_fail_exhausted
 from API.models import AuthMethod, EmailTemplate, User, UserApp, UserToken, UserVerifyRecord
 
 # 系统分配账号长度范围
 ACCOUNT_MIN_LEN = 6
 ACCOUNT_MAX_LEN = 12
 
-# 密码长度约束
-PASSWORD_MIN_LEN = 6
+# 密码长度约束（S-10 整改：最低 8 位 + 必须字母数字混合）
+PASSWORD_MIN_LEN = 8
 PASSWORD_MAX_LEN = 64
 
 # 用户名长度约束
@@ -59,6 +60,9 @@ EMAIL_VERIFY_TEMPLATE_TYPE = 'email_verify'
 
 # 重发验证码冷却时间（秒），防恶意刷信/刷短信
 VERIFY_RESEND_COOLDOWN = 60
+
+# 验证码猜解失败上限（同一验证记录错误达上限即作废，要求重发；S-03 整改）
+CODE_GUESS_MAX_FAILS = 5
 
 # ── 验证码场景（UserVerifyRecord.scene，区分验证码用途） ──
 SCENE_REGISTER = 'register'  # 两步注册意向：发码暂存（不建号），校验通过后才创建账号
@@ -154,11 +158,14 @@ def get_available_methods():
 # ==================== 基础工具 ====================
 
 def generate_account() -> str:
-    """随机生成全局唯一的纯数字账号（6-12 位，首位非 0）"""
+    """随机生成全局唯一的纯数字账号（6-12 位，首位非 0）
+
+    S-10 整改：改用 CSPRNG(secrets) 生成，避免使用可预测的 random(MT19937)。
+    """
     for _ in range(ACCOUNT_RETRY_TIMES):
-        length = random.randint(ACCOUNT_MIN_LEN, ACCOUNT_MAX_LEN)
-        first = random.choice('123456789')
-        rest = ''.join(random.choice('0123456789') for _ in range(length - 1))
+        length = secrets.randbelow(ACCOUNT_MAX_LEN - ACCOUNT_MIN_LEN + 1) + ACCOUNT_MIN_LEN
+        first = secrets.choice('123456789')
+        rest = ''.join(secrets.choice('0123456789') for _ in range(length - 1))
         account = first + rest
         if not User.objects.filter(account=account).exists():
             return account
@@ -166,8 +173,8 @@ def generate_account() -> str:
 
 
 def generate_email_code() -> str:
-    """生成 6 位数字验证码"""
-    return f'{random.randint(0, 999999):06d}'
+    """生成 6 位数字验证码（S-10 整改：secrets 提供密码学安全随机）"""
+    return f'{secrets.randbelow(1000000):06d}'
 
 
 def _validate_email(email):
@@ -236,13 +243,14 @@ def _issue_verify_record(user, method, credential, base_url='', scene=SCENE_REGI
 
     if method == METHOD_EMAIL:
         code = generate_email_code()
-        token = secrets.token_hex(16)
+        token = secrets.token_hex(16)  # 链接明文令牌（仅邮件中一次性携带）
         try:
             UserVerifyRecord.objects.create(
                 user=user, scene=scene, register_batch=register_batch,
                 username=username, password_hash=password_hash,
                 type=method, credential=credential,
-                code=code, token=token, expire_time=expire_time, is_used=False,
+                code=code, token=hash_token(token), expire_time=expire_time, is_used=False,
+                # token 落库存 SHA-256 哈希（S-06），激活时对链接令牌做同样哈希后查询
             )
         except Exception as e:
             return False, f'生成验证记录失败: {e}'
@@ -354,6 +362,9 @@ def register_user(app, username, email, phone, password, base_url=''):
         return False, '参数缺失: password(密码)'
     if not (PASSWORD_MIN_LEN <= len(password) <= PASSWORD_MAX_LEN):
         return False, f'参数格式错误: password 长度必须在 {PASSWORD_MIN_LEN}-{PASSWORD_MAX_LEN} 字符之间'
+    # S-10 整改：密码须同时包含字母与数字，避免弱口令（纯数字/纯字母拒绝）
+    if not (any(c.isalpha() for c in password) and any(c.isdigit() for c in password)):
+        return False, '参数格式错误: password 必须同时包含字母和数字'
 
     if email and not is_method_enabled(METHOD_EMAIL):
         return False, f'{METHOD_NAMES[METHOD_EMAIL]}注册方式未启用，请使用其他方式'
@@ -477,11 +488,20 @@ def login_user(app, account, email, phone, password, code=''):
         if not verify:
             return False, '验证码不存在或已使用，请先获取'
         if timezone.now() >= verify.expire_time:
+            # S-06: 过期即清空验证码，避免明文长期留存
+            UserVerifyRecord.objects.filter(pk=verify.pk).update(code='')
             return False, '验证码已过期，请重新获取'
         if verify.code != code:
+            # S-03: 同一验证记录猜解达上限即作废，要求重发（防止 6 位验证码穷举）
+            if code_fail_exhausted(f'code:{verify.pk}', CODE_GUESS_MAX_FAILS):
+                UserVerifyRecord.objects.filter(pk=verify.pk, is_used=False).update(
+                    is_used=True, code='')
+                return False, '验证码错误次数过多，请重新获取'
             return False, '验证码错误'
         try:
-            updated = UserVerifyRecord.objects.filter(pk=verify.pk, is_used=False).update(is_used=True)
+            # S-06: 校验通过一次性消费，并清空验证码明文
+            updated = UserVerifyRecord.objects.filter(pk=verify.pk, is_used=False).update(
+                is_used=True, code='')
             if updated == 0:
                 return False, '验证码不存在或已使用，请先获取'
             # 存量未验证凭证：校验通过即视为已验证（激活 + 登录一步完成）
@@ -515,14 +535,15 @@ def login_user(app, account, email, phone, password, code=''):
 
 def _issue_login_token(app, user):
     """签发绑定指定项目的 Token，返回登录成功数据"""
-    # 签发绑定项目的 Token
-    token = secrets.token_hex(32)
+    # 签发绑定项目的 Token：客户端仅在此处拿到一次明文，落库存 SHA-256 哈希（S-06）
+    raw_token = secrets.token_hex(32)
+    token_hash = hash_token(raw_token)
     expire_time = timezone.now() + timedelta(days=app.token_expire_days)
     try:
         UserToken.objects.create(
             user=user,
             app=app,
-            token=token,
+            token=token_hash,
             expire_time=expire_time,
         )
     except Exception as e:
@@ -532,7 +553,7 @@ def _issue_login_token(app, user):
         'user_id': str(user.id),
         'account': user.account,
         'username': user.username,
-        'token': token,
+        'token': raw_token,
         'expire_time': expire_time.strftime('%Y-%m-%d %H:%M:%S'),
     }
     if user.email:
@@ -698,13 +719,22 @@ def verify_by_code(app, method, credential, code):
     if not verify:
         return False, '未找到注册意向，请先提交注册并获取验证码'
     if timezone.now() >= verify.expire_time:
+        # S-06: 过期即清空验证码，避免明文长期留存
+        UserVerifyRecord.objects.filter(pk=verify.pk).update(code='')
         return False, '验证码已过期，请重新发送'
     if verify.code != code:
+        # S-03: 同一注册验证码猜解达上限即作废，要求重发
+        if code_fail_exhausted(f'code:{verify.pk}', CODE_GUESS_MAX_FAILS):
+            UserVerifyRecord.objects.filter(pk=verify.pk, is_used=False).update(
+                is_used=True, code='')
+            return False, '验证码错误次数过多，请重新获取'
         return False, '验证码错误'
 
     try:
         # 原子消费验证记录：并发下只有一个请求能把 is_used 置 True，其余判定为已使用
-        updated = UserVerifyRecord.objects.filter(pk=verify.pk, is_used=False).update(is_used=True)
+        # S-06: 消费同时清空验证码明文
+        updated = UserVerifyRecord.objects.filter(pk=verify.pk, is_used=False).update(
+            is_used=True, code='')
         if updated == 0:
             return False, '验证码不存在或已使用'
     except Exception as e:
@@ -726,7 +756,9 @@ def verify_by_token(token):
         return False, '参数缺失: token(激活链接标识)'
 
     try:
-        verify = UserVerifyRecord.objects.select_related('user').get(token=token)
+        # S-06: 链接令牌落库存哈希，此处对提交令牌做同样哈希后查询
+        verify = UserVerifyRecord.objects.select_related('user').get(
+            token=hash_token(token))
     except UserVerifyRecord.DoesNotExist:
         return False, '激活链接无效'
     except Exception as e:
@@ -739,7 +771,9 @@ def verify_by_token(token):
 
     try:
         # 原子消费：并发下只有一个请求能成功激活
-        updated = UserVerifyRecord.objects.filter(pk=verify.pk, is_used=False).update(is_used=True)
+        # S-06: 消费同时清空验证码明文
+        updated = UserVerifyRecord.objects.filter(pk=verify.pk, is_used=False).update(
+            is_used=True, code='')
         if updated == 0:
             return False, '激活链接已失效（已使用或已过期）'
     except Exception as e:
@@ -818,7 +852,8 @@ def logout_user(app, token):
         return False, '参数缺失: token'
 
     try:
-        deleted, _ = UserToken.objects.filter(app=app, token=token).delete()
+        # S-06: token 落库存哈希，退出时先哈希再按哈希删除
+        deleted, _ = UserToken.objects.filter(app=app, token=hash_token(token)).delete()
         if deleted == 0:
             return False, 'Token 不存在或不属于当前项目'
         return True, None
@@ -833,7 +868,9 @@ def _get_token_record(app, token):
         return False, '参数缺失: token'
 
     try:
-        record = UserToken.objects.select_related('user', 'app').get(app=app, token=token)
+        # S-06: token 落库存哈希，先哈希再查询
+        record = UserToken.objects.select_related('user', 'app').get(
+            app=app, token=hash_token(token))
     except UserToken.DoesNotExist:
         return False, 'Token 无效: 不存在或不属于当前项目'
     except Exception as e:

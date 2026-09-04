@@ -21,6 +21,10 @@ def _json_response(code, data=None, msg=None):
     })
 
 
+# S-09 整改：单次批量抓取 URL 数量上限
+CRAWL_BATCH_LIMIT = 10
+
+
 @require_http_methods(["GET"])
 def search_view(request):
     """
@@ -99,6 +103,12 @@ def crawl_view(request):
             return _json_response(
                 StatusCode.PARAM_VALUE_INVALID,
                 msg="参数值非法: urls 必须为非空 JSON 数组",
+            )
+        # S-09 整改：限制单次批量抓取数量，防止被当作批量内网扫描/爬取工具
+        if len(url_list) > CRAWL_BATCH_LIMIT:
+            return _json_response(
+                StatusCode.PARAM_VALUE_INVALID,
+                msg=f"参数值非法: urls 单次最多 {CRAWL_BATCH_LIMIT} 个",
             )
         results = utils.crawl_webpages_batch(url_list)
         return _json_response(StatusCode.SUCCESS, data=results)

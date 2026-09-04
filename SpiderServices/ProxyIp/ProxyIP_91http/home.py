@@ -55,9 +55,7 @@ class ProxyIP91http:
 
         :param pages: 忽略（API 无分页概念），使用 count 替代
         :param page_size: 忽略
-        :param kwargs: 可选参数，覆盖默认值:
-            - trade_no: str, 订单号
-            - secret: str, 密钥
+        :param kwargs: 可选业务参数（凭据固定取 .env 配置，禁止调用方覆盖）:
             - num: int, 返回 IP 数量（默认 10）
             - protocol: int, 协议类型（默认 1=HTTP）
             - format: str, 返回格式（默认 json）
@@ -77,10 +75,16 @@ class ProxyIP91http:
             其中 proxy 仅在传入 username+password 时生成，
             格式: http://username:password@ip:port（可直接用于 requests proxies）
         """
-        # 构建请求参数
+        if not (DEFAULT_TRADE_NO and DEFAULT_SECRET):
+            return response_dict(
+                code=1,
+                message="91HTTP 代理凭据未配置：请在 .env 设置 PROXY_91HTTP_TRADE_NO / PROXY_91HTTP_SECRET",
+                data={"proxies": [], "total": 0, "fetched": 0},
+            )
+        # 构建请求参数（trade_no/secret 固定取 .env 配置，不接收调用方覆盖）
         params = {
-            "trade_no": kwargs.get("trade_no", DEFAULT_TRADE_NO),
-            "secret": kwargs.get("secret", DEFAULT_SECRET),
+            "trade_no": DEFAULT_TRADE_NO,
+            "secret": DEFAULT_SECRET,
             "num": kwargs.get("num", 10),
             "protocol": kwargs.get("protocol", 1),
             "format": kwargs.get("format", "json"),

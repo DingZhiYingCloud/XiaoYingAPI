@@ -24,7 +24,7 @@ import re
 import time
 
 import requests
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 from .utils import (
     UA_STRING,
@@ -36,12 +36,27 @@ from .utils import (
 )
 
 # 分享文本中的 URL 提取规则（按优先级排列）
+# S-09 整改：移除「任意 URL」兜底，仅接受抖音系域名链接
 _URL_PATTERNS = [
     r"https?://v\.douyin\.com/[^\s]+",
     r"https?://www\.iesdouyin\.com/[^\s]+",
     r"https?://www\.douyin\.com/[^\s]+",
-    r"https?://\S+",  # 兜底：任意 URL
+    r"https?://douyin\.com/[^\s]+",
 ]
+
+# 抖音系域名后缀白名单（S-09 整改：短链/长链/重定向目标均须命中）
+_DOUYIN_HOST_SUFFIXES = ("douyin.com", "iesdouyin.com")
+
+
+def _host_allowed(url) -> bool:
+    """url 的 host 是否属于抖音系白名单域名（含子域）"""
+    try:
+        host = (urlparse(url).hostname or "").lower()
+    except ValueError:
+        return False
+    if not host:
+        return False
+    return any(host == s or host.endswith("." + s) for s in _DOUYIN_HOST_SUFFIXES)
 
 # 画质映射：quality_type -> 画质描述
 _QUALITY_MAP = {
@@ -161,7 +176,12 @@ class DouyinVideoAnalysis:
             return m.group(1)
 
         # 短链：跟随重定向获取真实 URL
+        # S-09 整改：目标与重定向后的域名均须属于抖音白名单，防 SSRF/抓取非抖音站点
+        if not _host_allowed(share_url):
+            raise ValueError(f"仅支持抖音系链接，已拒绝非白名单域名: {share_url[:80]}")
         resp = self.session.get(share_url, timeout=REQUEST_TIMEOUT, allow_redirects=True)
+        if not _host_allowed(resp.url):
+            raise ValueError(f"链接重定向到了非抖音域名，已中止: {resp.url[:80]}")
         m = re.search(r"/video/(\d+)", resp.url)
         if m:
             return m.group(1)

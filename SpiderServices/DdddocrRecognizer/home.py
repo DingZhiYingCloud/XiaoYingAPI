@@ -8,8 +8,8 @@ DdddocrRecognizer - 基于 ddddocr 的通用验证码识别服务
     1. OCR 文字识别（基础识别、概率输出、自定义字符范围、颜色过滤）
     2. 目标检测（检测图片中的目标位置）
     3. 滑块验证码处理（边缘匹配法、图像差异比较法）
-    4. 批量图片处理
-    5. 自定义模型导入
+    4. 自定义模型导入
+    （注：批量处理 save_debug 等能力已随 S-01 安全整改下线）
 
 使用示例:
     recognizer = DdddocrRecognizer()
@@ -38,7 +38,6 @@ _utils_module = importlib.util.module_from_spec(_UTILS_SPEC)
 _UTILS_SPEC.loader.exec_module(_utils_module)
 
 load_image = _utils_module.load_image
-save_image = _utils_module.save_image
 response_dict = _utils_module.response_dict
 
 
@@ -333,93 +332,6 @@ class DdddocrRecognizer:
         except Exception as e:
             return response_dict(code=1, message=f"滑块比较异常: {e}")
 
-    # ==================== 批量处理 ====================
-
-    def batch_ocr(
-        self,
-        image_dir: str,
-        pattern: str = "*.jpg",
-        probability: bool = False,
-        png_fix: bool = False,
-        colors: list = None,
-    ) -> dict:
-        """
-        批量 OCR 识别目录下的所有图片。
-
-        Args:
-            image_dir: 图片目录路径
-            pattern: 文件匹配模式，如 "*.jpg", "*.png", "*.jpg;*.png"
-            probability: 是否返回概率分布
-            png_fix: 是否修复透明 PNG 图片
-            colors: 颜色过滤列表
-
-        Returns:
-            dict: {"code": 0, "message": f"处理完成，成功N张", "data": {"total": N, "success": N, "failed": N, "results": [...]}}
-                每项结果: {"filename": "xxx", "result": "识别文本" 或 error信息}
-        """
-        if not os.path.isdir(image_dir):
-            return response_dict(code=1, message=f"目录不存在: {image_dir}")
-
-        # 收集所有匹配的图片文件
-        if ";" in pattern:
-            patterns = pattern.split(";")
-            files = []
-            for p in patterns:
-                files.extend(glob.glob(os.path.join(image_dir, p.strip())))
-        else:
-            files = glob.glob(os.path.join(image_dir, pattern))
-
-        if not files:
-            return response_dict(code=1, message=f"目录 {image_dir} 中未找到匹配 {pattern} 的图片")
-
-        results = []
-        success_count = 0
-        fail_count = 0
-
-        for filepath in sorted(files):
-            filename = os.path.basename(filepath)
-            ret = self.ocr(
-                filepath, probability=probability, png_fix=png_fix, colors=colors
-            )
-            if ret["code"] == 0:
-                success_count += 1
-                results.append({"filename": filename, "result": ret["data"]})
-            else:
-                fail_count += 1
-                results.append({"filename": filename, "error": ret["message"]})
-
-        return response_dict(
-            code=0,
-            message=f"处理完成，成功{success_count}张，失败{fail_count}张",
-            data={
-                "total": len(files),
-                "success": success_count,
-                "failed": fail_count,
-                "results": results,
-            },
-        )
-
-    def save_debug_image(
-        self, image_source: str | bytes, filename: str = None, save_dir: str = None
-    ) -> dict:
-        """
-        保存调试图片到本地，便于人工验证识别结果。
-
-        Args:
-            image_source: 图片来源（文件路径/URL/bytes）
-            filename: 保存的文件名，不传则自动生成
-            save_dir: 保存目录，不传则使用默认目录
-
-        Returns:
-            dict: {"code": 0, "message": "保存成功", "data": {"filepath": "..."}}
-        """
-        try:
-            image_bytes = load_image(image_source)
-            filepath = save_image(image_bytes, save_dir=save_dir, filename=filename)
-            return response_dict(code=0, message="保存成功", data={"filepath": filepath})
-        except Exception as e:
-            return response_dict(code=1, message=f"保存失败: {e}")
-
 
 # ==================== 使用示例 ====================
 
@@ -472,13 +384,8 @@ if __name__ == "__main__":
     )
     print(f"滑块匹配结果: {json.dumps(result, ensure_ascii=False, indent=2)}")
 
-    # ====== 6. 批量处理 ======
-    print("\n----- 6. 批量识别 -----")
-    result = recognizer.batch_ocr("captcha_samples", pattern="*.jpg;*.png")
-    print(f"批量结果: {json.dumps(result, ensure_ascii=False, indent=2, default=str)}")
-
-    # ====== 7. 使用 Beta 模型 ======
-    print("\n----- 7. Beta 模型 -----")
+    # ====== 6. 使用 Beta 模型 ======
+    print("\n----- 6. Beta 模型 -----")
     beta_recognizer = DdddocrRecognizer(beta=True, show_ad=False)
     result = beta_recognizer.ocr("captcha_samples/test.jpg")
     print(f"Beta 模型结果: {result}")

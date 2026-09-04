@@ -44,6 +44,7 @@ from django.utils import timezone
 
 from API.apis.feedback.utils import SUB_REPLY_FIRST_PAGE_SIZE
 from API.apis.user_center.sign import build_sign
+from API.common.credential_crypto import hash_token
 from API.models import Feedback, FeedbackReply, User, UserApp, UserToken
 
 # ───────────────────────── 测试基础设施 ─────────────────────────
@@ -104,13 +105,16 @@ def _create_user(name=None, prefix=None):
 
 
 def _issue_token(app, user, days=7):
-    """签发绑定指定项目的 Token（绕过登录接口）"""
-    token = secrets.token_hex(32)
+    """签发绑定指定项目的 Token（绕过登录接口）
+
+    S-06: user_token.token 落库存哈希，此处与生产创建逻辑保持一致
+    """
+    raw_token = secrets.token_hex(32)
     UserToken.objects.create(
-        user=user, app=app[2], token=token,
+        user=user, app=app[2], token=hash_token(raw_token),
         expire_time=timezone.now() + timedelta(days=days),
     )
-    return token
+    return raw_token
 
 
 def _response(resp):

@@ -16,6 +16,7 @@ import hashlib
 import hmac
 import time
 
+from API.common.security_guard import nonce_replayed
 from API.models.Projects.app import UserApp
 
 # 时间戳有效窗口（秒），超出即拒绝，防重放攻击
@@ -71,5 +72,9 @@ def verify_sign(params: dict):
     expect = build_sign(params, app.app_secret)
     if not hmac.compare_digest(expect, sign.lower()):
         return False, '签名校验失败: sign 不匹配'
+
+    # S-05: nonce 服务端去重（仅对签名合法的请求登记；窗口内重复即视为重放）
+    if nonce_replayed(app.app_id, nonce):
+        return False, '签名重放: nonce 在有效窗口内重复使用，请更换 nonce 后重试'
 
     return True, app

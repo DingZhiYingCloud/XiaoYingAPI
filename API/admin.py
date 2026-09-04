@@ -74,6 +74,15 @@ HIDDEN_LIST_FIELD_TYPES = (
     models.TextField,
 )
 
+# S-06 整改：敏感字段治理 —— 从列表展示/搜索中剔除，并在增改表单中排除（不可读不可改）
+# 各敏感字段在库里已是加密/哈希/一次性清空存储，后台不再直接暴露明文
+SENSITIVE_ADMIN_FIELDS = {
+    'UserApp': ('app_secret',),              # 加密存储的签名密钥
+    'User': ('password',),                   # 密码哈希（禁止在后台直接改写）
+    'UserToken': ('token',),                 # 登录 Token（哈希存储）
+    'UserVerifyRecord': ('code', 'token'),   # 验证码 / 激活令牌
+}
+
 # BaseModel 中的时间字段（见 common/base.py），自动设为只读
 TIME_FIELDS = ('create_time', 'updated_time')
 
@@ -199,6 +208,10 @@ def create_smart_admin_class(model):
                 break
 
     # 动态创建 ModelAdmin 子类
+    # S-06：剔除敏感字段（不展示列表列、不可搜索、增改表单排除，避免明文可读/可改）
+    sensitive = SENSITIVE_ADMIN_FIELDS.get(model.__name__, ())
+    list_display = [f for f in list_display if f not in sensitive]
+    search_fields = [f for f in search_fields if f not in sensitive]
     attrs = {
         '__module__': __name__,
         'list_display': list_display,
@@ -207,6 +220,8 @@ def create_smart_admin_class(model):
         'list_select_related': select_related,
         'date_hierarchy': date_hierarchy,
     }
+    if sensitive:
+        attrs['exclude'] = sensitive
     return type(
         f'{model.__name__}Admin',
         (SmartModelAdmin,),

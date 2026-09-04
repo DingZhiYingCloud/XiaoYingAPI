@@ -38,13 +38,11 @@ class ProxyIPQy:
 
         :param pages: 忽略（API 无分页概念），使用 count 替代
         :param page_size: 忽略
-        :param kwargs: 可选参数，覆盖默认值:
-            - order: str, 订单号
+        :param kwargs: 可选业务参数（凭据固定取 .env 配置，禁止调用方覆盖）:
             - num: int, 返回IP数量（默认 1）
             - sep: str, 换行符（默认 \\n）
             - type: str, 返回格式 json/text（默认 json）
             - end_time: int, 是否返回失效时间 1/0（默认 1）
-            - apikey: str, 账户 token
         :return: dict 含:
             - code: 0 成功，1 失败
             - message: 描述信息
@@ -54,14 +52,20 @@ class ProxyIPQy:
                 fetched: 返回数,
               }
         """
-        # 构建请求参数
+        if not (DEFAULT_ORDER and DEFAULT_APIKEY):
+            return response_dict(
+                code=1,
+                message="青雨代理凭据未配置：请在 .env 设置 PROXY_QY_ORDER / PROXY_QY_APIKEY",
+                data={"proxies": [], "total": 0, "fetched": 0},
+            )
+        # 构建请求参数（order/apikey 固定取 .env 配置，不接收调用方覆盖）
         params = {
-            "order": kwargs.get("order", DEFAULT_ORDER),
+            "order": DEFAULT_ORDER,
             "num": kwargs.get("num", 1),
             "sep": kwargs.get("sep", "\\n"),
             "type": kwargs.get("type", "json"),
             "end_time": kwargs.get("end_time", 1),
-            "apikey": kwargs.get("apikey", DEFAULT_APIKEY),
+            "apikey": DEFAULT_APIKEY,
         }
         # num 确保整数且 >= 1
         try:

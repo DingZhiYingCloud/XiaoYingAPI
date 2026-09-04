@@ -5,8 +5,8 @@ DdddocrRecognizer 全功能测试脚本
 1. OCR 识别（数字、字母、混合）
 2. 目标检测（用简单几何图形模拟）
 3. 滑块验证码匹配（用图形绘制模拟）
-4. 批量处理
-5. 颜色过滤
+4. 颜色过滤
+（注：批量识别 / 保存调试图片能力已随 S-01 安全整改下线，相关测试一并移除）
 """
 
 import os
@@ -388,72 +388,34 @@ def test_slider():
         print(f"  ✗ 匹配失败: {result['message']}")
 
 
-def test_batch(recognizer):
-    """测试批量处理"""
-    print("\n" + "=" * 60)
-    print("测试4: 批量 OCR 识别")
-    print("=" * 60)
-
-    # 再生成几张测试图片确保够用
-    generate_digit_captcha(text="2024")
-    generate_digit_captcha(text="8888")
-
-    result = recognizer.batch_ocr(SAMPLE_DIR, pattern="*.jpg;*.png")
-    status = "✓" if result["code"] == 0 else "✗"
-    print(f"  {status} 批量结果: ")
-    data = result.get("data", {})
-    if data:
-        print(f"    总数: {data.get('total', 0)}, 成功: {data.get('success', 0)}, 失败: {data.get('failed', 0)}")
-        for item in data.get("results", [])[:5]:
-            r = item.get("result", item.get("error", "?"))
-            if isinstance(r, dict):
-                r = r.get("text", str(r))
-            print(f"    - {item['filename']}: {r}")
-
-
-def test_save_debug(recognizer):
-    """测试保存调试图片"""
-    print("\n" + "=" * 60)
-    print("测试5: 保存调试图片")
-    print("=" * 60)
-
-    fp = os.path.join(SAMPLE_DIR, "test_digits.jpg")
-    result = recognizer.save_debug_image(fp, filename="debug_test.jpg")
-    status = "✓" if result["code"] == 0 else "✗"
-    if result["code"] == 0:
-        print(f"  {status} 保存至: {result['data']['filepath']}")
-    else:
-        print(f"  {status} 失败: {result['message']}")
-
-
 def test_error_handling():
     """测试异常处理"""
     print("\n" + "=" * 60)
-    print("测试6: 异常处理")
+    print("测试5: 异常处理")
     print("=" * 60)
 
     recognizer = DdddocrRecognizer(show_ad=False)
 
-    # 6.1 不存在的文件
-    print("\n--- 6.1 不存在的文件 ---")
+    # 5.1 不存在的文件
+    print("\n--- 5.1 不存在的文件 ---")
     result = recognizer.ocr("nonexistent_file.jpg")
     status = "✓" if result["code"] == 1 else "✗"
     print(f"  {status} 错误消息: {result['message']}")
 
-    # 6.2 空的 bytes
-    print("\n--- 6.2 空的 bytes ---")
+    # 5.2 空的 bytes
+    print("\n--- 5.2 空的 bytes ---")
     result = recognizer.ocr(b"")
     status = "✓" if result["code"] == 1 else "✗"
     print(f"  {status} 错误消息: {result['message']}")
 
-    # 6.3 不存在的目录批量识别
-    print("\n--- 6.3 不存在的目录批量识别 ---")
-    result = recognizer.batch_ocr("C:/nonexistent_dir_12345")
-    status = "✓" if result["code"] == 1 else "✗"
+    # 5.3 越权本地路径访问（S-01 安全整改验证：任意文件读已被拒绝）
+    print("\n--- 5.3 越权本地路径被拒绝 ---")
+    result = recognizer.ocr("C:/Windows/win.ini")
+    status = "✓" if result["code"] == 1 and "拒绝" in str(result["message"]) else "✗"
     print(f"  {status} 错误消息: {result['message']}")
 
-    # 6.4 检测模式未启用时调用 detect
-    print("\n--- 6.4 检测模式未启用时调用 detect ---")
+    # 5.4 检测模式未启用时调用 detect
+    print("\n--- 5.4 检测模式未启用时调用 detect ---")
     try:
         recognizer.detect("test.jpg")
         print("  ✗ 应该抛出 ValueError 但未抛出")
@@ -480,8 +442,6 @@ if __name__ == "__main__":
         recognizer = test_ocr()
         test_detection()
         test_slider()
-        test_batch(recognizer)
-        test_save_debug(recognizer)
         test_error_handling()
 
         print("\n" + "=" * 60)

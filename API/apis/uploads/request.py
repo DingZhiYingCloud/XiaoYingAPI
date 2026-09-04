@@ -50,7 +50,8 @@ def image_upload_view(request):
 
     请求方式: POST (multipart/form-data)
     表单字段:
-        file: 图片文件 (支持 jpg/jpeg/png/gif/bmp/webp/svg/ico/tiff，最大20MB)
+        file: 图片文件 (支持 jpg/jpeg/png/gif/bmp/webp/ico/tiff，最大20MB；
+              svg 因可内嵌脚本已移除，S-02 整改)
 
     返回示例 (成功):
         {
@@ -90,7 +91,8 @@ def file_upload_view(request):
 
     请求方式: POST (multipart/form-data)
     表单字段:
-        file: 任意文件 (最大100MB，无扩展名限制)
+        file: 通用文件 (支持 zip/pdf/docx/xlsx/txt，最大100MB；
+              白名单制并校验文件头，S-02 整改)
 
     返回字段同 image_upload_view，type 为 'file'。
     """

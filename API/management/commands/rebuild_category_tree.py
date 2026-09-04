@@ -57,6 +57,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         created, kept = self._build_tree()
+        # A-02：重建后使分类树进程内缓存失效，新节点/层级即时参与认证判定
+        from API.common.middleware import invalidate_api_category_cache
+        invalidate_api_category_cache()
         self.stdout.write(self.style.SUCCESS(
             f'分类树重建完成：新建 {created} 个，保留 {kept} 个'
         ))

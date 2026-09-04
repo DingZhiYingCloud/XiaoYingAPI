@@ -4,7 +4,8 @@
 - 每个分类节点对应后端 API/apis/ 下的一个服务目录，层级与 Apifox 文件夹一致
 - 认证模式三态：inherit=跟随上级、auth=需要用户中心认证、open=开放（无需认证）
 - 生效规则：请求路径按「最长前缀」匹配到分类节点后，沿父链向上取第一个非 inherit 的配置；
-  整条链全为 inherit 时默认开放（不要求认证）
+  整条链全为 inherit / 未命中任何节点时按全局默认处理（A-01 起默认「需要认证」，
+  fail-closed：新增服务在未显式配置前不可匿名访问）
 
 覆盖能力：父级设为 auth 后，可单独把某个子级设为 open，实现「父级要求认证、子级单独开放」。
 """
@@ -31,7 +32,7 @@ class ApiCategory(BaseModel):
     auth_mode = models.CharField('认证模式', max_length=10, choices=AUTH_MODE_CHOICES, default='inherit',
                                  help_text='inherit=跟随上级；auth=需要用户中心认证；open=开放（无需认证）')
     status = models.BooleanField('启用', default=True,
-                                 help_text='停用后该分类不参与匹配（恢复默认开放）')
+                                 help_text='停用后该分类不参与匹配（按全局默认处理，A-01 起默认需要认证）')
     remark = models.CharField('备注', max_length=255, blank=True)
 
     class Meta:

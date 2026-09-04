@@ -90,17 +90,3 @@ def slide_comparison(slide_image, background_image, **init_kwargs):
     r = _make_recognizer(ocr=False, det=False, **init_kwargs)
     return (r or DdddocrRecognizer(ocr=False, det=False, show_ad=False)).slide_comparison(
         slide_image, background_image)
-
-
-def batch_ocr(image_dir, pattern="*.jpg", probability=False, png_fix=False,
-              colors=None, **init_kwargs):
-    r = _make_recognizer(ocr=True, det=False, **init_kwargs)
-    return (r or DdddocrRecognizer(ocr=True, det=False, show_ad=False)).batch_ocr(
-        image_dir, pattern=pattern, probability=probability,
-        png_fix=png_fix, colors=colors)
-
-
-def save_debug_image(image_source, filename=None, save_dir=None, **init_kwargs):
-    r = _make_recognizer(ocr=True, det=False, **init_kwargs)
-    return (r or DdddocrRecognizer(ocr=True, det=False, show_ad=False)).save_debug_image(
-        image_source, filename=filename, save_dir=save_dir)

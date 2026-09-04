@@ -1,19 +1,22 @@
 # ===================== 静态资源配置开始 =====================
 location /static/ {
-    alias /www/XiaoYing/XiaoYingAPI/static/;
+    alias {XIAOYING_API_ROOT}/static/;
     expires 30d; # 浏览器缓存30天
     add_header Cache-Control "public, no-transform";
     access_log off; # 关闭静态文件日志，减少磁盘IO
 }
 location /media/ {
-    alias /www/XiaoYing/XiaoYingAPI/media/;
+    alias {XIAOYING_API_ROOT}/media/;
     expires 30d; # 浏览器缓存30天
     add_header Cache-Control "public, no-transform";
+    # S-02/S-11 安全：禁止嗅探 MIME 类型；.svg/.html/.xml/.js/.php 等可渲染文件
+    # 建议在 server 段用 map 按扩展名返回 Content-Disposition: attachment，强制下载而非内联执行
+    add_header X-Content-Type-Options nosniff;
     access_log off; # 关闭静态文件日志，减少磁盘IO
 }
 
 location = /BingSiteAuth.xml {
-    root /www/XiaoYing/SEO-I4;
+    root {SEO_ROOT};
 }
 
 # ===================== 静态资源配置结束 =====================
@@ -22,7 +25,7 @@ location = /BingSiteAuth.xml {
 
 
 # ===================== UWSGI配置开始 =====================
-static-map2 = /static=/www/wwwroot/TongHuaShun
+static-map2 = /static={TONGHUASHUN_ROOT}
 env = LANG=C.UTF-8
 
 # ===================== UWSGI配置结束 =====================

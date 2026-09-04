@@ -119,8 +119,7 @@ pip install -r requirements.txt
 # 2. 配置环境变量
 #    复制 .env 参考项，至少填写 SECRET_KEY、ALLOWED_HOSTS（见第五章）
 
-# 3. 数据库迁移（migrations 目录随代码上传，见第六章）
-python manage.py makemigrations
+# 3. 数据库迁移（migrations 目录随代码入库，见第六章；本地改模型后先 makemigrations 再 migrate）
 python manage.py migrate
 
 # 4. 收集静态文件（后台主题样式依赖，简单场景可跳过）
@@ -162,27 +161,26 @@ python manage.py runserver 0.0.0.0:10000
 
 ## 六、数据库迁移（⚠️ 部署必读）
 
-本项目模型迁移文件位于 `API/migrations/`。`.gitignore` 规则为「保留 `__init__.py`（迁移包占位，目录随代码上传）、忽略迁移文件本身」——**迁移文件不会随代码上传到服务器**，由线上 `makemigrations` 重新生成。
+模型迁移文件位于 `API/migrations/`，**随代码入库（A-05 整改）**：模型变更在本地用 `makemigrations` 生成迁移文件并提交，线上**只执行 `migrate`**，严禁在线上运行 `makemigrations`（会与代码库中的迁移集不一致，造成迁移漂移）。
 
 ```bash
-# 部署后直接执行迁移（migrations 目录与 __init__.py 已随代码上传，无需手动创建）
-python manage.py makemigrations
+# 部署后执行迁移（迁移文件已随代码入库，直接 migrate）
 python manage.py migrate
 python manage.py collectstatic --noinput
 ```
 
-> 提示：若 `makemigrations` 因环境缺失第三方模块（如 Crypto）报错，可加 `--skip-checks` 跳过检查：
-> `python manage.py makemigrations API --name <迁移名> --skip-checks`
+> 开发流程：本地修改模型 → `python manage.py makemigrations API --name <迁移名>` → 提交迁移文件 → 线上 `migrate`。
+> 存量数据回填 / 数据类操作不要写进迁移文件，使用一次性管理命令（如 `security_backfill`）。
 
 ### 分类树重建（⚠️ 新部署必执行）
 
-「API服务分类」数据由数据迁移（扫描 `API/apis/` 目录）自动生成，但 `migrations/` 目录不入库，**线上 `migrate` 只会建空表、没有分类数据**（后台分类页显示 0 条）。部署完成后执行一次重建命令即可：
+「API服务分类」数据由管理命令（扫描 `API/apis/` 目录）生成，不依赖迁移。**线上 `migrate` 只建空表、没有分类数据**（后台分类页显示 0 条），且 A-01 后新增服务默认需认证，部署完成后必须执行一次重建命令：
 
 ```bash
 python manage.py rebuild_category_tree
 ```
 
-该命令幂等、可重复执行：根据当前 `API/apis/` 目录实时扫描生成/同步分类树，不覆盖后台手动配置的认证模式与启用状态；后续新增服务目录后重新执行即可同步。
+该命令幂等、可重复执行：根据当前 `API/apis/` 目录实时扫描生成/同步分类树，不覆盖后台手动配置的认证模式与启用状态；后续新增服务目录后重新执行即可同步（执行后自动使认证缓存失效）。
 
 ---
 
@@ -204,7 +202,7 @@ python manage.py rebuild_category_tree
 | `需要认证`（auth） | 该分类下所有接口必须携带签名 |
 | `开放`（open） | 无需签名，直接访问 |
 
-**生效规则**：请求路径按「最长前缀」命中分类节点，再沿父链向上取第一个非 `跟随上级` 的配置；整条链全为继承时默认开放。
+**生效规则**：请求路径按「最长前缀」命中分类节点，再沿父链向上取第一个非 `跟随上级` 的配置；整条链全为继承 / 未命中任何节点时按全局默认处理——**默认需要认证（fail-closed，A-01）**。新增服务在后台显式配置前不可匿名访问，公开接口需显式设为 `开放`。
 
 **覆盖能力**：父级设为「需要认证」后，可单独把某个子级设为「开放」，实现「父级认证、子级开放」。
 
@@ -253,7 +251,7 @@ proxy_set_header Host $host;
 
 ### 3. 数据库迁移
 
-按第六章操作：迁移文件不入库，线上由 `makemigrations` 重新生成；部署完成后执行 `rebuild_category_tree` 重建分类树数据。
+按第六章操作：迁移文件随代码入库，线上**只执行 `migrate`**（禁止线上 `makemigrations`，避免漂移）；部署完成后执行 `rebuild_category_tree` 重建分类树数据（A-01 起新增服务默认需认证，漏建会导致接口匿名被拒）。
 
 ### 4. 静态文件与后台样式
 

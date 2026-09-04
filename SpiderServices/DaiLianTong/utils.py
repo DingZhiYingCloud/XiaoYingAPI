@@ -8,6 +8,8 @@ import os
 import time
 import requests
 
+from dotenv import load_dotenv
+
 
 # ==================== 常量配置 ====================
 
@@ -20,7 +22,9 @@ MOBILE_UAS = [
 ]
 
 API_URL = "https://server.dailiantong.com.cn/API/AppService.ashx"
-SIGN_KEY = "9c7b9399680658d308691f2acad58c0a"
+# 平台签名密钥从 .env 读取（DAILIAN_SIGN_KEY），禁止硬编码进代码库
+load_dotenv()
+SIGN_KEY = os.getenv("DAILIAN_SIGN_KEY", "") or ""
 SENSITIVE_WORDS_PATH = os.path.join(os.path.dirname(__file__), "English_Sensitive_Words_for_Order_Pos.json")
 
 

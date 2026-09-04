@@ -1,14 +1,13 @@
 """DdddocrRecognizer API 请求处理视图
 
-提供 7 个接口:
+提供 5 个接口:
     POST /api/ddddocr/ocr              OCR 文字识别
     POST /api/ddddocr/set-ranges       设置 OCR 字符范围
     POST /api/ddddocr/detect           目标检测
     POST /api/ddddocr/slide-match      滑块匹配（边缘匹配法）
     POST /api/ddddocr/slide-comparison 滑块匹配（差异比较法）
-    POST /api/ddddocr/batch-ocr        批量 OCR 识别
-    POST /api/ddddocr/save-debug       保存调试图片
 """
+# 注：batch-ocr / save-debug 接口因存在 SSRF/任意文件读写风险已于安全整改中下线（S-01）
 import json
 
 from django.http import JsonResponse
@@ -234,74 +233,7 @@ def slide_comparison_view(request):
     return _spider_json(result)
 
 
-# ==================== 6. 批量 OCR ====================
+# ==================== 已下线接口（S-01 安全整改） ====================
+# 原 batch_ocr_view / save_debug_view 存在 SSRF + 任意文件读写风险，
+# 已于安全整改（S-01）中随路由一并下线，不再提供。
 
-
-@require_http_methods(["POST"])
-def batch_ocr_view(request):
-    """批量 OCR 识别
-
-    识别指定服务器目录下所有匹配的图片文件。
-
-    参数:
-        image_dir   (必填,表单): 服务器上的图片目录路径
-        pattern     (选填,表单): 文件匹配模式，默认 "*.jpg"。
-                    支持分号分隔多个模式，如 "*.jpg;*.png"
-        probability (选填,表单): true/false，是否返回概率分布，默认 false
-        png_fix     (选填,表单): true/false，是否修复透明 PNG，默认 false
-        colors      (选填,表单): JSON 数组，颜色过滤
-        beta        (选填,表单): true/false，是否启用 Beta 模型
-    """
-    image_dir = request.POST.get("image_dir", "").strip()
-    if not image_dir:
-        return _json_response(StatusCode.PARAM_MISSING, msg="参数缺失: image_dir(图片目录路径)")
-
-    pattern = request.POST.get("pattern", "*.jpg").strip()
-    probability = request.POST.get("probability", "").strip().lower() == "true"
-    png_fix = request.POST.get("png_fix", "").strip().lower() == "true"
-
-    colors = None
-    colors_raw = request.POST.get("colors", "").strip()
-    if colors_raw:
-        try:
-            colors = json.loads(colors_raw)
-            if not isinstance(colors, list):
-                return _json_response(StatusCode.PARAM_FORMAT_ERROR,
-                                      msg="参数格式错误: colors 必须为 JSON 数组")
-        except json.JSONDecodeError:
-            return _json_response(StatusCode.PARAM_FORMAT_ERROR,
-                                  msg="参数格式错误: colors 不是合法的 JSON")
-
-    init_kwargs = _parse_init_kwargs(request)
-    result = utils.batch_ocr(image_dir, pattern=pattern, probability=probability,
-                             png_fix=png_fix, colors=colors, **init_kwargs)
-    return _spider_json(result)
-
-
-# ==================== 7. 保存调试图片 ====================
-
-
-@require_http_methods(["POST"])
-def save_debug_view(request):
-    """保存调试图片到服务器本地
-
-    将图片保存到服务器本地文件系统，便于人工验证识别结果。
-
-    参数:
-        image     (必填,file/表单): 图片文件/URL/base64
-        image_url (选填,表单): 图片URL
-        filename  (选填,表单): 保存的文件名，不传则自动生成
-        save_dir  (选填,表单): 保存目录，不传则使用默认目录
-    """
-    image = _resolve_image(request, "image", "image_url")
-    if image is None:
-        return _json_response(StatusCode.PARAM_MISSING,
-                              msg="参数缺失: image(图片文件/URL/base64)")
-
-    filename = request.POST.get("filename", "").strip() or None
-    save_dir = request.POST.get("save_dir", "").strip() or None
-
-    init_kwargs = _parse_init_kwargs(request)
-    result = utils.save_debug_image(image, filename=filename,
-                                    save_dir=save_dir, **init_kwargs)
-    return _spider_json(result)

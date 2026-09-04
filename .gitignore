@@ -43,11 +43,9 @@ TuLianVenv/
 
 unpackage/
 
-# migrations 目录：保留 __init__.py（Python 包必需，目录随代码上传），迁移文件不入库
-# 迁移文件由线上 makemigrations 生成，避免与本地冲突；数据迁移（如分类树生成）
-# 无法自动执行时，使用管理命令补充（如 python manage.py rebuild_category_tree）
-**/migrations/*
-!**/migrations/__init__.py
+# migrations 目录随代码入库（A-05 整改）：模型变更在本地 makemigrations 生成迁移并提交，
+# 线上仅执行 migrate，禁止线上 makemigrations（会与本地迁移集不一致导致漂移）
+# （__pycache__ 已由上方通用规则忽略）
 
 Test/
 

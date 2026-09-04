@@ -1,14 +1,14 @@
 """真实 HTTP 环境完整验证脚本（对运行中的服务器发真实请求）
 
 覆盖：
-    1. 开放分类无签名访问        -> 正常业务返回
+    1. open 节点（captcha 开放集成）无签名访问   -> 正常业务返回
     2. 认证分类无签名访问        -> 20011 签名参数缺失（复现用户反馈）
     3. 认证分类带正确签名访问    -> 正常业务返回
     4. 认证分类带错误签名        -> 20011 签名不匹配
     5. 认证分类带过期时间戳      -> 20011 签名过期
     6. 认证分类未注册 app_id     -> 20011 未注册
     7. 停用项目签名访问          -> 20011 停用
-    8. 开放分类带签名访问        -> 不受影响，正常返回
+    8. open 节点带签名访问       -> 不受影响，正常返回
     9. 认证分类 POST 表单带签名  -> 正常业务返回
    10. 认证分类带签名访问不存在路径 -> JSON 404（非认证错误）
 """
@@ -82,9 +82,9 @@ def main():
     print(f'真实 HTTP 验证开始 -> {BASE}')
     app = UserApp.objects.create(name=f'LIVE{int(time.time())}', token_expire_days=7, status=True)
     try:
-        # 1. 开放分类（captcha_auth 全链 inherit=默认开放）：无签名直接通过
+        # 1. 显式 open 节点（captcha_auth/aliyun 开放集成，config 供 H5 前端初始化）：无签名直接通过
         st, r = request('GET', '/api/captcha_auth/aliyun/config', sign=False)
-        check('开放分类-无签名访问正常返回', st == 200 and r.get('code') == 10000, f'st={st} r={r}')
+        check('open 节点-无签名访问正常返回', st == 200 and r.get('code') == 10000, f'st={st} r={r}')
 
         # 2. 认证分类（music 已设 auth）：无签名 -> 20011 签名参数缺失（复现用户反馈）
         st, r = request('GET', '/api/music/xiaoying/musics', sign=False)
@@ -126,9 +126,9 @@ def main():
         app.status = True
         app.save()
 
-        # 9. 开放分类带签名访问也不受影响
+        # 9. open 节点带签名访问也不受影响
         st, r = request('GET', '/api/captcha_auth/aliyun/config', app=app)
-        check('开放分类-带签名同样正常', r.get('code') == 10000, f'code={r.get("code")}')
+        check('open 节点-带签名同样正常', r.get('code') == 10000, f'code={r.get("code")}')
 
         # 10. 认证分类 POST 表单带签名：中间件放行到达业务层
         # 登录对「不存在的账号」返回 20011（业务认证失败，不暴露细节）；

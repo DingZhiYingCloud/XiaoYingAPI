@@ -16,9 +16,12 @@ import random
 import re
 import sys
 import uuid
+from urllib.parse import urljoin
 
 import requests
 from lxml import etree
+
+from API.common.url_safety import check_public_http_url
 
 # ── 静态代理IP 池 ──
 _SPIDER_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__),
@@ -34,6 +37,8 @@ SEARCH_TIMEOUT = 15
 
 # ==================== 网页抓取配置 ====================
 CRAWL_TIMEOUT = 30
+# 抓取时允许的最大手动重定向跳数（S-09 整改，逐跳做公网校验）
+CRAWL_MAX_REDIRECTS = 3
 # 黑名单（参考 bing-cn-mcp 的 blacklist.ts）
 CRAWL_BLACKLIST = [
     # 知乎
@@ -216,22 +221,44 @@ def _crawl_one(url):
 
     每次请求从静态代理池随机选取一个代理，无代理时直连。
 
+    安全约束（S-09 整改）：
+    - 目标与每一跳重定向 URL 都经公网 SSRF 校验（协议白名单 + 拒内网/回环等）；
+    - 不自动跟随重定向，改为手动逐跳校验（上限 CRAWL_MAX_REDIRECTS）。
+
     :param url: 网页 URL
     :return: tuple[bool, str] (成功/失败, 内容或错误信息)
     """
+    ok_url, url_err = check_public_http_url(url)
+    if not ok_url:
+        return False, f'目标 URL 被安全策略拒绝: {url_err}'
     if _is_url_blacklisted(url):
         return False, f"该网站在爬虫黑名单中，禁止抓取: {url}"
 
+    current = url
     try:
-        resp = requests.get(
-            url,
-            headers=_HEADERS,
-            timeout=CRAWL_TIMEOUT,
-            proxies=_get_random_proxy(),
-        )
-        resp.raise_for_status()
-        # 自动检测编码，避免 GB2312 等非 UTF-8 页面乱码
-        resp.encoding = resp.apparent_encoding
+        for _ in range(CRAWL_MAX_REDIRECTS + 1):
+            resp = requests.get(
+                current,
+                headers=_HEADERS,
+                timeout=CRAWL_TIMEOUT,
+                proxies=_get_random_proxy(),
+                allow_redirects=False,  # 逐跳手动校验，防重定向绕过
+            )
+            if resp.status_code in (301, 302, 303, 307, 308):
+                location = resp.headers.get("Location")
+                if not location:
+                    return False, "重定向响应缺少 Location 头，已中止"
+                current = urljoin(current, location)
+                ok_next, next_err = check_public_http_url(current)
+                if not ok_next:
+                    return False, f"重定向目标被安全策略拒绝: {next_err}"
+                continue
+            resp.raise_for_status()
+            # 自动检测编码，避免 GB2312 等非 UTF-8 页面乱码
+            resp.encoding = resp.apparent_encoding
+            break
+        else:
+            return False, f"重定向次数超过上限（{CRAWL_MAX_REDIRECTS} 次），已中止"
     except requests.RequestException as e:
         return False, f"抓取网页失败: {e}"
 

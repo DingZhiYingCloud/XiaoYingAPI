@@ -42,6 +42,7 @@ from django.test import Client
 from API.apis.user_center import users
 from API.apis.user_center.users import utils as user_utils
 from API.apis.user_center.sign import build_sign
+from API.common.credential_crypto import hash_token
 from API.models import AuthMethod, User, UserApp, UserVerifyRecord
 
 # ───────────────────────── 发信层 mock ─────────────────────────
@@ -330,7 +331,11 @@ def round2():
     ).order_by('-create_time').first()
     _check('意向含激活 token', bool(link and link.token))
     if link:
-        r = _response(Client().get(f'{BASE}/users/verify/email', {'token': link.token}))
+        # S-06: 激活 token 落库存哈希。模拟"邮件中携带的明文令牌"：
+        # 自行生成已知明文并落库对应哈希，再以明文走公开 GET 激活链路
+        raw_link = secrets.token_hex(16)
+        UserVerifyRecord.objects.filter(pk=link.pk).update(token=hash_token(raw_link))
+        r = _response(Client().get(f'{BASE}/users/verify/email', {'token': raw_link}))
         _check('激活链接校验后建号成功', _is_success(r), f'code={r.get("code")} msg={r.get("msg")}')
         _check('链接建号返回 account', bool((r.get('data') or {}).get('account')))
         _check('DB 已建号且邮箱已验证',

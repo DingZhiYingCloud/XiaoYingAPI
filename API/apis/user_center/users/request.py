@@ -24,6 +24,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+from API.common.security_guard import login_clear, login_fail, login_locked
 from . import utils
 
 
@@ -34,6 +35,17 @@ def _json_response(code, data=None, msg=None):
         'msg': msg or StatusCode.get_message(code),
         'data': data,
     })
+
+
+def _client_ip(request):
+    """获取客户端 IP（优先反向代理透传头，兜底 REMOTE_ADDR）"""
+    xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+    if xff:
+        return xff.split(',')[0].strip()
+    real_ip = request.META.get('HTTP_X_REAL_IP', '')
+    if real_ip:
+        return real_ip.strip()
+    return request.META.get('REMOTE_ADDR', '')
 
 
 def _parse_params(request):
@@ -140,11 +152,27 @@ def login_view(request):
       验证码免密码，校验通过后才签发 Token（需先调用 login/send 获取验证码）
     - 账号登录：account, password + 签名参数(app_id/timestamp/nonce/sign)
     成功返回绑定该项目的 Token。
+
+    防爆破（S-03 整改）：同一「项目+凭证+IP」连续失败 5 次锁定 15 分钟，
+    锁定期间返回 20040(RATE_LIMITED)；登录成功后清零失败计数。
     """
     params = _parse_params(request)
     app, resp = _require_app(request)
     if app is None:
         return resp
+
+    principal = (params.get('account') or params.get('email')
+                 or params.get('phone') or '').strip()
+    guard_key = f'login:{app.app_id}:{principal}:{_client_ip(request)}'
+
+    # 已处于锁定：直接返回限流码，不执行登录逻辑
+    locked, minutes_left = login_locked(guard_key)
+    if locked:
+        return _json_response(
+            StatusCode.RATE_LIMITED,
+            msg=f'登录失败次数过多，已临时锁定，请约 {minutes_left} 分钟后再试',
+        )
+
     ok, data = utils.login_user(
         app,
         params.get('account'),
@@ -157,7 +185,16 @@ def login_view(request):
         # 参数问题返回参数码；认证失败（账号/密码错误、封禁、验证码错误等）统一 20011，不暴露细节
         if data.startswith('参数'):
             return _fail_response(data)
+        # 认证失败计数：达上限即锁定并返回 20040（不暴露具体是哪种失败）
+        locked_now, minutes_left = login_fail(guard_key)
+        if locked_now:
+            return _json_response(
+                StatusCode.RATE_LIMITED,
+                msg=f'登录失败次数过多，已临时锁定，请约 {minutes_left} 分钟后再试',
+            )
         return _json_response(StatusCode.AUTH_FAILED, msg=data)
+
+    login_clear(guard_key)
     return _json_response(StatusCode.SUCCESS, data=data, msg='登录成功')
 
 

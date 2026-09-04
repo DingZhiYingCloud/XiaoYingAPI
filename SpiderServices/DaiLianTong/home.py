@@ -29,6 +29,8 @@ class DaiLianTongService:
 
     def __init__(self):
         self.api_url = API_URL
+        if not SIGN_KEY:
+            raise RuntimeError("DAILIAN_SIGN_KEY 未配置，请在 .env 中设置")
         self.SignKey = SIGN_KEY
         # 复用 Session 以启用 HTTP Keep-Alive，减少连接开销
         self.session = requests.Session()

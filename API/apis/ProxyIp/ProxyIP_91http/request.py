@@ -33,12 +33,10 @@ def get_91http_proxies_view(request):
     """获取 91HTTP 动态代理IP
 
     从 91HTTP API (api.91http.com) 获取国内动态代理IP。
-    支持自定义订单号、密钥、协议类型等参数。
+    订单号/密钥由平台侧 .env 唯一持有，不开放给调用方。
 
     参数:
         num        (选填, int): 返回 IP 数量，默认 10，必须 >= 1
-        trade_no   (选填, str): 订单号，默认使用配置文件中的 DEFAULT_TRADE_NO
-        secret     (选填, str): 密钥，默认使用配置文件中的 DEFAULT_SECRET
         protocol   (选填, int): 协议类型，1=HTTP 2=HTTPS 3=SOCKS5 4=HTTP(S)，默认 1
         auto_white (选填, int): 自动添加白名单，1=是 0=否，默认 1
         time       (选填, int): 返回过期时间，1=是 0=否，默认 1
@@ -53,8 +51,6 @@ def get_91http_proxies_view(request):
     """
     # ── 参数解析 ──
     num_str = request.GET.get("num", "10").strip()
-    trade_no = request.GET.get("trade_no", "").strip() or None
-    secret = request.GET.get("secret", "").strip() or None
     protocol_str = request.GET.get("protocol", "").strip() or None
     auto_white_str = request.GET.get("auto_white", "").strip() or None
     time_str = request.GET.get("time", "").strip() or None
@@ -107,8 +103,7 @@ def get_91http_proxies_view(request):
 
     # ── 调用爬虫服务 ──
     ok, data = utils.get_91http_proxies(
-        num=num, trade_no=trade_no, secret=secret,
-        protocol=protocol, auto_white=auto_white, time=time,
+        num=num, protocol=protocol, auto_white=auto_white, time=time,
         username=username, password=password,
     )
     if not ok:

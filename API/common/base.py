@@ -1,13 +1,13 @@
 from django.db import models
 
 """
-Django数据库迁移命令
-python manage.py makemigrations
-python manage.py migrate
+Django数据库迁移命令（A-05：迁移文件入库，线上仅 migrate，不在线上 makemigrations）
+本地开发模型变更：python manage.py makemigrations API --name <迁移名>
+部署执行：python manage.py migrate
 python manage.py collectstatic --noinput
 source .venv/bin/activate
 
-1P面板: pip install -r requirements.txt && python manage.py makemigrations && python manage.py migrate && python manage.py runserver 0.0.0.0:10000
+1P面板: pip install -r requirements.txt && python manage.py migrate && python manage.py runserver 0.0.0.0:10000
 """
 
 class BaseModel(models.Model):
