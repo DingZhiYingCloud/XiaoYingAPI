@@ -1,0 +1,44 @@
+{% load i18n %}
+{# 友情链接区（内容由后台/API 维护，当前为空则自动隐藏） #}
+{% include 'common_html/friend_links.html' %}
+
+{# 全站公共页脚 #}
+<footer class="footer border-t border-base-300 bg-base-200 px-6 py-10 sm:footer-horizontal">
+  <aside class="max-w-xs">
+    <div class="flex items-center gap-2">
+      <img src="/media/images/logo.png" alt="小影API" class="h-7 w-auto" />
+      <span class="text-lg font-bold">小影<span class="text-primary">API</span></span>
+    </div>
+    <p class="text-sm opacity-70">
+      {% trans "通用 API 聚合服务：统一签名认证、标准 JSON 响应，助力你的产品快速接入各类能力。" %}
+    </p>
+    <div class="flex gap-2">
+      <a class="link link-hover text-sm" href="https://b7hm6mvwv6.apifox.cn/" target="_blank" rel="noopener nofollow">{% trans "接口文档" %}</a>
+      <span class="opacity-40">|</span>
+      <a class="link link-hover text-sm" href="{% url 'website:register' %}">{% trans "免费注册" %}</a>
+    </div>
+  </aside>
+  <nav>
+    <h6 class="footer-title">{% trans "服务能力" %}</h6>
+    <a class="link link-hover" href="/#services">{% trans "用户中心" %}</a>
+    <a class="link link-hover" href="/#services">{% trans "音乐服务" %}</a>
+    <a class="link link-hover" href="/#services">{% trans "视频分析" %}</a>
+    <a class="link link-hover" href="/#services">{% trans "代理 IP" %}</a>
+  </nav>
+  <nav>
+    <h6 class="footer-title">{% trans "快速导航" %}</h6>
+    <a class="link link-hover" href="/">{% trans "首页" %}</a>
+    <a class="link link-hover" href="/docs/">{% trans "接口文档中心" %}</a>
+    <a class="link link-hover" href="/#join">{% trans "接入指南" %}</a>
+    <a class="link link-hover" href="/#faq">{% trans "常见问题" %}</a>
+    <a class="link link-hover" href="{% url 'website:login' %}">{% trans "登录" %}</a>
+  </nav>
+  <nav>
+    <h6 class="footer-title">{% trans "联系我们" %}</h6>
+    <span class="link link-hover text-sm">{% trans "微信：" %}duyanbz</span>
+    <a class="link link-hover text-sm" href="https://t.me/xiaoying1216" target="_blank" rel="noopener nofollow">Telegram</a>
+  </nav>
+</footer>
+<div class="bg-base-300/60 py-3 text-center text-xs opacity-70">
+  {% trans "小影API · 通用 API 聚合服务" %}
+</div>

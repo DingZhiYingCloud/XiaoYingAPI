@@ -13,6 +13,7 @@ from django.http import JsonResponse
 from django.middleware.csrf import CsrfViewMiddleware
 
 from API.common import StatusCode
+from API.common import api_stats
 
 
 # ==================== 分类树查询缓存（A-02 整改） ====================
@@ -42,6 +43,34 @@ def _category_nodes():
     _CATEGORY_CACHE['nodes'] = nodes
     _CATEGORY_CACHE['ts'] = now
     return nodes
+
+
+def requires_auth(path):
+    """分类树继承判定（A-01 fail-closed）—— 认证判定的唯一口径
+
+    最长前缀命中节点后，沿父链取第一个非 inherit 的模式：
+    - 命中 auth → 需要认证；命中 open → 开放
+    - 未命中任何节点 / 全链均为 inherit / 命中节点已停用 → 需要认证（安全默认）
+    分类节点经 _category_nodes() 进程内 TTL 缓存读取（A-02），后台改动即时失效。
+
+    除认证中间件外，超管「API 服务分类」页也调用本函数展示每条分类的「生效结果」，
+    保证页面展示与真实鉴权永远一致（**不要在别处复制这段判定逻辑**）。
+    """
+    nodes = _category_nodes()
+    best, best_len = None, -1
+    for node in nodes:
+        if path.startswith(node['path_prefix']) and len(node['path_prefix']) > best_len:
+            best, best_len = node, len(node['path_prefix'])
+    if best is None:
+        return True  # 未命中分类节点：fail-closed，默认需要认证
+    by_id = {node['id']: node for node in nodes}
+    seen = set()
+    while best is not None and best['id'] not in seen:
+        seen.add(best['id'])
+        if best['auth_mode'] != 'inherit':
+            return best['auth_mode'] == 'auth'
+        best = by_id.get(best['parent_id'])
+    return True  # 全为 inherit / 父链成环：fail-closed，默认需要认证
 
 
 class ApiCsrfExemptMiddleware(CsrfViewMiddleware):
@@ -77,16 +106,20 @@ class ApiJson404Middleware:
 
 
 class ApiRequestLogMiddleware:
-    """请求日志中间件（A-05 整改）
+    """请求日志中间件（A-05 整改）+ API 调用统计（A-03）
 
     为每个请求生成 request_id（UUID 前 16 位，回写响应头 X-Request-Id），
     请求结束后在 app.log 记一行 key=value 日志：
-    request_id / method / path / status / cost_ms / app(auth_app.app_id, 未认证为 '-'）。
+    request_id / method / path / status / cost_ms / app（auth_app.app_id，未认证为 '-'）。
     视图层未捕获异常就地记录完整堆栈到 error.log（同样带 request_id），
     一次故障可用 request_id 在 app.log/error.log 间全链路关联追溯。
 
-    注意：注册顺序须在 ApiAuthMiddleware 之后（读取 auth_app）、且尽量靠内层，
-    才能同时覆盖认证通过后到达视图层的请求与视图抛出的异常。
+    注册顺序要求：**必须在 ApiAuthMiddleware 之前**（即更外层）。
+    认证失败的请求由 ApiAuthMiddleware 直接返回、不会向下调用，若本中间件在内层则
+    这类请求既无日志也不进统计；放到外层后才能覆盖「认证被拒」「未匹配路由」等请求。
+    此时 request.auth_app 仍可读到——它是认证中间件在下行阶段挂到同一个 request 上的。
+
+    统计口径与写入策略见 API/common/api_stats.py。
     """
 
     _logger = logging.getLogger('api.request')
@@ -106,11 +139,17 @@ class ApiRequestLogMiddleware:
                 (time.monotonic() - start) * 1000)
             raise
         app_id = getattr(getattr(request, 'auth_app', None), 'app_id', '-')
+        cost_ms = (time.monotonic() - start) * 1000
         response['X-Request-Id'] = request.request_id
         self._logger.info(
             'request_id=%s method=%s path=%s status=%s cost_ms=%.1f app=%s',
             request.request_id, request.method, request.path, response.status_code,
-            (time.monotonic() - start) * 1000, app_id)
+            cost_ms, app_id)
+        # 调用统计（A-03）：进程内聚合 + 批量落库，见 API/common/api_stats.py。
+        # 统计失败不影响业务（模块内已兜底），仅 /api/ 请求计入；
+        # 路径取路由模板并归一参数，避免带 UUID 的接口被拆成大量行。
+        api_stats.record(api_stats.request_path(request), cost_ms,
+                         api_stats.business_code(response), app_id)
         return response
 
 
@@ -148,7 +187,7 @@ class ApiAuthMiddleware:
         if request.path.startswith('/api/'):
             # 公开 GET 路径（如邮件内激活链接、图形认证初始化）免签名
             is_public_get = request.method == 'GET' and request.path in PUBLIC_GET_PATHS
-            if not is_public_get and self._requires_auth(request.path):
+            if not is_public_get and requires_auth(request.path):
                 params = request.POST.dict()
                 params.update({k: v for k, v in request.GET.items() if k not in params})
                 from API.apis.user_center.sign import verify_sign
@@ -161,28 +200,3 @@ class ApiAuthMiddleware:
                     })
                 request.auth_app = result
         return self.get_response(request)
-
-    @staticmethod
-    def _requires_auth(path):
-        """分类树继承判定（A-01 fail-closed）
-
-        最长前缀命中节点后，沿父链取第一个非 inherit 的模式：
-        - 命中 auth → 需要认证；命中 open → 开放
-        - 未命中任何节点 / 全链均为 inherit / 命中节点已停用 → 需要认证（安全默认）
-        分类节点经 _category_nodes() 进程内 TTL 缓存读取（A-02），后台改动即时失效。
-        """
-        nodes = _category_nodes()
-        best, best_len = None, -1
-        for node in nodes:
-            if path.startswith(node['path_prefix']) and len(node['path_prefix']) > best_len:
-                best, best_len = node, len(node['path_prefix'])
-        if best is None:
-            return True  # 未命中分类节点：fail-closed，默认需要认证
-        by_id = {node['id']: node for node in nodes}
-        seen = set()
-        while best is not None and best['id'] not in seen:
-            seen.add(best['id'])
-            if best['auth_mode'] != 'inherit':
-                return best['auth_mode'] == 'auth'
-            best = by_id.get(best['parent_id'])
-        return True  # 全为 inherit / 父链成环：fail-closed，默认需要认证

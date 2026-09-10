@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@source not "./tailwindcss";
+@source not "./daisyui{,*}.mjs";
+
+/* 启用全部 daisyUI 内置主题（light/dark/…，供页头“主题”下拉切换）
+   只想要少量主题时改成：themes: light --default, dark --prefersdark, cupcake; */
+@plugin "./daisyui.mjs" {
+  themes: all;
+}
+
+/* 可选：加载/自定义主题（空体=使用内置全部主题；自定义主题写法见 https://daisyui.com/docs/themes/ ） */
+@plugin "./daisyui-theme.mjs"{
+  /* 在此处编写自定义主题 */
+}

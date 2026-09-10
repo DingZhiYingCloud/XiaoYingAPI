@@ -2,6 +2,8 @@
 
 > **⚠️ 使用说明**: 本文档中包含 `{占位符}` 的部分，需要根据实际服务器环境替换为真实值。AI 在参考本文档时，应先向用户确认这些参数再执行操作。
 
+> **本项目说明**：本文档中 `@static_fallback` 是**多域名权重项目**的静态回退方案；本项目（小影API）为**单站点**（`DEBUG=False` 时静态文件由 WhiteNoise 中间件服务，生产也可由 Nginx `location /static/` 直接 `alias` 到 `STATIC_ROOT`），如无多域名需求**无需配置** `@static_fallback`。
+
 ---
 
 ## 一、事故概述
@@ -170,6 +172,8 @@ location /media/ {
 }
 # ===================== 静态资源配置结束 =====================
 ```
+
+> **本项目（小影API）要点**：`/media/` 的 `location` 必须带 `add_header X-Content-Type-Options nosniff;`；并建议对 `.svg/.html/.xml/.js/.php` 等可渲染扩展名返回 `Content-Disposition: attachment`（与《安全评估与整改报告》S-02 / S-11 一致）。
 
 ## 七、预防措施
 

@@ -7,5 +7,9 @@ lxml
 pycryptodome
 python-dotenv 
 ddddocr
+Pillow
 httpx
 whitenoise
+
+# 仅构建期使用：把简体词条转成繁体（scripts/make_zh_hant.py），运行时不依赖
+zhconv

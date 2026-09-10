@@ -1,0 +1,197 @@
+{% extends 'template.html' %}
+{% load static i18n %}
+
+{% block title %}{% blocktrans with name=doc.name %}{{ name }} - 接口文档 - 小影API{% endblocktrans %}{% endblock %}
+{% block keywords %}{% blocktrans with name=doc.name %}{{ name }},接口文档,小影API{% endblocktrans %}{% endblock %}
+{% block description %}{{ doc.name }}：{{ doc.summary }}{% endblock %}
+
+{% block content %}
+<section class="mx-auto w-full max-w-7xl px-4 py-6 lg:py-8">
+  <div class="flex flex-col gap-6 lg:flex-row">
+
+  {# ===== 左侧服务导航（docs_menu 自动注入） ===== #}
+  {% include 'docs/_sidebar.html' %}
+
+  {# ===== 右侧内容 ===== #}
+  <div class="min-w-0 flex-1">
+
+  {# ===== 页面标题 ===== #}
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <nav class="breadcrumbs text-sm">
+        <ul>
+          <li><a href="/docs/">{% trans "接口文档" %}</a></li>
+          <li><a href="/docs/{{ doc.slug }}/">{{ doc.name }}</a></li>
+        </ul>
+      </nav>
+      <h1 class="mt-2 text-2xl font-bold sm:text-3xl">{{ doc.name }}</h1>
+      <p class="mt-2 max-w-3xl text-sm text-base-content/70">{{ doc.summary }}</p>
+      <code class="mt-2 inline-block rounded-box bg-base-200 px-2 py-1 font-mono text-xs">{{ doc.prefix }}</code>
+    </div>
+
+    {# ===== 鉴权设置卡（本机保存，服务端代签） ===== #}
+    <div id="docs-auth-card" class="card w-full max-w-md border border-base-300 bg-base-100">
+      <div class="card-body gap-3 p-4">
+        <div class="flex items-center justify-between">
+          <h2 class="card-title text-base">{% trans "鉴权设置" %}</h2>
+          <span class="badge badge-ghost badge-sm">{% trans "仅本机保存" %}</span>
+        </div>
+        <form id="docs-auth-form" novalidate>
+          {% csrf_token %}
+          <label class="fieldset-label" for="doc-app-id">APPID</label>
+          <input id="doc-app-id" type="text" class="input input-bordered w-full text-xs"
+                 placeholder="{% trans 'app_ 开头，接入项目公开标识' %}" autocomplete="off" />
+          <label class="fieldset-label mt-2" for="doc-app-secret">APPSECRET</label>
+          <input id="doc-app-secret" type="password" class="input input-bordered w-full text-xs"
+                 placeholder="{% trans 'sk_ 开头签名密钥，仅用于本次服务端代签' %}" autocomplete="off" />
+          <p class="mt-2 text-xs text-base-content/60">
+            {% trans "需要签名接口必须填写你的接入项目密钥；开放接口可留空直接调试。密钥只在发起请求时用于服务端签名，不落库、不上传到页面以外。" %}
+          </p>
+          <button type="button" id="docs-auth-save" class="btn btn-outline btn-sm mt-3 w-full">{% trans "保存到本机浏览器" %}</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {# ===== 非开放状态横幅（状态由超级管理员维护） ===== #}
+  {% if status.status != 'open' %}
+  <div class="alert alert-soft mt-4 border border-base-300 {% if status.status == 'maintenance' or status.status == 'offline' %}alert-warning{% elif status.status == 'testing' %}alert-info{% else %}alert-ghost{% endif %}">
+    <span class="badge {{ status.status_badge }} badge-sm">{{ status.status_label }}</span>
+    <span class="text-sm">
+      {% blocktrans with label=status.status_label %}该服务当前处于「{{ label }}」状态{% endblocktrans %}{% if status.status == 'maintenance' %}{% trans "，接口可能临时不可用" %}{% elif status.status == 'offline' %}{% trans "，暂不可使用" %}{% elif status.status == 'testing' %}{% trans "，功能可能不稳定" %}{% endif %}{% trans "。以下文档与调试仅供了解。" %}
+    </span>
+  </div>
+  {% endif %}
+
+  {# ===== 线路 Tab ===== #}
+  <div role="tablist" aria-label="{% trans '线路选择' %}" class="tabs tabs-box mt-6 w-fit">
+    {% for channel in doc.channels %}
+    <button type="button" role="tab" data-doc-tab="{{ channel.slug }}"
+            class="tab {% if forloop.first %}tab-active{% endif %}">{{ channel.name }}</button>
+    {% endfor %}
+  </div>
+
+  {# ===== 各线路内容 ===== #}
+  {% for channel in doc.channels %}
+  <div id="channel-{{ channel.slug }}" class="channel-panel {% if not forloop.first %}hidden{% endif %}" data-channel-panel="{{ channel.slug }}">
+    <div class="mt-4 flex flex-wrap items-center gap-2">
+      <h2 class="text-lg font-semibold">{{ channel.name }}</h2>
+      {% if channel.provider %}
+      <span class="badge badge-soft badge-secondary">{{ channel.provider }}</span>
+      {% endif %}
+      {% if channel.auth_note == 'open' %}
+      <span class="badge badge-success badge-sm">{% trans "开放 · 免签名" %}</span>
+      {% elif channel.auth_note == 'auth' %}
+      <span class="badge badge-warning badge-sm">{% trans "需签名" %}</span>
+      {% else %}
+      <span class="badge badge-ghost badge-sm">{% trans "认证：跟随上级" %}</span>
+      {% endif %}
+    </div>
+    {% if channel.note %}
+    <p class="mt-1 text-sm text-base-content/70">{{ channel.note }}</p>
+    {% endif %}
+
+    <div class="mt-4 space-y-4">
+      {% for ep in channel.endpoints %}
+      {# ---------- 端点 ---------- #}
+      <article class="card border border-base-300 bg-base-100">
+        <div class="card-body gap-3 p-4 sm:p-5">
+          <header class="flex flex-wrap items-center gap-2">
+            <span class="badge {% if ep.method == 'GET' %}badge-success{% else %}badge-info{% endif %} badge-lg font-mono">{{ ep.method }}</span>
+            <code class="break-all font-mono text-sm">{{ ep.path }}</code>
+            <span class="badge badge-soft badge-ghost badge-sm" title="{% trans '该接口历史累计调用次数（未登录也可见）' %}">
+              {% blocktrans with n=ep.call_count %}累计调用 {{ n }} 次{% endblocktrans %}
+            </span>
+          </header>
+          <div>
+            <h3 class="text-base font-semibold">{{ ep.name }}</h3>
+            {% if ep.summary %}
+            <p class="mt-0.5 text-sm text-base-content/70">{{ ep.summary }}</p>
+            {% endif %}
+          </div>
+
+          {# 参数表单 #}
+          <div class="grid gap-x-4 gap-y-3 sm:grid-cols-2">
+            {% for p in ep.params %}
+            <div class="{% if p.kind == 'textarea' or p.repeatable %}sm:col-span-2{% endif %}">
+              <label class="fieldset-label" for="param-{{ channel.slug }}-{{ ep.slug }}-{{ p.name }}">
+                {{ p.label }}
+                {% if p.required %}<span class="text-error">*</span>{% endif %}
+              </label>
+
+              {% if p.kind == 'select' %}
+              <select id="param-{{ channel.slug }}-{{ ep.slug }}-{{ p.name }}"
+                      class="select select-bordered w-full text-sm" data-param-name="{{ p.name }}">
+                {% for opt in p.options %}
+                <option value="{{ opt.value }}" {% if opt.value == p.default %}selected{% endif %}>{{ opt.label }}</option>
+                {% endfor %}
+              </select>
+              {% elif p.kind == 'file' %}
+              <input id="param-{{ channel.slug }}-{{ ep.slug }}-{{ p.name }}"
+                     type="file" class="file-input file-input-bordered w-full text-sm"
+                     data-param-name="{{ p.name }}"{% if p.accept %} accept="{{ p.accept }}"{% endif %} />
+              {% elif p.kind == 'textarea' %}
+              <textarea id="param-{{ channel.slug }}-{{ ep.slug }}-{{ p.name }}"
+                        class="textarea textarea-bordered w-full text-sm" rows="3"
+                        placeholder="{{ p.placeholder }}" data-param-name="{{ p.name }}"{% if p.repeatable %} data-repeatable="1"{% endif %}>{{ p.default }}</textarea>
+              {% else %}
+              <input id="param-{{ channel.slug }}-{{ ep.slug }}-{{ p.name }}"
+                     type="{% if p.kind == 'email' %}email{% elif p.kind == 'password' %}password{% elif p.kind == 'number' %}text{% else %}text{% endif %}"
+                     inputmode="{% if p.kind == 'number' %}numeric{% else %}text{% endif %}"
+                     class="input input-bordered w-full text-sm" placeholder="{{ p.placeholder }}"
+                     value="{{ p.default }}" data-param-name="{{ p.name }}" autocomplete="off" />
+              {% endif %}
+
+              {% if p.desc %}
+              <p class="mt-1 text-xs text-base-content/60">{{ p.desc }}</p>
+              {% endif %}
+              {% if p.repeatable %}
+              <p class="mt-0.5 text-xs text-info">{% blocktrans with hint=p.repeat_hint %}多值写法：{{ hint }}{% endblocktrans %}</p>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+
+          {% if ep.notes %}
+          <ul class="list-inside list-disc space-y-0.5 text-xs text-base-content/60">
+            {% for n in ep.notes %}
+            <li>{{ n }}</li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+
+          <div class="card-actions mt-1 flex flex-wrap items-center gap-2">
+            <button type="button" class="btn btn-primary btn-sm"
+                    data-run-endpoint data-method="{{ ep.method }}" data-path="{{ ep.path }}"
+                    data-res="{{ channel.slug }}-{{ ep.slug }}">{% trans "发送请求" %}</button>
+            <button type="button" class="btn btn-ghost btn-sm"
+                    data-clear-result data-res="{{ channel.slug }}-{{ ep.slug }}">{% trans "清空" %}</button>
+          </div>
+
+          {# 响应面板 #}
+          <div id="res-{{ channel.slug }}-{{ ep.slug }}" class="hidden"></div>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+
+  </div>{# /右侧内容 #}
+
+  </div>{# /flex #}
+</section>
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'js/site/docs.js' %}?v=20260909a"></script>
+{% if doc.slug == 'captcha_auth' %}
+{# 图形验证：在线调试中模拟“前端真实弹窗”完成验证（仅该服务需要） #}
+<script src="{% static 'js/captcha_auth/aliyun/captcha-client.js' %}?v=20260909a"></script>
+<script src="{% static 'js/site/docs_captcha.js' %}?v=20260909a"></script>
+{% elif doc.slug == 'captcha_self' %}
+{# 自研图形验证码：在线调试中弹出真实验证码弹窗完成验证（仅该服务需要） #}
+<script src="{% static 'js/captcha_auth/self/captcha-client.js' %}?v=20260910b"></script>
+<script src="{% static 'js/site/docs_captcha_self.js' %}?v=20260910b"></script>
+{% endif %}
+{% endblock %}

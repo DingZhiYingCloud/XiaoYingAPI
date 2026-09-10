@@ -15,17 +15,13 @@ location /media/ {
     access_log off; # 关闭静态文件日志，减少磁盘IO
 }
 
-location = /BingSiteAuth.xml {
-    root {SEO_ROOT};
-}
-
 # ===================== 静态资源配置结束 =====================
 
 
 
 
 # ===================== UWSGI配置开始 =====================
-static-map2 = /static={TONGHUASHUN_ROOT}
+static-map = /static={XIAOYING_API_ROOT}/static
 env = LANG=C.UTF-8
 
 # ===================== UWSGI配置结束 =====================

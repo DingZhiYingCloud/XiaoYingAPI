@@ -1,0 +1,305 @@
+{% extends 'template.html' %}
+{% load static i18n %}
+
+{% block title %}{% trans "API 调用统计 - 超级管理员 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,调用统计,API 统计" %}{% endblock %}
+{% block description %}{% trans "小影API 超级管理员：API 调用量统计看板（服务 / 接口 / 项目 / 状态码 / 耗时）。" %}{% endblock %}
+
+{% block content %}
+<section class="mx-auto w-full max-w-6xl px-4 py-6 sm:py-8">
+  <nav class="breadcrumbs text-sm">
+    <ul>
+      <li><a href="/docs/">{% trans "接口文档" %}</a></li>
+      <li><a href="{% url 'website:console_projects' %}">{% trans "超级管理员" %}</a></li>
+      <li>{% trans "调用统计" %}</li>
+    </ul>
+  </nav>
+
+  <div class="mt-2 flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold sm:text-3xl">{% trans "API 调用统计" %}</h1>
+      <p class="mt-1 text-sm text-base-content/70">
+        {% trans "按服务、接口、接入项目与结果统计调用量；数据按天聚合，写入最多延迟数秒。" %}
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="{% url 'website:console_projects' %}" class="btn btn-outline btn-sm">{% trans "接入项目" %}</a>
+      <a href="{% url 'website:console_categories' %}" class="btn btn-outline btn-sm">{% trans "API 服务分类" %}</a>
+    </div>
+  </div>
+
+  {# ===== 时间范围 ===== #}
+  <div role="tablist" class="tabs tabs-box mt-5 w-fit">
+    {% for r in range_choices %}
+    <a role="tab" href="?days={{ r }}" class="tab {% if r == days %}tab-active{% endif %}">
+      {% blocktrans %}{{ r }} 天{% endblocktrans %}
+    </a>
+    {% endfor %}
+  </div>
+
+  {# ===== 概览 ===== #}
+  <div class="stats stats-vertical mt-4 w-full border border-base-300 sm:stats-horizontal">
+    <div class="stat">
+      <div class="stat-title">{% trans "今日调用量" %}</div>
+      <div class="stat-value text-2xl">{{ today.calls }}</div>
+      <div class="stat-desc">{% blocktrans with n=days total=overview.calls %}{{ n }} 天内共 {{ total }} 次{% endblocktrans %}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-title">{% trans "成功率" %}</div>
+      <div class="stat-value text-2xl">{{ overview.success_rate }}%</div>
+      <div class="stat-desc">{% trans "成功" %} {{ overview.success }} / {% trans "失败" %} {{ overview.failed }}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-title">{% trans "平均耗时" %}</div>
+      <div class="stat-value text-2xl">{{ overview.avg_ms }}<span class="text-base font-normal"> ms</span></div>
+      <div class="stat-desc">{% trans "最大" %} {{ overview.max_ms }} ms</div>
+    </div>
+    <div class="stat">
+      <div class="stat-title">{% trans "活跃项目" %}</div>
+      <div class="stat-value text-2xl">{{ overview.active_apps }}</div>
+      <div class="stat-desc">{% trans "区间内产生过调用的接入项目数" %}</div>
+    </div>
+  </div>
+
+  {# ===== 每日趋势 ===== #}
+  <div class="card mt-5 border border-base-300 bg-base-100">
+    <div class="card-body gap-3">
+      <h2 class="card-title text-base">{% trans "每日调用量趋势" %}</h2>
+      <div class="relative h-64"><canvas id="stats-trend"></canvas></div>
+    </div>
+  </div>
+
+  <div class="mt-5 grid gap-5 lg:grid-cols-2">
+    {# ===== 服务排行 ===== #}
+    <div class="card border border-base-300 bg-base-100">
+      <div class="card-body gap-3">
+        <h2 class="card-title text-base">{% trans "服务调用排行" %}</h2>
+        {% if services %}
+        <div class="overflow-x-auto">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>{% trans "服务" %}</th>
+                <th class="text-right">{% trans "调用量" %}</th>
+                <th class="text-right">{% trans "失败" %}</th>
+                <th class="text-right">{% trans "平均" %}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in services %}
+              <tr>
+                <td>
+                  <div class="text-sm">{{ row.name }}</div>
+                  <code class="font-mono text-xs text-base-content/60">{{ row.key }}</code>
+                </td>
+                <td class="text-right font-mono">{{ row.calls }}</td>
+                <td class="text-right font-mono {% if row.failed %}text-error{% endif %}">{{ row.failed }}</td>
+                <td class="text-right font-mono">{{ row.avg_ms }} ms</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="py-6 text-center text-sm text-base-content/60">{% trans "该时间范围内暂无调用数据" %}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    {# ===== 状态码分布 ===== #}
+    <div class="card border border-base-300 bg-base-100">
+      <div class="card-body gap-3">
+        <h2 class="card-title text-base">{% trans "状态码分布" %}</h2>
+        {% if status_codes %}
+        <div class="relative h-48"><canvas id="stats-status"></canvas></div>
+        <div class="overflow-x-auto">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>{% trans "状态码" %}</th>
+                <th>{% trans "说明" %}</th>
+                <th class="text-right">{% trans "调用量" %}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in status_codes %}
+              <tr>
+                <td class="font-mono">{{ row.key }}</td>
+                <td class="text-sm">{{ row.label }}</td>
+                <td class="text-right font-mono">{{ row.calls }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="py-6 text-center text-sm text-base-content/60">{% trans "该时间范围内暂无调用数据" %}</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ===== 接口排行 ===== #}
+  <div class="card mt-5 border border-base-300 bg-base-100">
+    <div class="card-body gap-3">
+      <h2 class="card-title text-base">{% trans "接口调用排行 Top 20" %}</h2>
+      {% if endpoints %}
+      <div class="overflow-x-auto">
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>{% trans "接口路径" %}</th>
+              <th class="text-right">{% trans "调用量" %}</th>
+              <th class="text-right">{% trans "成功" %}</th>
+              <th class="text-right">{% trans "失败" %}</th>
+              <th class="text-right">{% trans "平均" %}</th>
+              <th class="text-right">{% trans "最大" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in endpoints %}
+            <tr>
+              <td><code class="font-mono text-xs">{{ row.key }}</code></td>
+              <td class="text-right font-mono">{{ row.calls }}</td>
+              <td class="text-right font-mono">{{ row.success }}</td>
+              <td class="text-right font-mono {% if row.failed %}text-error{% endif %}">{{ row.failed }}</td>
+              <td class="text-right font-mono">{{ row.avg_ms }} ms</td>
+              <td class="text-right font-mono">{{ row.max_ms }} ms</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="py-6 text-center text-sm text-base-content/60">{% trans "该时间范围内暂无调用数据" %}</p>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ===== 项目排行 ===== #}
+  <div class="card mt-5 border border-base-300 bg-base-100">
+    <div class="card-body gap-3">
+      <h2 class="card-title text-base">{% trans "接入项目调用排行 Top 20" %}</h2>
+      {% if apps %}
+      <div class="overflow-x-auto">
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>{% trans "接入项目" %}</th>
+              <th class="text-right">{% trans "调用量" %}</th>
+              <th class="text-right">{% trans "成功" %}</th>
+              <th class="text-right">{% trans "失败" %}</th>
+              <th class="text-right">{% trans "平均" %}</th>
+              <th class="text-right">{% trans "最大" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in apps %}
+            <tr>
+              <td>
+                {% if row.name %}<div class="text-sm">{{ row.name }}</div>{% endif %}
+                <code class="font-mono text-xs text-base-content/60">{{ row.key }}</code>
+              </td>
+              <td class="text-right font-mono">{{ row.calls }}</td>
+              <td class="text-right font-mono">{{ row.success }}</td>
+              <td class="text-right font-mono {% if row.failed %}text-error{% endif %}">{{ row.failed }}</td>
+              <td class="text-right font-mono">{{ row.avg_ms }} ms</td>
+              <td class="text-right font-mono">{{ row.max_ms }} ms</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="py-6 text-center text-sm text-base-content/60">{% trans "该时间范围内暂无调用数据" %}</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <p class="mt-4 text-xs text-base-content/60">
+    {% trans "统计口径：仅 /api/ 业务接口；认证被拒与未匹配路由也会计入；“开放接口 / 未认证”表示未携带有效项目签名的请求。" %}
+  </p>
+</section>
+
+{{ trend|json_script:'stats-trend-data' }}
+{{ status_codes|json_script:'stats-status-data' }}
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'js/vendor/chart.umd.min.js' %}"></script>
+<script>
+(function () {
+  'use strict';
+  if (!window.Chart) return;
+
+  var trendEl = document.getElementById('stats-trend-data');
+  var statusEl = document.getElementById('stats-status-data');
+  if (trendEl) { renderTrend(JSON.parse(trendEl.textContent)); }
+  if (statusEl) { renderStatus(JSON.parse(statusEl.textContent)); }
+
+  // 用主题变量取前景色，保证明/暗主题下坐标轴可读
+  function themeColor(name, fallback) {
+    var value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return value || fallback;
+  }
+
+  function renderTrend(trend) {
+    var canvas = document.getElementById('stats-trend');
+    if (!canvas || !trend.length) return;
+    var fg = themeColor('--color-base-content', '#555');
+    new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: trend.map(function (d) { return d.date; }),
+        datasets: [
+          {
+            label: gettext('调用量'),
+            data: trend.map(function (d) { return d.calls; }),
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59,130,246,.15)',
+            fill: true, tension: .3, borderWidth: 2, pointRadius: 2,
+          },
+          {
+            label: gettext('失败量'),
+            data: trend.map(function (d) { return d.failed; }),
+            borderColor: '#ef4444',
+            backgroundColor: 'rgba(239,68,68,.15)',
+            fill: true, tension: .3, borderWidth: 2, pointRadius: 2,
+          },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { labels: { color: fg } } },
+        scales: {
+          x: { ticks: { color: fg }, grid: { display: false } },
+          y: { beginAtZero: true, ticks: { color: fg, precision: 0 } },
+        },
+      },
+    });
+  }
+
+  function renderStatus(rows) {
+    var canvas = document.getElementById('stats-status');
+    if (!canvas || !rows.length) return;
+    var fg = themeColor('--color-base-content', '#555');
+    new Chart(canvas, {
+      type: 'doughnut',
+      data: {
+        labels: rows.map(function (r) { return r.label + ' (' + r.key + ')'; }),
+        datasets: [{
+          data: rows.map(function (r) { return r.calls; }),
+          backgroundColor: ['#3b82f6', '#f59e0b', '#ef4444', '#10b981', '#8b5cf6',
+                             '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16'],
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '55%',
+        plugins: { legend: { position: 'right', labels: { color: fg, boxWidth: 12 } } },
+      },
+    });
+  }
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,3324 @@
+# English translations for XiaoYingAPI website
+# 简体中文为源语言（msgid），本文件提供英文译文。
+# 修改后必须执行：python scripts/compile_locale.py
+#
+# 二进制文件头（空 msgid 条目）由 scripts/compile_locale.py 自动生成，此处无需手写。
+
+# ==================== 全站页头 / 导航 / 用户区（common_html/headers.html） ====================
+msgid "主导航"
+msgstr "Main navigation"
+
+msgid "主题"
+msgstr "Theme"
+
+msgid "切换主题"
+msgstr "Switch theme"
+
+msgid "切换语言"
+msgstr "Switch language"
+
+msgid "小影API 首页"
+msgstr "XiaoYingAPI Home"
+
+msgid "常见问题"
+msgstr "FAQ"
+
+msgid "打开菜单"
+msgstr "Open menu"
+
+msgid "接入向导"
+msgstr "Setup Wizard"
+
+msgid "接入指南"
+msgstr "Integration Guide"
+
+msgid "接口文档"
+msgstr "API Docs"
+
+msgid "服务能力"
+msgstr "Services"
+
+msgid "注册"
+msgstr "Sign Up"
+
+msgid "用户"
+msgstr "User"
+
+msgid "用户菜单"
+msgstr "User menu"
+
+msgid "登录"
+msgstr "Log In"
+
+msgid "账号："
+msgstr "Account: "
+
+msgid "超级管理员"
+msgstr "Super Admin"
+
+msgid "退出"
+msgstr "Log Out"
+
+msgid "退出登录"
+msgstr "Log Out"
+
+msgid "首页"
+msgstr "Home"
+
+
+# ==================== 官网首页（index.html） ====================
+msgid "一个平台，聚合 <span class=\"text-primary\">%(n)s</span>+ 类服务能力"
+msgstr "One platform, aggregating <span class=\"text-primary\">%(n)s</span>+ categories of services"
+
+msgid "使用用户名、邮箱或手机号注册小影API账号。"
+msgstr "Register a XiaoYingAPI account with a username, email, or phone number."
+
+msgid "免费注册"
+msgstr "Sign Up Free"
+
+msgid "全部接口同一响应结构"
+msgstr "Same response structure for all APIs"
+
+msgid "准备好接入小影API了吗？"
+msgstr "Ready to integrate XiaoYingAPI?"
+
+msgid "四步完成接入，其余交给小影API。"
+msgstr "Four steps to integrate — we handle the rest."
+
+msgid "如何接入"
+msgstr "How to Integrate"
+
+msgid "如何联系到小影API？"
+msgstr "How can I contact XiaoYingAPI?"
+
+msgid "安全接入"
+msgstr "Secure Access"
+
+msgid "小影API - 通用 API 聚合服务平台"
+msgstr "XiaoYingAPI - Unified API Aggregation Platform"
+
+msgid "小影API 帮你把散落各处的爬虫、数据与验证能力统一成一套 <strong class=\"text-base-content\">标准、签名安全、开箱即用</strong> 的 HTTP 接口。"
+msgstr "XiaoYingAPI turns scattered crawlers, data, and verification capabilities into a single set of <strong class=\"text-base-content\">standard, signature-secured, plug-and-play</strong> HTTP APIs."
+
+msgid "小影API 是一个通用 API 聚合服务平台，聚合音乐、视频解析、AI、代理IP、验证码、短信、邮箱、用户中心等 %(n)s 类服务能力，统一签名认证与标准 JSON 响应，即开即用。"
+msgstr "XiaoYingAPI is a Unified API Aggregation Platform that aggregates %(n)s categories of services including music, video parsing, AI, proxy IP, CAPTCHA, SMS, email, and user center, with Unified Signature Auth and Standard JSON Response — ready to use out of the box."
+
+msgid "小影API,API聚合,免费API,接口平台,视频解析,代理IP,短信验证,用户中心"
+msgstr "XiaoYingAPI,API Aggregation,Free API,API Platform,Video Parsing,Proxy IP,SMS Verification,User Center"
+
+msgid "开始接入向导"
+msgstr "Start the Setup Wizard"
+
+msgid "开始调用"
+msgstr "Start Calling"
+
+msgid "开通接入项目"
+msgstr "Create a Project"
+
+msgid "微信：duyanbz　·　Telegram：<a class=\"link link-hover text-primary\" href=\"https://t.me/xiaoying1216\" target=\"_blank\" rel=\"noopener nofollow\">@xiaoying1216</a>"
+msgstr "WeChat: duyanbz · Telegram: <a class=\"link link-hover text-primary\" href=\"https://t.me/xiaoying1216\" target=\"_blank\" rel=\"noopener nofollow\">@xiaoying1216</a>"
+
+msgid "按文档组装请求参数并完成 HMAC-SHA256 签名。"
+msgstr "Assemble the request parameters as documented and complete HMAC-SHA256 signing."
+
+msgid "接入项目由小影API管理员在后台开通并发放 APPID / APPSECRET。APPSECRET 请务必保存在你的服务端，严禁写入前端代码或提交到仓库。"
+msgstr "The Integration Project is created and issued by a XiaoYingAPI administrator in the backend, along with the APPID / APPSECRET. Always keep APPSECRET on your server — never put it in front-end code or commit it to a repository."
+
+msgid "接入项目需要自己创建吗？APPID/APPSECRET 怎么获取？"
+msgstr "Do I need to create the Integration Project myself? How do I get APPID/APPSECRET?"
+
+msgid "接口需要什么认证？"
+msgstr "What authentication do the APIs require?"
+
+msgid "是。全部接口统一返回 <code class=\"font-mono text-xs\">{\"code\": 10000, \"msg\": \"成功\", \"data\": {...}}</code>，code=10000 表示成功，2xxxx/3xxxx/4xxxx/5xxxx 分别对应客户端、业务、外部与系统错误。"
+msgstr "Yes. All APIs return <code class=\"font-mono text-xs\">{\"code\": 10000, \"msg\": \"Success\", \"data\": {...}}</code>. A code of 10000 means success, while 2xxxx/3xxxx/4xxxx/5xxxx correspond to client, business, external, and system errors respectively."
+
+msgid "服务端代管密钥"
+msgstr "Server-side Key Custody"
+
+msgid "查看接口文档"
+msgstr "View API Docs"
+
+msgid "查看文档"
+msgstr "View Docs"
+
+msgid "标准 JSON 响应"
+msgstr "Standard JSON Response"
+
+msgid "注册账号"
+msgstr "Create an Account"
+
+msgid "注册账号，开启你的通用 API 之旅。"
+msgstr "Create an account and start your unified API journey."
+
+msgid "登录成功"
+msgstr "Login successful"
+
+msgid "签名防篡改 · 防重放"
+msgstr "Tamper-proof signatures · Anti-replay"
+
+msgid "统一 <code class=\"font-mono text-xs\">{ code, msg, data }</code> 响应，解析即可用。"
+msgstr "Unified <code class=\"font-mono text-xs\">{ code, msg, data }</code> response, ready to use once parsed."
+
+msgid "统一响应格式"
+msgstr "Unified Response Format"
+
+msgid "统一签名认证"
+msgstr "Unified Signature Auth"
+
+msgid "统一规范"
+msgstr "Unified Spec"
+
+msgid "联系管理员开通接入项目，获取专属 APPID 与 APPSECRET。"
+msgstr "Contact the administrator to create a project and get your dedicated APPID and APPSECRET."
+
+msgid "聚合 %(n)s 类服务，全部统一在 <code class=\"font-mono text-sm text-primary\">/api/</code> 前缀下对外提供。"
+msgstr "Aggregates %(n)s categories of services, all exposed under the <code class=\"font-mono text-sm text-primary\">/api/</code> prefix."
+
+msgid "聚合服务"
+msgstr "Aggregated Services"
+
+msgid "返回格式是统一的吗？"
+msgstr "Is the response format consistent?"
+
+msgid "通用 API 聚合服务平台"
+msgstr "Unified API Aggregation Platform"
+
+msgid "阅读接口文档"
+msgstr "Read the API Docs"
+
+msgid "需要认证的接口须携带 app_id / timestamp / nonce / sign 四个签名参数（HMAC-SHA256，密钥为 APPSECRET）；用户中心等公开配置接口免签名，可参考接口文档中的分类配置。"
+msgstr "Authenticated APIs must carry four signature parameters — app_id / timestamp / nonce / sign (HMAC-SHA256, with APPSECRET as the key). Public configuration APIs such as the user center require no signature; refer to the category configuration in the API docs."
+
+msgid "音乐 / 视频 / AI / 代理IP ..."
+msgstr "Music / Video / AI / Proxy IP ..."
+
+
+# ==================== 接入向导（guide.html） ====================
+msgid " 步"
+msgstr " "
+
+msgid "10000=成功；20001/20002/20003=参数缺失/格式错误/值非法；20011=签名或认证失败；20040=触发频率限制（如登录连续失败被临时锁定）；40001=外部服务调用失败（请稍后重试或核对被调用的第三方资源）。"
+msgstr "10000 = Success; 20001/20002/20003 = Missing parameter / Invalid format / Illegal value; 20011 = Signature or authentication failure; 20040 = Rate limit triggered (e.g. temporarily locked after repeated login failures); 40001 = External service call failed (retry later or check the third-party resource being called)."
+
+msgid "AI 对话"
+msgstr "AI Chat"
+
+msgid "APPID 与 APPSECRET，请立即妥善保存。"
+msgstr "so save them securely right away."
+
+msgid "APPID 是公开标识；APPSECRET 是签名密钥，只应保存在你的服务端。泄露请立即联系站长重置。"
+msgstr "APPID is a public identifier; APPSECRET is the signing secret and must only be kept on your server. If it leaks, contact the site admin immediately to reset it."
+
+msgid "APPSECRET 泄露了怎么办？"
+msgstr "What if my APPSECRET is leaked?"
+
+msgid "Python 签名示例"
+msgstr "Python Signature Example"
+
+msgid "timestamp 为秒级时间戳，有效窗口 ±5 分钟；nonce 每次请求唯一（服务端去重防重放）。"
+msgstr "timestamp is a Unix timestamp in seconds with a ±5 minute validity window; nonce must be unique per request (the server deduplicates to prevent replay)."
+
+msgid "① 注册/登录"
+msgstr "① Sign Up / Log In"
+
+msgid "② 开通接入项目"
+msgstr "② Activate an Integration Project"
+
+msgid "③ 密钥使用须知"
+msgstr "③ Key Usage Notes"
+
+msgid "。"
+msgstr "."
+
+msgid "一次性展示"
+msgstr "the APPID and APPSECRET are shown only once,"
+
+msgid "上一步"
+msgstr "Previous"
+
+msgid "下一步"
+msgstr "Next"
+
+msgid "不会上传服务器。密钥只保存在你的浏览器 localStorage，仅在发起调试请求时用于服务端本次代签。"
+msgstr "No, nothing is uploaded to the server. The keys are stored only in your browser's localStorage and are used for server-side signing only when you send a debug request."
+
+msgid "严禁下发前端"
+msgstr "must never be sent to the frontend"
+
+msgid "为什么返回 code=20011？"
+msgstr "Why do I get code=20011?"
+
+msgid "仅保存在本机浏览器"
+msgstr "stored only in your local browser"
+
+msgid "代码接入生产"
+msgstr "Integrate in Production"
+
+msgid "以 APPSECRET 为密钥做"
+msgstr "Use APPSECRET as the key for"
+
+msgid "先注册小影API 账号（入口在首页右上角）。"
+msgstr "Sign up for a XiaoYingAPI account first (the entry is in the top-right corner of the home page)."
+
+msgid "先试哪个？"
+msgstr "What to Try First?"
+
+msgid "其它都交给小影API —— 统一响应"
+msgstr "Leave everything else to XiaoYingAPI — a unified response"
+
+msgid "去接口文档"
+msgstr "Go to API Docs"
+
+msgid "取"
+msgstr "Take "
+
+msgid "在你的服务端实现 HMAC-SHA256 签名，把密钥放进环境变量，绝不进前端。"
+msgstr "Implement HMAC-SHA256 signing on your server, keep the secret in environment variables and never expose it to the frontend."
+
+msgid "在接口文档填上你的密钥，页面会替你完成签名并真实转发，先验证再写代码。"
+msgstr "Enter your keys in the API Docs; the page signs the request for you and forwards it for real — verify first, then write code."
+
+msgid "在线调试"
+msgstr "Live Debug"
+
+msgid "在线调试会保存我的密钥吗？"
+msgstr "Does Live Debug store my keys?"
+
+msgid "填好参数点「发送请求」，页面服务端代调真实 /api/ 接口并返回结果；"
+msgstr "Fill in the parameters and click \"Send Request\"; the server calls the real /api/ endpoint and returns the result;"
+
+msgid "复制"
+msgstr "Copy"
+
+msgid "小影API 互动式接入向导：从注册开通到签名调用，按步骤带你完成接入。"
+msgstr "An interactive XiaoYingAPI setup wizard: from sign-up and activation to signed calls, it walks you through the integration step by step."
+
+msgid "已复制"
+msgstr "Copied"
+
+msgid "常见返回码？"
+msgstr "Common Result Codes?"
+
+msgid "开始"
+msgstr "Get Started"
+
+msgid "开放接口（徽标「开放·免签名」）无需密钥即可调试。"
+msgstr "Public Endpoints (badge \"Public · No Signature\") can be debugged without a key."
+
+msgid "当前由站长在「接入项目管理」中创建你的项目；创建后会"
+msgstr "The site admin creates your project in \"Integration Project Management\"; after creation, "
+
+msgid "形如"
+msgstr "Formatted like"
+
+msgid "怎么看接口要不要签名？"
+msgstr "How do I know whether an endpoint requires a signature?"
+
+msgid "打开"
+msgstr "Open"
+
+msgid "拼接为"
+msgstr "Concatenate into"
+
+msgid "按步骤完成注册 → 开通 → 签名 → 调试 → 上线。"
+msgstr "Complete the steps in order: Sign Up → Activate → Signature → Debug → Go Live."
+
+msgid "按键名 ASCII 升序拼接 key=value，HMAC-SHA256 输出小写 hex"
+msgstr "Sort by parameter name in ascending ASCII order, join as key=value, and output lowercase hex via HMAC-SHA256"
+
+msgid "按键名 ASCII 升序排序；"
+msgstr "Sort by parameter name in ascending ASCII order;"
+
+msgid "接入共 4 步"
+msgstr "4 Steps to Integrate"
+
+msgid "接入向导 - 小影API"
+msgstr "Setup Wizard - XiaoYingAPI"
+
+msgid "接入向导,小影API,签名,APPID"
+msgstr "Setup Wizard,XiaoYingAPI,Signature,APPID"
+
+msgid "接口文档中心"
+msgstr "API Docs Center"
+
+msgid "提示：在线调试页会自动用你填写的密钥代签，初学无需手工算签名；上生产前请务必实现与服务端一致的口径。"
+msgstr "Tip: the Live Debug page signs requests automatically with the keys you enter, so beginners don't need to compute signatures by hand; before going to production, make sure your implementation matches the server exactly."
+
+msgid "文件上传"
+msgstr "File Upload"
+
+msgid "文档服务/线路旁有徽标：「开放·免签名」直接可调；「需签名」必须携带项目签名；个别公开 GET（如用户中心 methods、图形验证 config）也免签名。"
+msgstr "Check the badge next to the docs service/line: \"Public · No Signature\" can be called directly; \"Signature Required\" must carry the project signature; a few public GET endpoints (such as user center methods and captcha config) also need no signature."
+
+msgid "注意：短信、图形验证、AI 等会真实调用外部或产生费用/短信，调试前先确认。"
+msgstr "Note: SMS, CAPTCHA and AI calls hit external services for real and may incur costs or send SMS; confirm before debugging."
+
+msgid "用户中心"
+msgstr "User Center"
+
+msgid "用户名 / 邮箱 / 手机号任意方式注册（邮箱、手机号可配开启）。"
+msgstr "Sign up with a username / email / phone number — any one works (email and phone sign-up can be enabled)."
+
+msgid "的全部参数（含 app_id/timestamp/nonce 与业务参数），过滤空值；"
+msgstr " (including app_id/timestamp/nonce and business parameters), filtering out empty values;"
+
+msgid "立即联系站长：删除该接入项目并重建，重建后会生成全新的 APPID/APPSECRET，旧密钥即刻失效。"
+msgstr "Contact the site admin immediately: delete the Integration Project and recreate it. A brand-new APPID/APPSECRET will be generated and the old key will be invalid immediately."
+
+msgid "第 "
+msgstr "Step "
+
+msgid "第 1 / 5 步"
+msgstr "Step 1 / 5"
+
+msgid "等 15 个服务均可在线调试。"
+msgstr "and 15 services in total support live debugging."
+
+msgid "签名机制"
+msgstr "Signature Mechanism"
+
+msgid "签名机制（HMAC-SHA256）"
+msgstr "Signature Mechanism (HMAC-SHA256)"
+
+msgid "签名相关失败：缺少 app_id/timestamp/nonce/sign、timestamp 超出 ±5 分钟、app_id 未注册/停用、sign 不匹配或 nonce 重放。请逐项核对公共参数与签名算法。"
+msgstr "Signature-related failure: missing app_id/timestamp/nonce/sign, timestamp outside ±5 minutes, app_id not registered or disabled, sign mismatch, or nonce replay. Check the common parameters and the signing algorithm one by one."
+
+msgid "联系站长开通「接入项目」，获得专属 APPID 与 APPSECRET。"
+msgstr "Contact the site admin to activate an Integration Project and get your dedicated APPID and APPSECRET."
+
+msgid "读文档 + 在线调试"
+msgstr "Read the Docs + Live Debug"
+
+msgid "账号与凭证"
+msgstr "Account and Credentials"
+
+msgid "账号凭证"
+msgstr "Credentials"
+
+msgid "除 sign 外"
+msgstr "all parameters except sign"
+
+msgid "需要签名（auth）的接口，每次请求都要带上公共参数："
+msgstr "Endpoints that are Signature Required (auth) must include the common parameters on every request:"
+
+msgid "页面右侧「鉴权设置」填入你的 APPID / APPSECRET（"
+msgstr "Enter your APPID / APPSECRET in \"Auth Settings\" on the right ("
+
+msgid "验证码识别"
+msgstr "CAPTCHA Recognition"
+
+msgid "，只用于服务端计算签名，"
+msgstr ", used only on the server to compute the signature, "
+
+msgid "，左侧选择目标服务；"
+msgstr ", then select the target service on the left;"
+
+msgid "，用于本次代签）；"
+msgstr ", used to sign this request);"
+
+msgid "，用于标识是哪个项目在调用，参与签名。"
+msgstr ", it identifies which project is making the call and takes part in the signature."
+
+msgid "，输出小写 hex 即 sign。"
+msgstr ", and output the lowercase hex digest as sign."
+
+msgid "；"
+msgstr ";"
+
+
+# ==================== 登录 / 注册 / 邮箱验证结果（account/*.html） ====================
+msgid "11 位手机号"
+msgstr "11-digit phone number"
+
+msgid "6 位验证码"
+msgstr "6-digit code"
+
+msgid "8-64 位，需同时包含字母和数字"
+msgstr "8-64 characters, must include both letters and numbers"
+
+msgid "两步注册：先发验证码，校验通过后才创建账号并发放账号。"
+msgstr "Two-step sign-up: the code is sent first, and your account is created and issued only after verification."
+
+msgid "创建账号"
+msgstr "Create account"
+
+msgid "去登录"
+msgstr "Log In"
+
+msgid "回到注册页重新发起注册，系统会发送新的验证邮件；"
+msgstr "Go back to the sign-up page and start over; the system will send a new verification email;"
+
+msgid "如多次尝试仍失败，请联系小影API获取帮助。"
+msgstr "If it still fails after several attempts, please contact XiaoYingAPI for help."
+
+msgid "完成注册"
+msgstr "Complete sign up"
+
+msgid "密码"
+msgstr "Password"
+
+msgid "小影API 邮箱验证结果页面。"
+msgstr "XiaoYingAPI email verification result page."
+
+msgid "已有账号？"
+msgstr "Already have an account?"
+
+msgid "您可以："
+msgstr "You can:"
+
+msgid "您的账号为"
+msgstr "Your account is"
+
+msgid "您的邮箱已通过验证"
+msgstr "Your email has been verified"
+
+msgid "手机号"
+msgstr "Phone Number"
+
+msgid "手机登录"
+msgstr "Phone Login"
+
+msgid "最多 50 个字符"
+msgstr "Up to 50 characters"
+
+msgid "欢迎回来"
+msgstr "Welcome back"
+
+msgid "注 册"
+msgstr "Sign Up"
+
+msgid "注册 - 小影API"
+msgstr "Sign Up - XiaoYingAPI"
+
+msgid "注册小影API 账号，畅用全部服务能力"
+msgstr "Sign up for a XiaoYingAPI account and enjoy all our services"
+
+msgid "注册小影API 账号：支持用户名密码、邮箱验证码、手机号验证码。两步注册先验码后发号，安全可靠。"
+msgstr "Sign up for a XiaoYingAPI account: username and password, email code, and phone code are supported. The two-step sign-up verifies the code before issuing an account, keeping it safe and reliable."
+
+msgid "注册并获取验证码"
+msgstr "Sign up and get code"
+
+msgid "注册数字账号 或 超管用户名"
+msgstr "Registered numeric account or super admin username"
+
+msgid "注册方式"
+msgstr "Sign-up method"
+
+msgid "用于展示，可不填"
+msgstr "For display only, optional"
+
+msgid "用户名"
+msgstr "Username"
+
+msgid "用户名（选填）"
+msgstr "Username (optional)"
+
+msgid "用户名：%(username)s"
+msgstr "Username: %(username)s"
+
+msgid "登 录"
+msgstr "Log In"
+
+msgid "登录 - 小影API"
+msgstr "Log In - XiaoYingAPI"
+
+msgid "登录小影API 账号"
+msgstr "Log in to your XiaoYingAPI account"
+
+msgid "登录小影API，开启通用 API 聚合服务之旅。支持账号密码、邮箱验证码、手机验证码登录。"
+msgstr "Log in to XiaoYingAPI and start your journey with the general API aggregation service. Supports account and password, email code, and phone code logins."
+
+msgid "登录方式"
+msgstr "Login Method"
+
+msgid "短信验证码"
+msgstr "SMS Code"
+
+msgid "立即注册"
+msgstr "Sign up"
+
+msgid "获取验证码"
+msgstr "Get code"
+
+msgid "请输入密码"
+msgstr "Please enter your password"
+
+msgid "账号 / 管理员账号"
+msgstr "Account / Admin account"
+
+msgid "账号是您登录的唯一凭据，请截图或抄写保存，谨防丢失。"
+msgstr "Your account is the only credential for logging in. Please screenshot or write it down and keep it safe."
+
+msgid "账号登录"
+msgstr "Account Login"
+
+msgid "返回首页"
+msgstr "Back to Home"
+
+msgid "还没有账号？"
+msgstr "Don't have an account?"
+
+msgid "邮箱"
+msgstr "Email"
+
+msgid "邮箱登录"
+msgstr "Email Login"
+
+msgid "邮箱验证失败"
+msgstr "Email verification failed"
+
+msgid "邮箱验证失败 - 小影API"
+msgstr "Email verification failed - XiaoYingAPI"
+
+msgid "邮箱验证成功"
+msgstr "Email verification successful"
+
+msgid "邮箱验证成功 - 小影API"
+msgstr "Email verification successful - XiaoYingAPI"
+
+msgid "邮箱验证码"
+msgstr "Email Code"
+
+msgid "邮箱：%(email)s（已验证）"
+msgstr "Email: %(email)s (Verified)"
+
+msgid "重新发送"
+msgstr "Resend"
+
+msgid "重新注册"
+msgstr "Sign up again"
+
+msgid "验证码将发送到你的手机，登录无需密码。"
+msgstr "The code will be sent to your phone. No password is needed to log in."
+
+msgid "验证码将发送到你的邮箱，登录无需密码。"
+msgstr "The code will be sent to your email. No password is needed to log in."
+
+msgid "验证码已发送至"
+msgstr "Verification code sent to"
+
+msgid "验证邮件中的验证码与链接仅在有效期内可用，过期请重新获取；"
+msgstr "The code and link in the verification email are valid only within the validity period; request new ones if they expire;"
+
+msgid "验证链接无效或已失效"
+msgstr "The verification link is invalid or has expired"
+
+msgid "，请查收。"
+msgstr ", please check your inbox."
+
+msgid "："
+msgstr ": "
+
+
+# ==================== 页脚与错误页（footer.html、400/404/500.html） ====================
+msgid "400,请求错误,小影API"
+msgstr "400,Request Error,XiaoYingAPI"
+
+msgid "404,页面未找到,小影API"
+msgstr "404,Page Not Found,XiaoYingAPI"
+
+msgid "500,服务器错误,小影API"
+msgstr "500,Server Error,XiaoYingAPI"
+
+msgid "代理 IP"
+msgstr "Proxy IP"
+
+msgid "小影API 400错误页面：请求无法被处理，请检查后重试或返回首页。"
+msgstr "XiaoYingAPI 400 error page: the request cannot be processed. Please check and try again or return to the home page."
+
+msgid "小影API 404错误页面：您访问的页面不存在或已被删除，请返回首页继续浏览。"
+msgstr "XiaoYingAPI 404 error page: the page you requested does not exist or has been deleted. Please return to the home page to continue browsing."
+
+msgid "小影API 500错误页面：服务器暂时开小差了，请稍后重试或返回首页继续浏览。"
+msgstr "XiaoYingAPI 500 error page: the server is temporarily unavailable. Please try again later or return to the home page to continue browsing."
+
+msgid "小影API · 通用 API 聚合服务"
+msgstr "XiaoYingAPI · Unified API Aggregation Service"
+
+msgid "微信："
+msgstr "WeChat: "
+
+msgid "快速导航"
+msgstr "Quick Links"
+
+msgid "您的请求格式有误或不被支持，请检查后重试。"
+msgstr "Your request format is invalid or unsupported. Please check and try again."
+
+msgid "您访问的页面不存在或已被移动，请检查链接是否正确。"
+msgstr "The page you requested does not exist or has been moved. Please check that the link is correct."
+
+msgid "服务器开小差了"
+msgstr "Server Error"
+
+msgid "服务器遇到一些问题，请稍后重试，或返回首页继续浏览。"
+msgstr "The server ran into some problems. Please try again later or return to the home page to continue browsing."
+
+msgid "服务器错误 - 小影API"
+msgstr "Server Error - XiaoYingAPI"
+
+msgid "联系我们"
+msgstr "Contact Us"
+
+msgid "视频分析"
+msgstr "Video Analysis"
+
+msgid "请求无法处理"
+msgstr "Unable to Process Request"
+
+msgid "请求错误 - 小影API"
+msgstr "Request Error - XiaoYingAPI"
+
+msgid "返回上一页"
+msgstr "Go Back"
+
+msgid "通用 API 聚合服务：统一签名认证、标准 JSON 响应，助力你的产品快速接入各类能力。"
+msgstr "Unified API Aggregation Service: unified signature authentication and standard JSON responses, helping your product quickly integrate various capabilities."
+
+msgid "音乐服务"
+msgstr "Music"
+
+msgid "页面未找到"
+msgstr "Page Not Found"
+
+msgid "页面未找到 - 小影API"
+msgstr "Page Not Found - XiaoYingAPI"
+
+
+# ==================== 文档中心模板外壳（docs/*.html、服务设置弹窗） ====================
+msgid "%(n)s 线路"
+msgstr "%(n)s Channels"
+
+msgid "%(name)s - 接口文档 - 小影API"
+msgstr "%(name)s - API Docs - XiaoYingAPI"
+
+msgid "%(name)s,接口文档,小影API"
+msgstr "%(name)s,API Docs,XiaoYingAPI"
+
+msgid "API 服务导航"
+msgstr "API service navigation"
+
+msgid "API文档,接口文档,小影API"
+msgstr "API Docs,API Reference,XiaoYingAPI"
+
+msgid "app_ 开头，接入项目公开标识"
+msgstr "Starts with app_: the public identifier of your project"
+
+msgid "sk_ 开头签名密钥，仅用于本次服务端代签"
+msgstr "Starts with sk_: the signing secret, used only for server-side signing"
+
+msgid "。以下文档与调试仅供了解。"
+msgstr ". The docs and debug below are for reference only."
+
+msgid "仅本机保存"
+msgstr "Stored locally only"
+
+msgid "保存到本机浏览器"
+msgstr "Save to This Browser"
+
+msgid "全部服务（共 %(total)s 个，可在线调试 %(online)s 个）"
+msgstr "All Services (%(total)s total, %(online)s available for live debug)"
+
+msgid "关闭"
+msgstr "Close"
+
+msgid "发送请求"
+msgstr "Send Request"
+
+msgid "多值写法：%(hint)s"
+msgstr "Multiple values: %(hint)s"
+
+msgid "小影API 接口文档中心：左侧导航按服务与线路查看接口参数说明，并支持在线调试。"
+msgstr "XiaoYingAPI API Docs Center: browse API parameters by service and channel in the left sidebar, with live debug support."
+
+msgid "左侧导航按「服务 → 线路」组织，点击服务名展开查看其下全部子接口，每个接口都支持<span class=\"font-medium text-primary\">参数填写与在线调试</span>。"
+msgstr "The left sidebar is organized by Service → Channel. Click a service name to expand all its child APIs; each API supports<span class=\"font-medium text-primary\"> parameter input and live debug</span>."
+
+msgid "已下线"
+msgstr "Offline"
+
+msgid "建设中"
+msgstr "Under Construction"
+
+msgid "开放"
+msgstr "Open"
+
+msgid "开放 · 免签名"
+msgstr "Available · No Signature"
+
+msgid "当前：超级管理员"
+msgstr "Current: Super Admin"
+
+msgid "接入项目管理"
+msgstr "Projects"
+
+msgid "接口文档中心 - 小影API"
+msgstr "API Docs Center - XiaoYingAPI"
+
+msgid "文档中心首页"
+msgstr "Docs Home"
+
+msgid "文档接入中"
+msgstr "Docs In Progress"
+
+msgid "新增服务/线路后，在文档注册表补充声明即可，本菜单自动更新。"
+msgstr "New services/channels appear here automatically once declared in the docs registry."
+
+msgid "服务/线路展开"
+msgstr "Expand Service/Channel"
+
+msgid "服务设置"
+msgstr "Service Settings"
+
+msgid "服务设置：%(name)s"
+msgstr "Service Settings: %(name)s"
+
+msgid "测试中"
+msgstr "Testing"
+
+msgid "清空"
+msgstr "Clear"
+
+msgid "线路选择"
+msgstr "Channel Selection"
+
+msgid "维护中"
+msgstr "Under Maintenance"
+
+msgid "认证：跟随上级"
+msgstr "Auth: Inherit from Parent"
+
+msgid "该服务当前处于「%(label)s」状态"
+msgstr "This service is currently in \"%(label)s\" status"
+
+msgid "鉴权设置"
+msgstr "Auth Settings"
+
+msgid "需签名"
+msgstr "Signature Required"
+
+msgid "需要签名接口必须填写你的接入项目密钥；开放接口可留空直接调试。密钥只在发起请求时用于服务端签名，不落库、不上传到页面以外。"
+msgstr "APIs that require a signature need your project secret; Available APIs can be debugged with the field left blank. The secret is used only for server-side signing when sending requests; it is never stored and never sent beyond this page."
+
+msgid "，功能可能不稳定"
+msgstr ", features may be unstable"
+
+msgid "，接口可能临时不可用"
+msgstr ", the API may be temporarily unavailable"
+
+msgid "，暂不可使用"
+msgstr ", currently unavailable"
+
+
+# ==================== 超级管理控制台页面（console/projects.html） ====================
+msgid "Token 有效天数"
+msgstr "Token validity (days)"
+
+msgid "Token 有效期 %(days)s 天 · 创建于 %(created)s"
+msgstr "Token valid for %(days)s days · created at %(created)s"
+
+msgid "保存修改"
+msgstr "Save Changes"
+
+msgid "创建 / 编辑 / 启停 / 删除接入项目；APPID、APPSECRET 由系统自动生成。"
+msgstr "Create, edit, enable/disable and delete projects. APPID and APPSECRET are generated automatically."
+
+msgid "删除"
+msgstr "Delete"
+
+msgid "删除后该项目的 APPID/APPSECRET 立即失效、所有 Token 作废且不可恢复，确认删除？"
+msgstr "After deletion the project's APPID/APPSECRET is revoked immediately and all tokens become invalid. This cannot be undone. Delete anyway?"
+
+msgid "删除接入项目"
+msgstr "Delete Project"
+
+msgid "启用,停用"
+msgstr "Enabled,Disabled"
+
+msgid "启用状态"
+msgstr "Status"
+
+msgid "小影API 超级管理员：接入项目（APPID/APPSECRET）增删改查管理。"
+msgstr "XiaoYingAPI Super Admin: manage projects (APPID/APPSECRET) — create, read, update and delete."
+
+msgid "应用名称"
+msgstr "Project Name"
+
+msgid "按名称 / APPID 搜索"
+msgstr "Search by name / APPID"
+
+msgid "接入项目管理 - 超级管理员 - 小影API"
+msgstr "Projects - Super Admin - XiaoYingAPI"
+
+msgid "搜索"
+msgstr "Search"
+
+msgid "新建项目"
+msgstr "New Project"
+
+msgid "新项目名称（全局唯一）"
+msgstr "New project name (must be globally unique)"
+
+msgid "暂无接入项目"
+msgstr "No projects yet"
+
+msgid "查看 APPSECRET"
+msgstr "View APPSECRET"
+
+msgid "编辑项目"
+msgstr "Edit Project"
+
+msgid "超级管理员,接入项目"
+msgstr "Super Admin,Projects"
+
+msgid "退出管理员"
+msgstr "Log Out"
+
+msgid "项目创建成功！密钥仅在此展示一次，请立即复制并妥善保存。"
+msgstr "Project created! The secret is shown only once — copy and store it safely now."
+
+msgid "（未找到与「%(keyword)s」匹配的项目）"
+msgstr "(No projects matched \"%(keyword)s\")"
+
+
+# ==================== 后端通用文案 / 服务状态 / 控制台提示 ====================
+msgid "66免费 / 91HTTP / 青雨 / 静态代理多源聚合，附带可用性验证。"
+msgstr "Multi-source aggregation of 66Free / 91HTTP / Qingyu / Static Proxy, with availability checks."
+
+msgid "AI 服务"
+msgstr "AI Service"
+
+msgid "API 服务状态"
+msgstr "API Service Status"
+
+msgid "HTTP代理"
+msgstr "HTTP Proxy"
+
+msgid "OCR识别"
+msgstr "OCR Recognition"
+
+msgid "SEO 服务"
+msgstr "SEO Service"
+
+msgid "Token 有效天数必须为正整数"
+msgstr "Token validity days must be a positive integer"
+
+msgid "Token验证"
+msgstr "Token Verification"
+
+msgid "不支持的操作"
+msgstr "Unsupported operation"
+
+msgid "临时维护，暂停使用"
+msgstr "Temporary maintenance, temporarily unavailable"
+
+msgid "代练丸子"
+msgstr "DaiLianWanZi"
+
+msgid "代练丸子数据接口封装。"
+msgstr "DaiLianWanZi data API wrapper."
+
+msgid "代练订单信息查询与操作（认证/用户/订单/头像）。"
+msgstr "Boosting order query and operations (auth / user / order / avatar)."
+
+msgid "代练通"
+msgstr "DaiLianTong"
+
+msgid "公开查询 API 调用量：某个接口被调用了多少次、各服务调用量排行。"
+msgstr "Public API call statistics: how many times each Endpoint has been called, plus a ranking of services by call volume."
+
+msgid "公开统计"
+msgstr "Public Statistics"
+
+msgid "内测/演示阶段"
+msgstr "Beta / demo stage"
+
+msgid "内置模型"
+msgstr "Built-in Models"
+
+msgid "内置模型能力，开箱即用的 AI 文本/内容接口。"
+msgstr "Built-in model capabilities; out-of-the-box AI text / content APIs."
+
+msgid "去水印"
+msgstr "Watermark Removal"
+
+msgid "友情链接"
+msgstr "Friend Links"
+
+msgid "友情链接等 SEO 周边能力，利于站点外链建设。"
+msgstr "Friendly links and other SEO-related capabilities that help build backlinks."
+
+msgid "反馈"
+msgstr "Feedback"
+
+msgid "可用性检测"
+msgstr "Availability Check"
+
+msgid "图形验证"
+msgstr "Graphic CAPTCHA"
+
+msgid "基于 ddddocr 的通用图片验证码识别服务。"
+msgstr "General-purpose image CAPTCHA recognition service powered by ddddocr."
+
+msgid "字符验证码"
+msgstr "Character CAPTCHA"
+
+msgid "安全下载"
+msgstr "Secure Download"
+
+msgid "尚未开放"
+msgstr "Not yet available"
+
+msgid "工单"
+msgstr "Ticket"
+
+msgid "已恢复默认状态（%(label)s）"
+msgstr "Restored to default state (%(label)s)"
+
+msgid "已恢复默认（%(label)s）"
+msgstr "Restored to default (%(label)s)"
+
+msgid "已更新为「%(label)s」"
+msgstr "Updated to \"%(label)s\""
+
+msgid "应用名称已存在，请更换"
+msgstr "Application name already exists, please use another one."
+
+msgid "抖音等短视频解析，无水印提取视频/图文内容。"
+msgstr "Short-video parsing for Douyin and more; extract watermark-free videos / image-text content."
+
+msgid "抖音解析"
+msgstr "Douyin Parser"
+
+msgid "播放源"
+msgstr "Playback Source"
+
+msgid "数据查询"
+msgstr "Data Query"
+
+msgid "文本生成"
+msgstr "Text Generation"
+
+msgid "服务下线，不可用"
+msgstr "Service retired, unavailable"
+
+msgid "未知的服务"
+msgstr "Unknown service"
+
+msgid "本地生成"
+msgstr "Locally Rendered"
+
+msgid "榜单"
+msgstr "Rankings"
+
+msgid "正常对外可用"
+msgstr "Available for public use"
+
+msgid "注册登录"
+msgstr "Sign Up / Log In"
+
+msgid "游戏代练"
+msgstr "Game Boosting"
+
+msgid "滑块验证"
+msgstr "Slider CAPTCHA"
+
+msgid "爬虫环境验证（SV4759），识别自动化环境。"
+msgstr "Spider environment verification (SV4759) that detects automated environments."
+
+msgid "爬虫验证"
+msgstr "Spider Verification"
+
+msgid "环境检测"
+msgstr "Environment Detection"
+
+msgid "短信验证"
+msgstr "SMS Verification"
+
+msgid "算术验证码"
+msgstr "Arithmetic CAPTCHA"
+
+msgid "统一认证"
+msgstr "Unified Authentication"
+
+msgid "统一认证中心（UAC）：全局用户池，账号/邮箱/手机号注册登录，Token 签发与验证，多方式可配。"
+msgstr "Unified Authentication Center (UAC): a global user pool with account / email / phone sign-up and login, Token issuance and verification, and multiple configurable methods."
+
+msgid "聚合爱听音乐网（2t58）与小影音乐，提供搜索、榜单、播放源等能力。"
+msgstr "Aggregates Aiting Music (2t58) and XiaoYing Music, offering search, rankings, playback source and more."
+
+msgid "自定义该服务的对外状态（开放/测试中/维护中/建设中/已下线），同步官网首页与文档中心。"
+msgstr "Customize the public status of this service (Open / Testing / Under Maintenance / Under Construction / Offline), synced across the homepage and the docs center."
+
+msgid "自研图形验证码"
+msgstr "Self-developed CAPTCHA"
+
+msgid "自研字符图片 / 算术验证码，本地绘制、无第三方依赖，答案一次性校验。"
+msgstr "Self-developed character-image / arithmetic CAPTCHA, rendered locally with no third-party dependency; each answer is validated only once."
+
+msgid "虚拟邮箱"
+msgstr "Virtual Mailbox"
+
+msgid "行为验证"
+msgstr "Behavior Verification"
+
+msgid "订单查询"
+msgstr "Order Query"
+
+msgid "请填写应用名称"
+msgstr "Please enter an application name"
+
+msgid "调用统计"
+msgstr "Call Statistics"
+
+msgid "调用量"
+msgstr "Call Volume"
+
+msgid "通用文件上传，统一接入与安全响应头处理。"
+msgstr "General-purpose file upload with unified integration and secure response headers."
+
+msgid "邮件发送"
+msgstr "Email Sending"
+
+msgid "邮箱发送与虚拟邮箱收发（VMEmail），覆盖验证邮件、收发场景。"
+msgstr "Email sending and virtual mailbox send/receive (VMEmail), covering verification emails and messaging scenarios."
+
+msgid "邮箱服务"
+msgstr "Email Service"
+
+msgid "问题反馈"
+msgstr "Feedback"
+
+msgid "问题反馈中心：提交反馈与追加评论，服务方统一管理。"
+msgstr "Feedback center: submit feedback and add comments, centrally managed by the service provider."
+
+msgid "阿里云"
+msgstr "Alibaba Cloud"
+
+msgid "阿里云图形验证码集成（滑块/点选），防机器流量。"
+msgstr "Alibaba Cloud CAPTCHA integration (slider / click-select) to block bot traffic."
+
+msgid "阿里云短信验证码认证，服务端回传校验，安全下发。"
+msgstr "Alibaba Cloud SMS verification code authentication with server-side callback validation and secure delivery."
+
+msgid "静态代理"
+msgstr "Static Proxy"
+
+msgid "非法的状态值"
+msgstr "Invalid status value"
+
+msgid "音乐搜索"
+msgstr "Music Search"
+
+msgid "项目「%(name)s」已删除，其全部 Token 已同步失效"
+msgstr "Project \"%(name)s\" has been deleted; all of its Tokens have been invalidated"
+
+msgid "项目「%(name)s」已更新"
+msgstr "Project \"%(name)s\" updated"
+
+msgid "项目不存在"
+msgstr "Project does not exist"
+
+msgid "项目创建成功，请复制并妥善保存下方的 APPID 与 APPSECRET（仅此一次展示）"
+msgstr "Project created successfully. Please copy and safely store the APPID and APPSECRET below (shown only once)."
+
+msgid "验证码"
+msgstr "Verification Code"
+
+
+# ==================== API 文档内容 · 邮箱服务 ====================
+msgid "UUID，如 3fa85f64-..."
+msgstr "UUID, e.g. 3fa85f64-..."
+
+msgid "VMEmail（minmail.app）临时邮箱"
+msgstr "VMEmail (minmail.app) Temporary Mailbox"
+
+msgid "false（默认复用）"
+msgstr "false (reuse by default)"
+
+msgid "generate 返回的 UUID"
+msgstr "UUID returned by generate"
+
+msgid "generate 返回的 visitor_id 请妥善保存，查询邮件时需复用。"
+msgstr "Keep the visitor_id returned by generate safe; it must be reused when querying emails."
+
+msgid "true（丢弃原邮箱新建）"
+msgstr "true (discard the existing mailbox and create a new one)"
+
+msgid "发送一封邮件，可指定多个收件人。"
+msgstr "Send an email to one or more recipients."
+
+msgid "发送文本/HTML 邮件，支持多个收件人。需项目签名调用。"
+msgstr "Send text/HTML emails to multiple recipients. Signature Required."
+
+msgid "发送邮件"
+msgstr "Send Email"
+
+msgid "发送邮件（默认线路）"
+msgstr "Send Email (default channel)"
+
+msgid "多个邮箱用逗号或换行分隔，也可通过同一字段多次传递"
+msgstr "Separate multiple email addresses with commas or line breaks, or pass the same field multiple times"
+
+msgid "强制新建"
+msgstr "Force New"
+
+msgid "必填：generate 接口返回的 visitor_id"
+msgstr "Required: the visitor_id returned by the generate API"
+
+msgid "成功返回 data 含 subject / recipients / count；发送失败归为外部服务错误。"
+msgstr "On success, data contains subject / recipients / count; a failed send is reported as an external service error."
+
+msgid "收件人支持两种写法：同一字段重复传多次，或单个字段内用逗号分隔。"
+msgstr "Recipients can be supplied in two ways: repeat the same field multiple times, or separate them with commas within a single field."
+
+msgid "收件人邮箱"
+msgstr "Recipient Email"
+
+msgid "收件人邮箱（必填，支持多个）"
+msgstr "Recipient email (Required, multiple values supported)"
+
+msgid "查询当前临时邮箱收到的邮件列表。"
+msgstr "Get the list of emails received by the current temporary mailbox."
+
+msgid "生成/复用临时邮箱并收取邮件；开放调用（免签名）。"
+msgstr "Generate/reuse a temporary mailbox and receive emails; Open (No signature required)."
+
+msgid "生成/获取临时邮箱"
+msgstr "Generate/Get Temporary Mailbox"
+
+msgid "生成一个全新临时邮箱，或凭 visitor_id 复用已有邮箱。"
+msgstr "Generate a brand-new temporary mailbox, or reuse an existing one with visitor_id."
+
+msgid "获取邮件列表"
+msgstr "Get Email List"
+
+msgid "访客标识"
+msgstr "Visitor ID"
+
+msgid "过期时间(分钟)"
+msgstr "Expiry Time (minutes)"
+
+msgid "选填：true 时强制生成新邮箱，原邮箱及其邮件将被丢弃"
+msgstr "Optional: when true, force a new mailbox to be generated, discarding the original mailbox and its emails"
+
+msgid "选填：不传则随机生成；传入已有值可复用有效期内邮箱"
+msgstr "Optional: if omitted, a random value is generated; pass an existing value to reuse a mailbox within its validity period"
+
+msgid "选填：邮箱有效分钟数，正整数，默认 1440（24 小时）"
+msgstr "Optional: mailbox validity in minutes, a positive integer, Default 1440 (24 hours)"
+
+msgid "邮件发送与虚拟邮箱收发能力。当前接入 2 条线路，后续可继续扩展更多平台/线路。"
+msgstr "Email sending plus virtual mailbox send/receive capabilities. 2 channels are currently integrated; more platforms/channels can be added later."
+
+msgid "邮件标题"
+msgstr "Email subject"
+
+msgid "邮件标题（必填）"
+msgstr "Email subject (Required)"
+
+msgid "邮件正文"
+msgstr "Email body"
+
+msgid "邮件正文内容"
+msgstr "Email body content"
+
+msgid "邮件正文内容（必填）"
+msgstr "Email body content (Required)"
+
+msgid "邮箱 v1"
+msgstr "Email v1"
+
+
+# ==================== API 文档内容 · 音乐服务 ====================
+msgid "2t58.com 歌手歌曲列表页完整地址（必填）"
+msgstr "Full URL of the 2t58.com singer-song list page (Required)"
+
+msgid "2t58.com 歌曲详情页完整地址（必填）"
+msgstr "Full URL of the 2t58.com song detail page (Required)"
+
+msgid "2t58.com 网页抓取（只读）"
+msgstr "2t58.com web scraping (read-only)"
+
+msgid "JSON 文件"
+msgstr "JSON file"
+
+msgid "[{\"name\":\"晴天\",\"singer\":[\"周杰伦\"],\"online\":true,\"music_sources\":[\"https://...\"]}]"
+msgstr "[{\"name\":\"Sunny Day\",\"singer\":[\"Jay Chou\"],\"online\":true,\"music_sources\":[\"https://...\"]}]"
+
+msgid "false（含离线）"
+msgstr "false (include offline)"
+
+msgid "false（离线）"
+msgstr "false (offline)"
+
+msgid "multipart 文件字段 file，内容为 JSON 数组。页面在线调试暂不支持文件上传，请在代码中调用。"
+msgstr "multipart file field file, whose content is a JSON array. Online debugging on this page does not support file upload yet; call it from your code."
+
+msgid "true（仅在线）"
+msgstr "true (online only)"
+
+msgid "true（在线，默认）"
+msgstr "true (online, Default)"
+
+msgid "上传 JSON 文件批量导入音乐+播放源（单文件 ≤10MB、单次 ≤9999 条，不去重）。"
+msgstr "Upload a JSON file to bulk-import music + playback sources (single file ≤10MB, up to 9999 records per call, no deduplication)."
+
+msgid "不传（默认仅在线）"
+msgstr "Omit (online only by default)"
+
+msgid "关键词"
+msgstr "Keyword"
+
+msgid "创建播放源"
+msgstr "Create Playback Source"
+
+msgid "创建音乐"
+msgstr "Create Music"
+
+msgid "创建音乐返回的 UUID"
+msgstr "UUID returned by Create Music"
+
+msgid "创建音乐返回的 music_id"
+msgstr "the music_id returned by Create Music"
+
+msgid "删除播放源"
+msgstr "Delete Playback Source"
+
+msgid "删除音乐"
+msgstr "Delete Music"
+
+msgid "名称或歌手"
+msgstr "Name or singer"
+
+msgid "周杰伦\n蔡依林"
+msgstr "Jay Chou\nJolin Tsai"
+
+msgid "在线状态"
+msgstr "Online Status"
+
+msgid "多个歌手用逗号或换行分隔（服务端会按多次传参拆成歌手列表）"
+msgstr "Separate multiple singers with commas or line breaks (the server splits repeated parameters into a singer list)"
+
+msgid "如：晴天"
+msgstr "e.g. Sunny Day"
+
+msgid "如：王小草"
+msgstr "e.g. Wang Xiaocao"
+
+msgid "小影音乐"
+msgstr "XiaoYing Music"
+
+msgid "批量导入"
+msgstr "Bulk Import"
+
+msgid "抓取热门/歌手/歌曲/搜索数据。url 参数必须为 2t58.com 域名地址。"
+msgstr "Scrape trending/singer/song/search data. The url parameter must be a 2t58.com domain address."
+
+msgid "按 UUID 删除播放源。"
+msgstr "Delete a playback source by UUID."
+
+msgid "按 UUID 删除音乐（其播放源级联删除）。"
+msgstr "Delete music by UUID (its playback sources are deleted in cascade)."
+
+msgid "按关键词/在线状态查询音乐（分页）；不传 online 时默认只返回在线音乐。"
+msgstr "Query music by keyword/online status (paginated); when online is omitted, only online music is returned by default."
+
+msgid "按关键词搜索歌曲（分页）。"
+msgstr "Search songs by keyword (paginated)."
+
+msgid "按音乐 UUID 查询单条音乐，同时返回其全部播放源（music_sources）。"
+msgstr "Get a single music record by music UUID, returning all of its playback sources (music_sources) as well."
+
+msgid "搜索关键词（必填）"
+msgstr "Search keyword (Required)"
+
+msgid "搜索音乐"
+msgstr "Search Music"
+
+msgid "播放地址（必填，需合法 URL）"
+msgstr "Playback URL (Required, must be a valid URL)"
+
+msgid "播放源 UUID"
+msgstr "Playback Source UUID"
+
+msgid "播放链接"
+msgstr "Playback URL"
+
+msgid "新建一条音乐，返回 music_id（UUID），供详情/播放源关联使用。"
+msgstr "Create a music record and return music_id (UUID), for use in detail lookups / playback source association."
+
+msgid "更新播放源"
+msgstr "Update Playback Source"
+
+msgid "更新音乐"
+msgstr "Update Music"
+
+msgid "歌手"
+msgstr "Singer"
+
+msgid "歌手基本信息 + 歌曲列表（含分页）。"
+msgstr "Singer basic info + song list (paginated)."
+
+msgid "歌手详情"
+msgstr "Singer Detail"
+
+msgid "歌手页 URL"
+msgstr "Singer Page URL"
+
+msgid "歌手（必填，至少一位）"
+msgstr "Singer (Required, at least one)"
+
+msgid "歌曲基本信息 + 播放链接 + 歌词 + 每日推荐。"
+msgstr "Song basic info + playback URL + lyrics + daily recommendations."
+
+msgid "歌曲详情"
+msgstr "Song Detail"
+
+msgid "歌曲页 URL"
+msgstr "Song Page URL"
+
+msgid "每页条数"
+msgstr "Page Size"
+
+msgid "爱听音乐网 2t58"
+msgstr "Aiting Music 2t58"
+
+msgid "示例单条：{\"name\":\"晴天\",\"singer\":[\"周杰伦\"],\"online\":true,\"music_sources\":[\"https://...\"]}"
+msgstr "Example record: {\"name\":\"Sunny Day\",\"singer\":[\"Jay Chou\"],\"online\":true,\"music_sources\":[\"https://...\"]}"
+
+msgid "给某首音乐新增一个播放链接。"
+msgstr "Add a playback URL to a music record."
+
+msgid "自有曲库（Music/MusicSource 数据）"
+msgstr "Own music library (Music/MusicSource data)"
+
+msgid "获取音乐详情"
+msgstr "Get Music Detail"
+
+msgid "路径参数：播放源 UUID"
+msgstr "Path parameter: playback source UUID"
+
+msgid "路径参数：要删除的音乐 UUID"
+msgstr "Path parameter: UUID of the music to delete"
+
+msgid "路径参数：要更新的音乐 UUID"
+msgstr "Path parameter: UUID of the music to update"
+
+msgid "路径参数：音乐 UUID（文档页代调时请替换 URL 中的 <uuid>）"
+msgstr "Path parameter: music UUID (when testing from this doc page, replace <uuid> in the URL)"
+
+msgid "返回热门歌手、歌曲飙升榜、流行趋势榜三个模块。"
+msgstr "Returns three modules: trending singers, song rising chart and pop trend chart."
+
+msgid "选填：1-100，默认 10"
+msgstr "Optional: 1-100, Default 10"
+
+msgid "选填：true/false"
+msgstr "Optional: true/false"
+
+msgid "选填：匹配音乐名称/歌手"
+msgstr "Optional: match music name/singer"
+
+msgid "选填：整体替换歌手列表"
+msgstr "Optional: replace the entire singer list"
+
+msgid "选填：新名称"
+msgstr "Optional: new name"
+
+msgid "选填：新播放地址"
+msgstr "Optional: new playback URL"
+
+msgid "选填：页码，正整数，默认 1"
+msgstr "Optional: page number, a positive integer, Default 1"
+
+msgid "选填：默认 1"
+msgstr "Optional: defaults to 1"
+
+msgid "选填：默认 true"
+msgstr "Optional: Default true"
+
+msgid "部分字段更新播放源（music_id/url）。"
+msgstr "Partially update a playback source (music_id/url)."
+
+msgid "部分字段更新音乐（singer 为整体替换）。"
+msgstr "Partially update music (singer replaces the whole list)."
+
+msgid "部分成功：单条记录失败会整体回滚该条，响应返回 failures 明细。"
+msgstr "Partial success: if a single record fails, that record is rolled back entirely, and the response returns the failure details in failures."
+
+msgid "音乐 UUID"
+msgstr "Music UUID"
+
+msgid "音乐 UUID（必填，须已存在）"
+msgstr "Music UUID (Required, must already exist)"
+
+msgid "音乐与其播放源的 RESTful 增删改查；音乐详情接口会同时返回其全部播放源。"
+msgstr "RESTful CRUD for music and its playback sources; the music detail API also returns all of its playback sources."
+
+msgid "音乐列表查询"
+msgstr "Query Music List"
+
+msgid "音乐名称"
+msgstr "Music Name"
+
+msgid "音乐名称（必填）"
+msgstr "Music name (Required)"
+
+msgid "音乐聚合能力：爱听音乐网抓取（首页/歌手/歌曲/搜索）与小影音乐自有曲库的增删改查。当前接入 2 条线路。"
+msgstr "Music aggregation: scraping Aiting Music (home/singer/song/search) plus CRUD for the XiaoYing Music library. 2 channels are currently integrated."
+
+msgid "页码"
+msgstr "Page Number"
+
+msgid "首页数据"
+msgstr "Home Data"
+
+
+# ==================== API 文档内容 · 视频分析 ====================
+msgid "5.89 dAT:/ ... https://v.douyin.com/xxxxx/ 复制此链接...\n或直接粘贴链接 / aweme_id"
+msgstr "5.89 dAT:/ ... https://v.douyin.com/xxxxx/ copy this link...\nOr paste the link / aweme_id directly"
+
+msgid "必填：支持三种输入 —— ①完整分享文本 ②链接（v.douyin.com 短链 或 www.douyin.com/video/xxx）③纯数字 aweme_id"
+msgstr "Required: three input formats are supported — ① the full share text ② a link (v.douyin.com short link or www.douyin.com/video/xxx) ③ a numeric-only aweme_id"
+
+msgid "把抖音分享内容解析为可直接下载的视频/图文数据。"
+msgstr "Parse Douyin share content into directly downloadable video / image & text post data."
+
+msgid "抖音"
+msgstr "Douyin"
+
+msgid "抖音分享文本"
+msgstr "Douyin Share Text"
+
+msgid "抖音视频/图文解析"
+msgstr "Douyin video / image & text post parsing"
+
+msgid "短视频解析能力，提取无水印视频/图文内容。当前接入抖音线路，后续可继续扩展平台。"
+msgstr "Short video parsing that extracts watermark-free video / image & text post content. The Douyin channel is currently integrated; more platforms can be added later."
+
+msgid "解析抖音内容"
+msgstr "Parse Douyin Content"
+
+msgid "解析抖音视频或图文，返回无水印地址等信息。"
+msgstr "Parse a Douyin video or image & text post and return the watermark-free URL and other information."
+
+msgid "请使用真实可访问的分享内容测试；解析失败返回外部服务错误。"
+msgstr "Test with real, accessible share content; a failed parse is reported as an external service error."
+
+msgid "请求体为 application/x-www-form-urlencoded 表单。"
+msgstr "The request body is an application/x-www-form-urlencoded form."
+
+
+# ==================== API 文档内容 · 短信验证 ====================
+msgid "11 位手机号（必填）"
+msgstr "11-digit phone number (Required)"
+
+msgid "1（不区分大小写，默认）"
+msgstr "1 (case-insensitive, Default)"
+
+msgid "1（覆盖旧码，默认）"
+msgstr "1 (overwrite the old code, Default)"
+
+msgid "2（保留旧码）"
+msgstr "2 (keep the old code)"
+
+msgid "2（区分大小写）"
+msgstr "2 (case-sensitive)"
+
+msgid "PASS=核验成功，UNKNOWN=核验失败（验证码错误或已过期）。"
+msgstr "PASS = verification succeeded, UNKNOWN = verification failed (wrong or expired verification code)."
+
+msgid "false（不返回，默认）"
+msgstr "false (not returned, Default)"
+
+msgid "true（返回验证码，仅测试场景建议开启）"
+msgstr "true (return the verification code; recommended only for testing)"
+
+msgid "发送成功即返回 code=10000；频控触发时提示等待（interval 秒）后再试。"
+msgstr "A successful send returns code=10000; when the rate limit is triggered, the response asks you to wait (interval seconds) before retrying."
+
+msgid "发送短信验证码"
+msgstr "Send SMS Verification Code"
+
+msgid "发送间隔(秒)"
+msgstr "Send Interval (seconds)"
+
+msgid "发送验证码由阿里云系统动态生成并完成核验；全部接口需接入项目签名，防短信被滥用。"
+msgstr "Verification codes are dynamically generated and verified by the Aliyun system; all APIs require the project Signature to prevent SMS abuse."
+
+msgid "向指定手机号发送短信验证码；验证码有效期、频控间隔等可配。"
+msgstr "Send an SMS verification code to the specified phone number; the validity period, rate limit interval and more are configurable."
+
+msgid "响应返回验证码"
+msgstr "Return Verification Code in Response"
+
+msgid "外部流水号"
+msgstr "External Transaction ID"
+
+msgid "大小写核验策略"
+msgstr "Case Verification Policy"
+
+msgid "如：1234"
+msgstr "e.g. 1234"
+
+msgid "手机收到的验证码（必填）"
+msgstr "Verification code received on the phone (Required)"
+
+msgid "接口请求成功统一返回 code=10000；业务结果以 data.verify_result 判断："
+msgstr "A successful API request always returns code=10000; the business result is determined by data.verify_result:"
+
+msgid "方案名称"
+msgstr "Scheme Name"
+
+msgid "有效时长(秒)"
+msgstr "Validity Period (seconds)"
+
+msgid "核验用户输入的验证码是否正确/是否过期。"
+msgstr "Verify whether the verification code entered by the user is correct or has expired."
+
+msgid "核验短信验证码"
+msgstr "Verify SMS Verification Code"
+
+msgid "短信验证码能力：阿里云号码认证发送与核验，服务端生成/校验验证码，防短信轰炸。当前接入阿里云线路。"
+msgstr "SMS verification code capability: sending and verification via Aliyun phone number authentication, with codes generated/validated server-side to prevent SMS bombing. The Aliyun channel is currently integrated."
+
+msgid "请求体为 application/x-www-form-urlencoded 表单；本服务需项目签名（app_id/timestamp/nonce/sign）。"
+msgstr "The request body is an application/x-www-form-urlencoded form; this service requires the project Signature (app_id/timestamp/nonce/sign)."
+
+msgid "选填：1-7（1=纯数字），默认 1"
+msgstr "Optional: 1-7 (1 = digits only), Default 1"
+
+msgid "选填：4-8，默认 4"
+msgstr "Optional: 4-8, Default 4"
+
+msgid "选填：仅测试场景建议开启 true，便于直接取码核验"
+msgstr "Optional: enable true only for testing, so you can retrieve the code directly for verification"
+
+msgid "选填：外部流水号（透传返回）"
+msgstr "Optional: external transaction ID (passed through in the response)"
+
+msgid "选填：留空使用阿里云默认方案"
+msgstr "Optional: leave empty to use the Aliyun default scheme"
+
+msgid "选填：须与发送验证码时一致，留空使用默认方案"
+msgstr "Optional: must match the value used when sending the code; leave empty to use the default scheme"
+
+msgid "选填：频控间隔，默认 60 秒（防短信轰炸）"
+msgstr "Optional: rate limit interval, Default 60 seconds (anti SMS bombing)"
+
+msgid "选填：验证码有效时长，默认 300 秒（5 分钟）"
+msgstr "Optional: verification code validity period, Default 300 seconds (5 minutes)"
+
+msgid "选填：默认 1（不区分大小写）"
+msgstr "Optional: Default 1 (case-insensitive)"
+
+msgid "选填：默认 1（覆盖旧码）"
+msgstr "Optional: Default 1 (overwrite the old code)"
+
+msgid "重复发送处理"
+msgstr "Duplicate Send Policy"
+
+msgid "阿里云号码认证服务（Dypnsapi）"
+msgstr "Aliyun Phone Number Authentication Service (Dypnsapi)"
+
+msgid "阿里云短信验证码"
+msgstr "Aliyun SMS Verification Code"
+
+msgid "验证码类型"
+msgstr "Verification Code Type"
+
+msgid "验证码长度"
+msgstr "Verification Code Length"
+
+
+# ==================== API 文档内容 · 图形验证 ====================
+msgid "success=验证有效，fail=验证无效（pass_token 过期/流水号已用等），原因见 data.reason。"
+msgstr "success=verification valid, fail=verification invalid (pass_token expired, serial number already used, etc.); see data.reason for the cause."
+
+msgid "上传客户端验证参数，确认用户本次图形验证有效（防绕过）。"
+msgstr "Upload client verification parameters to confirm that the user's current Graphic CAPTCHA verification is valid (anti-bypass)."
+
+msgid "两步接入：先用 config 拿 appId 初始化前端 SDK，用户验证通过后再用 verify 做服务端二次校验。"
+msgstr "Two-step integration: first call config to get the appId and initialize the frontend SDK, then call verify for server-side secondary validation after the user passes verification."
+
+msgid "二次校验"
+msgstr "Secondary Validation"
+
+msgid "响应 data.app_id 即前端 initAlicom4({ captchaId: app_id, product: \"bind\" }, ...) 所需的 captchaId。"
+msgstr "The response data.app_id is the captchaId required by the frontend initAlicom4({ captchaId: app_id, product: \"bind\" }, ...)."
+
+msgid "必填：前端 SDK 验证通过后回调返回的 captchaOutput"
+msgstr "Required: the captchaOutput returned by the frontend SDK callback after verification passes"
+
+msgid "必填：前端 SDK 验证通过后回调返回的 genTime"
+msgstr "Required: the genTime returned by the frontend SDK callback after verification passes"
+
+msgid "必填：前端 SDK 验证通过后回调返回的 passToken"
+msgstr "Required: the passToken returned by the frontend SDK callback after verification passes"
+
+msgid "必填：前端 SDK 验证通过后回调返回的流水号，32 位小写 hex"
+msgstr "Required: the serial number returned by the frontend SDK callback after verification passes, a 32-character lowercase hex string"
+
+msgid "接口请求成功统一返回 code=10000；业务结果以 data.result 判断："
+msgstr "A successful request always returns code=10000; determine the business result from data.result: "
+
+msgid "获取图形认证配置"
+msgstr "Get Graphic Authentication Config"
+
+msgid "请求体为 application/x-www-form-urlencoded 表单；公开接口，无需项目签名。"
+msgstr "The request body is an application/x-www-form-urlencoded form; this is a public Endpoint with no project signature required."
+
+msgid "返回图形认证 appId（captchaId），供 H5 前端 SDK 初始化。公开接口，无需签名。"
+msgstr "Returns the graphic authentication appId (captchaId) for H5 frontend SDK initialization. Public Endpoint, no signature required."
+
+msgid "阿里云图形认证"
+msgstr "Alibaba Cloud Graphic Authentication"
+
+msgid "阿里云图形认证服务（滑块/点选验证）"
+msgstr "Alibaba Cloud graphic authentication service (Slider/Click-word verification)"
+
+msgid "阿里云图形验证码集成（滑块/点选等），服务端下发配置并二次校验，防机器流量。当前接入阿里云线路。"
+msgstr "Alibaba Cloud Graphic CAPTCHA integration (Slider/Click-word, etc.), with server-side config delivery and secondary validation to prevent bot traffic. Currently connected to the Alibaba Cloud Channel."
+
+msgid "验证流水号"
+msgstr "Verification Serial Number"
+
+msgid "验证输出信息"
+msgstr "Verification Output"
+
+msgid "验证通过时间戳"
+msgstr "Verification Pass Timestamp"
+
+msgid "验证通过标识"
+msgstr "Verification Pass Token"
+
+
+# ==================== API 文档内容 · 自研图形验证码 ====================
+msgid "SpiderServices/Captcha 自研生成引擎（Pillow 绘制）"
+msgstr "SpiderServices/Captcha self-developed generation engine (drawn with Pillow)"
+
+msgid "arithmetic（算术）"
+msgstr "arithmetic (math)"
+
+msgid "captcha_id 非 UUID 时返回 code=20002，参数缺失时返回 code=20001。"
+msgstr "A non-UUID captcha_id returns code=20002; a missing parameter returns code=20001."
+
+msgid "char（字符图片，默认）"
+msgstr "char (character image, default)"
+
+msgid "两步接入：先 generate 拿 captcha_id 与图片（base64），用户作答后 POST verify 校验；答案一次性，校验后无论对错立即失效，需配合前端换新图。"
+msgstr "Two-step integration: call generate first to obtain a captcha_id and image (base64), then POST the user answer to verify. The answer is single-use: it expires immediately after validation, correct or not, so the frontend must fetch a new image afterwards."
+
+msgid "字符个数"
+msgstr "Character Count"
+
+msgid "必填：生成接口返回的 captcha_id（UUID）"
+msgstr "Required: the captcha_id (UUID) returned by the generate Endpoint"
+
+msgid "必填：用户填写的答案（字符不区分大小写；算术填计算结果）"
+msgstr "Required: the answer entered by the user (case-insensitive for characters; enter the computed result for arithmetic)"
+
+msgid "提交用户答案校验，一次性消费（校验后立即失效）。"
+msgstr "Submit the user answer for validation; the CAPTCHA is consumed on use (invalidated immediately after validation)."
+
+msgid "未通过（答案错误 / 已过期 / 已使用 / 不存在）：code=20003 且 data.passed=false，原因见 msg；"
+msgstr "Not passed (wrong answer / expired / already used / not found): code=20003 with data.passed=false; see msg for the cause;"
+
+msgid "校验通过：code=10000 且 data.passed=true；"
+msgstr "Validation passed: code=10000 with data.passed=true;"
+
+msgid "校验验证码"
+msgstr "Validate CAPTCHA"
+
+msgid "生成一张验证码，返回 captcha_id、base64 图片与有效期。"
+msgstr "Generate one CAPTCHA and return its captcha_id, base64 image and validity period."
+
+msgid "生成验证码"
+msgstr "Generate CAPTCHA"
+
+msgid "用户答案"
+msgstr "User Answer"
+
+msgid "答案一次性：同一条验证码重复提交只会成功一次，失败后需重新调用 generate。"
+msgstr "The answer is single-use: repeated submissions of the same CAPTCHA can succeed only once, so call generate again after a failure."
+
+msgid "自研图形验证码（字符图片 / 算术），Pillow 本地绘制、无第三方依赖，答案一次性校验。"
+msgstr "Self-developed CAPTCHA (character image / arithmetic), rendered locally with Pillow and no third-party dependency; each answer is validated only once."
+
+msgid "自研验证码"
+msgstr "Self-developed CAPTCHA"
+
+msgid "请求方式 GET，参数放 query string；公开接口，无需项目签名。"
+msgstr "Request method GET with parameters in the query string; public Endpoint, no project signature required."
+
+msgid "返回 data.captcha_id 必须与答案一起回传给 verify；data.image 为 base64 data URI，可直接用于 <img src>；data.expire_in 为有效期（秒，默认 300）。"
+msgstr "The returned data.captcha_id must be sent back to verify together with the answer; data.image is a base64 data URI usable directly in <img src>; data.expire_in is the validity period in seconds (default 300)."
+
+msgid "选填：char=字符图片（数字+大写字母）；arithmetic=算术加减法"
+msgstr "Optional: char = character image (digits + uppercase letters); arithmetic = addition / subtraction"
+
+msgid "选填：仅 kind=char 生效，取值 4-6（默认 4）"
+msgstr "Optional: only applies when kind=char; valid range 4-6 (default 4)"
+
+msgid "验证码ID"
+msgstr "CAPTCHA ID"
+
+
+# ==================== API 文档内容 · 验证码识别 ====================
+msgid "Beta 模型"
+msgstr "Beta Model"
+
+msgid "OCR 文字识别"
+msgstr "OCR Text Recognition"
+
+msgid "Python ddddocr（本地模型）"
+msgstr "Python ddddocr (local model)"
+
+msgid "ddddocr 通用识别"
+msgstr "ddddocr General Recognition"
+
+msgid "false（默认）"
+msgstr "false (default)"
+
+msgid "true 时使用 Beta 版 OCR 模型（对部分验证码更准）"
+msgstr "When true, use the Beta OCR model (more accurate for some CAPTCHAs)"
+
+msgid "true 时对透明通道图片做白底修复"
+msgstr "When true, apply white-background repair to images with a transparent channel"
+
+msgid "true 时返回 data={text, probability}；false 时 data 为文本"
+msgstr "When true, returns data={text, probability}; when false, data is the text"
+
+msgid "上传本地图片（页面调试现支持真实文件上传）"
+msgstr "Upload a local image (page debugging now supports real file upload)"
+
+msgid "修复透明 PNG"
+msgstr "Fix Transparent PNG"
+
+msgid "图片文件(上传)"
+msgstr "Image File (Upload)"
+
+msgid "基于 ddddocr 的通用验证码识别：OCR 文字识别、目标检测、滑块验证码缺口匹配。当前接入 ddddocr 单线路。"
+msgstr "General CAPTCHA recognition based on ddddocr: OCR text recognition, object detection, and slider CAPTCHA gap matching. Currently connected to the single ddddocr Channel."
+
+msgid "如 0 或 0123456789+-x/="
+msgstr "e.g. 0 or 0123456789+-x/="
+
+msgid "字符范围"
+msgstr "Character Range"
+
+msgid "必填：预定义 0=数字/1=小写/2=大写/3=大小写/4=小写+数字/5=大写+数字/6=大小写+数字/7=默认；或自定义字符串，如 \"0123456789\""
+msgstr "Required: predefined 0=digits/1=lowercase/2=uppercase/3=upper+lowercase/4=lowercase+digits/5=uppercase+digits/6=upper+lowercase+digits/7=default; or a custom string, e.g. \"0123456789\""
+
+msgid "成功返回 data={target_x, target_y}。"
+msgstr "On success, returns data={target_x, target_y}."
+
+msgid "成功返回 data={target_x, target_y}，即缺口左上角坐标。"
+msgstr "On success, returns data={target_x, target_y}, i.e. the coordinates of the gap's top-left corner."
+
+msgid "或 图片URL/base64"
+msgstr "or image URL/base64"
+
+msgid "或 滑块图片URL/base64"
+msgstr "or slider image URL/base64"
+
+msgid "或 背景图片URL/base64"
+msgstr "or background image URL/base64"
+
+msgid "或填写图片 URL / base64（无需本地文件时使用）"
+msgstr "or fill in the image URL / base64 (use when no local file is available)"
+
+msgid "文件字段与 URL/base64 字段至少提供一个；同时提供时文件优先。"
+msgstr "Provide at least one of the file field or the URL/base64 field; when both are provided, the file takes precedence."
+
+msgid "本服务需项目签名；上传文件时请求体为 multipart/form-data。"
+msgstr "This Service requires a project signature; when uploading a file, the request body is multipart/form-data."
+
+msgid "检测图片中的目标位置，返回各目标的边界框与置信度。"
+msgstr "Detect target positions in an image and return the bounding box and confidence of each target."
+
+msgid "注意：后端每次调用都会新建识别实例，此接口只对“该次调用”的实例生效，不会改变之后 /ocr 请求的字符集。"
+msgstr "Note: the backend creates a new recognition instance on every call; this Endpoint only applies to the instance of \"that call\" and does not change the character set of subsequent /ocr requests."
+
+msgid "滑块匹配（差异比较法）"
+msgstr "Slider Matching (Difference Comparison Method)"
+
+msgid "滑块匹配（边缘匹配法）"
+msgstr "Slider Matching (Edge Matching Method)"
+
+msgid "滑块图片(上传)"
+msgstr "Slider Image (Upload)"
+
+msgid "滑块（slide_image / slide_image_url）与背景（bg_image / bg_image_url）各至少提供其一；同时提供时文件优先。"
+msgstr "Provide at least one from each of the slider (slide_image / slide_image_url) and background (bg_image / bg_image_url); when both are provided, the file takes precedence."
+
+msgid "目标检测"
+msgstr "Object Detection"
+
+msgid "直接比较滑块图与背景图差异定位缺口（算法二）。"
+msgstr "Locate the gap by directly comparing the difference between the slider image and the background image (algorithm 2)."
+
+msgid "简单目标模式"
+msgstr "Simple Target Mode"
+
+msgid "纯本地模型识别，无第三方依赖回调。首次调用会加载模型、响应偏慢属正常。"
+msgstr "Pure local model recognition with no third-party dependency callbacks. The first call loads the model, so a slower response is normal."
+
+msgid "背景图片(上传)"
+msgstr "Background Image (Upload)"
+
+msgid "自定义颜色范围(JSON 对象)"
+msgstr "Custom Color Ranges (JSON Object)"
+
+msgid "设置 OCR 字符范围"
+msgstr "Set OCR Character Range"
+
+msgid "设置本次识别实例的字符范围（预定义编号或自定义字符集）。"
+msgstr "Set the character range of this recognition instance (a predefined number or a custom character set)."
+
+msgid "识别图片中的文字内容，返回识别文本；可返回概率、按颜色过滤等。"
+msgstr "Recognize the text content in an image and return the recognized text; it can also return probability and filter by color."
+
+msgid "返回概率分布"
+msgstr "Return Probability Distribution"
+
+msgid "选填：HSV 区间字典，需与 colors 配合使用"
+msgstr "Optional: an HSV range dictionary, used together with colors"
+
+msgid "选填：仅识别指定颜色文字，如 [\"red\",\"blue\",\"green\"]"
+msgstr "Optional: recognize only text of the specified colors, e.g. [\"red\",\"blue\",\"green\"]"
+
+msgid "选填：配合 Beta 模型使用"
+msgstr "Optional: used together with the Beta model"
+
+msgid "选填：默认 false"
+msgstr "Optional: Default false"
+
+msgid "通过边缘检测匹配滑块小图在背景大图中的缺口位置（算法一）。"
+msgstr "Match the gap position of the slider thumbnail within the background image via edge detection (algorithm 1)."
+
+msgid "颜色过滤(JSON 数组)"
+msgstr "Color Filter (JSON Array)"
+
+
+# ==================== API 文档内容 · 文件上传 ====================
+msgid "multipart/form-data 文件字段 file：直接用下方“选择文件”上传即可。"
+msgstr "multipart/form-data file field file: just use the \"Select File\" button below to upload."
+
+msgid "svg 因可内嵌脚本已禁用。"
+msgstr "svg is disabled because it can embed scripts."
+
+msgid "上传图片"
+msgstr "Upload Image"
+
+msgid "上传图片，返回可直接引用的图片 URL。"
+msgstr "Upload an image and return a directly referenceable image URL."
+
+msgid "上传视频"
+msgstr "Upload Video"
+
+msgid "上传视频文件。"
+msgstr "Upload a video file."
+
+msgid "上传通用文件"
+msgstr "Upload Generic File"
+
+msgid "上传通用文件（白名单：zip/pdf/docx/xlsx/txt 等）。"
+msgstr "Upload a generic file (whitelist: zip/pdf/docx/xlsx/txt, etc.)."
+
+msgid "全部使用 multipart/form-data，文件字段固定为 file；仅支持白名单类型并校验文件头（防伪装/防脚本上传）。"
+msgstr "All use multipart/form-data with the file field fixed to file; only whitelisted types are supported and file headers are validated (to prevent masquerading/script uploads)."
+
+msgid "图片文件"
+msgstr "Image file"
+
+msgid "成功返回 data 字段：filename / original_name / size / size_mb / ext / type / relative_path / url。"
+msgstr "On success, returns the data field: filename / original_name / size / size_mb / ext / type / relative_path / url."
+
+msgid "支持类型：jpg/jpeg/png/gif/bmp/webp/ico/tiff；最大 20MB。"
+msgstr "Supported types: jpg/jpeg/png/gif/bmp/webp/ico/tiff; Size limit 20MB."
+
+msgid "最大 100MB；白名单制并校验文件头；返回 type=file。"
+msgstr "Size limit 100MB; whitelist-based with file header validation; returns type=file."
+
+msgid "最大 100MB；返回 type=video。"
+msgstr "Size limit 100MB; returns type=video."
+
+msgid "本地存储（/media/uploads/…）"
+msgstr "Local storage (/media/uploads/...)"
+
+msgid "本地文件上传"
+msgstr "Local File Upload"
+
+msgid "视频文件"
+msgstr "Video file"
+
+msgid "返回的 url 为站点媒体访问地址（/media/...），可直接引用。"
+msgstr "The returned url is the site media access address (/media/...), which can be referenced directly."
+
+msgid "通用文件"
+msgstr "Generic file"
+
+msgid "通用文件上传能力：图片/视频/普通文件，白名单校验并存储到本地 /media，返回可访问 URL。"
+msgstr "Generic file upload capability: images/videos/regular files, whitelist-validated and stored to local /media, returning an accessible URL."
+
+
+# ==================== API 文档内容 · SEO 服务 ====================
+msgid "Logo 链接"
+msgstr "Logo URL"
+
+msgid "QQ / 微信 / 邮箱"
+msgstr "QQ / WeChat / Email"
+
+msgid "RESTful：GET/POST 作用于集合，GET/PATCH/DELETE 按数字主键 id 操作单条。"
+msgstr "RESTful: GET/POST operate on the collection, while GET/PATCH/DELETE operate on a single item by numeric primary key id."
+
+msgid "SEO 周边能力：友情链接集合的统一管理（列表/详情/新增/更新/删除），便于站点外链建设。当前接入友情链接线路。"
+msgstr "SEO-related capabilities: unified management of the Friend links collection (list/detail/create/update/delete) to facilitate Site Backlink building. Currently connected to the Friend links Channel."
+
+msgid "false（禁用）"
+msgstr "false (Disabled)"
+
+msgid "true（启用）"
+msgstr "true (Enabled)"
+
+msgid "true（启用，默认）"
+msgstr "true (Enabled, Default)"
+
+msgid "url 已存在时返回数据冲突错误。"
+msgstr "Returns a data conflict error when the url already exists."
+
+msgid "一句话介绍该网站"
+msgstr "A one-sentence introduction to the website"
+
+msgid "全部（不传）"
+msgstr "All (not provided)"
+
+msgid "分类"
+msgstr "Category"
+
+msgid "创建友情链接"
+msgstr "Create Friend Link"
+
+msgid "删除友情链接"
+msgstr "Delete Friend Link"
+
+msgid "友情链接 ID"
+msgstr "Friend link ID"
+
+msgid "友情链接列表"
+msgstr "Friend Link List"
+
+msgid "名称 / URL / 描述"
+msgstr "Name / URL / Description"
+
+msgid "如：1"
+msgstr "e.g. 1"
+
+msgid "如：小影API"
+msgstr "e.g. XiaoYingAPI"
+
+msgid "如：技术 / 工具 / 导航"
+msgstr "e.g. Tech / Tools / Navigation"
+
+msgid "必填：完整 URL，全局唯一"
+msgstr "Required: full URL, globally unique"
+
+msgid "必填：网站名称（可重复）"
+msgstr "Required: Site name (duplicates allowed)"
+
+msgid "按主键 id 删除一条友情链接。"
+msgstr "Delete a friend link by primary key id."
+
+msgid "按主键 id 获取一条友情链接详情。"
+msgstr "Get the details of a friend link by primary key id."
+
+msgid "排序权重"
+msgstr "Sort weight"
+
+msgid "新增一条友情链接（name 必填、url 必填且全局唯一）。"
+msgstr "Create a friend link (name is Required, url is Required and globally unique)."
+
+msgid "更新友情链接"
+msgstr "Update Friend Link"
+
+msgid "查询全部友情链接，支持关键词/分类/状态筛选。"
+msgstr "Query all friend links, with keyword/category/status filtering."
+
+msgid "状态过滤"
+msgstr "Status filter"
+
+msgid "站点友情链接库（seo_friend_link）"
+msgstr "Site friend links library (seo_friend_link)"
+
+msgid "网站名称"
+msgstr "Site name"
+
+msgid "网站描述"
+msgstr "Site description"
+
+msgid "网站链接"
+msgstr "Site URL"
+
+msgid "联系方式"
+msgstr "Contact"
+
+msgid "获取单条"
+msgstr "Get One"
+
+msgid "路径参数：友情链接主键 ID（创建/列表返回）"
+msgstr "Path parameter: friend link primary key ID (returned by create/list)"
+
+msgid "返回 data={items, total}，items 按 sort 降序排列。"
+msgstr "Returns data={items, total}, with items sorted by sort in descending order."
+
+msgid "选填"
+msgstr "Optional"
+
+msgid "选填：便于按类目筛选"
+msgstr "Optional: useful for filtering by category"
+
+msgid "选填：分类精确匹配"
+msgstr "Optional: exact category match"
+
+msgid "选填：新链接"
+msgstr "Optional: new URL"
+
+msgid "选填：模糊匹配名称/链接/描述"
+msgstr "Optional: fuzzy match on name/URL/description"
+
+msgid "选填：用于 SEO 友链展示"
+msgstr "Optional: used for SEO friend links display"
+
+msgid "选填：网站 logo 完整 URL"
+msgstr "Optional: full URL of the site logo"
+
+msgid "选填：越大越靠前，默认 0"
+msgstr "Optional: the larger the value, the higher the ranking; Default 0"
+
+msgid "选填：默认启用"
+msgstr "Optional: enabled by default"
+
+msgid "部分字段更新：只更新本次传入的字段，未传字段保持不变。"
+msgstr "Partial update: only the fields provided in this request are updated; unprovided fields remain unchanged."
+
+
+# ==================== API 文档内容 · 爬虫验证 ====================
+msgid "4759 蜘蛛 IP 验证"
+msgstr "4759 Spider IP Verification"
+
+msgid "4759 蜘蛛/爬虫 IP 库"
+msgstr "4759 spider/crawler IP library"
+
+msgid "GET 查询接口；本服务需项目签名。"
+msgstr "GET query Endpoint; this Service requires a project signature."
+
+msgid "只读查询接口：提交一个 IP，服务端查证其是否为搜索引擎（如百度/谷歌等）爬虫来源。"
+msgstr "Read-only query Endpoint: submit an IP and the server checks whether it originates from a search engine crawler (such as Baidu/Google, etc.)."
+
+msgid "如 66.249.65.205（Google 爬虫）"
+msgstr "e.g. 66.249.65.205 (Google crawler)"
+
+msgid "对外部服务查询耗时可能较长，属正常；接口返回 data 为爬虫验证结果（含是否为爬虫及来源类型，以实际返回为准）。"
+msgstr "Querying the external service may take a while, which is normal; the Endpoint returns data as the Spider verification result (including whether it is a crawler and the source type, subject to the actual response)."
+
+msgid "待验证 IP"
+msgstr "IP to verify"
+
+msgid "必填：合法的 IPv4 或 IPv6 地址"
+msgstr "Required: a valid IPv4 or IPv6 address"
+
+msgid "识别自动化/爬虫环境：验证指定 IP 是否属于搜索引擎爬虫。当前接入 4759 验证线路。"
+msgstr "Identify Automated environments/crawlers: verify whether a given IP belongs to a search engine crawler. Currently connected to the 4759 verification Channel."
+
+msgid "验证 IP 是否爬虫"
+msgstr "Verify Whether an IP Is a Crawler"
+
+msgid "验证给定 IP 是否为搜索引擎爬虫，返回识别结论与类型信息。"
+msgstr "Verify whether a given IP is a search engine crawler and return the recognition conclusion and type information."
+
+
+# ==================== API 文档内容 · 代理 IP ====================
+msgid "0=否"
+msgstr "0=No"
+
+msgid "1=是"
+msgstr "1=Yes"
+
+msgid "66 免费代理"
+msgstr "66 Free Proxy"
+
+msgid "66daili 聚合（支持可用性验证）"
+msgstr "66daili aggregation (supports Availability check)"
+
+msgid "91HTTP 动态代理"
+msgstr "91HTTP Dynamic Proxy"
+
+msgid "IP 地址"
+msgstr "IP address"
+
+msgid "JSON 文件存储（平台本地）"
+msgstr "JSON file storage (local to the platform)"
+
+msgid "JSON 文件路径(绝对)"
+msgstr "JSON File Path (Absolute)"
+
+msgid "api.91http.com（国内动态代理）"
+msgstr "api.91http.com (domestic dynamic proxy)"
+
+msgid "qydailiip.com（短期存活 1-3 分钟）"
+msgstr "qydailiip.com (short-lived, 1-3 minutes)"
+
+msgid "不传（默认 1）"
+msgstr "Not provided (Default 1)"
+
+msgid "不传（默认 HTTP）"
+msgstr "Not provided (Default HTTP)"
+
+msgid "代理源"
+msgstr "Proxy Source"
+
+msgid "删除静态代理"
+msgstr "Delete Static Proxy"
+
+msgid "动态短期代理，每次调用返回全新 IP；订单号/Token 由平台侧持有，调用方无需提供。"
+msgstr "Dynamic short-lived proxy; each call returns a brand-new IP. The order number/Token is held by the platform, so the caller does not need to provide it."
+
+msgid "协议类型"
+msgstr "Protocol Type"
+
+msgid "向 JSON 文件新增一条静态代理。"
+msgstr "Add a static proxy to the JSON file."
+
+msgid "多源代理 IP 聚合：66 免费代理、青雨动态代理、91HTTP 动态代理与静态代理管理，支持可用性验证。"
+msgstr "Multi-source Proxy IP aggregation: 66 Free Proxy, Qingyu dynamic proxy, 91HTTP dynamic proxy, and Static proxy management, with Availability check support."
+
+msgid "如 1.2.3.4"
+msgstr "e.g. 1.2.3.4"
+
+msgid "如 8080"
+msgstr "e.g. 8080"
+
+msgid "按 ip:port 从 JSON 文件删除一条静态代理。"
+msgstr "Delete a static proxy from the JSON file by ip:port."
+
+msgid "支持白名单或账号密码两种认证方式，二选一即可；修改授权后约 5 分钟生效。"
+msgstr "Supports either Whitelist or username/password authentication; choose one. Changes to authorization take effect in about 5 minutes."
+
+msgid "数量"
+msgstr "Count"
+
+msgid "新增静态代理"
+msgstr "Add Static Proxy"
+
+msgid "白名单认证：不传 username/password，需先在 91HTTP 后台加白本机公网 IP。"
+msgstr "Whitelist authentication: do not provide username/password; you must first whitelist your machine's public IP in the 91HTTP console."
+
+msgid "端口"
+msgstr "Port"
+
+msgid "自动白名单"
+msgstr "Auto Whitelist"
+
+msgid "获取 91HTTP 动态代理，可指定协议/白名单/过期时间等。"
+msgstr "Get a 91HTTP dynamic proxy; you can specify protocol/whitelist/Expiry time, etc."
+
+msgid "获取代理并可选验证连通性；verify=true 时按速度排序返回最快的代理。"
+msgstr "Get proxies with optional connectivity verification; when verify=true, returns the fastest proxies sorted by speed."
+
+msgid "获取动态代理"
+msgstr "Get Dynamic Proxy"
+
+msgid "获取可用代理"
+msgstr "Get Available Proxies"
+
+msgid "获取青雨动态代理 IP（存活约 1-3 分钟）。"
+msgstr "Get a Qingyu dynamic proxy IP (lives for about 1-3 minutes)."
+
+msgid "获取静态代理列表"
+msgstr "Get Static Proxy List"
+
+msgid "认证密码"
+msgstr "Auth Password"
+
+msgid "认证用户名"
+msgstr "Auth Username"
+
+msgid "账号密码认证：返回每条代理附带 proxy 字段（含账号密码的完整地址）。"
+msgstr "Username/password authentication: each proxy is returned with a proxy field (the full address including username and password)."
+
+msgid "返回全部静态代理。"
+msgstr "Returns all static proxies."
+
+msgid "返回指定数量、可选验证的可用代理列表。"
+msgstr "Returns an available proxy list of the specified count with optional verification."
+
+msgid "返回过期时间"
+msgstr "Return expiry time"
+
+msgid "选填：>=1，默认 10"
+msgstr "Optional: >=1, Default 10"
+
+msgid "选填：与 username 成对出现；使用该模式无需白名单"
+msgstr "Optional: used together with username; this mode requires no whitelist"
+
+msgid "选填：代理源名称，多个用英文逗号分隔，如 \"66daili,qy\""
+msgstr "Optional: proxy source names, separated by English commas, e.g. \"66daili,qy\""
+
+msgid "选填：自定义 JSON 文件绝对路径；默认使用平台配置路径。涉及服务器文件读写，非必要请勿传。"
+msgstr "Optional: a custom absolute path to the JSON file; the platform-configured path is used by default. This involves server file read/write, so do not provide it unless necessary."
+
+msgid "选填：账号密码认证模式，与 password 成对出现"
+msgstr "Optional: username/password authentication mode, used together with password"
+
+msgid "选填：返回条数，>=1，默认 1（需多个请调大）"
+msgstr "Optional: number of items to return, >=1, Default 1 (increase it if you need more)"
+
+msgid "选填：返回条数，必须为正整数，默认 10"
+msgstr "Optional: number of items to return, must be a positive integer, Default 10"
+
+msgid "选填：默认 true（验证并按速度排序）"
+msgstr "Optional: Default true (verify and sort by speed)"
+
+msgid "重新从 JSON 文件加载代理列表（配置更新后调用）。"
+msgstr "Reload the proxy list from the JSON file (call after configuration updates)."
+
+msgid "重新加载静态代理"
+msgstr "Reload Static Proxies"
+
+msgid "青雨动态代理"
+msgstr "Qingyu Dynamic Proxy"
+
+msgid "静态代理以 JSON 文件管理：查询 / 新增 / 按 ip:port 删除 / 重新加载。写操作会改动平台文件，请谨慎。"
+msgstr "Static proxies are managed via a JSON file: query / add / delete by ip:port / reload. Write operations modify platform files, so proceed with caution."
+
+msgid "验证可用性"
+msgstr "Verify availability"
+
+
+# ==================== API 文档内容 · 问题反馈 ====================
+msgid "closed（已关闭）"
+msgstr "closed (Closed)"
+
+msgid "pending（待处理）"
+msgstr "pending (Pending)"
+
+msgid "processing（处理中）"
+msgstr "processing (Processing)"
+
+msgid "resolved（已解决）"
+msgstr "resolved (Resolved)"
+
+msgid "上级评论 ID"
+msgstr "Parent comment ID"
+
+msgid "二级评论列表"
+msgstr "Replies List"
+
+msgid "全部接口需项目签名；create/reply 额外校验用户登录 Token（反馈人身份以此为准）。同项目内所有用户可见全部反馈与评论。"
+msgstr "All endpoints require the project signature; create/reply additionally verify the user's login Token (which determines the reporter's identity). Within the same project, all users can see all feedback and comments."
+
+msgid "内容"
+msgstr "Content"
+
+msgid "单条反馈详情：一级评论分页返回，每条内嵌二级评论首页（默认 5 条）。"
+msgstr "Single feedback detail: top-level comments are returned with pagination, and each embeds the first page of replies (5 by default)."
+
+msgid "反馈 ID"
+msgstr "Feedback ID"
+
+msgid "反馈列表"
+msgstr "Feedback List"
+
+msgid "反馈标题"
+msgstr "Feedback title"
+
+msgid "反馈详情+评论树"
+msgstr "Feedback Detail + Comment Tree"
+
+msgid "当前项目内的反馈列表，支持按状态筛选。"
+msgstr "List of feedback in the current project, filterable by status."
+
+msgid "必填"
+msgstr "Required"
+
+msgid "必填：反馈编号（create 返回的 feedback_id）"
+msgstr "Required: feedback ID (the feedback_id returned by create)"
+
+msgid "必填：被查看的评论 ID"
+msgstr "Required: ID of the comment being viewed"
+
+msgid "提交反馈"
+msgstr "Submit feedback"
+
+msgid "新建一条反馈（title/content 必填），反馈人身份由 token 校验。"
+msgstr "Create a feedback (title/content required); the reporter's identity is verified by token."
+
+msgid "某条评论的全部子孙回复（扁平、分页、不分层级），防海量评论撑爆响应。"
+msgstr "All descendant replies of a comment (flat, paginated, no hierarchy), preventing huge comment threads from bloating the response."
+
+msgid "标题"
+msgstr "Title"
+
+msgid "状态"
+msgstr "Status"
+
+msgid "用户 Token"
+msgstr "User Token"
+
+msgid "用户中心登录后获取"
+msgstr "Obtained after logging in to the User Center"
+
+msgid "用户登录 Token（用户中心签发）：create/reply 用它校验反馈人真实身份，子项目无法伪造用户。"
+msgstr "User login Token (issued by the User Center): create/reply use it to verify the reporter's real identity, so sub-projects cannot impersonate users."
+
+msgid "站内反馈库（按项目隔离）"
+msgstr "In-site Feedback Store (isolated per project)"
+
+msgid "给反馈追加评论；parent_id 为空=一级评论，非空=回复指定评论（支持嵌套）。"
+msgstr "Add a comment to a feedback; an empty parent_id means a top-level comment, a non-empty one replies to the specified comment (nesting supported)."
+
+msgid "评论内容"
+msgstr "Comment content"
+
+msgid "评论内容…"
+msgstr "Comment content..."
+
+msgid "详细描述问题…"
+msgstr "Describe the issue in detail..."
+
+msgid "追加 / 回复评论"
+msgstr "Add / Reply to a Comment"
+
+msgid "选填：pending/processing/resolved/closed"
+msgstr "Optional: pending/processing/resolved/closed"
+
+msgid "选填：为空=直接评论反馈；非空=回复该评论（须属于同一反馈）"
+msgstr "Optional: empty = comment directly on the feedback; non-empty = reply to that comment (must belong to the same feedback)"
+
+msgid "选填：每页条数"
+msgstr "Optional: page size"
+
+msgid "选填：每页条数（最大 100）"
+msgstr "Optional: page size (max 100)"
+
+msgid "问题反馈中心"
+msgstr "Feedback Center"
+
+msgid "问题反馈中心：提交反馈、追加/回复评论、查看项目内反馈与评论树。数据按接入项目隔离。"
+msgstr "Feedback Center: submit feedback, add/reply to comments, and view feedback and comment trees within a project. Data is isolated per integration project."
+
+
+# ==================== API 文档内容 · AI 服务 ====================
+msgid "DeepSeek AI 对话"
+msgstr "DeepSeek AI Chat"
+
+msgid "DeepSeek 内置模型"
+msgstr "DeepSeek Built-in Model"
+
+msgid "DeepSeek（平台内置 API Key）"
+msgstr "DeepSeek (platform built-in API Key)"
+
+msgid "[\"```\"] 或 ```"
+msgstr "[\"```\"] or ```"
+
+msgid "[{\"role\": \"system\", \"content\": \"你是数学老师，只回答数学问题\"}]"
+msgstr "[{\"role\": \"system\", \"content\": \"You are a math teacher; only answer math questions\"}]"
+
+msgid "[{\"role\": \"user\", \"content\": \"你好\"},{\"role\": \"assistant\", \"content\": \"你好！\"},{\"role\": \"user\", \"content\": \"今天天气怎么样？\"}]"
+msgstr "[{\"role\": \"user\", \"content\": \"Hello\"},{\"role\": \"assistant\", \"content\": \"Hello!\"},{\"role\": \"user\", \"content\": \"What's the weather like today?\"}]"
+
+msgid "content 与 messages 至少提供一个，否则返回参数缺失。"
+msgstr "Provide at least one of content or messages, otherwise a missing parameter error is returned."
+
+msgid "deepseek-v4-flash（快速版）"
+msgstr "deepseek-v4-flash (Fast)"
+
+msgid "deepseek-v4-pro（专业版）"
+msgstr "deepseek-v4-pro (Pro)"
+
+msgid "一个接口覆盖单轮/多轮对话；不传 api_key 时使用平台 .env 配置的 DeepSeek Key。"
+msgstr "One endpoint covers both single-turn and multi-turn chat; when api_key is omitted, the DeepSeek Key configured in the platform .env is used."
+
+msgid "不传（默认 deepseek-v4-flash）"
+msgstr "Omit (defaults to deepseek-v4-flash)"
+
+msgid "与 DeepSeek 对话：支持单条消息、完整消息列表、系统提示词、流式/前缀续写。"
+msgstr "Chat with DeepSeek: supports a single message, a full message list, a system prompt, and streaming/prefix continuation."
+
+msgid "你好，介绍一下你自己"
+msgstr "Hello, introduce yourself"
+
+msgid "例如：```python\n"
+msgstr "Example: ```python\n"
+
+msgid "停止词"
+msgstr "Stop words"
+
+msgid "内置模型能力，开箱即用的 AI 对话接口。当前接入 DeepSeek 内置模型（含多轮对话、流式、前缀续写）。"
+msgstr "Built-in model capabilities: an out-of-the-box AI chat API. Currently integrated with the DeepSeek built-in model (with multi-turn chat, streaming, and prefix continuation)."
+
+msgid "前缀续写(Beta)"
+msgstr "Prefix continuation (Beta)"
+
+msgid "单条消息内容"
+msgstr "Single message content"
+
+msgid "在线调用会真实消耗平台 DeepSeek 额度，请确认 Key/额度可用后再调试。"
+msgstr "Live calls actually consume the platform's DeepSeek quota; make sure the Key/quota is available before debugging."
+
+msgid "完整对话消息(JSON)"
+msgstr "Full conversation messages (JSON)"
+
+msgid "模型名称"
+msgstr "Model name"
+
+msgid "流式模式返回 SSE（data: {...} … data: [DONE]），在线调试会以原文展示，无法在结果区逐字流式播放。"
+msgstr "Streaming mode returns SSE (data: {...} ... data: [DONE]); live debug shows the raw text and cannot play the stream character by character in the result pane."
+
+msgid "流式输出(SSE)"
+msgstr "Streaming output (SSE)"
+
+msgid "系统提示词(JSON)"
+msgstr "System Prompt (JSON)"
+
+msgid "续写起点文本"
+msgstr "Continuation start text"
+
+msgid "自定义 DeepSeek Key"
+msgstr "Custom DeepSeek Key"
+
+msgid "请求体为 application/x-www-form-urlencoded 表单；本服务需项目签名。"
+msgstr "The request body is an application/x-www-form-urlencoded form; this service requires the project signature."
+
+msgid "选填：JSON 字符串数组或纯文本；前缀续写常用来限定输出边界"
+msgstr "Optional: a JSON string array or plain text; prefix continuation is often used to bound the output"
+
+msgid "选填：deepseek-v4-flash（默认）/ deepseek-v4-pro"
+msgstr "Optional: deepseek-v4-flash (default) / deepseek-v4-pro"
+
+msgid "选填：prefix=true 时必填，模型会从该文本继续输出"
+msgstr "Optional: Required when prefix=true; the model continues output from this text"
+
+msgid "选填：true 时响应为 SSE(text/event-stream)，逐块推送"
+msgstr "Optional: when true, the response is SSE (text/event-stream), pushed chunk by chunk"
+
+msgid "选填：true 时自动切 Beta 接口，从 prefix_content 继续续写"
+msgstr "Optional: when true, automatically switches to the Beta API and continues from prefix_content"
+
+msgid "选填：不传则用平台 .env 的 DEEPSEEK_API_KEY"
+msgstr "Optional: if omitted, the platform .env DEEPSEEK_API_KEY is used"
+
+msgid "选填：发起简单单轮对话时的消息内容（与 messages 至少提供一个）"
+msgstr "Optional: message content for a simple single-turn chat (provide at least one of content or messages)"
+
+msgid "选填：多轮对话用，格式为 JSON 数组，role 取 user/assistant；优先级高于 content"
+msgstr "Optional: for multi-turn chat, formatted as a JSON array with role set to user/assistant; takes precedence over content"
+
+msgid "选填：设定 AI 角色；不传=平台默认提示词；空字符串=不使用系统提示词"
+msgstr "Optional: set the AI's role; omit = platform default prompt; empty string = no system prompt"
+
+
+# ==================== API 文档内容 · 代练通 ====================
+msgid "-99=正在进行（默认），99=已完成"
+msgstr "-99=In progress (default), 99=Completed"
+
+msgid "0=全部（默认）"
+msgstr "0=All (default)"
+
+msgid "12=登录"
+msgstr "12=Log in"
+
+msgid "17=注册（默认）"
+msgstr "17=Register (default)"
+
+msgid "1=安卓"
+msgstr "1=Android"
+
+msgid "Password（密码）"
+msgstr "Password"
+
+msgid "VerificationCode（验证码，默认）"
+msgstr "VerificationCode (default)"
+
+msgid "qq（默认）"
+msgstr "qq (default)"
+
+msgid "上传代练通头像（传图片 URL/路径，无需 token）。"
+msgstr "Upload a DaiLianTong Avatar (provide an image URL/path; no token required)."
+
+msgid "上传头像"
+msgstr "Upload Avatar"
+
+msgid "个性签名"
+msgstr "Signature"
+
+msgid "代练时长"
+msgstr "Power-leveling duration"
+
+msgid "代练要求"
+msgstr "Power-leveling requirements"
+
+msgid "代练通平台能力：验证码登录注册、用户资料、公共/个人代练订单查询与操作（接收/发布/删除）、图片上传。"
+msgstr "DaiLianTong platform capabilities: verification code log in and registration, user profile, public/private power-leveling order query and operations (accept/publish/delete), image upload."
+
+msgid "代练通订单平台"
+msgstr "DaiLianTong Order Platform"
+
+msgid "代练通（dlt.com）网页接口封装"
+msgstr "DaiLianTong (dlt.com) web API wrapper"
+
+msgid "价格"
+msgstr "Price"
+
+msgid "价格范围"
+msgstr "Price range"
+
+msgid "修改代练通登录密码（需登录上下文与旧密码）。"
+msgstr "Update the DaiLianTong log in password (requires log in context and old password)."
+
+msgid "修改密码"
+msgstr "Update Password"
+
+msgid "公共订单列表"
+msgstr "Public Order List"
+
+msgid "删除原因"
+msgstr "Delete reason"
+
+msgid "删除自己的订单（默认原因“不用了”）。"
+msgstr "Delete your own Order (default reason “No longer needed”)."
+
+msgid "删除订单"
+msgstr "Delete Order"
+
+msgid "区服"
+msgstr "Server / Realm"
+
+msgid "发布一笔代练订单（需较多游戏/保证金/支付信息，含真实下单）。"
+msgstr "Publish a power-leveling Order (requires extensive game/deposit/payment information; places a real order)."
+
+msgid "发布订单"
+msgstr "Publish Order"
+
+msgid "发送验证码"
+msgstr "Send Verification Code"
+
+msgid "号主联系方式"
+msgstr "Account owner contact"
+
+msgid "向手机号发送注册/登录验证码。"
+msgstr "Send a registration/log in Verification code to a phone number."
+
+msgid "向订单留言上传图片（传图片 URL/路径）。"
+msgstr "Upload an image to an Order message (provide an image URL/path)."
+
+msgid "图片路径/URL"
+msgstr "Image path/URL"
+
+msgid "安全保证金"
+msgstr "Security deposit"
+
+msgid "实名认证信息"
+msgstr "Real-name verification info"
+
+msgid "必填：QQ 号或手机号"
+msgstr "Required: QQ number or Phone number"
+
+msgid "必填：平台用户 ID（代练通登录/注册后返回）"
+msgstr "Required: platform user ID (returned after DaiLianTong log in/registration)"
+
+msgid "必填：平台登录令牌（代练通登录后返回）"
+msgstr "Required: platform log in token (returned after DaiLianTong log in)"
+
+msgid "必填：旧密码（为空表示未设置过密码，传空字符串）"
+msgstr "Required: old Password (empty means no Password has been set; pass an empty string)"
+
+msgid "必填：登录返回的 login_id"
+msgstr "Required: login_id returned by log in"
+
+msgid "我的订单"
+msgstr "My Orders"
+
+msgid "按 user_id + token 查询代练通用户信息。"
+msgstr "Query the DaiLianTong User profile by user_id + token."
+
+msgid "接收订单"
+msgstr "Accept Order"
+
+msgid "接收（抢）一笔订单，需支付密码与 uid。"
+msgstr "Accept (grab) an Order; requires the payment Password and uid."
+
+msgid "搜索关键词"
+msgstr "Search keyword"
+
+msgid "支付密码"
+msgstr "Payment Password"
+
+msgid "效率保证金"
+msgstr "Efficiency deposit"
+
+msgid "新密码"
+msgstr "New Password"
+
+msgid "旧密码"
+msgstr "Old Password"
+
+msgid "是否公共"
+msgstr "Is public"
+
+msgid "本项目侧需项目签名；业务侧还需先登录代练通取得 user_id / token。含资金/下单等高风险操作，调试请务必使用自己的真实小号并谨慎操作。"
+msgstr "Signature Required on this project's side; on the business side you must first log in to DaiLianTong to obtain user_id / token. Includes high-risk operations such as funds/order placement; when debugging, be sure to use your own real secondary account and proceed with caution."
+
+msgid "查询单个代练订单详情。"
+msgstr "Query the detail of a single power-leveling Order."
+
+msgid "查询大厅公共代练订单（默认王者荣耀）。"
+msgstr "Query public power-leveling orders in the hall (defaults to Honor of Kings)."
+
+msgid "查询我的代练订单（进行中/已完成）。"
+msgstr "Query my power-leveling orders (in progress/completed)."
+
+msgid "查询账号实名认证信息。"
+msgstr "Query the account's real-name verification info."
+
+msgid "格式 最低_最高，默认 10_20"
+msgstr "Format min_max, default 10_20"
+
+msgid "每日签到领取代练币。"
+msgstr "Daily sign-in to claim power-leveling coins."
+
+msgid "每页数量"
+msgstr "Page size"
+
+msgid "游戏ID"
+msgstr "Game ID"
+
+msgid "游戏区服ID"
+msgstr "Game Server / Realm ID"
+
+msgid "游戏密码"
+msgstr "Game Password"
+
+msgid "游戏角色名"
+msgstr "Game character name"
+
+msgid "游戏账号"
+msgstr "Game account"
+
+msgid "用户ID"
+msgstr "User ID"
+
+msgid "用手机号+验证码注册代练通账号。"
+msgstr "Register a DaiLianTong account with a Phone number + Verification code."
+
+msgid "登录ID"
+msgstr "Login ID"
+
+msgid "登录令牌"
+msgstr "Log in token"
+
+msgid "签到得代币"
+msgstr "Sign In for Coins"
+
+msgid "类型"
+msgstr "Type"
+
+msgid "英雄数量"
+msgstr "Hero count"
+
+msgid "获取用户信息"
+msgstr "Get User Profile"
+
+msgid "订单ID"
+msgstr "Order ID"
+
+msgid "订单标题"
+msgstr "Order title"
+
+msgid "订单留言传图"
+msgstr "Upload Order Message Image"
+
+msgid "订单详情"
+msgstr "Order Detail"
+
+msgid "设置 QQ 或手机号联系方式。"
+msgstr "Set a QQ number or Phone number as the Contact."
+
+msgid "设置个性签名"
+msgstr "Set Signature"
+
+msgid "设置个性签名（无需 token）。"
+msgstr "Set the Signature (no token required)."
+
+msgid "设置联系方式"
+msgstr "Set Contact"
+
+msgid "过滤敏感词"
+msgstr "Filter sensitive words"
+
+msgid "选填：默认提供平台通用要求文案"
+msgstr "Optional: a default platform-wide requirements text is provided"
+
+msgid "验证码或密码"
+msgstr "Verification code or Password"
+
+msgid "验证码或密码登录，返回 user_id / token。"
+msgstr "Log in with a Verification code or Password; returns user_id / token."
+
+msgid "默认 107=王者荣耀"
+msgstr "Default 107=Honor of Kings"
+
+msgid "默认王者荣耀区服"
+msgstr "Default Honor of Kings Server / Realm"
+
+
+# ==================== API 文档内容 · 代练丸子 ====================
+msgid "122=安卓QQ"
+msgstr "122=Android QQ"
+
+msgid "1=王者"
+msgstr "1=Honor of Kings"
+
+msgid "1=王者（默认）"
+msgstr "1=Honor of Kings (default)"
+
+msgid "2=安卓QQ"
+msgstr "2=Android QQ"
+
+msgid "QQ号"
+msgstr "QQ number"
+
+msgid "代练丸子平台"
+msgstr "DaiLianWanZi Platform"
+
+msgid "代练丸子平台能力：验证码登录、用户资料/头像/实名/签到、公共与搜索订单、发布/取消订单、余额查询。"
+msgstr "DaiLianWanZi platform capabilities: verification code log in, user profile/Avatar/real-name/sign-in, public and search orders, publish/cancel orders, balance query."
+
+msgid "代练丸子（llwanzi.com）网页接口封装"
+msgstr "DaiLianWanZi (llwanzi.com) web API wrapper"
+
+msgid "代练时长(小时)"
+msgstr "Power-leveling duration (hours)"
+
+msgid "代练类型"
+msgstr "Power-leveling type"
+
+msgid "其他联系方式"
+msgstr "Other contact"
+
+msgid "区域ID"
+msgstr "Region ID"
+
+msgid "发单方联系方式"
+msgstr "Order poster contact"
+
+msgid "发布一笔代练订单（默认王者/排位/安卓QQ，真实下单）。"
+msgstr "Publish a power-leveling Order (defaults to Honor of Kings/ranked/Android QQ; places a real order)."
+
+msgid "发送登录验证码（内部自动完成图形验证码识别）。"
+msgstr "Send a log in Verification code (CAPTCHA recognition is handled automatically)."
+
+msgid "取消订单"
+msgstr "Cancel Order"
+
+msgid "取消订单。"
+msgstr "Cancel the Order."
+
+msgid "号主手机号"
+msgstr "Account owner Phone number"
+
+msgid "大厅公共订单（默认王者、价格 10-50）。"
+msgstr "Public orders in the hall (default Honor of Kings, price 10-50)."
+
+msgid "头像图片URL"
+msgstr "Avatar image URL"
+
+msgid "安卓QQ（默认）"
+msgstr "Android QQ (default)"
+
+msgid "安卓微信"
+msgstr "Android WeChat"
+
+msgid "必填：平台登录令牌，形如 \"Bearer xxx\""
+msgstr "Required: platform log in token, in the form \"Bearer xxx\""
+
+msgid "我的余额"
+msgstr "My Balance"
+
+msgid "按关键词搜索订单。"
+msgstr "Search orders by Keyword."
+
+msgid "搜索订单"
+msgstr "Search Orders"
+
+msgid "最低价格"
+msgstr "Minimum price"
+
+msgid "最高价格"
+msgstr "Maximum price"
+
+msgid "服务器ID"
+msgstr "Server ID"
+
+msgid "本项目侧需项目签名；业务侧需先登录取得 authorization。发布/取消订单等操作会产生真实影响，请谨慎。"
+msgstr "Signature Required on this project's side; on the business side you must log in first to obtain authorization. Operations such as publishing/canceling orders have real effects; proceed with caution."
+
+msgid "查询单个订单详情。"
+msgstr "Query the detail of a single Order."
+
+msgid "查询实名认证信息。"
+msgstr "Query real-name verification info."
+
+msgid "查询账号余额（authorization 选填）。"
+msgstr "Query the account balance (authorization optional)."
+
+msgid "每日签到。"
+msgstr "Daily sign-in."
+
+msgid "游戏区域"
+msgstr "Game region"
+
+msgid "游戏名称"
+msgstr "Game name"
+
+msgid "游戏图标URL"
+msgstr "Game icon URL"
+
+msgid "游戏角色"
+msgstr "Game character"
+
+msgid "用户信息"
+msgstr "User Info"
+
+msgid "登录令牌(authorization)"
+msgstr "Log in token (authorization)"
+
+msgid "签到"
+msgstr "Sign In"
+
+msgid "苹果QQ"
+msgstr "Apple QQ"
+
+msgid "苹果微信"
+msgstr "Apple WeChat"
+
+msgid "获取当前登录用户信息。"
+msgstr "Get the current logged-in User profile."
+
+msgid "订单说明"
+msgstr "Order description"
+
+msgid "订单金额(元)"
+msgstr "Order amount (CNY)"
+
+msgid "设置个性信息"
+msgstr "Set Profile"
+
+msgid "设置头像（传图片 URL）。"
+msgstr "Set the Avatar (provide an image URL)."
+
+msgid "设置用户名/签名/QQ（username 必填，其它按需传）。"
+msgstr "Set the Username/Signature/QQ (username is Required; pass the others as needed)."
+
+msgid "选填：平台登录令牌"
+msgstr "Optional: platform log in token"
+
+msgid "选填：默认平台图标"
+msgstr "Optional: default platform icon"
+
+msgid "验证码或密码登录；未注册手机号用验证码登录会自动注册。"
+msgstr "Log in with a Verification code or Password; logging in with a Verification code for an unregistered Phone number will register automatically."
+
+
+# ==================== API 文档内容 · 用户中心 ====================
+msgid "username/email/phone 按后台可用方式组合；两步注册时 data.need_verify=true。"
+msgstr "Combine username/email/phone according to the methods enabled in the backend; for two-step sign-up, data.need_verify=true."
+
+msgid "仅需项目签名参数，无需业务参数。"
+msgstr "Only the project signature parameters are required; no business parameters."
+
+msgid "供子项目确认用户身份：校验 token 有效性。"
+msgstr "Lets sub-projects confirm a user's identity by verifying the token's validity."
+
+msgid "删除当前项目下该 Token。"
+msgstr "Delete this Token under the current project."
+
+msgid "发送两步注册的手机短信验证码（60 秒冷却）。"
+msgstr "Send the SMS verification code for two-step sign-up (60-second cooldown)."
+
+msgid "发送注册短信"
+msgstr "Send Sign-up SMS"
+
+msgid "发送登录验证码"
+msgstr "Send Login Verification Code"
+
+msgid "可用注册/登录方式"
+msgstr "Available Sign-up / Login Methods"
+
+msgid "同一项目+凭证+IP 连续失败 5 次锁定 15 分钟（返回 20040）。"
+msgstr "5 consecutive failures for the same project + credential + IP locks it for 15 minutes (returns 20040)."
+
+msgid "必填：用户在该项目下持有的登录 Token（login 成功返回）"
+msgstr "Required: the login Token the user holds under this project (returned by a successful login)"
+
+msgid "成功返回 data={valid, user_id, account, username}。"
+msgstr "Returns data={valid, user_id, account, username} on success."
+
+msgid "手机号两步验证"
+msgstr "Phone Two-Step Verification"
+
+msgid "手机验证码校验，通过后创建账号并发放。"
+msgstr "Verifies the phone code and, once passed, creates and issues the account."
+
+msgid "按 token 查询用户信息。"
+msgstr "Look up user information by token."
+
+msgid "接入项目信息"
+msgstr "Integration Project Info"
+
+msgid "提供 email → 两步注册第一步，需再验证邮箱"
+msgstr "Provide email → first step of two-step sign-up; the email must then be verified"
+
+msgid "提供 phone → 两步注册第一步，需再验证手机号"
+msgstr "Provide phone → first step of two-step sign-up; the phone number must then be verified"
+
+msgid "提供 username+password → 直接注册成功"
+msgstr "Provide username + password → the account is created directly"
+
+msgid "查询调用方（签名所属项目）自身信息，用于核对配置。"
+msgstr "Query the caller's own info (the project the signature belongs to) to check the configuration."
+
+msgid "注册：username+password 直接建号；email 或 phone+password 走两步注册（先发验证码）。"
+msgstr "Sign up: username + password creates the account directly; email or phone + password goes through two-step sign-up (the code is sent first)."
+
+msgid "浏览器打开邮件内激活链接，校验通过后创建账号并发放。"
+msgstr "Open the activation link in the email in a browser; once verified, the account is created and issued."
+
+msgid "激活令牌"
+msgstr "Activation token"
+
+msgid "用户账号体系"
+msgstr "User Account System"
+
+msgid "登录：账号+密码，或邮箱/手机号+验证码；成功返回绑定项目的 Token。"
+msgstr "Log in: account + password, or email/phone number + verification code; on success, returns a Token bound to the project."
+
+msgid "统一账号中心（UAC）：全局用户池，多方式注册/登录、Token 签发与验证、两步注册邮箱/手机号校验。"
+msgstr "Unified Account Center (UAC): a global user pool with multi-method sign-up/log-in, Token issuance and verification, and email/phone verification for two-step sign-up."
+
+msgid "统一账号池（Token 绑定接入项目）"
+msgstr "Unified Account Pool (Token bound to the integration project)"
+
+msgid "账号"
+msgstr "Account"
+
+msgid "账号+密码登录时使用（username）"
+msgstr "Used for account + password login (username)"
+
+msgid "返回 HTML 结果页；在线调试会得到 HTML 原文，属正常。"
+msgstr "Returns an HTML result page; live debug will show the raw HTML, which is expected."
+
+msgid "返回 data={methods:[email,phone], username:true}；客户端先查此接口再渲染表单。"
+msgstr "Returns data={methods:[email,phone], username:true}; clients should call this endpoint first before rendering the form."
+
+msgid "返回后台启用的注册/登录方式（公开，免签名）。"
+msgstr "Returns the sign-up/log-in methods enabled in the backend (public, no signature required)."
+
+msgid "返回当前接入项目配置（含 Token 默认有效期等）。"
+msgstr "Returns the current integration project's configuration (including the Token's default validity period, etc.)."
+
+msgid "邮件内链接专用（浏览器访问）"
+msgstr "For in-email links only (opened in a browser)"
+
+msgid "邮箱/手机号登录时用"
+msgstr "Used for email/phone login"
+
+msgid "邮箱/手机号验证码登录第一步：校验已注册后发码（60 秒冷却）。"
+msgstr "First step of email/phone verification-code login: verifies the account is registered, then sends the code (60-second cooldown)."
+
+msgid "邮箱两步验证(验证码)"
+msgstr "Email Two-Step Verification (Code)"
+
+msgid "邮箱激活链接"
+msgstr "Email Activation Link"
+
+msgid "邮箱激活链接（公开 GET）"
+msgstr "Email Activation Link (Public GET)"
+
+msgid "邮箱激活链接：用户在邮件里点击的链接，GET 免签名，返回友好 HTML 结果页（非 JSON）。"
+msgstr "Email activation link: the link users click in the email; the GET request needs no signature and returns a friendly HTML result page (not JSON)."
+
+msgid "邮箱验证码校验，通过后创建账号并发放。"
+msgstr "Verifies the email code and, once passed, creates and issues the account."
+
+msgid "重发两步注册验证邮件（60 秒冷却）。"
+msgstr "Resend the two-step sign-up verification email (60-second cooldown)."
+
+msgid "重发验证邮件"
+msgstr "Resend Verification Email"
+
+msgid "链接中的 token（系统生成），正常由用户点邮件链接触发"
+msgstr "The token in the link (system-generated), normally triggered when the user clicks the email link"
+
+msgid "除 methods 与邮箱激活链接(GET) 外均需项目签名。邮箱/手机号两步注册流程：先 register（仅暂存+发验证码），再调 verify/email 或 verify/phone 校验通过后才创建账号。"
+msgstr "All endpoints require the project signature except methods and the email activation link (GET). Email/phone two-step sign-up flow: call register first (which only stages the data and sends the code), then call verify/email or verify/phone; the account is created only after verification passes."
+
+msgid "项目信息"
+msgstr "Project Info"
+
+msgid "项目自身配置查询"
+msgstr "Query of the Project's Own Configuration"
+
+msgid "验证 Token"
+msgstr "Verify Token"
+
+# ==================== 超级管理控制台 · API 服务分类（认证模式） ====================
+msgid "API 服务分类"
+msgstr "API Categories"
+
+msgid "API 服务分类 - 超级管理员 - 小影API"
+msgstr "API Categories - Super Admin - XiaoYingAPI"
+
+msgid "超级管理员,API服务分类,认证模式"
+msgstr "Super Admin,API Categories,Auth mode"
+
+msgid "小影API 超级管理员：配置 API 服务分类的认证模式（跟随上级 / 需要认证 / 开放）。"
+msgstr "XiaoYingAPI Super Admin: configure the auth mode of API categories (Inherit / Auth Required / Open)."
+
+msgid "共 %(total)s 个分类；修改后立即对接口鉴权生效，无需重启。"
+msgstr "%(total)s categories in total. Changes take effect on API authentication immediately — no restart needed."
+
+msgid "生效规则：请求按「最长前缀」命中分类后，沿父链向上取第一个非「跟随上级」的模式生效。"
+msgstr "Resolution rule: a request matches the category with the longest matching prefix, then walks up the parent chain and uses the first mode that is not Inherit."
+
+msgid "跟随上级：继承父级配置；需要认证：调用方必须携带 APPID/APPSECRET 签名；开放：免签名可直接调用。"
+msgstr "Inherit: use the parent's configuration; Auth Required: callers must send an APPID/APPSECRET signature; Open: callable without a signature."
+
+msgid "若整条链全为「跟随上级」或未命中任何分类，按安全默认「需要认证」处理（fail-closed）。"
+msgstr "If the whole chain is Inherit, or no category matches, the secure default Auth Required applies (fail-closed)."
+
+msgid "分类树由管理命令按 API/apis/ 目录生成（rebuild_category_tree）；本页只调整认证模式，重建不会覆盖它。"
+msgstr "The category tree is generated from the API/apis/ directory by a management command (rebuild_category_tree). This page only adjusts auth modes, which a rebuild will not overwrite."
+
+msgid "本节点模式"
+msgstr "Node Mode"
+
+msgid "生效结果"
+msgstr "Effective"
+
+msgid "跟随上级"
+msgstr "Inherit"
+
+msgid "需要认证"
+msgstr "Auth Required"
+
+msgid "启用"
+msgstr "Enabled"
+
+msgid "停用"
+msgstr "Disabled"
+
+msgid "保存"
+msgstr "Save"
+
+msgid "分类不存在"
+msgstr "Category not found"
+
+msgid "非法的认证模式"
+msgstr "Invalid auth mode"
+
+msgid "已把「%(path)s」的认证模式更新为「%(mode)s」"
+msgstr "Auth mode of %(path)s updated to %(mode)s"
+
+# ==================== 登录 / 注册 / 发送验证码的图形验证（服务端二次校验） ====================
+msgid "请先完成图形验证"
+msgstr "Please complete the CAPTCHA first"
+
+msgid "图形验证未通过，请重新验证"
+msgstr "CAPTCHA verification failed, please try again"
+
+msgid "图形验证服务暂时不可用，请稍后重试"
+msgstr "The CAPTCHA service is temporarily unavailable, please try again later"
+
+# ==================== 忘记密码 / 重置密码 ====================
+msgid "重置密码 - 小影API"
+msgstr "Reset Password - XiaoYingAPI"
+
+msgid "重置密码,忘记密码,小影API"
+msgstr "Reset password,Forgot password,XiaoYingAPI"
+
+msgid "小影API 忘记密码：通过已绑定的邮箱或手机号接收验证码，校验通过后即可设置新密码。"
+msgstr "XiaoYingAPI — Forgot password: receive a verification code on your bound email or phone number, then set a new password after verification."
+
+msgid "重置密码"
+msgstr "Reset Password"
+
+msgid "用已绑定的邮箱或手机号接收验证码，校验通过后设置新密码"
+msgstr "Receive a code on your bound email or phone number, then set a new password after verification"
+
+msgid "验证方式"
+msgstr "Verification Method"
+
+msgid "确认新密码"
+msgstr "Confirm New Password"
+
+msgid "再次输入新密码"
+msgstr "Enter the new password again"
+
+msgid "重置成功后，该账号在所有设备上的登录都会失效，需要用新密码重新登录。"
+msgstr "Once reset, this account is signed out on every device and must log in again with the new password."
+
+msgid "当前未开放邮箱 / 手机号验证方式，无法自助重置密码。"
+msgstr "Email / phone verification is currently disabled, so the password cannot be reset by yourself."
+
+msgid "请通过页脚的联系方式联系管理员协助处理。"
+msgstr "Please contact the administrator using the details in the footer."
+
+msgid "想起密码了？"
+msgstr "Remembered your password?"
+
+msgid "忘记密码？"
+msgstr "Forgot password?"
+
+msgid "邮件验证码已发送"
+msgstr "Email code sent"
+
+msgid "短信验证码已发送"
+msgstr "SMS code sent"
+
+msgid "密码已重置，请用新密码登录"
+msgstr "Password reset. Please log in with your new password"
+
+# ==================== API 调用统计（看板 / 文档展示 / 公开统计服务） ====================
+msgid "%(n)s 天内共 %(total)s 次"
+msgstr "A total of %(total)s calls in %(n)s days"
+
+msgid "%(r)s 天"
+msgstr "%(r)s days"
+
+msgid "API 调用统计"
+msgstr "API Call Statistics"
+
+msgid "API 调用统计 - 超级管理员 - 小影API"
+msgstr "API Call Statistics - Super Admin - XiaoYingAPI"
+
+msgid "path 未登记时返回 code=20003；未传时返回 code=20001。"
+msgstr "Returns code=20003 if path is not registered, or code=20001 if path is missing."
+
+msgid "今日调用量"
+msgstr "Today's Call Volume"
+
+msgid "公开接口，无需项目签名。"
+msgstr "Public Endpoint, no project signature required."
+
+msgid "区间内产生过调用的接入项目数"
+msgstr "Number of integrated projects that made calls in this period"
+
+msgid "各服务调用量排行"
+msgstr "Call Volume Ranking by Service"
+
+msgid "失败"
+msgstr "Failed"
+
+msgid "小影API 内置调用统计（按天预聚合）"
+msgstr "XiaoYingAPI built-in call statistics (daily pre-aggregation)"
+
+msgid "小影API 超级管理员：API 调用量统计看板（服务 / 接口 / 项目 / 状态码 / 耗时）。"
+msgstr "XiaoYingAPI Super Admin: API call volume dashboard (service / Endpoint / project / status code / latency)."
+
+msgid "平均"
+msgstr "Avg"
+
+msgid "平均耗时"
+msgstr "Average Latency"
+
+msgid "开放接口 / 未认证"
+msgstr "Public Endpoint / Unauthenticated"
+
+msgid "必填：文档中心已登记的接口路径；带路径参数的接口按文档写法传占位符，如 /api/music/xiaoying/musics/<uuid>"
+msgstr "Required: an Endpoint path registered in the docs; for Endpoints with path parameters, pass the placeholder as documented, e.g. /api/music/xiaoying/musics/<uuid>"
+
+msgid "成功"
+msgstr "Succeeded"
+
+msgid "成功率"
+msgstr "Success Rate"
+
+msgid "按服务、接口、接入项目与结果统计调用量；数据按天聚合，写入最多延迟数秒。"
+msgstr "Call volume by service, Endpoint, integrated project and result; data is aggregated daily, so writes may lag by a few seconds."
+
+msgid "接入项目"
+msgstr "Integrated Project"
+
+msgid "接入项目调用排行 Top 20"
+msgstr "Project Call Ranking (Top 20)"
+
+msgid "接口调用排行 Top 20"
+msgstr "Endpoint Call Ranking (Top 20)"
+
+msgid "接口路径"
+msgstr "Endpoint Path"
+
+msgid "最大"
+msgstr "Max"
+
+msgid "服务"
+msgstr "Service"
+
+msgid "服务调用排行"
+msgstr "Call Volume by Service"
+
+msgid "查询单个接口调用量"
+msgstr "Query Call Volume of a Single Endpoint"
+
+msgid "每日调用量趋势"
+msgstr "Daily Call Volume Trend"
+
+msgid "活跃项目"
+msgstr "Active Projects"
+
+msgid "状态码"
+msgstr "Status Code"
+
+msgid "状态码分布"
+msgstr "Status Code Distribution"
+
+msgid "累计调用 %(n)s 次"
+msgstr "Total calls: %(n)s"
+
+msgid "统计口径：仅 /api/ 业务接口；认证被拒与未匹配路由也会计入；“开放接口 / 未认证”表示未携带有效项目签名的请求。"
+msgstr "Scope: /api/ Endpoints only. Rejected authentication and unmatched routes are also counted. \"Public Endpoint / Unauthenticated\" means the request carried no valid project signature."
+
+msgid "该接口历史累计调用次数（未登录也可见）"
+msgstr "Total calls for this Endpoint (visible without logging in)"
+
+msgid "该时间范围内暂无调用数据"
+msgstr "No call data in this period"
+
+msgid "说明"
+msgstr "Description"
+
+msgid "调用量为公开信息，接口开放（免签名）。数据按天聚合，写入最多延迟数秒；统计范围仅 /api/ 业务接口，认证被拒与未匹配路由同样计入。"
+msgstr "Call volume is public information, so this Endpoint is open (no signature required). Data is aggregated daily, so writes may lag by a few seconds; only /api/ Endpoints are counted, including rejected authentication and unmatched routes."
+
+msgid "调用量查询"
+msgstr "Call Volume Query"
+
+msgid "超级管理员,调用统计,API 统计"
+msgstr "Super Admin,call statistics,API statistics"
+
+msgid "返回 data = {path, total_calls, today_calls}。"
+msgstr "Returns data = {path, total_calls, today_calls}."
+
+msgid "返回 data = {services: [{service, name, total_calls, today_calls}, ...]}。"
+msgstr "Returns data = {services: [{service, name, total_calls, today_calls}, ...]}."
+
+msgid "返回各服务的累计与今日调用次数，按累计调用量降序。"
+msgstr "Returns each service's total and today's call count, sorted by total call volume descending."
+
+msgid "返回某个接口的累计调用次数与今日调用次数。"
+msgstr "Returns the total and today's call count of an Endpoint."
+

@@ -1,0 +1,76 @@
+{% extends 'template.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "接口文档中心 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "API文档,接口文档,小影API" %}{% endblock %}
+{% block description %}{% trans "小影API 接口文档中心：左侧导航按服务与线路查看接口参数说明，并支持在线调试。" %}{% endblock %}
+
+{% block content %}
+<section class="mx-auto w-full max-w-7xl px-4 py-6 lg:py-8">
+  <div class="flex flex-col gap-6 lg:flex-row">
+
+    {% include 'docs/_sidebar.html' %}
+
+    {# ===== 右侧内容 ===== #}
+    <div class="min-w-0 flex-1">
+      <nav class="breadcrumbs text-sm">
+        <ul>
+          <li><a href="/docs/">{% trans "接口文档" %}</a></li>
+        </ul>
+      </nav>
+
+      <div class="mt-2 rounded-box border border-base-300 bg-gradient-to-br from-base-100 to-base-200 p-6 sm:p-8">
+        <h1 class="text-2xl font-bold sm:text-3xl">{% trans "接口文档中心" %}</h1>
+        <p class="mt-2 max-w-2xl text-sm text-base-content/70 sm:text-base">
+          {% blocktrans %}左侧导航按「服务 → 线路」组织，点击服务名展开查看其下全部子接口，每个接口都支持<span class="font-medium text-primary">参数填写与在线调试</span>。{% endblocktrans %}
+        </p>
+        <div class="mt-4 flex flex-wrap gap-2 text-sm">
+          <span class="badge badge-soft badge-primary">{% trans "在线调试" %}</span>
+          <span class="badge badge-soft badge-secondary">{% trans "服务/线路展开" %}</span>
+          <span class="badge badge-soft badge-success">{% trans "开放" %}</span>
+          <span class="badge badge-soft badge-info">{% trans "测试中" %}</span>
+          <span class="badge badge-soft badge-warning">{% trans "维护中" %}</span>
+          <span class="badge badge-ghost">{% trans "建设中" %}</span>
+          <span class="badge badge-soft badge-error">{% trans "已下线" %}</span>
+        </div>
+      </div>
+
+      {# 全量服务速览（状态由超级管理员在文档侧栏的“服务设置”齿轮弹窗中调整） #}
+      <div class="mt-6">
+        <h2 class="text-lg font-semibold">{% blocktrans with total=services|length online=online_count %}全部服务（共 {{ total }} 个，可在线调试 {{ online }} 个）{% endblocktrans %}</h2>
+        <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {% for svc in services %}
+          {% if svc.registered and svc.status != 'building' and svc.status != 'offline' %}
+          <a href="/docs/{{ svc.slug }}/"
+             class="card card-border bg-base-100 transition hover:-translate-y-0.5 hover:shadow-md">
+          {% else %}
+          <div class="card card-border bg-base-100 opacity-75" aria-disabled="true">
+          {% endif %}
+            <div class="card-body gap-1 p-4">
+              <div class="flex items-center justify-between gap-2">
+                <h3 class="card-title text-base">{{ svc.name }}</h3>
+                <span class="badge {{ svc.status_badge }} badge-sm">{{ svc.status_label }}</span>
+              </div>
+              <p class="line-clamp-2 text-xs text-base-content/70">{{ svc.desc }}</p>
+              <div class="mt-1 flex items-center justify-between text-xs">
+                {% if svc.registered %}
+                <span class="font-mono text-primary">{{ svc.slug }}</span>
+                <span class="badge badge-soft badge-primary badge-sm">{% blocktrans with n=svc.channel_count %}{{ n }} 线路{% endblocktrans %}</span>
+                {% else %}
+                <span class="opacity-60">{% trans "文档接入中" %}</span>
+                {% endif %}
+              </div>
+            </div>
+          {% if svc.registered and svc.status != 'building' and svc.status != 'offline' %}
+          </a>
+          {% else %}
+          </div>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+{% endblock %}

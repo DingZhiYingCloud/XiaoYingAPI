@@ -1,0 +1,146 @@
+{% load static i18n %}
+{# 全站公共页头：导航栏 + 登录态展示（登录/注册按钮 或 用户菜单） #}
+{% get_current_language as ACTIVE_LANG %}
+{% get_available_languages as SITE_LANGS %}
+{% trans "用户" as label_user %}
+<header class="sticky top-0 z-40 border-b border-base-300 bg-base-100/90 backdrop-blur">
+  <div class="navbar mx-auto w-full max-w-6xl gap-2 px-3 sm:px-4">
+    {# 品牌区：改为自然宽度且禁止压缩 —— daisyUI 默认给 navbar-start 定宽 50%，长文案语言 + 超管按钮时会被压到越界 #}
+    <div class="navbar-start w-auto shrink-0">
+      <a href="/" class="flex items-center gap-2" aria-label="{% trans '小影API 首页' %}">
+        <img src="/media/images/logo.png" alt="小影API" class="h-8 w-auto" />
+        <span class="text-lg font-bold tracking-tight sm:text-xl">小影<span class="text-primary">API</span></span>
+      </a>
+    </div>
+
+    {# 桌面端导航（>=lg 显示）：占据剩余空间；空间不足时横向滚动，绝不挤压两侧控件 #}
+    <nav class="navbar-center hidden min-w-0 flex-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:flex"
+         aria-label="{% trans '主导航' %}">
+      <ul class="menu menu-horizontal mx-auto w-max gap-1 px-1">
+        <li><a href="/">{% trans "首页" %}</a></li>
+        <li><a href="/#services">{% trans "服务能力" %}</a></li>
+        <li><a href="/#join">{% trans "接入指南" %}</a></li>
+        <li><a href="/guide/">{% trans "接入向导" %}</a></li>
+        <li><a href="/#faq">{% trans "常见问题" %}</a></li>
+        <li>
+          <a href="/docs/">{% trans "接口文档" %}</a>
+        </li>
+      </ul>
+    </nav>
+
+    {# 右侧控件区：自然宽度且禁止压缩（宽度不够时由中间导航先让位） #}
+    <div class="navbar-end w-auto shrink-0 gap-1 sm:gap-2">
+      {# 主题切换（菜单由 static/js/site/theme.js 按 THEMES 注入） #}
+      <details class="dropdown dropdown-end">
+        <summary class="btn btn-ghost btn-sm gap-1" title="{% trans '切换主题' %}" aria-label="{% trans '切换主题' %}">
+          <i data-lucide="palette" class="h-4 w-4"></i>
+          <span class="hidden sm:inline">{% trans "主题" %}</span>
+        </summary>
+        <div data-theme-menu
+             class="dropdown-content z-10 mt-3 flex max-h-[min(28rem,calc(100vh-9rem))] w-80 max-w-[calc(100vw-2rem)] flex-col rounded-box border border-base-300 bg-base-100 p-2.5 text-sm shadow-md">
+        </div>
+      </details>
+
+      {# 语言切换：链接到 /lang/ 写入语言 Cookie（LocaleMiddleware 在后续请求按 Cookie 生效）；名称取 name_local（本族语写法），不随当前语言变化 #}
+      {% get_language_info for ACTIVE_LANG as ACTIVE_LANG_INFO %}
+      <details class="dropdown dropdown-end">
+        <summary class="btn btn-ghost btn-sm gap-1" title="{% trans '切换语言' %}" aria-label="{% trans '切换语言' %}">
+          <i data-lucide="languages" class="h-4 w-4"></i>
+          <span class="hidden sm:inline">{{ ACTIVE_LANG_INFO.name_local }}</span>
+        </summary>
+        {# 宽度自适应语言名长度（w-max + 最小宽度），并禁止文字换行 #}
+        <ul class="dropdown-content menu z-10 mt-3 w-max min-w-44 max-w-[calc(100vw-2rem)] flex-nowrap rounded-box border border-base-300 bg-base-100 p-2 text-sm shadow-md">
+          {% for code, name in SITE_LANGS %}
+          {% get_language_info for code as lang_info %}
+          <li>
+            <a href="{% url 'website:set_language' %}?lang={{ code }}&next={{ request.get_full_path|urlencode }}"
+               class="{% if code == ACTIVE_LANG %}active font-medium{% endif %}">
+              <span class="flex-1 whitespace-nowrap">{{ lang_info.name_local }}</span>
+              {% if code == ACTIVE_LANG %}<i data-lucide="check" class="h-4 w-4"></i>{% endif %}
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+      </details>
+
+      {# 桌面端：超级管理员快捷入口（自动识别超管会话） #}
+      {% if is_superadmin %}
+      <a href="/console/projects/" class="btn btn-outline btn-sm hidden lg:inline-flex">{% trans "超级管理员" %}</a>
+      {% endif %}
+
+      {# 桌面端用户区 #}
+      {% if website_user %}
+      <details class="dropdown dropdown-end hidden lg:block">
+        <summary class="btn btn-ghost gap-1.5" aria-label="{% trans '用户菜单' %}">
+          <span class="max-w-32 truncate">{{ website_user.username|default:website_user.account }}</span>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4 opacity-60">
+            <path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
+          </svg>
+        </summary>
+        <div class="dropdown-content z-10 mt-3 w-56 rounded-box border border-base-300 bg-base-100 p-2 shadow-md">
+          <div class="px-3 py-2">
+            <p class="truncate text-sm font-semibold">{{ website_user.username|default:label_user }}</p>
+            <p class="truncate text-xs opacity-60">{% trans "账号：" %}{{ website_user.account }}</p>
+          </div>
+          <div class="divider my-1"></div>
+          <form method="post" action="{% url 'website:logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-ghost btn-sm w-full justify-start text-error">{% trans "退出登录" %}</button>
+          </form>
+        </div>
+      </details>
+      {% elif is_superadmin %}
+      <form method="post" action="{% url 'website:logout' %}" class="hidden shrink-0 lg:inline-flex">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-ghost btn-sm">{% trans "退出" %}</button>
+      </form>
+      {% else %}
+      <a href="{% url 'website:login' %}" class="btn btn-ghost btn-sm hidden sm:inline-flex">{% trans "登录" %}</a>
+      <a href="{% url 'website:register' %}" class="btn btn-primary btn-sm hidden sm:inline-flex">{% trans "注册" %}</a>
+      {% endif %}
+
+      {# 移动端导航按钮（<lg 显示） #}
+      <details class="dropdown dropdown-end lg:hidden">
+        <summary class="btn btn-ghost btn-circle" aria-label="{% trans '打开菜单' %}">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5">
+            <path d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </summary>
+        <ul class="menu dropdown-content z-10 mt-3 w-64 rounded-box border border-base-300 bg-base-100 p-2 shadow-md">
+          <li><a href="/">{% trans "首页" %}</a></li>
+          <li><a href="/#services">{% trans "服务能力" %}</a></li>
+          <li><a href="/#join">{% trans "接入指南" %}</a></li>
+          <li><a href="/guide/">{% trans "接入向导" %}</a></li>
+          <li><a href="/#faq">{% trans "常见问题" %}</a></li>
+          <li>
+            <a href="/docs/">{% trans "接口文档" %}</a>
+          </li>
+          <li><div class="divider my-1"></div></li>
+          {% if website_user %}
+          <li class="menu-title"><span>{{ website_user.username|default:website_user.account }}（{{ website_user.account }}）</span></li>
+          <li>
+            <form method="post" action="{% url 'website:logout' %}">
+              {% csrf_token %}
+              <button type="submit" class="w-full text-left text-error">{% trans "退出登录" %}</button>
+            </form>
+          </li>
+          {% else %}
+          {% if is_superadmin %}
+          <li><a href="/console/projects/">{% trans "超级管理员" %}</a></li>
+          <li>
+            <form method="post" action="{% url 'website:logout' %}">
+              {% csrf_token %}
+              <button type="submit" class="w-full text-left text-error">{% trans "退出" %}</button>
+            </form>
+          </li>
+          {% else %}
+          <li><a href="{% url 'website:login' %}">{% trans "登录" %}</a></li>
+          <li><a href="{% url 'website:register' %}">{% trans "注册" %}</a></li>
+          {% endif %}
+          {% endif %}
+        </ul>
+      </details>
+    </div>
+  </div>
+</header>

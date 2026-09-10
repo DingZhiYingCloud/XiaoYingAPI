@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+@source not "./tailwindcss";
+@source not "./daisyui{,*}.mjs";
+
+@plugin "./daisyui.mjs";
+
+/* 可选：加载/自定义主题（空体=使用内置全部主题；自定义主题写法见 https://daisyui.com/docs/themes/ ） */
+@plugin "./daisyui-theme.mjs"{
+  /* 在此处编写自定义主题 */
+}

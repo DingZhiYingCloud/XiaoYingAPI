@@ -6,6 +6,8 @@
     verify_by_code       - 两步注册第二步：校验验证码通过后才创建账号、发放账号
     login_user           - 登录（邮箱/手机号：验证码登录免密码；账号：账号+密码）
     send_login_code      - 发送登录验证码（校验通过后签发 Token）
+    send_reset_code      - 发送重置密码验证码（忘记密码第一步）
+    reset_password       - 重置密码（忘记密码第二步：校验通过后改密并作废该用户全部 Token）
     logout_user          - 退出（删除 Token）
     get_user_info        - 获取用户信息（校验 Token）
     verify_token         - 验证 Token（供子项目调用，返回用户身份）
@@ -31,7 +33,7 @@ from django.conf import settings
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.template import Context, Template
 from django.utils import timezone
 
@@ -67,6 +69,7 @@ CODE_GUESS_MAX_FAILS = 5
 # ── 验证码场景（UserVerifyRecord.scene，区分验证码用途） ──
 SCENE_REGISTER = 'register'  # 两步注册意向：发码暂存（不建号），校验通过后才创建账号
 SCENE_LOGIN = 'login'        # 登录验证码：发码校验，通过后签发 Token
+SCENE_RESET = 'reset'        # 重置密码：忘密流程发码，校验通过后更新密码并作废该用户全部 Token
 
 # ── 验证方式类型（与 AuthMethod.type 对应，后续新增验证方式在此追加常量 + 校验分支） ──
 METHOD_EMAIL = 'email'
@@ -197,6 +200,21 @@ def _validate_phone(phone):
     if not (phone.isdigit() and len(phone) == 11):
         return None
     return phone
+
+
+def _check_password_policy(password):
+    """校验密码是否符合策略（S-10：长度 8-64 且必须同时含字母与数字）
+
+    注册与重置密码共用同一处口径，避免两处策略不一致。
+    :return: None 通过；str 为错误信息（前缀遵循「参数缺失 / 参数格式错误」约定）
+    """
+    if not password:
+        return '参数缺失: password(密码)'
+    if not (PASSWORD_MIN_LEN <= len(password) <= PASSWORD_MAX_LEN):
+        return f'参数格式错误: password 长度必须在 {PASSWORD_MIN_LEN}-{PASSWORD_MAX_LEN} 字符之间'
+    if not (any(c.isalpha() for c in password) and any(c.isdigit() for c in password)):
+        return '参数格式错误: password 必须同时包含字母和数字'
+    return None
 
 
 def _method_expire_minutes(method):
@@ -358,13 +376,9 @@ def register_user(app, username, email, phone, password, base_url=''):
         return False, '参数格式错误: phone 必须为 11 位手机号'
     if username and len(username) > USERNAME_MAX_LEN:
         return False, f'参数格式错误: username 长度不能超过 {USERNAME_MAX_LEN} 字符'
-    if not password:
-        return False, '参数缺失: password(密码)'
-    if not (PASSWORD_MIN_LEN <= len(password) <= PASSWORD_MAX_LEN):
-        return False, f'参数格式错误: password 长度必须在 {PASSWORD_MIN_LEN}-{PASSWORD_MAX_LEN} 字符之间'
-    # S-10 整改：密码须同时包含字母与数字，避免弱口令（纯数字/纯字母拒绝）
-    if not (any(c.isalpha() for c in password) and any(c.isdigit() for c in password)):
-        return False, '参数格式错误: password 必须同时包含字母和数字'
+    pwd_err = _check_password_policy(password)
+    if pwd_err:
+        return False, pwd_err
 
     if email and not is_method_enabled(METHOD_EMAIL):
         return False, f'{METHOD_NAMES[METHOD_EMAIL]}注册方式未启用，请使用其他方式'
@@ -838,6 +852,142 @@ def send_login_code(app, method, credential):
     if not ok:
         return False, msg
     return True, None
+
+
+# ==================== 重置密码（忘记密码） ====================
+
+def send_reset_code(app, method, credential, base_url=''):
+    """发送重置密码验证码（忘记密码第一步）
+
+    校验凭证已注册且账号未封禁后下发验证码（scene=reset，邮件只发验证码不发激活链接），
+    校验通过后才允许设置新密码（见 reset_password）。
+    仅支持邮箱/手机号：纯用户名账号没有可验证的身份通道，无法自助重置。
+
+    :return: (True, None) 或 (False, err_msg)
+    """
+    method = (method or '').strip().lower()
+    credential = (credential or '').strip()
+
+    if method not in METHOD_NAMES:
+        return False, '参数值非法: method 仅支持 ' + '/'.join(METHOD_NAMES)
+    if not credential:
+        return False, f'参数缺失: {METHOD_NAMES[method]}'
+    if not is_method_enabled(method):
+        return False, f'{METHOD_NAMES[method]}验证方式未启用'
+
+    if method == METHOD_EMAIL:
+        email = _validate_email(credential)
+        if not email:
+            return False, '参数格式错误: email 邮箱格式不正确'
+        credential = email
+        lookup = {'email': email}
+    else:  # METHOD_PHONE
+        phone = _validate_phone(credential)
+        if not phone:
+            return False, '参数格式错误: phone 必须为 11 位手机号'
+        credential = phone
+        lookup = {'phone': phone}
+
+    try:
+        user = User.objects.get(**lookup)
+    except User.DoesNotExist:
+        return False, f'该{METHOD_NAMES[method]}未注册，请先注册'
+    except Exception as e:
+        return False, f'查询失败: {e}'
+
+    if not user.status:
+        return False, '账号已被封禁'
+    if not _cooldown_ok(method, credential):
+        return False, f'发送过于频繁，请 {VERIFY_RESEND_COOLDOWN} 秒后再试'
+
+    ok, msg = _issue_verify_record(user, method, credential, scene=SCENE_RESET, with_link=False)
+    if not ok:
+        return False, msg
+    return True, None
+
+
+def reset_password(app, method, credential, code, new_password):
+    """重置密码（忘记密码第二步）
+
+    校验 scene=reset 的验证码（过期清理 / 猜错上限 / 原子消费语义与两步注册一致），
+    通过后在同一事务内更新密码哈希并**作废该用户全部已签发 Token**（跨项目），
+    使账号被盗场景下重置后攻击者会话立即失效。
+
+    :return: (True, {user_id, account, username, email?/phone?}) 或 (False, err_msg)
+    """
+    method = (method or '').strip().lower()
+    credential = (credential or '').strip()
+    code = (code or '').strip()
+
+    if method not in METHOD_NAMES:
+        return False, '参数值非法: method 仅支持 ' + '/'.join(METHOD_NAMES)
+    if not credential:
+        return False, f'参数缺失: {METHOD_NAMES[method]}'
+    if not code:
+        return False, '参数缺失: code(验证码)'
+    pwd_err = _check_password_policy((new_password or '').strip())
+    if pwd_err:
+        return False, pwd_err
+    new_password = new_password.strip()
+
+    if method == METHOD_EMAIL:
+        email = _validate_email(credential)
+        if not email:
+            return False, '参数格式错误: email 邮箱格式不正确'
+        credential = email
+    else:  # METHOD_PHONE
+        phone = _validate_phone(credential)
+        if not phone:
+            return False, '参数格式错误: phone 必须为 11 位手机号'
+        credential = phone
+
+    verify = UserVerifyRecord.objects.filter(
+        scene=SCENE_RESET, type=method, credential=credential, is_used=False,
+    ).order_by('-create_time').first()
+    if not verify:
+        return False, '未找到重置申请，请先获取验证码'
+    if timezone.now() >= verify.expire_time:
+        # S-06: 过期即清空验证码，避免明文长期留存
+        UserVerifyRecord.objects.filter(pk=verify.pk).update(code='')
+        return False, '验证码已过期，请重新发送'
+    if verify.code != code:
+        # S-03: 同一验证码猜解达上限即作废，要求重发
+        if code_fail_exhausted(f'code:{verify.pk}', CODE_GUESS_MAX_FAILS):
+            UserVerifyRecord.objects.filter(pk=verify.pk, is_used=False).update(
+                is_used=True, code='')
+            return False, '验证码错误次数过多，请重新获取'
+        return False, '验证码错误'
+
+    user = verify.user
+    if user is None:
+        return False, f'该{METHOD_NAMES[method]}未注册，请先注册'
+    if not user.status:
+        return False, '账号已被封禁'
+
+    try:
+        with transaction.atomic():
+            # 原子消费验证记录：并发下只有一个请求能把 is_used 置 True；S-06: 同时清空验证码明文
+            updated = UserVerifyRecord.objects.filter(pk=verify.pk, is_used=False).update(
+                is_used=True, code='')
+            if updated == 0:
+                return False, '验证码不存在或已使用'
+            user.password = make_password(new_password)
+            user.save(update_fields=['password', 'updated_time'])
+            # 作废该用户全部 Token（跨项目），迫使其所有已登录设备重新登录
+            UserToken.objects.filter(user=user).delete()
+    except Exception as e:
+        return False, f'重置失败: {e}'
+
+    data = {
+        'user_id': str(user.id),
+        'account': user.account,
+        'username': user.username,
+    }
+    if user.email:
+        data['email'] = user.email
+    if user.phone:
+        data['phone'] = user.phone
+    return True, data
 
 
 # ==================== Token 与用户信息 ====================

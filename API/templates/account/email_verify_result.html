@@ -1,0 +1,79 @@
+{% extends 'template.html' %}
+{% load i18n %}
+
+{% block title %}{% if ok %}{% trans "邮箱验证成功 - 小影API" %}{% else %}{% trans "邮箱验证失败 - 小影API" %}{% endif %}{% endblock %}
+{% block keywords %}邮箱验证,激活,小影API{% endblock %}
+{% block description %}{% trans "小影API 邮箱验证结果页面。" %}{% endblock %}
+
+{% block content %}
+<section class="flex min-h-[70vh] items-center justify-center px-4 py-10">
+  <div class="card w-full max-w-md border border-base-300 bg-base-100 shadow-xl">
+    <div class="card-body items-center p-6 text-center sm:p-8">
+
+      {# ---------- 验证成功 ---------- #}
+      {% if ok %}
+      <div class="flex h-16 w-16 items-center justify-center rounded-full bg-success/10 text-success">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="h-8 w-8">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+          <path d="m9 11 3 3L22 4" />
+        </svg>
+      </div>
+      <h1 class="mt-4 text-2xl font-bold text-success">{% trans "邮箱验证成功" %}</h1>
+      <p class="mt-2 text-sm text-base-content/70">
+        {% trans "您的邮箱已通过验证" as default_verified_msg %}{{ msg|default:default_verified_msg }}{% if email %}{% trans "：" %}<span class="font-medium text-base-content">{{ email }}</span>{% endif %}
+      </p>
+
+      <div class="mt-5 w-full rounded-box border border-base-300 bg-base-200 p-4 text-left">
+        <p class="text-sm text-base-content/70">{% trans "您的账号为" %}</p>
+        <p class="mt-1 break-all font-mono text-xl font-bold tracking-wide text-primary">{{ account }}</p>
+        {% if username %}
+        <p class="mt-2 text-xs text-base-content/60">{% blocktrans %}用户名：{{ username }}{% endblocktrans %}</p>
+        {% endif %}
+        <p class="mt-1 text-xs text-base-content/60">{% blocktrans %}邮箱：{{ email }}（已验证）{% endblocktrans %}</p>
+      </div>
+
+      <div role="alert" class="alert alert-soft mt-4 py-2 text-left text-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5 shrink-0 text-info">
+          <circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" />
+        </svg>
+        <span>{% trans "账号是您登录的唯一凭据，请截图或抄写保存，谨防丢失。" %}</span>
+      </div>
+
+      <div class="mt-6 flex w-full flex-col gap-2 sm:flex-row">
+        <a href="/login/" class="btn btn-primary flex-1">{% trans "去登录" %}</a>
+        <a href="/" class="btn btn-ghost flex-1">{% trans "返回首页" %}</a>
+      </div>
+
+      {# ---------- 验证失败 ---------- #}
+      {% else %}
+      <div class="flex h-16 w-16 items-center justify-center rounded-full bg-error/10 text-error">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="h-8 w-8">
+          <circle cx="12" cy="12" r="10" />
+          <path d="m15 9-6 6M9 9l6 6" />
+        </svg>
+      </div>
+      <h1 class="mt-4 text-2xl font-bold text-error">{% trans "邮箱验证失败" %}</h1>
+      <p class="mt-2 text-sm text-base-content/70">{% trans "验证链接无效或已失效" as default_invalid_msg %}{{ msg|default:default_invalid_msg }}</p>
+
+      <div class="mt-5 w-full rounded-box border border-base-300 bg-base-200 p-4 text-left text-sm">
+        <p class="text-base-content/70">{% trans "您可以：" %}</p>
+        <ul class="mt-2 list-inside list-disc space-y-1 text-base-content/70">
+          <li>{% trans "回到注册页重新发起注册，系统会发送新的验证邮件；" %}</li>
+          <li>{% trans "验证邮件中的验证码与链接仅在有效期内可用，过期请重新获取；" %}</li>
+          <li>{% trans "如多次尝试仍失败，请联系小影API获取帮助。" %}</li>
+        </ul>
+      </div>
+
+      <div class="mt-6 flex w-full flex-col gap-2 sm:flex-row">
+        <a href="/register/" class="btn btn-primary flex-1">{% trans "重新注册" %}</a>
+        <a href="/" class="btn btn-ghost flex-1">{% trans "返回首页" %}</a>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+</section>
+{% endblock %}

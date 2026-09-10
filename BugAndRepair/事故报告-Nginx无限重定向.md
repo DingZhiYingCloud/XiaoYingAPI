@@ -1,5 +1,7 @@
 # 事故报告：Nginx HTTPS 无限重定向循环
 
+> **适用说明**：本报告来自另一项目（小影CMS）的实战记录，**根因与修复方法通用**；其中出现的路径、端口、后台地址（后台登录路径、uWSGI 端口、`gunicorn_conf.py` 等）均属于该项目，**不是本项目的**；正文中的路径/端口已改写为通用写法（`/login/`、`{端口}`），排查时替换为本项目实际值即可。
+
 ## 一、基本信息
 
 | 项目 | 内容 |
@@ -17,7 +19,7 @@
 
 ## 二、事故现象
 
-用户通过浏览器访问 `https://{DEPLOY_DOMAIN}/xiaoying_admin/login/` 时，浏览器提示"ERR_TOO_MANY_REDIRECTS"或"重定向过多"，页面始终无法加载。
+用户通过浏览器访问 `https://{DEPLOY_DOMAIN}/login/` 时，浏览器提示"ERR_TOO_MANY_REDIRECTS"或"重定向过多"，页面始终无法加载。
 
 ---
 
@@ -66,7 +68,7 @@ server {
 
 ### 3.4 为什么本地环境没问题
 
-本地开发环境使用 `python manage.py runserver` 直接运行，不经过 Nginx，因此不受影响。线上使用 Nginx 反向代理到 uWSGI（端口 10005），Nginx 配置中的 rewrite 规则才被触发。
+本地开发环境使用 `python manage.py runserver` 直接运行，不经过 Nginx，因此不受影响。线上使用 Nginx 反向代理到 uWSGI（端口 {端口}），Nginx 配置中的 rewrite 规则才被触发。
 
 ---
 
@@ -118,7 +120,7 @@ nginx -s reload
 |---------|------|
 | HTTP 访问 `http://{DEPLOY_DOMAIN}` | `301 → https://...` 正常跳转 ✅ |
 | HTTPS 访问 `https://{DEPLOY_DOMAIN}` | `200 OK` 无重定向 ✅ |
-| 内部 uWSGI 直接访问 `127.0.0.1:10005` | `200 OK` 服务正常 ✅ |
+| 内部 uWSGI 直接访问 `127.0.0.1:{端口}` | `200 OK` 服务正常 ✅ |
 
 ---
 
@@ -141,10 +143,10 @@ nginx -s reload
 
 ```bash
 # 测试 HTTP 响应
-curl -sI http://{SERVER_IP}/xiaoying_admin/login/ -H "Host: {DEPLOY_DOMAIN}" -w "\nHTTP Code: %{http_code}\n"
+curl -sI http://{SERVER_IP}/login/ -H "Host: {DEPLOY_DOMAIN}" -w "\nHTTP Code: %{http_code}\n"
 
 # 测试 HTTPS 响应
-curl -sk https://{SERVER_IP}/xiaoying_admin/login/ -H "Host: {DEPLOY_DOMAIN}" -o /dev/null -w "HTTP Code: %{http_code}\n"
+curl -sk https://{SERVER_IP}/login/ -H "Host: {DEPLOY_DOMAIN}" -o /dev/null -w "HTTP Code: %{http_code}\n"
 ```
 
 - 如果 HTTPS 返回 `301` 而非 `200` → rewrite 规则有误
@@ -153,7 +155,7 @@ curl -sk https://{SERVER_IP}/xiaoying_admin/login/ -H "Host: {DEPLOY_DOMAIN}" -o
 ### 6.2 绕开 Nginx，直测后端服务
 
 ```bash
-curl -v http://127.0.0.1:10005/xiaoying_admin/login/
+curl -v http://127.0.0.1:{端口}/login/
 ```
 
 - 如果后端返回 `200` → 问题在 Nginx 层
@@ -208,3 +210,11 @@ tail -f {LOG_ROOT}/{PROJECT_NAME}.error.log
 # 查看 uWSGI 日志（确认后端是否正常）
 tail -f {LOG_ROOT}/python/{PROJECT_NAME}/uwsgi.log
 ```
+
+---
+
+## 九、对本项目（小影API）的适用性
+
+- 本项目同样由 **Nginx 反向代理 uWSGI**（uWSGI 仅监听本机回环端口），因此本报告根因与修复方法**完全适用**：**禁止在 `#SSL-START` 区域做无端口判断的强制跳转**，HTTPS 强制跳转必须带 `$server_port != 443` 判断（或只在 80 端口 server 块内跳转）。
+- 但本项目**没有 `/admin/`**（`django.contrib.admin` 已下线），后台入口为官网 **`/login/`**（超管用 `is_superuser` 账号登录后进入 `/console/projects/`）。排查时请把本文正文中的示例路径（如 `/login/`）替换为本项目实际访问路径：官网首页 `/`、接入向导 `/guide/`、登录 `/login/`、文档中心 `/docs/`、超管控制台 `/console/projects/`。
+- 端口占位符 `{端口}` 请替换为本项目 uWSGI 实际监听端口（见 `uwsgi.ini`）。

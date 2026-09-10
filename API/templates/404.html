@@ -1,0 +1,22 @@
+{% extends 'template.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "页面未找到 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "404,页面未找到,小影API" %}{% endblock %}
+{% block description %}{% trans "小影API 404错误页面：您访问的页面不存在或已被删除，请返回首页继续浏览。" %}{% endblock %}
+
+{% block content %}
+<section class="flex min-h-[60vh] items-center justify-center px-4">
+  <div class="hero-content text-center">
+    <div class="max-w-md">
+      <p class="text-7xl font-black text-primary/20">404</p>
+      <h1 class="mt-2 text-2xl font-bold">{% trans "页面未找到" %}</h1>
+      <p class="mt-3 text-base-content/70">{% trans "您访问的页面不存在或已被移动，请检查链接是否正确。" %}</p>
+      <div class="mt-6 flex justify-center gap-3">
+        <a href="/" class="btn btn-primary">{% trans "返回首页" %}</a>
+        <button type="button" class="btn btn-ghost" onclick="history.back()">{% trans "返回上一页" %}</button>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

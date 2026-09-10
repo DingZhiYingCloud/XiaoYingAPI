@@ -1,0 +1,127 @@
+{% extends 'template.html' %}
+{% load static i18n %}
+
+{% block title %}{% trans "注册 - 小影API" %}{% endblock %}
+{% block keywords %}注册,小影API{% endblock %}
+{% block description %}{% trans "注册小影API 账号：支持用户名密码、邮箱验证码、手机号验证码。两步注册先验码后发号，安全可靠。" %}{% endblock %}
+
+{% block content %}
+<section class="flex min-h-[70vh] items-center justify-center px-4 py-10">
+  <div class="card w-full max-w-md border border-base-300 bg-base-100 shadow-xl">
+    <div class="card-body p-6 sm:p-8">
+
+      <div class="mb-2 flex flex-col items-center gap-2 text-center">
+        <img src="/media/images/logo.png" alt="小影API" class="h-10 w-auto" />
+        <h1 class="text-2xl font-bold">{% trans "创建账号" %}</h1>
+        <p class="text-sm text-base-content/60">{% trans "注册小影API 账号，畅用全部服务能力" %}</p>
+      </div>
+
+      {# 注册方式切换 #}
+      <div role="tablist" aria-label="{% trans '注册方式' %}" class="tabs tabs-box mt-2 grid grid-cols-3">
+        <button type="button" role="tab" class="tab tab-active" data-auth-tab="username">{% trans "用户名" %}</button>
+        {% if email_enabled %}
+        <button type="button" role="tab" class="tab" data-auth-tab="email">{% trans "邮箱" %}</button>
+        {% endif %}
+        {% if phone_enabled %}
+        <button type="button" role="tab" class="tab" data-auth-tab="phone">{% trans "手机号" %}</button>
+        {% endif %}
+      </div>
+
+      {# 结果提示区 #}
+      <div id="register-alert" role="alert" class="alert mt-3 hidden py-2 text-sm"></div>
+
+      {# ---- 用户名 + 密码注册（直接建号） ---- #}
+      <form id="register-username-form" class="auth-panel mt-2" novalidate>
+        {% csrf_token %}
+        <label class="fieldset-label" for="reg-username-name">{% trans "用户名" %}</label>
+        <input id="reg-username-name" type="text" class="input input-bordered w-full" placeholder="{% trans '最多 50 个字符' %}"
+               autocomplete="username" maxlength="50" required />
+        <label class="fieldset-label mt-3" for="reg-username-password">{% trans "密码" %}</label>
+        <input id="reg-username-password" type="password" class="input input-bordered w-full"
+               placeholder="{% trans '8-64 位，需同时包含字母和数字' %}" autocomplete="new-password" minlength="8" maxlength="64" required />
+        <button type="submit" class="btn btn-primary btn-block mt-5" data-submit-label="{% trans '注 册' %}">{% trans "注 册" %}</button>
+      </form>
+
+      {# ---- 邮箱两步注册 ---- #}
+      {% if email_enabled %}
+      <form id="register-email-form" class="auth-panel hidden mt-2" novalidate>
+        <div data-reg-fields>
+          <label class="fieldset-label" for="reg-email-name">{% trans "用户名（选填）" %}</label>
+          <input id="reg-email-name" type="text" class="input input-bordered w-full" placeholder="{% trans '用于展示，可不填' %}"
+                 autocomplete="username" maxlength="50" />
+          <label class="fieldset-label mt-3" for="reg-email-credential">{% trans "邮箱" %}</label>
+          <input id="reg-email-credential" type="email" class="input input-bordered w-full" placeholder="you@example.com"
+                 autocomplete="email" maxlength="254" required />
+          <label class="fieldset-label mt-3" for="reg-email-password">{% trans "密码" %}</label>
+          <input id="reg-email-password" type="password" class="input input-bordered w-full"
+                 placeholder="{% trans '8-64 位，需同时包含字母和数字' %}" autocomplete="new-password" minlength="8" maxlength="64" required />
+          <button type="submit" class="btn btn-primary btn-block mt-5" data-reg-step1-label="{% trans '注册并获取验证码' %}">{% trans "注册并获取验证码" %}</button>
+        </div>
+        <div data-reg-verify class="hidden">
+          <div class="alert alert-soft bg-base-200 py-2 text-sm" role="status">
+            {% trans "验证码已发送至" %} <span class="font-medium" data-reg-credential-echo></span>{% trans "，请查收。" %}
+          </div>
+          <label class="fieldset-label mt-3" for="reg-email-code">{% trans "邮箱验证码" %}</label>
+          <div class="flex gap-2">
+            <input id="reg-email-code" type="text" class="input input-bordered w-full" placeholder="{% trans '6 位验证码' %}"
+                   inputmode="numeric" maxlength="6" autocomplete="one-time-code" required />
+            <button type="button" class="btn btn-outline shrink-0" data-reg-resend>{% trans "重新发送" %}</button>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block mt-4" data-reg-verify-label="{% trans '完成注册' %}">{% trans "完成注册" %}</button>
+        </div>
+        <p class="mt-3 text-xs text-base-content/60">{% trans "两步注册：先发验证码，校验通过后才创建账号并发放账号。" %}</p>
+      </form>
+      {% endif %}
+
+      {# ---- 手机号两步注册 ---- #}
+      {% if phone_enabled %}
+      <form id="register-phone-form" class="auth-panel hidden mt-2" novalidate>
+        {% csrf_token %}
+        <div data-reg-fields>
+          <label class="fieldset-label" for="reg-phone-name">{% trans "用户名（选填）" %}</label>
+          <input id="reg-phone-name" type="text" class="input input-bordered w-full" placeholder="{% trans '用于展示，可不填' %}"
+                 autocomplete="username" maxlength="50" />
+          <label class="fieldset-label mt-3" for="reg-phone-credential">{% trans "手机号" %}</label>
+          <input id="reg-phone-credential" type="tel" class="input input-bordered w-full" placeholder="{% trans '11 位手机号' %}"
+                 autocomplete="tel" inputmode="numeric" maxlength="11" required />
+          <label class="fieldset-label mt-3" for="reg-phone-password">{% trans "密码" %}</label>
+          <input id="reg-phone-password" type="password" class="input input-bordered w-full"
+                 placeholder="{% trans '8-64 位，需同时包含字母和数字' %}" autocomplete="new-password" minlength="8" maxlength="64" required />
+          <button type="submit" class="btn btn-primary btn-block mt-5" data-reg-step1-label="{% trans '注册并获取验证码' %}">{% trans "注册并获取验证码" %}</button>
+        </div>
+        <div data-reg-verify class="hidden">
+          <div class="alert alert-soft bg-base-200 py-2 text-sm" role="status">
+            {% trans "验证码已发送至" %} <span class="font-medium" data-reg-credential-echo></span>{% trans "，请查收。" %}
+          </div>
+          <label class="fieldset-label mt-3" for="reg-phone-code">{% trans "短信验证码" %}</label>
+          <div class="flex gap-2">
+            <input id="reg-phone-code" type="text" class="input input-bordered w-full" placeholder="{% trans '6 位验证码' %}"
+                   inputmode="numeric" maxlength="6" autocomplete="one-time-code" required />
+            <button type="button" class="btn btn-outline shrink-0" data-reg-resend>{% trans "重新发送" %}</button>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block mt-4" data-reg-verify-label="{% trans '完成注册' %}">{% trans "完成注册" %}</button>
+        </div>
+        <p class="mt-3 text-xs text-base-content/60">{% trans "两步注册：先发验证码，校验通过后才创建账号并发放账号。" %}</p>
+      </form>
+      {% endif %}
+
+      <p class="mt-5 text-center text-sm text-base-content/60">
+        {% trans "已有账号？" %}
+        <a class="link link-primary" href="{% url 'website:login' %}">{% trans "去登录" %}</a>
+      </p>
+
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block js %}
+{% if email_enabled or phone_enabled or username_enabled %}
+{# 图形验证：启用时才加载 SDK；开关变量供 account.js 判断是否弹验证（与后端校验口径一致） #}
+{% if captcha_enabled %}
+<script src="{% static 'js/captcha_auth/aliyun/captcha-client.js' %}?v=20260910a"></script>
+{% endif %}
+<script>window.XY_CAPTCHA_ENABLED = {{ captcha_enabled|yesno:'true,false' }};</script>
+<script src="{% static 'js/site/account.js' %}?v=20260910a"></script>
+{% endif %}
+{% endblock %}

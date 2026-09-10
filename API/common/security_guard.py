@@ -21,6 +21,7 @@
 from datetime import timedelta
 import datetime
 import threading
+from contextlib import contextmanager
 
 from django.db import connection
 from django.utils import timezone
@@ -51,6 +52,22 @@ def _now_str() -> str:
     return timezone.now().strftime(_TS_FMT)
 
 
+@contextmanager
+def _raw_cursor():
+    """提供绕过 Django 调试包装的 SQLite 游标（本模块自建原生表专用）
+
+    Django 在 settings.DEBUG=True 时会对 cursor.execute 做 last_executed_query
+    格式化，而 SQLite 使用 '?' 参数占位会触发 “not all arguments converted”
+    异常。本模块操作的是自建原生表（未走 ORM），直接使用底层 sqlite3 游标，
+    参数化 '?' 由 sqlite3 原生绑定，行为一致且规避该调试格式化问题。
+    """
+    cur = connection.connection.cursor()
+    try:
+        yield cur
+    finally:
+        cur.close()
+
+
 def _minutes_left(lock_until_str: str) -> int:
     """锁定截止字符串 → 剩余分钟数（向上取整，至少 1 分钟）"""
     lock_dt = timezone.datetime.strptime(lock_until_str, _TS_FMT)
@@ -69,7 +86,7 @@ def _ensure_tables():
     with _ensure_lock:
         if _created:
             return
-        with connection.cursor() as cur:
+        with _raw_cursor() as cur:
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS api_login_guard (
                     key         TEXT PRIMARY KEY,
@@ -94,7 +111,7 @@ def _purge_guard_rows():
     now = _now_str()
     stale = (timezone.now() - timedelta(hours=STALE_COUNTER_HOURS)).strftime(_TS_FMT)
     old_nonce = (timezone.now() - timedelta(seconds=NONCE_WINDOW_SECONDS)).strftime(_TS_FMT)
-    with connection.cursor() as cur:
+    with _raw_cursor() as cur:
         cur.execute("DELETE FROM api_login_guard WHERE lock_until IS NOT NULL AND lock_until <= ?", [now])
         cur.execute("DELETE FROM api_login_guard WHERE lock_until IS NULL AND update_time < ?", [stale])
         cur.execute("DELETE FROM api_nonce WHERE ts < ?", [old_nonce])
@@ -110,7 +127,7 @@ def login_locked(key: str):
     _ensure_tables()
     _purge_guard_rows()
     now = _now_str()
-    with connection.cursor() as cur:
+    with _raw_cursor() as cur:
         cur.execute(
             "SELECT lock_until FROM api_login_guard WHERE key = ?", [key]
         )
@@ -134,7 +151,7 @@ def login_fail(key: str, max_fails: int = LOGIN_MAX_FAILS,
     if lock_minutes:
         lock_until_val = (timezone.now() + timedelta(minutes=lock_minutes)).strftime(_TS_FMT)
 
-    with connection.cursor() as cur:
+    with _raw_cursor() as cur:
         # 读取当前行（锁定中或计数器）
         cur.execute("SELECT fail_count, lock_until FROM api_login_guard WHERE key = ?", [key])
         row = cur.fetchone()
@@ -165,7 +182,7 @@ def login_fail(key: str, max_fails: int = LOGIN_MAX_FAILS,
 def login_clear(key: str):
     """登录成功后清除失败记录"""
     _ensure_tables()
-    with connection.cursor() as cur:
+    with _raw_cursor() as cur:
         cur.execute("DELETE FROM api_login_guard WHERE key = ?", [key])
 
 
@@ -179,7 +196,7 @@ def code_fail_exhausted(key: str, max_fails: int = CODE_MAX_FAILS) -> bool:
     _ensure_tables()
     _purge_guard_rows()
     now = _now_str()
-    with connection.cursor() as cur:
+    with _raw_cursor() as cur:
         cur.execute("SELECT fail_count FROM api_login_guard WHERE key = ?", [key])
         row = cur.fetchone()
         new_count = (row[0] if row else 0) + 1
@@ -206,7 +223,7 @@ def nonce_replayed(app_id: str, nonce: str) -> bool:
     _ensure_tables()
     _purge_guard_rows()
     now = _now_str()
-    with connection.cursor() as cur:
+    with _raw_cursor() as cur:
         cur.execute(
             "INSERT OR IGNORE INTO api_nonce(app_id, nonce, ts) VALUES(?, ?, ?)",
             [app_id, nonce, now],

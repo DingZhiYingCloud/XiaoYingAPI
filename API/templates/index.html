@@ -1,0 +1,210 @@
+{% extends 'template.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "小影API - 通用 API 聚合服务平台" %}{% endblock %}
+{% block keywords %}{% trans "小影API,API聚合,免费API,接口平台,视频解析,代理IP,短信验证,用户中心" %}{% endblock %}
+{% block description %}{% blocktrans with n=services|length %}小影API 是一个通用 API 聚合服务平台，聚合音乐、视频解析、AI、代理IP、验证码、短信、邮箱、用户中心等 {{ n }} 类服务能力，统一签名认证与标准 JSON 响应，即开即用。{% endblocktrans %}{% endblock %}
+
+{% block content %}
+
+{# ==================== Hero ==================== #}
+<section class="relative overflow-hidden bg-base-200">
+  <div class="mx-auto grid w-full max-w-6xl gap-10 px-4 py-16 sm:py-24 lg:grid-cols-2 lg:items-center lg:gap-12">
+    <div>
+      <div class="badge badge-soft badge-primary mb-4">{% trans "通用 API 聚合服务平台" %}</div>
+      <h1 class="text-4xl font-black leading-tight tracking-tight sm:text-5xl">
+        {% blocktrans with n=services|length %}一个平台，聚合 <span class="text-primary">{{ n }}</span>+ 类服务能力{% endblocktrans %}
+      </h1>
+      <p class="mt-4 max-w-xl text-base-content/70 sm:text-lg">
+        {% blocktrans %}小影API 帮你把散落各处的爬虫、数据与验证能力统一成一套 <strong class="text-base-content">标准、签名安全、开箱即用</strong> 的 HTTP 接口。{% endblocktrans %}
+      </p>
+      <div class="mt-8 flex flex-wrap gap-3">
+        <a href="{% url 'website:register' %}" class="btn btn-primary btn-lg">{% trans "免费注册" %}</a>
+        <a href="https://b7hm6mvwv6.apifox.cn/" target="_blank" rel="noopener nofollow" class="btn btn-outline btn-lg">{% trans "查看接口文档" %}</a>
+      </div>
+      <ul class="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-sm text-base-content/60">
+        <li class="flex items-center gap-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4 text-success"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" /></svg>
+          {% trans "统一签名认证" %}
+        </li>
+        <li class="flex items-center gap-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4 text-success"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" /></svg>
+          {% trans "标准 JSON 响应" %}
+        </li>
+        <li class="flex items-center gap-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4 text-success"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" /></svg>
+          {% trans "服务端代管密钥" %}
+        </li>
+      </ul>
+    </div>
+
+    {# Hero 右侧：请求示例 #}
+    <div class="w-full max-w-xl justify-self-center lg:justify-self-end">
+      <div class="mockup-code shadow-xl">
+        <pre data-prefix="$"><code>curl -X POST 'https://api.example.com' \</code></pre>
+        <pre data-prefix=" "><code>     /api/user_center/users/login \</code></pre>
+        <pre data-prefix=" "><code>     -d 'account=837120465&amp;password=******'</code></pre>
+        <pre data-prefix="&gt;" class="text-warning"><code># {% trans "统一响应格式" %}</code></pre>
+        <pre data-prefix=" "><code>{</code></pre>
+        <pre data-prefix=" "><code>  "code": 10000,</code></pre>
+        <pre data-prefix=" "><code>  "msg": "{% trans '登录成功' %}",</code></pre>
+        <pre data-prefix=" "><code>  "data": { "account": "837120465", "token": "5f4d..." }</code></pre>
+        <pre data-prefix=" "><code>}</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ==================== 数据概览 ==================== #}
+<section class="mx-auto w-full max-w-6xl px-4">
+  <div class="stats stats-vertical -mt-0 grid w-full overflow-hidden rounded-box shadow-lg sm:stats-horizontal sm:grid-cols-3">
+    <div class="stat">
+      <div class="stat-figure text-primary">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-8 w-8"><path d="M2 12h20M2 6h20M2 18h12"/></svg>
+      </div>
+      <div class="stat-title">{% trans "聚合服务" %}</div>
+      <div class="stat-value text-primary">{{ services|length }}+</div>
+      <div class="stat-desc">{% trans "音乐 / 视频 / AI / 代理IP ..." %}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-figure text-secondary">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-8 w-8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
+      </div>
+      <div class="stat-title">{% trans "安全接入" %}</div>
+      <div class="stat-value text-secondary">HMAC-SHA256</div>
+      <div class="stat-desc">{% trans "签名防篡改 · 防重放" %}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-figure text-accent">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-8 w-8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 7v2M12 7v2M16 7v2M7 12h10M7 16h6"/></svg>
+      </div>
+      <div class="stat-title">{% trans "统一规范" %}</div>
+      <div class="stat-value text-accent">{ code, msg, data }</div>
+      <div class="stat-desc">{% trans "全部接口同一响应结构" %}</div>
+    </div>
+  </div>
+</section>
+
+{# ==================== 服务能力 ==================== #}
+<section id="services" class="mx-auto w-full max-w-6xl scroll-mt-20 px-4 py-16 sm:py-20">
+  <div class="mx-auto max-w-2xl text-center">
+    <h2 class="text-3xl font-bold tracking-tight sm:text-4xl">{% trans "服务能力" %}</h2>
+    <p class="mt-3 text-base-content/70">
+      {% blocktrans with n=services|length %}聚合 {{ n }} 类服务，全部统一在 <code class="font-mono text-sm text-primary">/api/</code> 前缀下对外提供。{% endblocktrans %}
+    </p>
+  </div>
+
+  <div class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    {% for svc in services %}
+    <article class="card card-border bg-base-100 transition hover:-translate-y-0.5 hover:shadow-md{% if svc.status == 'offline' or svc.status == 'building' %} opacity-70 hover:translate-y-0{% endif %}">
+      <div class="card-body gap-2 p-5">
+        <div class="flex items-center justify-between gap-2">
+          <h3 class="card-title">{{ svc.name }}</h3>
+          <span class="badge {{ svc.status_badge }} badge-sm">{{ svc.status_label }}</span>
+        </div>
+        <code class="font-mono text-xs opacity-60">{{ svc.url_prefix }}</code>
+        <p class="text-sm text-base-content/70">{{ svc.desc }}</p>
+        <div class="mt-1 flex flex-wrap gap-1.5">
+          {% for tag in svc.tags %}
+          <span class="badge badge-soft badge-primary badge-sm">{{ tag }}</span>
+          {% endfor %}
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+{# ==================== 接入指南 ==================== #}
+<section id="join" class="scroll-mt-20 bg-base-200 py-16 sm:py-20">
+  <div class="mx-auto w-full max-w-6xl px-4">
+    <div class="mx-auto max-w-2xl text-center">
+      <h2 class="text-3xl font-bold tracking-tight sm:text-4xl">{% trans "如何接入" %}</h2>
+      <p class="mt-3 text-base-content/70">{% trans "四步完成接入，其余交给小影API。" %}</p>
+    </div>
+
+    <ol class="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <li class="card bg-base-100">
+        <div class="card-body p-5">
+          <div class="flex h-10 w-10 items-center justify-center rounded-box bg-primary font-bold text-primary-content">1</div>
+          <h3 class="mt-3 font-semibold">{% trans "注册账号" %}</h3>
+          <p class="text-sm text-base-content/70">{% trans "使用用户名、邮箱或手机号注册小影API账号。" %}</p>
+        </div>
+      </li>
+      <li class="card bg-base-100">
+        <div class="card-body p-5">
+          <div class="flex h-10 w-10 items-center justify-center rounded-box bg-primary font-bold text-primary-content">2</div>
+          <h3 class="mt-3 font-semibold">{% trans "开通接入项目" %}</h3>
+          <p class="text-sm text-base-content/70">{% trans "联系管理员开通接入项目，获取专属 APPID 与 APPSECRET。" %}</p>
+        </div>
+      </li>
+      <li class="card bg-base-100">
+        <div class="card-body p-5">
+          <div class="flex h-10 w-10 items-center justify-center rounded-box bg-primary font-bold text-primary-content">3</div>
+          <h3 class="mt-3 font-semibold">{% trans "阅读接口文档" %}</h3>
+          <p class="text-sm text-base-content/70">{% trans "按文档组装请求参数并完成 HMAC-SHA256 签名。" %}</p>
+        </div>
+      </li>
+      <li class="card bg-base-100">
+        <div class="card-body p-5">
+          <div class="flex h-10 w-10 items-center justify-center rounded-box bg-primary font-bold text-primary-content">4</div>
+          <h3 class="mt-3 font-semibold">{% trans "开始调用" %}</h3>
+          <p class="text-sm text-base-content/70">{% blocktrans %}统一 <code class="font-mono text-xs">{ code, msg, data }</code> 响应，解析即可用。{% endblocktrans %}</p>
+        </div>
+      </li>
+    </ol>
+
+    <div class="mt-10 text-center">
+      <a href="{% url 'website:guide' %}" class="btn btn-primary btn-lg">{% trans "开始接入向导" %}</a>
+    </div>
+  </div>
+</section>
+
+{# ==================== 常见问题 ==================== #}
+<section id="faq" class="mx-auto w-full max-w-4xl scroll-mt-20 px-4 py-16 sm:py-20">
+  <div class="text-center">
+    <h2 class="text-3xl font-bold tracking-tight sm:text-4xl">{% trans "常见问题" %}</h2>
+  </div>
+  <div class="mt-8 space-y-3">
+    <details class="collapse collapse-arrow border border-base-300 bg-base-100">
+      <summary class="collapse-title font-medium">{% trans "接入项目需要自己创建吗？APPID/APPSECRET 怎么获取？" %}</summary>
+      <div class="collapse-content text-sm text-base-content/70">
+        {% blocktrans %}接入项目由小影API管理员在后台开通并发放 APPID / APPSECRET。APPSECRET 请务必保存在你的服务端，严禁写入前端代码或提交到仓库。{% endblocktrans %}
+      </div>
+    </details>
+    <details class="collapse collapse-arrow border border-base-300 bg-base-100">
+      <summary class="collapse-title font-medium">{% trans "接口需要什么认证？" %}</summary>
+      <div class="collapse-content text-sm text-base-content/70">
+        {% blocktrans %}需要认证的接口须携带 app_id / timestamp / nonce / sign 四个签名参数（HMAC-SHA256，密钥为 APPSECRET）；用户中心等公开配置接口免签名，可参考接口文档中的分类配置。{% endblocktrans %}
+      </div>
+    </details>
+    <details class="collapse collapse-arrow border border-base-300 bg-base-100">
+      <summary class="collapse-title font-medium">{% trans "返回格式是统一的吗？" %}</summary>
+      <div class="collapse-content text-sm text-base-content/70">
+        {% blocktrans %}是。全部接口统一返回 <code class="font-mono text-xs">{"code": 10000, "msg": "成功", "data": {...}}</code>，code=10000 表示成功，2xxxx/3xxxx/4xxxx/5xxxx 分别对应客户端、业务、外部与系统错误。{% endblocktrans %}
+      </div>
+    </details>
+    <details class="collapse collapse-arrow border border-base-300 bg-base-100">
+      <summary class="collapse-title font-medium">{% trans "如何联系到小影API？" %}</summary>
+      <div class="collapse-content text-sm text-base-content/70">
+        {% blocktrans %}微信：duyanbz　·　Telegram：<a class="link link-hover text-primary" href="https://t.me/xiaoying1216" target="_blank" rel="noopener nofollow">@xiaoying1216</a>{% endblocktrans %}
+      </div>
+    </details>
+  </div>
+</section>
+
+{# ==================== 底部 CTA ==================== #}
+<section class="bg-primary px-4 py-14">
+  <div class="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-6 text-center sm:flex-row sm:text-left">
+    <div>
+      <h2 class="text-2xl font-bold text-primary-content sm:text-3xl">{% trans "准备好接入小影API了吗？" %}</h2>
+      <p class="mt-2 text-primary-content/80">{% trans "注册账号，开启你的通用 API 之旅。" %}</p>
+    </div>
+    <div class="flex shrink-0 flex-wrap justify-center gap-3">
+      <a href="{% url 'website:register' %}" class="btn btn-lg bg-base-100 text-base-content hover:bg-base-200">{% trans "免费注册" %}</a>
+      <a href="https://b7hm6mvwv6.apifox.cn/" target="_blank" rel="noopener nofollow" class="btn btn-lg btn-outline border-primary-content text-primary-content hover:bg-primary-content hover:text-primary">{% trans "查看文档" %}</a>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

@@ -37,8 +37,6 @@ CORS_ORIGIN_ALLOW_ALL = os.getenv('CORS_ORIGIN_ALLOW_ALL', 'False').lower() in (
 # https://docs.djangoproject.com/en/5.2/ref/settings/#installed-apps
 
 INSTALLED_APPS = [
-    'simpleui', # 后台主题(simpleui),必须在 django.contrib.admin 之前
-    'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -52,15 +50,17 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware', # 全站批量设置安全相关 HTTP 响应头，防御多种浏览器层面攻击，是全站安全第一道防线
     'whitenoise.middleware.WhiteNoiseMiddleware', # 生产模式静态文件服务（Django 5.1+ 的 serve() 视图在 DEBUG=False 时返回 400，WhiteNoise 为官方推荐替代）
     'django.contrib.sessions.middleware.SessionMiddleware', # 实现 Django 会话（Session）机制，维护用户服务端状态。
+    'django.middleware.locale.LocaleMiddleware', # 国际化：按 URL 参数/Cookie 激活当前语言（必须在 Session 之后、Common 之前）
+    'API.website.docs_menu.DocsMenuMiddleware', # 文档中心：/docs/* 请求自动生成左侧服务菜单（注入 request.docs_menu）
     'corsheaders.middleware.CorsMiddleware', # 跨域请求中间件
     'django.middleware.common.CommonMiddleware', # 用来处理如日志记录、请求计数等通用任务的中间件
     'API.common.middleware.ApiCsrfExemptMiddleware', # CSRF 防护（S-07 整改）：/admin/ 等非 API 页面恢复校验，/api/ 前缀豁免（走签名认证）
     'django.contrib.auth.middleware.AuthenticationMiddleware', # 认证中间件,用来处理用户认证相关的请求和响应
     'django.contrib.messages.middleware.MessageMiddleware', # 消息中间件,用来处理消息相关的请求和响应
     'django.middleware.clickjacking.XFrameOptionsMiddleware', # 用来处理点击劫持攻击的中间件
+    'API.common.middleware.ApiRequestLogMiddleware', # 请求日志（A-05）+ 调用统计（A-03）：必须在认证中间件之前，认证被拒的请求也要记录
     'API.common.middleware.ApiAuthMiddleware', # API 服务认证中间件：按 ApiCategory 分类树配置决定哪些 /api/ 服务需用户中心签名认证
     'API.common.middleware.ApiJson404Middleware', # /api/ 路径未匹配路由时返回 JSON 404（兜底）
-    'API.common.middleware.ApiRequestLogMiddleware', # 请求日志（A-05）：request_id + 耗时/状态码/auth_app 落 logs/app.log，异常入 error.log
 ]
 
 
@@ -97,6 +97,26 @@ else:
 
 ROOT_URLCONF = 'XiaoYingAPI.urls'
 
+# ==================== 国际化（i18n）：界面与 API 文档多语言 ====================
+# 语言来源：?lang=xx（切换视图会写入 Cookie 记住选择），默认简体中文。
+# 新增语言的完整步骤见 locale/多语言开发指南.md，要点：
+#   1) LANGUAGES 增加一项；
+#   2) 新建 locale/<to_locale 形式>/LC_MESSAGES/{django.po,djangojs.po} 提供译文
+#      （语言码连字符变下划线、地区首字母大写，如 zh-hant → zh_Hant、pt-br → pt_BR）；
+#   3) 执行 python scripts/compile_locale.py 编译出 .mo（Django 运行时只读 .mo）。
+# 注：页头语言下拉的名称取 name_local（语言的本族语写法），不使用此处的中文名。
+USE_I18N = True
+LANGUAGE_CODE = 'zh-hans'
+LANGUAGES = [
+    ('zh-hans', '简体中文'),
+    ('zh-hant', '繁體中文'),
+    ('en', 'English'),
+]
+# 语言 Cookie 名跟随 Cookie 隔离开关，避免本机多项目互相覆盖语言选择
+LANGUAGE_COOKIE_NAME = 'xyapi_language' if COOKIE_ISOLATION else 'django_language'
+LANGUAGE_COOKIE_AGE = 60 * 60 * 24 * 365
+LOCALE_PATHS = [BASE_DIR / 'locale']
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -108,6 +128,10 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                # 官网前台登录态（会话驱动），供全站模板（导航/页脚等）判断是否已登录
+                'API.website.context.website_user',
+                # 文档中心左侧服务菜单（仅 /docs/* 由中间件注入）
+                'API.website.docs_menu.docs_menu_context',
             ],
         },
     },
@@ -151,14 +175,10 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-# 国际化配置
+# 时区配置（界面语言/国际化见上方「国际化（i18n）」配置块）
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'zh-hans' # 中文简体
-
 TIME_ZONE = 'Asia/Shanghai' # 上海时间
-
-USE_I18N = True # 开启国际化
 
 USE_TZ = True # 开启时区支持
 
@@ -210,6 +230,13 @@ EMAIL_VERIFY_EXPIRE_MINUTES = int(os.getenv('EMAIL_VERIFY_EXPIRE_MINUTES', '30')
 # ==================== 手机号验证配置 ====================
 # 手机号短信验证码有效期(分钟)，与阿里云 SendSmsVerifyCode 的 valid_time 联动
 PHONE_VERIFY_EXPIRE_MINUTES = int(os.getenv('PHONE_VERIFY_EXPIRE_MINUTES', '5'))
+
+
+# ==================== 官网前台接入配置 ====================
+# 官网作为用户中心的一个「接入项目」，注册/登录由服务端代理完成、登录态存 Django 会话。
+# XYAPI_WEB_APP_NAME：官网在「接入项目」中的应用名称，首次使用自动创建（不存在时）。
+# 官网会话中签发的 Token 即绑定在该项目下，与用户中心契约保持一致。
+WEB_APP_NAME = os.getenv('XYAPI_WEB_APP_NAME', '小影API官网')
 
 
 # ==================== 文件上传配置 ====================

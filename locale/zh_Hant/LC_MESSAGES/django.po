@@ -1,0 +1,3322 @@
+# Traditional Chinese (zh-hant) for XiaoYingAPI website
+# 本文件由 scripts/make_zh_hant.py 自动生成，请勿手工修改（改了会在下次生成时被覆盖）。
+# 通用繁體：仅做字形转换，用词与简体版保持一致；如需台湾/香港用词，请改为人工维护并停用该脚本。
+# 重新生成：python scripts/make_zh_hant.py && python scripts/compile_locale.py
+
+# ==================== 全站页头 / 导航 / 用户区（common_html/headers.html） ====================
+msgid "主导航"
+msgstr "主導航"
+
+msgid "主题"
+msgstr "主題"
+
+msgid "切换主题"
+msgstr "切換主題"
+
+msgid "切换语言"
+msgstr "切換語言"
+
+msgid "小影API 首页"
+msgstr "小影API 首頁"
+
+msgid "常见问题"
+msgstr "常見問題"
+
+msgid "打开菜单"
+msgstr "打開菜單"
+
+msgid "接入向导"
+msgstr "接入嚮導"
+
+msgid "接入指南"
+msgstr "接入指南"
+
+msgid "接口文档"
+msgstr "接口文檔"
+
+msgid "服务能力"
+msgstr "服務能力"
+
+msgid "注册"
+msgstr "註冊"
+
+msgid "用户"
+msgstr "用戶"
+
+msgid "用户菜单"
+msgstr "用戶菜單"
+
+msgid "登录"
+msgstr "登錄"
+
+msgid "账号："
+msgstr "賬號："
+
+msgid "超级管理员"
+msgstr "超級管理員"
+
+msgid "退出"
+msgstr "退出"
+
+msgid "退出登录"
+msgstr "退出登錄"
+
+msgid "首页"
+msgstr "首頁"
+
+
+# ==================== 官网首页（index.html） ====================
+msgid "一个平台，聚合 <span class=\"text-primary\">%(n)s</span>+ 类服务能力"
+msgstr "一個平臺，聚合 <span class=\"text-primary\">%(n)s</span>+ 類服務能力"
+
+msgid "使用用户名、邮箱或手机号注册小影API账号。"
+msgstr "使用用戶名、郵箱或手機號註冊小影API賬號。"
+
+msgid "免费注册"
+msgstr "免費註冊"
+
+msgid "全部接口同一响应结构"
+msgstr "全部接口同一響應結構"
+
+msgid "准备好接入小影API了吗？"
+msgstr "準備好接入小影API了嗎？"
+
+msgid "四步完成接入，其余交给小影API。"
+msgstr "四步完成接入，其餘交給小影API。"
+
+msgid "如何接入"
+msgstr "如何接入"
+
+msgid "如何联系到小影API？"
+msgstr "如何聯繫到小影API？"
+
+msgid "安全接入"
+msgstr "安全接入"
+
+msgid "小影API - 通用 API 聚合服务平台"
+msgstr "小影API - 通用 API 聚合服務平臺"
+
+msgid "小影API 帮你把散落各处的爬虫、数据与验证能力统一成一套 <strong class=\"text-base-content\">标准、签名安全、开箱即用</strong> 的 HTTP 接口。"
+msgstr "小影API 幫你把散落各處的爬蟲、數據與驗證能力統一成一套 <strong class=\"text-base-content\">標準、簽名安全、開箱即用</strong> 的 HTTP 接口。"
+
+msgid "小影API 是一个通用 API 聚合服务平台，聚合音乐、视频解析、AI、代理IP、验证码、短信、邮箱、用户中心等 %(n)s 类服务能力，统一签名认证与标准 JSON 响应，即开即用。"
+msgstr "小影API 是一個通用 API 聚合服務平臺，聚合音樂、視頻解析、AI、代理IP、驗證碼、短信、郵箱、用戶中心等 %(n)s 類服務能力，統一簽名認證與標準 JSON 響應，即開即用。"
+
+msgid "小影API,API聚合,免费API,接口平台,视频解析,代理IP,短信验证,用户中心"
+msgstr "小影API,API聚合,免費API,接口平臺,視頻解析,代理IP,短信驗證,用戶中心"
+
+msgid "开始接入向导"
+msgstr "開始接入嚮導"
+
+msgid "开始调用"
+msgstr "開始調用"
+
+msgid "开通接入项目"
+msgstr "開通接入項目"
+
+msgid "微信：duyanbz　·　Telegram：<a class=\"link link-hover text-primary\" href=\"https://t.me/xiaoying1216\" target=\"_blank\" rel=\"noopener nofollow\">@xiaoying1216</a>"
+msgstr "微信：duyanbz　·　Telegram：<a class=\"link link-hover text-primary\" href=\"https://t.me/xiaoying1216\" target=\"_blank\" rel=\"noopener nofollow\">@xiaoying1216</a>"
+
+msgid "按文档组装请求参数并完成 HMAC-SHA256 签名。"
+msgstr "按文檔組裝請求參數並完成 HMAC-SHA256 簽名。"
+
+msgid "接入项目由小影API管理员在后台开通并发放 APPID / APPSECRET。APPSECRET 请务必保存在你的服务端，严禁写入前端代码或提交到仓库。"
+msgstr "接入項目由小影API管理員在後臺開通並發放 APPID / APPSECRET。APPSECRET 請務必保存在你的服務端，嚴禁寫入前端代碼或提交到倉庫。"
+
+msgid "接入项目需要自己创建吗？APPID/APPSECRET 怎么获取？"
+msgstr "接入項目需要自己創建嗎？APPID/APPSECRET 怎麼獲取？"
+
+msgid "接口需要什么认证？"
+msgstr "接口需要什麼認證？"
+
+msgid "是。全部接口统一返回 <code class=\"font-mono text-xs\">{\"code\": 10000, \"msg\": \"成功\", \"data\": {...}}</code>，code=10000 表示成功，2xxxx/3xxxx/4xxxx/5xxxx 分别对应客户端、业务、外部与系统错误。"
+msgstr "是。全部接口統一返回 <code class=\"font-mono text-xs\">{\"code\": 10000, \"msg\": \"成功\", \"data\": {...}}</code>，code=10000 表示成功，2xxxx/3xxxx/4xxxx/5xxxx 分別對應客戶端、業務、外部與系統錯誤。"
+
+msgid "服务端代管密钥"
+msgstr "服務端代管密鑰"
+
+msgid "查看接口文档"
+msgstr "查看接口文檔"
+
+msgid "查看文档"
+msgstr "查看文檔"
+
+msgid "标准 JSON 响应"
+msgstr "標準 JSON 響應"
+
+msgid "注册账号"
+msgstr "註冊賬號"
+
+msgid "注册账号，开启你的通用 API 之旅。"
+msgstr "註冊賬號，開啟你的通用 API 之旅。"
+
+msgid "登录成功"
+msgstr "登錄成功"
+
+msgid "签名防篡改 · 防重放"
+msgstr "簽名防篡改 · 防重放"
+
+msgid "统一 <code class=\"font-mono text-xs\">{ code, msg, data }</code> 响应，解析即可用。"
+msgstr "統一 <code class=\"font-mono text-xs\">{ code, msg, data }</code> 響應，解析即可用。"
+
+msgid "统一响应格式"
+msgstr "統一響應格式"
+
+msgid "统一签名认证"
+msgstr "統一簽名認證"
+
+msgid "统一规范"
+msgstr "統一規範"
+
+msgid "联系管理员开通接入项目，获取专属 APPID 与 APPSECRET。"
+msgstr "聯繫管理員開通接入項目，獲取專屬 APPID 與 APPSECRET。"
+
+msgid "聚合 %(n)s 类服务，全部统一在 <code class=\"font-mono text-sm text-primary\">/api/</code> 前缀下对外提供。"
+msgstr "聚合 %(n)s 類服務，全部統一在 <code class=\"font-mono text-sm text-primary\">/api/</code> 前綴下對外提供。"
+
+msgid "聚合服务"
+msgstr "聚合服務"
+
+msgid "返回格式是统一的吗？"
+msgstr "返回格式是統一的嗎？"
+
+msgid "通用 API 聚合服务平台"
+msgstr "通用 API 聚合服務平臺"
+
+msgid "阅读接口文档"
+msgstr "閱讀接口文檔"
+
+msgid "需要认证的接口须携带 app_id / timestamp / nonce / sign 四个签名参数（HMAC-SHA256，密钥为 APPSECRET）；用户中心等公开配置接口免签名，可参考接口文档中的分类配置。"
+msgstr "需要認證的接口須攜帶 app_id / timestamp / nonce / sign 四個簽名參數（HMAC-SHA256，密鑰為 APPSECRET）；用戶中心等公開配置接口免簽名，可參考接口文檔中的分類配置。"
+
+msgid "音乐 / 视频 / AI / 代理IP ..."
+msgstr "音樂 / 視頻 / AI / 代理IP ..."
+
+
+# ==================== 接入向导（guide.html） ====================
+msgid " 步"
+msgstr " 步"
+
+msgid "10000=成功；20001/20002/20003=参数缺失/格式错误/值非法；20011=签名或认证失败；20040=触发频率限制（如登录连续失败被临时锁定）；40001=外部服务调用失败（请稍后重试或核对被调用的第三方资源）。"
+msgstr "10000=成功；20001/20002/20003=參數缺失/格式錯誤/值非法；20011=簽名或認證失敗；20040=觸發頻率限制（如登錄連續失敗被臨時鎖定）；40001=外部服務調用失敗（請稍後重試或核對被調用的第三方資源）。"
+
+msgid "AI 对话"
+msgstr "AI 對話"
+
+msgid "APPID 与 APPSECRET，请立即妥善保存。"
+msgstr "APPID 與 APPSECRET，請立即妥善保存。"
+
+msgid "APPID 是公开标识；APPSECRET 是签名密钥，只应保存在你的服务端。泄露请立即联系站长重置。"
+msgstr "APPID 是公開標識；APPSECRET 是簽名密鑰，只應保存在你的服務端。泄露請立即聯繫站長重置。"
+
+msgid "APPSECRET 泄露了怎么办？"
+msgstr "APPSECRET 泄露了怎麼辦？"
+
+msgid "Python 签名示例"
+msgstr "Python 簽名示例"
+
+msgid "timestamp 为秒级时间戳，有效窗口 ±5 分钟；nonce 每次请求唯一（服务端去重防重放）。"
+msgstr "timestamp 為秒級時間戳，有效窗口 ±5 分鐘；nonce 每次請求唯一（服務端去重防重放）。"
+
+msgid "① 注册/登录"
+msgstr "① 註冊/登錄"
+
+msgid "② 开通接入项目"
+msgstr "② 開通接入項目"
+
+msgid "③ 密钥使用须知"
+msgstr "③ 密鑰使用須知"
+
+msgid "。"
+msgstr "。"
+
+msgid "一次性展示"
+msgstr "一次性展示"
+
+msgid "上一步"
+msgstr "上一步"
+
+msgid "下一步"
+msgstr "下一步"
+
+msgid "不会上传服务器。密钥只保存在你的浏览器 localStorage，仅在发起调试请求时用于服务端本次代签。"
+msgstr "不會上傳服務器。密鑰只保存在你的瀏覽器 localStorage，僅在發起調試請求時用於服務端本次代簽。"
+
+msgid "严禁下发前端"
+msgstr "嚴禁下發前端"
+
+msgid "为什么返回 code=20011？"
+msgstr "為什麼返回 code=20011？"
+
+msgid "仅保存在本机浏览器"
+msgstr "僅保存在本機瀏覽器"
+
+msgid "代码接入生产"
+msgstr "代碼接入生產"
+
+msgid "以 APPSECRET 为密钥做"
+msgstr "以 APPSECRET 為密鑰做"
+
+msgid "先注册小影API 账号（入口在首页右上角）。"
+msgstr "先註冊小影API 賬號（入口在首頁右上角）。"
+
+msgid "先试哪个？"
+msgstr "先試哪個？"
+
+msgid "其它都交给小影API —— 统一响应"
+msgstr "其它都交給小影API —— 統一響應"
+
+msgid "去接口文档"
+msgstr "去接口文檔"
+
+msgid "取"
+msgstr "取"
+
+msgid "在你的服务端实现 HMAC-SHA256 签名，把密钥放进环境变量，绝不进前端。"
+msgstr "在你的服務端實現 HMAC-SHA256 簽名，把密鑰放進環境變量，絕不進前端。"
+
+msgid "在接口文档填上你的密钥，页面会替你完成签名并真实转发，先验证再写代码。"
+msgstr "在接口文檔填上你的密鑰，頁面會替你完成簽名並真實轉發，先驗證再寫代碼。"
+
+msgid "在线调试"
+msgstr "在線調試"
+
+msgid "在线调试会保存我的密钥吗？"
+msgstr "在線調試會保存我的密鑰嗎？"
+
+msgid "填好参数点「发送请求」，页面服务端代调真实 /api/ 接口并返回结果；"
+msgstr "填好參數點「發送請求」，頁面服務端代調真實 /api/ 接口並返回結果；"
+
+msgid "复制"
+msgstr "複製"
+
+msgid "小影API 互动式接入向导：从注册开通到签名调用，按步骤带你完成接入。"
+msgstr "小影API 互動式接入嚮導：從註冊開通到簽名調用，按步驟帶你完成接入。"
+
+msgid "已复制"
+msgstr "已複製"
+
+msgid "常见返回码？"
+msgstr "常見返回碼？"
+
+msgid "开始"
+msgstr "開始"
+
+msgid "开放接口（徽标「开放·免签名」）无需密钥即可调试。"
+msgstr "開放接口（徽標「開放·免簽名」）無需密鑰即可調試。"
+
+msgid "当前由站长在「接入项目管理」中创建你的项目；创建后会"
+msgstr "當前由站長在「接入項目管理」中創建你的項目；創建後會"
+
+msgid "形如"
+msgstr "形如"
+
+msgid "怎么看接口要不要签名？"
+msgstr "怎麼看接口要不要簽名？"
+
+msgid "打开"
+msgstr "打開"
+
+msgid "拼接为"
+msgstr "拼接為"
+
+msgid "按步骤完成注册 → 开通 → 签名 → 调试 → 上线。"
+msgstr "按步驟完成註冊 → 開通 → 簽名 → 調試 → 上線。"
+
+msgid "按键名 ASCII 升序拼接 key=value，HMAC-SHA256 输出小写 hex"
+msgstr "按鍵名 ASCII 升序拼接 key=value，HMAC-SHA256 輸出小寫 hex"
+
+msgid "按键名 ASCII 升序排序；"
+msgstr "按鍵名 ASCII 升序排序；"
+
+msgid "接入共 4 步"
+msgstr "接入共 4 步"
+
+msgid "接入向导 - 小影API"
+msgstr "接入嚮導 - 小影API"
+
+msgid "接入向导,小影API,签名,APPID"
+msgstr "接入嚮導,小影API,簽名,APPID"
+
+msgid "接口文档中心"
+msgstr "接口文檔中心"
+
+msgid "提示：在线调试页会自动用你填写的密钥代签，初学无需手工算签名；上生产前请务必实现与服务端一致的口径。"
+msgstr "提示：在線調試頁會自動用你填寫的密鑰代簽，初學無需手工算簽名；上生產前請務必實現與服務端一致的口徑。"
+
+msgid "文件上传"
+msgstr "文件上傳"
+
+msgid "文档服务/线路旁有徽标：「开放·免签名」直接可调；「需签名」必须携带项目签名；个别公开 GET（如用户中心 methods、图形验证 config）也免签名。"
+msgstr "文檔服務/線路旁有徽標：「開放·免簽名」直接可調；「需簽名」必須攜帶項目簽名；個別公開 GET（如用戶中心 methods、圖形驗證 config）也免簽名。"
+
+msgid "注意：短信、图形验证、AI 等会真实调用外部或产生费用/短信，调试前先确认。"
+msgstr "注意：短信、圖形驗證、AI 等會真實調用外部或產生費用/短信，調試前先確認。"
+
+msgid "用户中心"
+msgstr "用戶中心"
+
+msgid "用户名 / 邮箱 / 手机号任意方式注册（邮箱、手机号可配开启）。"
+msgstr "用戶名 / 郵箱 / 手機號任意方式註冊（郵箱、手機號可配開啟）。"
+
+msgid "的全部参数（含 app_id/timestamp/nonce 与业务参数），过滤空值；"
+msgstr "的全部參數（含 app_id/timestamp/nonce 與業務參數），過濾空值；"
+
+msgid "立即联系站长：删除该接入项目并重建，重建后会生成全新的 APPID/APPSECRET，旧密钥即刻失效。"
+msgstr "立即聯繫站長：刪除該接入項目並重建，重建後會生成全新的 APPID/APPSECRET，舊密鑰即刻失效。"
+
+msgid "第 "
+msgstr "第 "
+
+msgid "第 1 / 5 步"
+msgstr "第 1 / 5 步"
+
+msgid "等 15 个服务均可在线调试。"
+msgstr "等 15 個服務均可在線調試。"
+
+msgid "签名机制"
+msgstr "簽名機制"
+
+msgid "签名机制（HMAC-SHA256）"
+msgstr "簽名機制（HMAC-SHA256）"
+
+msgid "签名相关失败：缺少 app_id/timestamp/nonce/sign、timestamp 超出 ±5 分钟、app_id 未注册/停用、sign 不匹配或 nonce 重放。请逐项核对公共参数与签名算法。"
+msgstr "簽名相關失敗：缺少 app_id/timestamp/nonce/sign、timestamp 超出 ±5 分鐘、app_id 未註冊/停用、sign 不匹配或 nonce 重放。請逐項核對公共參數與簽名算法。"
+
+msgid "联系站长开通「接入项目」，获得专属 APPID 与 APPSECRET。"
+msgstr "聯繫站長開通「接入項目」，獲得專屬 APPID 與 APPSECRET。"
+
+msgid "读文档 + 在线调试"
+msgstr "讀文檔 + 在線調試"
+
+msgid "账号与凭证"
+msgstr "賬號與憑證"
+
+msgid "账号凭证"
+msgstr "賬號憑證"
+
+msgid "除 sign 外"
+msgstr "除 sign 外"
+
+msgid "需要签名（auth）的接口，每次请求都要带上公共参数："
+msgstr "需要簽名（auth）的接口，每次請求都要帶上公共參數："
+
+msgid "页面右侧「鉴权设置」填入你的 APPID / APPSECRET（"
+msgstr "頁面右側「鑑權設置」填入你的 APPID / APPSECRET（"
+
+msgid "验证码识别"
+msgstr "驗證碼識別"
+
+msgid "，只用于服务端计算签名，"
+msgstr "，只用於服務端計算簽名，"
+
+msgid "，左侧选择目标服务；"
+msgstr "，左側選擇目標服務；"
+
+msgid "，用于本次代签）；"
+msgstr "，用於本次代簽）；"
+
+msgid "，用于标识是哪个项目在调用，参与签名。"
+msgstr "，用於標識是哪個項目在調用，參與簽名。"
+
+msgid "，输出小写 hex 即 sign。"
+msgstr "，輸出小寫 hex 即 sign。"
+
+msgid "；"
+msgstr "；"
+
+
+# ==================== 登录 / 注册 / 邮箱验证结果（account/*.html） ====================
+msgid "11 位手机号"
+msgstr "11 位手機號"
+
+msgid "6 位验证码"
+msgstr "6 位驗證碼"
+
+msgid "8-64 位，需同时包含字母和数字"
+msgstr "8-64 位，需同時包含字母和數字"
+
+msgid "两步注册：先发验证码，校验通过后才创建账号并发放账号。"
+msgstr "兩步註冊：先發驗證碼，校驗通過後才創建賬號並發放賬號。"
+
+msgid "创建账号"
+msgstr "創建賬號"
+
+msgid "去登录"
+msgstr "去登錄"
+
+msgid "回到注册页重新发起注册，系统会发送新的验证邮件；"
+msgstr "回到註冊頁重新發起註冊，系統會發送新的驗證郵件；"
+
+msgid "如多次尝试仍失败，请联系小影API获取帮助。"
+msgstr "如多次嘗試仍失敗，請聯繫小影API獲取幫助。"
+
+msgid "完成注册"
+msgstr "完成註冊"
+
+msgid "密码"
+msgstr "密碼"
+
+msgid "小影API 邮箱验证结果页面。"
+msgstr "小影API 郵箱驗證結果頁面。"
+
+msgid "已有账号？"
+msgstr "已有賬號？"
+
+msgid "您可以："
+msgstr "您可以："
+
+msgid "您的账号为"
+msgstr "您的賬號為"
+
+msgid "您的邮箱已通过验证"
+msgstr "您的郵箱已通過驗證"
+
+msgid "手机号"
+msgstr "手機號"
+
+msgid "手机登录"
+msgstr "手機登錄"
+
+msgid "最多 50 个字符"
+msgstr "最多 50 個字符"
+
+msgid "欢迎回来"
+msgstr "歡迎回來"
+
+msgid "注 册"
+msgstr "注 冊"
+
+msgid "注册 - 小影API"
+msgstr "註冊 - 小影API"
+
+msgid "注册小影API 账号，畅用全部服务能力"
+msgstr "註冊小影API 賬號，暢用全部服務能力"
+
+msgid "注册小影API 账号：支持用户名密码、邮箱验证码、手机号验证码。两步注册先验码后发号，安全可靠。"
+msgstr "註冊小影API 賬號：支持用戶名密碼、郵箱驗證碼、手機號驗證碼。兩步註冊先驗碼後發號，安全可靠。"
+
+msgid "注册并获取验证码"
+msgstr "註冊並獲取驗證碼"
+
+msgid "注册数字账号 或 超管用户名"
+msgstr "註冊數字賬號 或 超管用戶名"
+
+msgid "注册方式"
+msgstr "註冊方式"
+
+msgid "用于展示，可不填"
+msgstr "用於展示，可不填"
+
+msgid "用户名"
+msgstr "用戶名"
+
+msgid "用户名（选填）"
+msgstr "用戶名（選填）"
+
+msgid "用户名：%(username)s"
+msgstr "用戶名：%(username)s"
+
+msgid "登 录"
+msgstr "登 錄"
+
+msgid "登录 - 小影API"
+msgstr "登錄 - 小影API"
+
+msgid "登录小影API 账号"
+msgstr "登錄小影API 賬號"
+
+msgid "登录小影API，开启通用 API 聚合服务之旅。支持账号密码、邮箱验证码、手机验证码登录。"
+msgstr "登錄小影API，開啟通用 API 聚合服務之旅。支持賬號密碼、郵箱驗證碼、手機驗證碼登錄。"
+
+msgid "登录方式"
+msgstr "登錄方式"
+
+msgid "短信验证码"
+msgstr "短信驗證碼"
+
+msgid "立即注册"
+msgstr "立即註冊"
+
+msgid "获取验证码"
+msgstr "獲取驗證碼"
+
+msgid "请输入密码"
+msgstr "請輸入密碼"
+
+msgid "账号 / 管理员账号"
+msgstr "賬號 / 管理員賬號"
+
+msgid "账号是您登录的唯一凭据，请截图或抄写保存，谨防丢失。"
+msgstr "賬號是您登錄的唯一憑據，請截圖或抄寫保存，謹防丟失。"
+
+msgid "账号登录"
+msgstr "賬號登錄"
+
+msgid "返回首页"
+msgstr "返回首頁"
+
+msgid "还没有账号？"
+msgstr "還沒有賬號？"
+
+msgid "邮箱"
+msgstr "郵箱"
+
+msgid "邮箱登录"
+msgstr "郵箱登錄"
+
+msgid "邮箱验证失败"
+msgstr "郵箱驗證失敗"
+
+msgid "邮箱验证失败 - 小影API"
+msgstr "郵箱驗證失敗 - 小影API"
+
+msgid "邮箱验证成功"
+msgstr "郵箱驗證成功"
+
+msgid "邮箱验证成功 - 小影API"
+msgstr "郵箱驗證成功 - 小影API"
+
+msgid "邮箱验证码"
+msgstr "郵箱驗證碼"
+
+msgid "邮箱：%(email)s（已验证）"
+msgstr "郵箱：%(email)s（已驗證）"
+
+msgid "重新发送"
+msgstr "重新發送"
+
+msgid "重新注册"
+msgstr "重新註冊"
+
+msgid "验证码将发送到你的手机，登录无需密码。"
+msgstr "驗證碼將發送到你的手機，登錄無需密碼。"
+
+msgid "验证码将发送到你的邮箱，登录无需密码。"
+msgstr "驗證碼將發送到你的郵箱，登錄無需密碼。"
+
+msgid "验证码已发送至"
+msgstr "驗證碼已發送至"
+
+msgid "验证邮件中的验证码与链接仅在有效期内可用，过期请重新获取；"
+msgstr "驗證郵件中的驗證碼與鏈接僅在有效期內可用，過期請重新獲取；"
+
+msgid "验证链接无效或已失效"
+msgstr "驗證鏈接無效或已失效"
+
+msgid "，请查收。"
+msgstr "，請查收。"
+
+msgid "："
+msgstr "："
+
+
+# ==================== 页脚与错误页（footer.html、400/404/500.html） ====================
+msgid "400,请求错误,小影API"
+msgstr "400,請求錯誤,小影API"
+
+msgid "404,页面未找到,小影API"
+msgstr "404,頁面未找到,小影API"
+
+msgid "500,服务器错误,小影API"
+msgstr "500,服務器錯誤,小影API"
+
+msgid "代理 IP"
+msgstr "代理 IP"
+
+msgid "小影API 400错误页面：请求无法被处理，请检查后重试或返回首页。"
+msgstr "小影API 400錯誤頁面：請求無法被處理，請檢查後重試或返回首頁。"
+
+msgid "小影API 404错误页面：您访问的页面不存在或已被删除，请返回首页继续浏览。"
+msgstr "小影API 404錯誤頁面：您訪問的頁面不存在或已被刪除，請返回首頁繼續瀏覽。"
+
+msgid "小影API 500错误页面：服务器暂时开小差了，请稍后重试或返回首页继续浏览。"
+msgstr "小影API 500錯誤頁面：服務器暫時開小差了，請稍後重試或返回首頁繼續瀏覽。"
+
+msgid "小影API · 通用 API 聚合服务"
+msgstr "小影API · 通用 API 聚合服務"
+
+msgid "微信："
+msgstr "微信："
+
+msgid "快速导航"
+msgstr "快速導航"
+
+msgid "您的请求格式有误或不被支持，请检查后重试。"
+msgstr "您的請求格式有誤或不被支持，請檢查後重試。"
+
+msgid "您访问的页面不存在或已被移动，请检查链接是否正确。"
+msgstr "您訪問的頁面不存在或已被移動，請檢查鏈接是否正確。"
+
+msgid "服务器开小差了"
+msgstr "服務器開小差了"
+
+msgid "服务器遇到一些问题，请稍后重试，或返回首页继续浏览。"
+msgstr "服務器遇到一些問題，請稍後重試，或返回首頁繼續瀏覽。"
+
+msgid "服务器错误 - 小影API"
+msgstr "服務器錯誤 - 小影API"
+
+msgid "联系我们"
+msgstr "聯繫我們"
+
+msgid "视频分析"
+msgstr "視頻分析"
+
+msgid "请求无法处理"
+msgstr "請求無法處理"
+
+msgid "请求错误 - 小影API"
+msgstr "請求錯誤 - 小影API"
+
+msgid "返回上一页"
+msgstr "返回上一頁"
+
+msgid "通用 API 聚合服务：统一签名认证、标准 JSON 响应，助力你的产品快速接入各类能力。"
+msgstr "通用 API 聚合服務：統一簽名認證、標準 JSON 響應，助力你的產品快速接入各類能力。"
+
+msgid "音乐服务"
+msgstr "音樂服務"
+
+msgid "页面未找到"
+msgstr "頁面未找到"
+
+msgid "页面未找到 - 小影API"
+msgstr "頁面未找到 - 小影API"
+
+
+# ==================== 文档中心模板外壳（docs/*.html、服务设置弹窗） ====================
+msgid "%(n)s 线路"
+msgstr "%(n)s 線路"
+
+msgid "%(name)s - 接口文档 - 小影API"
+msgstr "%(name)s - 接口文檔 - 小影API"
+
+msgid "%(name)s,接口文档,小影API"
+msgstr "%(name)s,接口文檔,小影API"
+
+msgid "API 服务导航"
+msgstr "API 服務導航"
+
+msgid "API文档,接口文档,小影API"
+msgstr "API文檔,接口文檔,小影API"
+
+msgid "app_ 开头，接入项目公开标识"
+msgstr "app_ 開頭，接入項目公開標識"
+
+msgid "sk_ 开头签名密钥，仅用于本次服务端代签"
+msgstr "sk_ 開頭簽名密鑰，僅用於本次服務端代簽"
+
+msgid "。以下文档与调试仅供了解。"
+msgstr "。以下文檔與調試僅供了解。"
+
+msgid "仅本机保存"
+msgstr "僅本機保存"
+
+msgid "保存到本机浏览器"
+msgstr "保存到本機瀏覽器"
+
+msgid "全部服务（共 %(total)s 个，可在线调试 %(online)s 个）"
+msgstr "全部服務（共 %(total)s 個，可在線調試 %(online)s 個）"
+
+msgid "关闭"
+msgstr "關閉"
+
+msgid "发送请求"
+msgstr "發送請求"
+
+msgid "多值写法：%(hint)s"
+msgstr "多值寫法：%(hint)s"
+
+msgid "小影API 接口文档中心：左侧导航按服务与线路查看接口参数说明，并支持在线调试。"
+msgstr "小影API 接口文檔中心：左側導航按服務與線路查看接口參數說明，並支持在線調試。"
+
+msgid "左侧导航按「服务 → 线路」组织，点击服务名展开查看其下全部子接口，每个接口都支持<span class=\"font-medium text-primary\">参数填写与在线调试</span>。"
+msgstr "左側導航按「服務 → 線路」組織，點擊服務名展開查看其下全部子接口，每個接口都支持<span class=\"font-medium text-primary\">參數填寫與在線調試</span>。"
+
+msgid "已下线"
+msgstr "已下線"
+
+msgid "建设中"
+msgstr "建設中"
+
+msgid "开放"
+msgstr "開放"
+
+msgid "开放 · 免签名"
+msgstr "開放 · 免簽名"
+
+msgid "当前：超级管理员"
+msgstr "當前：超級管理員"
+
+msgid "接入项目管理"
+msgstr "接入項目管理"
+
+msgid "接口文档中心 - 小影API"
+msgstr "接口文檔中心 - 小影API"
+
+msgid "文档中心首页"
+msgstr "文檔中心首頁"
+
+msgid "文档接入中"
+msgstr "文檔接入中"
+
+msgid "新增服务/线路后，在文档注册表补充声明即可，本菜单自动更新。"
+msgstr "新增服務/線路後，在文檔註冊表補充聲明即可，本菜單自動更新。"
+
+msgid "服务/线路展开"
+msgstr "服務/線路展開"
+
+msgid "服务设置"
+msgstr "服務設置"
+
+msgid "服务设置：%(name)s"
+msgstr "服務設置：%(name)s"
+
+msgid "测试中"
+msgstr "測試中"
+
+msgid "清空"
+msgstr "清空"
+
+msgid "线路选择"
+msgstr "線路選擇"
+
+msgid "维护中"
+msgstr "維護中"
+
+msgid "认证：跟随上级"
+msgstr "認證：跟隨上級"
+
+msgid "该服务当前处于「%(label)s」状态"
+msgstr "該服務當前處於「%(label)s」狀態"
+
+msgid "鉴权设置"
+msgstr "鑑權設置"
+
+msgid "需签名"
+msgstr "需簽名"
+
+msgid "需要签名接口必须填写你的接入项目密钥；开放接口可留空直接调试。密钥只在发起请求时用于服务端签名，不落库、不上传到页面以外。"
+msgstr "需要簽名接口必須填寫你的接入項目密鑰；開放接口可留空直接調試。密鑰只在發起請求時用於服務端簽名，不落庫、不上傳到頁面以外。"
+
+msgid "，功能可能不稳定"
+msgstr "，功能可能不穩定"
+
+msgid "，接口可能临时不可用"
+msgstr "，接口可能臨時不可用"
+
+msgid "，暂不可使用"
+msgstr "，暫不可使用"
+
+
+# ==================== 超级管理控制台页面（console/projects.html） ====================
+msgid "Token 有效天数"
+msgstr "Token 有效天數"
+
+msgid "Token 有效期 %(days)s 天 · 创建于 %(created)s"
+msgstr "Token 有效期 %(days)s 天 · 創建於 %(created)s"
+
+msgid "保存修改"
+msgstr "保存修改"
+
+msgid "创建 / 编辑 / 启停 / 删除接入项目；APPID、APPSECRET 由系统自动生成。"
+msgstr "創建 / 編輯 / 啟停 / 刪除接入項目；APPID、APPSECRET 由系統自動生成。"
+
+msgid "删除"
+msgstr "刪除"
+
+msgid "删除后该项目的 APPID/APPSECRET 立即失效、所有 Token 作废且不可恢复，确认删除？"
+msgstr "刪除後該項目的 APPID/APPSECRET 立即失效、所有 Token 作廢且不可恢復，確認刪除？"
+
+msgid "删除接入项目"
+msgstr "刪除接入項目"
+
+msgid "启用,停用"
+msgstr "啟用,停用"
+
+msgid "启用状态"
+msgstr "啟用狀態"
+
+msgid "小影API 超级管理员：接入项目（APPID/APPSECRET）增删改查管理。"
+msgstr "小影API 超級管理員：接入項目（APPID/APPSECRET）增刪改查管理。"
+
+msgid "应用名称"
+msgstr "應用名稱"
+
+msgid "按名称 / APPID 搜索"
+msgstr "按名稱 / APPID 搜索"
+
+msgid "接入项目管理 - 超级管理员 - 小影API"
+msgstr "接入項目管理 - 超級管理員 - 小影API"
+
+msgid "搜索"
+msgstr "搜索"
+
+msgid "新建项目"
+msgstr "新建項目"
+
+msgid "新项目名称（全局唯一）"
+msgstr "新項目名稱（全局唯一）"
+
+msgid "暂无接入项目"
+msgstr "暫無接入項目"
+
+msgid "查看 APPSECRET"
+msgstr "查看 APPSECRET"
+
+msgid "编辑项目"
+msgstr "編輯項目"
+
+msgid "超级管理员,接入项目"
+msgstr "超級管理員,接入項目"
+
+msgid "退出管理员"
+msgstr "退出管理員"
+
+msgid "项目创建成功！密钥仅在此展示一次，请立即复制并妥善保存。"
+msgstr "項目創建成功！密鑰僅在此展示一次，請立即複製並妥善保存。"
+
+msgid "（未找到与「%(keyword)s」匹配的项目）"
+msgstr "（未找到與「%(keyword)s」匹配的項目）"
+
+
+# ==================== 后端通用文案 / 服务状态 / 控制台提示 ====================
+msgid "66免费 / 91HTTP / 青雨 / 静态代理多源聚合，附带可用性验证。"
+msgstr "66免費 / 91HTTP / 青雨 / 靜態代理多源聚合，附帶可用性驗證。"
+
+msgid "AI 服务"
+msgstr "AI 服務"
+
+msgid "API 服务状态"
+msgstr "API 服務狀態"
+
+msgid "HTTP代理"
+msgstr "HTTP代理"
+
+msgid "OCR识别"
+msgstr "OCR識別"
+
+msgid "SEO 服务"
+msgstr "SEO 服務"
+
+msgid "Token 有效天数必须为正整数"
+msgstr "Token 有效天數必須為正整數"
+
+msgid "Token验证"
+msgstr "Token驗證"
+
+msgid "不支持的操作"
+msgstr "不支持的操作"
+
+msgid "临时维护，暂停使用"
+msgstr "臨時維護，暫停使用"
+
+msgid "代练丸子"
+msgstr "代練丸子"
+
+msgid "代练丸子数据接口封装。"
+msgstr "代練丸子數據接口封裝。"
+
+msgid "代练订单信息查询与操作（认证/用户/订单/头像）。"
+msgstr "代練訂單信息查詢與操作（認證/用戶/訂單/頭像）。"
+
+msgid "代练通"
+msgstr "代練通"
+
+msgid "公开查询 API 调用量：某个接口被调用了多少次、各服务调用量排行。"
+msgstr "公開查詢 API 調用量：某個接口被調用了多少次、各服務調用量排行。"
+
+msgid "公开统计"
+msgstr "公開統計"
+
+msgid "内测/演示阶段"
+msgstr "內測/演示階段"
+
+msgid "内置模型"
+msgstr "內置模型"
+
+msgid "内置模型能力，开箱即用的 AI 文本/内容接口。"
+msgstr "內置模型能力，開箱即用的 AI 文本/內容接口。"
+
+msgid "去水印"
+msgstr "去水印"
+
+msgid "友情链接"
+msgstr "友情鏈接"
+
+msgid "友情链接等 SEO 周边能力，利于站点外链建设。"
+msgstr "友情鏈接等 SEO 周邊能力，利於站點外鏈建設。"
+
+msgid "反馈"
+msgstr "反饋"
+
+msgid "可用性检测"
+msgstr "可用性檢測"
+
+msgid "图形验证"
+msgstr "圖形驗證"
+
+msgid "基于 ddddocr 的通用图片验证码识别服务。"
+msgstr "基於 ddddocr 的通用圖片驗證碼識別服務。"
+
+msgid "字符验证码"
+msgstr "字符驗證碼"
+
+msgid "安全下载"
+msgstr "安全下載"
+
+msgid "尚未开放"
+msgstr "尚未開放"
+
+msgid "工单"
+msgstr "工單"
+
+msgid "已恢复默认状态（%(label)s）"
+msgstr "已恢復默認狀態（%(label)s）"
+
+msgid "已恢复默认（%(label)s）"
+msgstr "已恢復默認（%(label)s）"
+
+msgid "已更新为「%(label)s」"
+msgstr "已更新為「%(label)s」"
+
+msgid "应用名称已存在，请更换"
+msgstr "應用名稱已存在，請更換"
+
+msgid "抖音等短视频解析，无水印提取视频/图文内容。"
+msgstr "抖音等短視頻解析，無水印提取視頻/圖文內容。"
+
+msgid "抖音解析"
+msgstr "抖音解析"
+
+msgid "播放源"
+msgstr "播放源"
+
+msgid "数据查询"
+msgstr "數據查詢"
+
+msgid "文本生成"
+msgstr "文本生成"
+
+msgid "服务下线，不可用"
+msgstr "服務下線，不可用"
+
+msgid "未知的服务"
+msgstr "未知的服務"
+
+msgid "本地生成"
+msgstr "本地生成"
+
+msgid "榜单"
+msgstr "榜單"
+
+msgid "正常对外可用"
+msgstr "正常對外可用"
+
+msgid "注册登录"
+msgstr "註冊登錄"
+
+msgid "游戏代练"
+msgstr "遊戲代練"
+
+msgid "滑块验证"
+msgstr "滑塊驗證"
+
+msgid "爬虫环境验证（SV4759），识别自动化环境。"
+msgstr "爬蟲環境驗證（SV4759），識別自動化環境。"
+
+msgid "爬虫验证"
+msgstr "爬蟲驗證"
+
+msgid "环境检测"
+msgstr "環境檢測"
+
+msgid "短信验证"
+msgstr "短信驗證"
+
+msgid "算术验证码"
+msgstr "算術驗證碼"
+
+msgid "统一认证"
+msgstr "統一認證"
+
+msgid "统一认证中心（UAC）：全局用户池，账号/邮箱/手机号注册登录，Token 签发与验证，多方式可配。"
+msgstr "統一認證中心（UAC）：全局用戶池，賬號/郵箱/手機號註冊登錄，Token 簽發與驗證，多方式可配。"
+
+msgid "聚合爱听音乐网（2t58）与小影音乐，提供搜索、榜单、播放源等能力。"
+msgstr "聚合愛聽音樂網（2t58）與小影音樂，提供搜索、榜單、播放源等能力。"
+
+msgid "自定义该服务的对外状态（开放/测试中/维护中/建设中/已下线），同步官网首页与文档中心。"
+msgstr "自定義該服務的對外狀態（開放/測試中/維護中/建設中/已下線），同步官網首頁與文檔中心。"
+
+msgid "自研图形验证码"
+msgstr "自研圖形驗證碼"
+
+msgid "自研字符图片 / 算术验证码，本地绘制、无第三方依赖，答案一次性校验。"
+msgstr "自研字符圖片 / 算術驗證碼，本地繪製、無第三方依賴，答案一次性校驗。"
+
+msgid "虚拟邮箱"
+msgstr "虛擬郵箱"
+
+msgid "行为验证"
+msgstr "行為驗證"
+
+msgid "订单查询"
+msgstr "訂單查詢"
+
+msgid "请填写应用名称"
+msgstr "請填寫應用名稱"
+
+msgid "调用统计"
+msgstr "調用統計"
+
+msgid "调用量"
+msgstr "調用量"
+
+msgid "通用文件上传，统一接入与安全响应头处理。"
+msgstr "通用文件上傳，統一接入與安全響應頭處理。"
+
+msgid "邮件发送"
+msgstr "郵件發送"
+
+msgid "邮箱发送与虚拟邮箱收发（VMEmail），覆盖验证邮件、收发场景。"
+msgstr "郵箱發送與虛擬郵箱收發（VMEmail），覆蓋驗證郵件、收發場景。"
+
+msgid "邮箱服务"
+msgstr "郵箱服務"
+
+msgid "问题反馈"
+msgstr "問題反饋"
+
+msgid "问题反馈中心：提交反馈与追加评论，服务方统一管理。"
+msgstr "問題反饋中心：提交反饋與追加評論，服務方統一管理。"
+
+msgid "阿里云"
+msgstr "阿里雲"
+
+msgid "阿里云图形验证码集成（滑块/点选），防机器流量。"
+msgstr "阿里雲圖形驗證碼集成（滑塊/點選），防機器流量。"
+
+msgid "阿里云短信验证码认证，服务端回传校验，安全下发。"
+msgstr "阿里雲短信驗證碼認證，服務端回傳校驗，安全下發。"
+
+msgid "静态代理"
+msgstr "靜態代理"
+
+msgid "非法的状态值"
+msgstr "非法的狀態值"
+
+msgid "音乐搜索"
+msgstr "音樂搜索"
+
+msgid "项目「%(name)s」已删除，其全部 Token 已同步失效"
+msgstr "項目「%(name)s」已刪除，其全部 Token 已同步失效"
+
+msgid "项目「%(name)s」已更新"
+msgstr "項目「%(name)s」已更新"
+
+msgid "项目不存在"
+msgstr "項目不存在"
+
+msgid "项目创建成功，请复制并妥善保存下方的 APPID 与 APPSECRET（仅此一次展示）"
+msgstr "項目創建成功，請複製並妥善保存下方的 APPID 與 APPSECRET（僅此一次展示）"
+
+msgid "验证码"
+msgstr "驗證碼"
+
+
+# ==================== API 文档内容 · 邮箱服务 ====================
+msgid "UUID，如 3fa85f64-..."
+msgstr "UUID，如 3fa85f64-..."
+
+msgid "VMEmail（minmail.app）临时邮箱"
+msgstr "VMEmail（minmail.app）臨時郵箱"
+
+msgid "false（默认复用）"
+msgstr "false（默認復用）"
+
+msgid "generate 返回的 UUID"
+msgstr "generate 返回的 UUID"
+
+msgid "generate 返回的 visitor_id 请妥善保存，查询邮件时需复用。"
+msgstr "generate 返回的 visitor_id 請妥善保存，查詢郵件時需復用。"
+
+msgid "true（丢弃原邮箱新建）"
+msgstr "true（丟棄原郵箱新建）"
+
+msgid "发送一封邮件，可指定多个收件人。"
+msgstr "發送一封郵件，可指定多個收件人。"
+
+msgid "发送文本/HTML 邮件，支持多个收件人。需项目签名调用。"
+msgstr "發送文本/HTML 郵件，支持多個收件人。需項目簽名調用。"
+
+msgid "发送邮件"
+msgstr "發送郵件"
+
+msgid "发送邮件（默认线路）"
+msgstr "發送郵件（默認線路）"
+
+msgid "多个邮箱用逗号或换行分隔，也可通过同一字段多次传递"
+msgstr "多個郵箱用逗號或換行分隔，也可通過同一字段多次傳遞"
+
+msgid "强制新建"
+msgstr "強制新建"
+
+msgid "必填：generate 接口返回的 visitor_id"
+msgstr "必填：generate 接口返回的 visitor_id"
+
+msgid "成功返回 data 含 subject / recipients / count；发送失败归为外部服务错误。"
+msgstr "成功返回 data 含 subject / recipients / count；發送失敗歸為外部服務錯誤。"
+
+msgid "收件人支持两种写法：同一字段重复传多次，或单个字段内用逗号分隔。"
+msgstr "收件人支持兩種寫法：同一字段重複傳多次，或單個字段內用逗號分隔。"
+
+msgid "收件人邮箱"
+msgstr "收件人郵箱"
+
+msgid "收件人邮箱（必填，支持多个）"
+msgstr "收件人郵箱（必填，支持多個）"
+
+msgid "查询当前临时邮箱收到的邮件列表。"
+msgstr "查詢當前臨時郵箱收到的郵件列表。"
+
+msgid "生成/复用临时邮箱并收取邮件；开放调用（免签名）。"
+msgstr "生成/復用臨時郵箱並收取郵件；開放調用（免簽名）。"
+
+msgid "生成/获取临时邮箱"
+msgstr "生成/獲取臨時郵箱"
+
+msgid "生成一个全新临时邮箱，或凭 visitor_id 复用已有邮箱。"
+msgstr "生成一個全新臨時郵箱，或憑 visitor_id 復用已有郵箱。"
+
+msgid "获取邮件列表"
+msgstr "獲取郵件列表"
+
+msgid "访客标识"
+msgstr "訪客標識"
+
+msgid "过期时间(分钟)"
+msgstr "過期時間(分鐘)"
+
+msgid "选填：true 时强制生成新邮箱，原邮箱及其邮件将被丢弃"
+msgstr "選填：true 時強制生成新郵箱，原郵箱及其郵件將被丟棄"
+
+msgid "选填：不传则随机生成；传入已有值可复用有效期内邮箱"
+msgstr "選填：不傳則隨機生成；傳入已有值可復用有效期內郵箱"
+
+msgid "选填：邮箱有效分钟数，正整数，默认 1440（24 小时）"
+msgstr "選填：郵箱有效分鐘數，正整數，默認 1440（24 小時）"
+
+msgid "邮件发送与虚拟邮箱收发能力。当前接入 2 条线路，后续可继续扩展更多平台/线路。"
+msgstr "郵件發送與虛擬郵箱收發能力。當前接入 2 條線路，後續可繼續擴展更多平臺/線路。"
+
+msgid "邮件标题"
+msgstr "郵件標題"
+
+msgid "邮件标题（必填）"
+msgstr "郵件標題（必填）"
+
+msgid "邮件正文"
+msgstr "郵件正文"
+
+msgid "邮件正文内容"
+msgstr "郵件正文內容"
+
+msgid "邮件正文内容（必填）"
+msgstr "郵件正文內容（必填）"
+
+msgid "邮箱 v1"
+msgstr "郵箱 v1"
+
+
+# ==================== API 文档内容 · 音乐服务 ====================
+msgid "2t58.com 歌手歌曲列表页完整地址（必填）"
+msgstr "2t58.com 歌手歌曲列表頁完整地址（必填）"
+
+msgid "2t58.com 歌曲详情页完整地址（必填）"
+msgstr "2t58.com 歌曲詳情頁完整地址（必填）"
+
+msgid "2t58.com 网页抓取（只读）"
+msgstr "2t58.com 網頁抓取（只讀）"
+
+msgid "JSON 文件"
+msgstr "JSON 文件"
+
+msgid "[{\"name\":\"晴天\",\"singer\":[\"周杰伦\"],\"online\":true,\"music_sources\":[\"https://...\"]}]"
+msgstr "[{\"name\":\"晴天\",\"singer\":[\"周杰倫\"],\"online\":true,\"music_sources\":[\"https://...\"]}]"
+
+msgid "false（含离线）"
+msgstr "false（含離線）"
+
+msgid "false（离线）"
+msgstr "false（離線）"
+
+msgid "multipart 文件字段 file，内容为 JSON 数组。页面在线调试暂不支持文件上传，请在代码中调用。"
+msgstr "multipart 文件字段 file，內容為 JSON 數組。頁面在線調試暫不支持文件上傳，請在代碼中調用。"
+
+msgid "true（仅在线）"
+msgstr "true（僅在線）"
+
+msgid "true（在线，默认）"
+msgstr "true（在線，默認）"
+
+msgid "上传 JSON 文件批量导入音乐+播放源（单文件 ≤10MB、单次 ≤9999 条，不去重）。"
+msgstr "上傳 JSON 文件批量導入音樂+播放源（單文件 ≤10MB、單次 ≤9999 條，不去重）。"
+
+msgid "不传（默认仅在线）"
+msgstr "不傳（默認僅在線）"
+
+msgid "关键词"
+msgstr "關鍵詞"
+
+msgid "创建播放源"
+msgstr "創建播放源"
+
+msgid "创建音乐"
+msgstr "創建音樂"
+
+msgid "创建音乐返回的 UUID"
+msgstr "創建音樂返回的 UUID"
+
+msgid "创建音乐返回的 music_id"
+msgstr "創建音樂返回的 music_id"
+
+msgid "删除播放源"
+msgstr "刪除播放源"
+
+msgid "删除音乐"
+msgstr "刪除音樂"
+
+msgid "名称或歌手"
+msgstr "名稱或歌手"
+
+msgid "周杰伦\n蔡依林"
+msgstr "周杰倫\n蔡依林"
+
+msgid "在线状态"
+msgstr "在線狀態"
+
+msgid "多个歌手用逗号或换行分隔（服务端会按多次传参拆成歌手列表）"
+msgstr "多個歌手用逗號或換行分隔（服務端會按多次傳參拆成歌手列表）"
+
+msgid "如：晴天"
+msgstr "如：晴天"
+
+msgid "如：王小草"
+msgstr "如：王小草"
+
+msgid "小影音乐"
+msgstr "小影音樂"
+
+msgid "批量导入"
+msgstr "批量導入"
+
+msgid "抓取热门/歌手/歌曲/搜索数据。url 参数必须为 2t58.com 域名地址。"
+msgstr "抓取熱門/歌手/歌曲/搜索數據。url 參數必須為 2t58.com 域名地址。"
+
+msgid "按 UUID 删除播放源。"
+msgstr "按 UUID 刪除播放源。"
+
+msgid "按 UUID 删除音乐（其播放源级联删除）。"
+msgstr "按 UUID 刪除音樂（其播放源級聯刪除）。"
+
+msgid "按关键词/在线状态查询音乐（分页）；不传 online 时默认只返回在线音乐。"
+msgstr "按關鍵詞/在線狀態查詢音樂（分頁）；不傳 online 時默認只返回在線音樂。"
+
+msgid "按关键词搜索歌曲（分页）。"
+msgstr "按關鍵詞搜索歌曲（分頁）。"
+
+msgid "按音乐 UUID 查询单条音乐，同时返回其全部播放源（music_sources）。"
+msgstr "按音樂 UUID 查詢單條音樂，同時返回其全部播放源（music_sources）。"
+
+msgid "搜索关键词（必填）"
+msgstr "搜索關鍵詞（必填）"
+
+msgid "搜索音乐"
+msgstr "搜索音樂"
+
+msgid "播放地址（必填，需合法 URL）"
+msgstr "播放地址（必填，需合法 URL）"
+
+msgid "播放源 UUID"
+msgstr "播放源 UUID"
+
+msgid "播放链接"
+msgstr "播放鏈接"
+
+msgid "新建一条音乐，返回 music_id（UUID），供详情/播放源关联使用。"
+msgstr "新建一條音樂，返回 music_id（UUID），供詳情/播放源關聯使用。"
+
+msgid "更新播放源"
+msgstr "更新播放源"
+
+msgid "更新音乐"
+msgstr "更新音樂"
+
+msgid "歌手"
+msgstr "歌手"
+
+msgid "歌手基本信息 + 歌曲列表（含分页）。"
+msgstr "歌手基本信息 + 歌曲列表（含分頁）。"
+
+msgid "歌手详情"
+msgstr "歌手詳情"
+
+msgid "歌手页 URL"
+msgstr "歌手頁 URL"
+
+msgid "歌手（必填，至少一位）"
+msgstr "歌手（必填，至少一位）"
+
+msgid "歌曲基本信息 + 播放链接 + 歌词 + 每日推荐。"
+msgstr "歌曲基本信息 + 播放鏈接 + 歌詞 + 每日推薦。"
+
+msgid "歌曲详情"
+msgstr "歌曲詳情"
+
+msgid "歌曲页 URL"
+msgstr "歌曲頁 URL"
+
+msgid "每页条数"
+msgstr "每頁條數"
+
+msgid "爱听音乐网 2t58"
+msgstr "愛聽音樂網 2t58"
+
+msgid "示例单条：{\"name\":\"晴天\",\"singer\":[\"周杰伦\"],\"online\":true,\"music_sources\":[\"https://...\"]}"
+msgstr "示例單條：{\"name\":\"晴天\",\"singer\":[\"周杰倫\"],\"online\":true,\"music_sources\":[\"https://...\"]}"
+
+msgid "给某首音乐新增一个播放链接。"
+msgstr "給某首音樂新增一個播放鏈接。"
+
+msgid "自有曲库（Music/MusicSource 数据）"
+msgstr "自有曲庫（Music/MusicSource 數據）"
+
+msgid "获取音乐详情"
+msgstr "獲取音樂詳情"
+
+msgid "路径参数：播放源 UUID"
+msgstr "路徑參數：播放源 UUID"
+
+msgid "路径参数：要删除的音乐 UUID"
+msgstr "路徑參數：要刪除的音樂 UUID"
+
+msgid "路径参数：要更新的音乐 UUID"
+msgstr "路徑參數：要更新的音樂 UUID"
+
+msgid "路径参数：音乐 UUID（文档页代调时请替换 URL 中的 <uuid>）"
+msgstr "路徑參數：音樂 UUID（文檔頁代調時請替換 URL 中的 <uuid>）"
+
+msgid "返回热门歌手、歌曲飙升榜、流行趋势榜三个模块。"
+msgstr "返回熱門歌手、歌曲飆升榜、流行趨勢榜三個模塊。"
+
+msgid "选填：1-100，默认 10"
+msgstr "選填：1-100，默認 10"
+
+msgid "选填：true/false"
+msgstr "選填：true/false"
+
+msgid "选填：匹配音乐名称/歌手"
+msgstr "選填：匹配音樂名稱/歌手"
+
+msgid "选填：整体替换歌手列表"
+msgstr "選填：整體替換歌手列表"
+
+msgid "选填：新名称"
+msgstr "選填：新名稱"
+
+msgid "选填：新播放地址"
+msgstr "選填：新播放地址"
+
+msgid "选填：页码，正整数，默认 1"
+msgstr "選填：頁碼，正整數，默認 1"
+
+msgid "选填：默认 1"
+msgstr "選填：默認 1"
+
+msgid "选填：默认 true"
+msgstr "選填：默認 true"
+
+msgid "部分字段更新播放源（music_id/url）。"
+msgstr "部分字段更新播放源（music_id/url）。"
+
+msgid "部分字段更新音乐（singer 为整体替换）。"
+msgstr "部分字段更新音樂（singer 為整體替換）。"
+
+msgid "部分成功：单条记录失败会整体回滚该条，响应返回 failures 明细。"
+msgstr "部分成功：單條記錄失敗會整體回滾該條，響應返回 failures 明細。"
+
+msgid "音乐 UUID"
+msgstr "音樂 UUID"
+
+msgid "音乐 UUID（必填，须已存在）"
+msgstr "音樂 UUID（必填，須已存在）"
+
+msgid "音乐与其播放源的 RESTful 增删改查；音乐详情接口会同时返回其全部播放源。"
+msgstr "音樂與其播放源的 RESTful 增刪改查；音樂詳情接口會同時返回其全部播放源。"
+
+msgid "音乐列表查询"
+msgstr "音樂列表查詢"
+
+msgid "音乐名称"
+msgstr "音樂名稱"
+
+msgid "音乐名称（必填）"
+msgstr "音樂名稱（必填）"
+
+msgid "音乐聚合能力：爱听音乐网抓取（首页/歌手/歌曲/搜索）与小影音乐自有曲库的增删改查。当前接入 2 条线路。"
+msgstr "音樂聚合能力：愛聽音樂網抓取（首頁/歌手/歌曲/搜索）與小影音樂自有曲庫的增刪改查。當前接入 2 條線路。"
+
+msgid "页码"
+msgstr "頁碼"
+
+msgid "首页数据"
+msgstr "首頁數據"
+
+
+# ==================== API 文档内容 · 视频分析 ====================
+msgid "5.89 dAT:/ ... https://v.douyin.com/xxxxx/ 复制此链接...\n或直接粘贴链接 / aweme_id"
+msgstr "5.89 dAT:/ ... https://v.douyin.com/xxxxx/ 複製此鏈接...\n或直接粘貼鏈接 / aweme_id"
+
+msgid "必填：支持三种输入 —— ①完整分享文本 ②链接（v.douyin.com 短链 或 www.douyin.com/video/xxx）③纯数字 aweme_id"
+msgstr "必填：支持三種輸入 —— ①完整分享文本 ②鏈接（v.douyin.com 短鏈 或 www.douyin.com/video/xxx）③純數字 aweme_id"
+
+msgid "把抖音分享内容解析为可直接下载的视频/图文数据。"
+msgstr "把抖音分享內容解析為可直接下載的視頻/圖文數據。"
+
+msgid "抖音"
+msgstr "抖音"
+
+msgid "抖音分享文本"
+msgstr "抖音分享文本"
+
+msgid "抖音视频/图文解析"
+msgstr "抖音視頻/圖文解析"
+
+msgid "短视频解析能力，提取无水印视频/图文内容。当前接入抖音线路，后续可继续扩展平台。"
+msgstr "短視頻解析能力，提取無水印視頻/圖文內容。當前接入抖音線路，後續可繼續擴展平臺。"
+
+msgid "解析抖音内容"
+msgstr "解析抖音內容"
+
+msgid "解析抖音视频或图文，返回无水印地址等信息。"
+msgstr "解析抖音視頻或圖文，返回無水印地址等信息。"
+
+msgid "请使用真实可访问的分享内容测试；解析失败返回外部服务错误。"
+msgstr "請使用真實可訪問的分享內容測試；解析失敗返回外部服務錯誤。"
+
+msgid "请求体为 application/x-www-form-urlencoded 表单。"
+msgstr "請求體為 application/x-www-form-urlencoded 表單。"
+
+
+# ==================== API 文档内容 · 短信验证 ====================
+msgid "11 位手机号（必填）"
+msgstr "11 位手機號（必填）"
+
+msgid "1（不区分大小写，默认）"
+msgstr "1（不區分大小寫，默認）"
+
+msgid "1（覆盖旧码，默认）"
+msgstr "1（覆蓋舊碼，默認）"
+
+msgid "2（保留旧码）"
+msgstr "2（保留舊碼）"
+
+msgid "2（区分大小写）"
+msgstr "2（區分大小寫）"
+
+msgid "PASS=核验成功，UNKNOWN=核验失败（验证码错误或已过期）。"
+msgstr "PASS=核驗成功，UNKNOWN=核驗失敗（驗證碼錯誤或已過期）。"
+
+msgid "false（不返回，默认）"
+msgstr "false（不返回，默認）"
+
+msgid "true（返回验证码，仅测试场景建议开启）"
+msgstr "true（返回驗證碼，僅測試場景建議開啟）"
+
+msgid "发送成功即返回 code=10000；频控触发时提示等待（interval 秒）后再试。"
+msgstr "發送成功即返回 code=10000；頻控觸發時提示等待（interval 秒）後再試。"
+
+msgid "发送短信验证码"
+msgstr "發送短信驗證碼"
+
+msgid "发送间隔(秒)"
+msgstr "發送間隔(秒)"
+
+msgid "发送验证码由阿里云系统动态生成并完成核验；全部接口需接入项目签名，防短信被滥用。"
+msgstr "發送驗證碼由阿里雲系統動態生成並完成核驗；全部接口需接入項目簽名，防短信被濫用。"
+
+msgid "向指定手机号发送短信验证码；验证码有效期、频控间隔等可配。"
+msgstr "向指定手機號發送短信驗證碼；驗證碼有效期、頻控間隔等可配。"
+
+msgid "响应返回验证码"
+msgstr "響應返回驗證碼"
+
+msgid "外部流水号"
+msgstr "外部流水號"
+
+msgid "大小写核验策略"
+msgstr "大小寫核驗策略"
+
+msgid "如：1234"
+msgstr "如：1234"
+
+msgid "手机收到的验证码（必填）"
+msgstr "手機收到的驗證碼（必填）"
+
+msgid "接口请求成功统一返回 code=10000；业务结果以 data.verify_result 判断："
+msgstr "接口請求成功統一返回 code=10000；業務結果以 data.verify_result 判斷："
+
+msgid "方案名称"
+msgstr "方案名稱"
+
+msgid "有效时长(秒)"
+msgstr "有效時長(秒)"
+
+msgid "核验用户输入的验证码是否正确/是否过期。"
+msgstr "核驗用戶輸入的驗證碼是否正確/是否過期。"
+
+msgid "核验短信验证码"
+msgstr "核驗短信驗證碼"
+
+msgid "短信验证码能力：阿里云号码认证发送与核验，服务端生成/校验验证码，防短信轰炸。当前接入阿里云线路。"
+msgstr "短信驗證碼能力：阿里雲號碼認證發送與核驗，服務端生成/校驗驗證碼，防短信轟炸。當前接入阿里雲線路。"
+
+msgid "请求体为 application/x-www-form-urlencoded 表单；本服务需项目签名（app_id/timestamp/nonce/sign）。"
+msgstr "請求體為 application/x-www-form-urlencoded 表單；本服務需項目簽名（app_id/timestamp/nonce/sign）。"
+
+msgid "选填：1-7（1=纯数字），默认 1"
+msgstr "選填：1-7（1=純數字），默認 1"
+
+msgid "选填：4-8，默认 4"
+msgstr "選填：4-8，默認 4"
+
+msgid "选填：仅测试场景建议开启 true，便于直接取码核验"
+msgstr "選填：僅測試場景建議開啟 true，便於直接取碼核驗"
+
+msgid "选填：外部流水号（透传返回）"
+msgstr "選填：外部流水號（透傳返回）"
+
+msgid "选填：留空使用阿里云默认方案"
+msgstr "選填：留空使用阿里雲默認方案"
+
+msgid "选填：须与发送验证码时一致，留空使用默认方案"
+msgstr "選填：須與發送驗證碼時一致，留空使用默認方案"
+
+msgid "选填：频控间隔，默认 60 秒（防短信轰炸）"
+msgstr "選填：頻控間隔，默認 60 秒（防短信轟炸）"
+
+msgid "选填：验证码有效时长，默认 300 秒（5 分钟）"
+msgstr "選填：驗證碼有效時長，默認 300 秒（5 分鐘）"
+
+msgid "选填：默认 1（不区分大小写）"
+msgstr "選填：默認 1（不區分大小寫）"
+
+msgid "选填：默认 1（覆盖旧码）"
+msgstr "選填：默認 1（覆蓋舊碼）"
+
+msgid "重复发送处理"
+msgstr "重複發送處理"
+
+msgid "阿里云号码认证服务（Dypnsapi）"
+msgstr "阿里雲號碼認證服務（Dypnsapi）"
+
+msgid "阿里云短信验证码"
+msgstr "阿里雲短信驗證碼"
+
+msgid "验证码类型"
+msgstr "驗證碼類型"
+
+msgid "验证码长度"
+msgstr "驗證碼長度"
+
+
+# ==================== API 文档内容 · 图形验证 ====================
+msgid "success=验证有效，fail=验证无效（pass_token 过期/流水号已用等），原因见 data.reason。"
+msgstr "success=驗證有效，fail=驗證無效（pass_token 過期/流水號已用等），原因見 data.reason。"
+
+msgid "上传客户端验证参数，确认用户本次图形验证有效（防绕过）。"
+msgstr "上傳客戶端驗證參數，確認用戶本次圖形驗證有效（防繞過）。"
+
+msgid "两步接入：先用 config 拿 appId 初始化前端 SDK，用户验证通过后再用 verify 做服务端二次校验。"
+msgstr "兩步接入：先用 config 拿 appId 初始化前端 SDK，用戶驗證通過後再用 verify 做服務端二次校驗。"
+
+msgid "二次校验"
+msgstr "二次校驗"
+
+msgid "响应 data.app_id 即前端 initAlicom4({ captchaId: app_id, product: \"bind\" }, ...) 所需的 captchaId。"
+msgstr "響應 data.app_id 即前端 initAlicom4({ captchaId: app_id, product: \"bind\" }, ...) 所需的 captchaId。"
+
+msgid "必填：前端 SDK 验证通过后回调返回的 captchaOutput"
+msgstr "必填：前端 SDK 驗證通過後回調返回的 captchaOutput"
+
+msgid "必填：前端 SDK 验证通过后回调返回的 genTime"
+msgstr "必填：前端 SDK 驗證通過後回調返回的 genTime"
+
+msgid "必填：前端 SDK 验证通过后回调返回的 passToken"
+msgstr "必填：前端 SDK 驗證通過後回調返回的 passToken"
+
+msgid "必填：前端 SDK 验证通过后回调返回的流水号，32 位小写 hex"
+msgstr "必填：前端 SDK 驗證通過後回調返回的流水號，32 位小寫 hex"
+
+msgid "接口请求成功统一返回 code=10000；业务结果以 data.result 判断："
+msgstr "接口請求成功統一返回 code=10000；業務結果以 data.result 判斷："
+
+msgid "获取图形认证配置"
+msgstr "獲取圖形認證配置"
+
+msgid "请求体为 application/x-www-form-urlencoded 表单；公开接口，无需项目签名。"
+msgstr "請求體為 application/x-www-form-urlencoded 表單；公開接口，無需項目簽名。"
+
+msgid "返回图形认证 appId（captchaId），供 H5 前端 SDK 初始化。公开接口，无需签名。"
+msgstr "返回圖形認證 appId（captchaId），供 H5 前端 SDK 初始化。公開接口，無需簽名。"
+
+msgid "阿里云图形认证"
+msgstr "阿里雲圖形認證"
+
+msgid "阿里云图形认证服务（滑块/点选验证）"
+msgstr "阿里雲圖形認證服務（滑塊/點選驗證）"
+
+msgid "阿里云图形验证码集成（滑块/点选等），服务端下发配置并二次校验，防机器流量。当前接入阿里云线路。"
+msgstr "阿里雲圖形驗證碼集成（滑塊/點選等），服務端下發配置並二次校驗，防機器流量。當前接入阿里雲線路。"
+
+msgid "验证流水号"
+msgstr "驗證流水號"
+
+msgid "验证输出信息"
+msgstr "驗證輸出信息"
+
+msgid "验证通过时间戳"
+msgstr "驗證通過時間戳"
+
+msgid "验证通过标识"
+msgstr "驗證通過標識"
+
+
+# ==================== API 文档内容 · 自研图形验证码 ====================
+msgid "SpiderServices/Captcha 自研生成引擎（Pillow 绘制）"
+msgstr "SpiderServices/Captcha 自研生成引擎（Pillow 繪製）"
+
+msgid "arithmetic（算术）"
+msgstr "arithmetic（算術）"
+
+msgid "captcha_id 非 UUID 时返回 code=20002，参数缺失时返回 code=20001。"
+msgstr "captcha_id 非 UUID 時返回 code=20002，參數缺失時返回 code=20001。"
+
+msgid "char（字符图片，默认）"
+msgstr "char（字符圖片，默認）"
+
+msgid "两步接入：先 generate 拿 captcha_id 与图片（base64），用户作答后 POST verify 校验；答案一次性，校验后无论对错立即失效，需配合前端换新图。"
+msgstr "兩步接入：先 generate 拿 captcha_id 與圖片（base64），用戶作答後 POST verify 校驗；答案一次性，校驗後無論對錯立即失效，需配合前端換新圖。"
+
+msgid "字符个数"
+msgstr "字符個數"
+
+msgid "必填：生成接口返回的 captcha_id（UUID）"
+msgstr "必填：生成接口返回的 captcha_id（UUID）"
+
+msgid "必填：用户填写的答案（字符不区分大小写；算术填计算结果）"
+msgstr "必填：用戶填寫的答案（字符不區分大小寫；算術填計算結果）"
+
+msgid "提交用户答案校验，一次性消费（校验后立即失效）。"
+msgstr "提交用戶答案校驗，一次性消費（校驗後立即失效）。"
+
+msgid "未通过（答案错误 / 已过期 / 已使用 / 不存在）：code=20003 且 data.passed=false，原因见 msg；"
+msgstr "未通過（答案錯誤 / 已過期 / 已使用 / 不存在）：code=20003 且 data.passed=false，原因見 msg；"
+
+msgid "校验通过：code=10000 且 data.passed=true；"
+msgstr "校驗通過：code=10000 且 data.passed=true；"
+
+msgid "校验验证码"
+msgstr "校驗驗證碼"
+
+msgid "生成一张验证码，返回 captcha_id、base64 图片与有效期。"
+msgstr "生成一張驗證碼，返回 captcha_id、base64 圖片與有效期。"
+
+msgid "生成验证码"
+msgstr "生成驗證碼"
+
+msgid "用户答案"
+msgstr "用戶答案"
+
+msgid "答案一次性：同一条验证码重复提交只会成功一次，失败后需重新调用 generate。"
+msgstr "答案一次性：同一條驗證碼重複提交只會成功一次，失敗後需重新調用 generate。"
+
+msgid "自研图形验证码（字符图片 / 算术），Pillow 本地绘制、无第三方依赖，答案一次性校验。"
+msgstr "自研圖形驗證碼（字符圖片 / 算術），Pillow 本地繪製、無第三方依賴，答案一次性校驗。"
+
+msgid "自研验证码"
+msgstr "自研驗證碼"
+
+msgid "请求方式 GET，参数放 query string；公开接口，无需项目签名。"
+msgstr "請求方式 GET，參數放 query string；公開接口，無需項目簽名。"
+
+msgid "返回 data.captcha_id 必须与答案一起回传给 verify；data.image 为 base64 data URI，可直接用于 <img src>；data.expire_in 为有效期（秒，默认 300）。"
+msgstr "返回 data.captcha_id 必須與答案一起回傳給 verify；data.image 為 base64 data URI，可直接用於 <img src>；data.expire_in 為有效期（秒，默認 300）。"
+
+msgid "选填：char=字符图片（数字+大写字母）；arithmetic=算术加减法"
+msgstr "選填：char=字符圖片（數字+大寫字母）；arithmetic=算術加減法"
+
+msgid "选填：仅 kind=char 生效，取值 4-6（默认 4）"
+msgstr "選填：僅 kind=char 生效，取值 4-6（默認 4）"
+
+msgid "验证码ID"
+msgstr "驗證碼ID"
+
+
+# ==================== API 文档内容 · 验证码识别 ====================
+msgid "Beta 模型"
+msgstr "Beta 模型"
+
+msgid "OCR 文字识别"
+msgstr "OCR 文字識別"
+
+msgid "Python ddddocr（本地模型）"
+msgstr "Python ddddocr（本地模型）"
+
+msgid "ddddocr 通用识别"
+msgstr "ddddocr 通用識別"
+
+msgid "false（默认）"
+msgstr "false（默認）"
+
+msgid "true 时使用 Beta 版 OCR 模型（对部分验证码更准）"
+msgstr "true 時使用 Beta 版 OCR 模型（對部分驗證碼更準）"
+
+msgid "true 时对透明通道图片做白底修复"
+msgstr "true 時對透明通道圖片做白底修復"
+
+msgid "true 时返回 data={text, probability}；false 时 data 为文本"
+msgstr "true 時返回 data={text, probability}；false 時 data 為文本"
+
+msgid "上传本地图片（页面调试现支持真实文件上传）"
+msgstr "上傳本地圖片（頁面調試現支持真實文件上傳）"
+
+msgid "修复透明 PNG"
+msgstr "修復透明 PNG"
+
+msgid "图片文件(上传)"
+msgstr "圖片文件(上傳)"
+
+msgid "基于 ddddocr 的通用验证码识别：OCR 文字识别、目标检测、滑块验证码缺口匹配。当前接入 ddddocr 单线路。"
+msgstr "基於 ddddocr 的通用驗證碼識別：OCR 文字識別、目標檢測、滑塊驗證碼缺口匹配。當前接入 ddddocr 單線路。"
+
+msgid "如 0 或 0123456789+-x/="
+msgstr "如 0 或 0123456789+-x/="
+
+msgid "字符范围"
+msgstr "字符範圍"
+
+msgid "必填：预定义 0=数字/1=小写/2=大写/3=大小写/4=小写+数字/5=大写+数字/6=大小写+数字/7=默认；或自定义字符串，如 \"0123456789\""
+msgstr "必填：預定義 0=數字/1=小寫/2=大寫/3=大小寫/4=小寫+數字/5=大寫+數字/6=大小寫+數字/7=默認；或自定義字符串，如 \"0123456789\""
+
+msgid "成功返回 data={target_x, target_y}。"
+msgstr "成功返回 data={target_x, target_y}。"
+
+msgid "成功返回 data={target_x, target_y}，即缺口左上角坐标。"
+msgstr "成功返回 data={target_x, target_y}，即缺口左上角坐標。"
+
+msgid "或 图片URL/base64"
+msgstr "或 圖片URL/base64"
+
+msgid "或 滑块图片URL/base64"
+msgstr "或 滑塊圖片URL/base64"
+
+msgid "或 背景图片URL/base64"
+msgstr "或 背景圖片URL/base64"
+
+msgid "或填写图片 URL / base64（无需本地文件时使用）"
+msgstr "或填寫圖片 URL / base64（無需本地文件時使用）"
+
+msgid "文件字段与 URL/base64 字段至少提供一个；同时提供时文件优先。"
+msgstr "文件字段與 URL/base64 字段至少提供一個；同時提供時文件優先。"
+
+msgid "本服务需项目签名；上传文件时请求体为 multipart/form-data。"
+msgstr "本服務需項目簽名；上傳文件時請求體為 multipart/form-data。"
+
+msgid "检测图片中的目标位置，返回各目标的边界框与置信度。"
+msgstr "檢測圖片中的目標位置，返回各目標的邊界框與置信度。"
+
+msgid "注意：后端每次调用都会新建识别实例，此接口只对“该次调用”的实例生效，不会改变之后 /ocr 请求的字符集。"
+msgstr "注意：後端每次調用都會新建識別實例，此接口只對「該次調用」的實例生效，不會改變之後 /ocr 請求的字符集。"
+
+msgid "滑块匹配（差异比较法）"
+msgstr "滑塊匹配（差異比較法）"
+
+msgid "滑块匹配（边缘匹配法）"
+msgstr "滑塊匹配（邊緣匹配法）"
+
+msgid "滑块图片(上传)"
+msgstr "滑塊圖片(上傳)"
+
+msgid "滑块（slide_image / slide_image_url）与背景（bg_image / bg_image_url）各至少提供其一；同时提供时文件优先。"
+msgstr "滑塊（slide_image / slide_image_url）與背景（bg_image / bg_image_url）各至少提供其一；同時提供時文件優先。"
+
+msgid "目标检测"
+msgstr "目標檢測"
+
+msgid "直接比较滑块图与背景图差异定位缺口（算法二）。"
+msgstr "直接比較滑塊圖與背景圖差異定位缺口（算法二）。"
+
+msgid "简单目标模式"
+msgstr "簡單目標模式"
+
+msgid "纯本地模型识别，无第三方依赖回调。首次调用会加载模型、响应偏慢属正常。"
+msgstr "純本地模型識別，無第三方依賴回調。首次調用會加載模型、響應偏慢屬正常。"
+
+msgid "背景图片(上传)"
+msgstr "背景圖片(上傳)"
+
+msgid "自定义颜色范围(JSON 对象)"
+msgstr "自定義顏色範圍(JSON 對象)"
+
+msgid "设置 OCR 字符范围"
+msgstr "設置 OCR 字符範圍"
+
+msgid "设置本次识别实例的字符范围（预定义编号或自定义字符集）。"
+msgstr "設置本次識別實例的字符範圍（預定義編號或自定義字符集）。"
+
+msgid "识别图片中的文字内容，返回识别文本；可返回概率、按颜色过滤等。"
+msgstr "識別圖片中的文字內容，返回識別文本；可返回概率、按顏色過濾等。"
+
+msgid "返回概率分布"
+msgstr "返回概率分布"
+
+msgid "选填：HSV 区间字典，需与 colors 配合使用"
+msgstr "選填：HSV 區間字典，需與 colors 配合使用"
+
+msgid "选填：仅识别指定颜色文字，如 [\"red\",\"blue\",\"green\"]"
+msgstr "選填：僅識別指定顏色文字，如 [\"red\",\"blue\",\"green\"]"
+
+msgid "选填：配合 Beta 模型使用"
+msgstr "選填：配合 Beta 模型使用"
+
+msgid "选填：默认 false"
+msgstr "選填：默認 false"
+
+msgid "通过边缘检测匹配滑块小图在背景大图中的缺口位置（算法一）。"
+msgstr "通過邊緣檢測匹配滑塊小圖在背景大圖中的缺口位置（算法一）。"
+
+msgid "颜色过滤(JSON 数组)"
+msgstr "顏色過濾(JSON 數組)"
+
+
+# ==================== API 文档内容 · 文件上传 ====================
+msgid "multipart/form-data 文件字段 file：直接用下方“选择文件”上传即可。"
+msgstr "multipart/form-data 文件字段 file：直接用下方「選擇文件」上傳即可。"
+
+msgid "svg 因可内嵌脚本已禁用。"
+msgstr "svg 因可內嵌腳本已禁用。"
+
+msgid "上传图片"
+msgstr "上傳圖片"
+
+msgid "上传图片，返回可直接引用的图片 URL。"
+msgstr "上傳圖片，返回可直接引用的圖片 URL。"
+
+msgid "上传视频"
+msgstr "上傳視頻"
+
+msgid "上传视频文件。"
+msgstr "上傳視頻文件。"
+
+msgid "上传通用文件"
+msgstr "上傳通用文件"
+
+msgid "上传通用文件（白名单：zip/pdf/docx/xlsx/txt 等）。"
+msgstr "上傳通用文件（白名單：zip/pdf/docx/xlsx/txt 等）。"
+
+msgid "全部使用 multipart/form-data，文件字段固定为 file；仅支持白名单类型并校验文件头（防伪装/防脚本上传）。"
+msgstr "全部使用 multipart/form-data，文件字段固定為 file；僅支持白名單類型並校驗文件頭（防偽裝/防腳本上傳）。"
+
+msgid "图片文件"
+msgstr "圖片文件"
+
+msgid "成功返回 data 字段：filename / original_name / size / size_mb / ext / type / relative_path / url。"
+msgstr "成功返回 data 字段：filename / original_name / size / size_mb / ext / type / relative_path / url。"
+
+msgid "支持类型：jpg/jpeg/png/gif/bmp/webp/ico/tiff；最大 20MB。"
+msgstr "支持類型：jpg/jpeg/png/gif/bmp/webp/ico/tiff；最大 20MB。"
+
+msgid "最大 100MB；白名单制并校验文件头；返回 type=file。"
+msgstr "最大 100MB；白名單制並校驗文件頭；返回 type=file。"
+
+msgid "最大 100MB；返回 type=video。"
+msgstr "最大 100MB；返回 type=video。"
+
+msgid "本地存储（/media/uploads/…）"
+msgstr "本地存儲（/media/uploads/…）"
+
+msgid "本地文件上传"
+msgstr "本地文件上傳"
+
+msgid "视频文件"
+msgstr "視頻文件"
+
+msgid "返回的 url 为站点媒体访问地址（/media/...），可直接引用。"
+msgstr "返回的 url 為站點媒體訪問地址（/media/...），可直接引用。"
+
+msgid "通用文件"
+msgstr "通用文件"
+
+msgid "通用文件上传能力：图片/视频/普通文件，白名单校验并存储到本地 /media，返回可访问 URL。"
+msgstr "通用文件上傳能力：圖片/視頻/普通文件，白名單校驗並存儲到本地 /media，返回可訪問 URL。"
+
+
+# ==================== API 文档内容 · SEO 服务 ====================
+msgid "Logo 链接"
+msgstr "Logo 鏈接"
+
+msgid "QQ / 微信 / 邮箱"
+msgstr "QQ / 微信 / 郵箱"
+
+msgid "RESTful：GET/POST 作用于集合，GET/PATCH/DELETE 按数字主键 id 操作单条。"
+msgstr "RESTful：GET/POST 作用於集合，GET/PATCH/DELETE 按數字主鍵 id 操作單條。"
+
+msgid "SEO 周边能力：友情链接集合的统一管理（列表/详情/新增/更新/删除），便于站点外链建设。当前接入友情链接线路。"
+msgstr "SEO 周邊能力：友情鏈接集合的統一管理（列表/詳情/新增/更新/刪除），便於站點外鏈建設。當前接入友情鏈接線路。"
+
+msgid "false（禁用）"
+msgstr "false（禁用）"
+
+msgid "true（启用）"
+msgstr "true（啟用）"
+
+msgid "true（启用，默认）"
+msgstr "true（啟用，默認）"
+
+msgid "url 已存在时返回数据冲突错误。"
+msgstr "url 已存在時返回數據衝突錯誤。"
+
+msgid "一句话介绍该网站"
+msgstr "一句話介紹該網站"
+
+msgid "全部（不传）"
+msgstr "全部（不傳）"
+
+msgid "分类"
+msgstr "分類"
+
+msgid "创建友情链接"
+msgstr "創建友情鏈接"
+
+msgid "删除友情链接"
+msgstr "刪除友情鏈接"
+
+msgid "友情链接 ID"
+msgstr "友情鏈接 ID"
+
+msgid "友情链接列表"
+msgstr "友情鏈接列表"
+
+msgid "名称 / URL / 描述"
+msgstr "名稱 / URL / 描述"
+
+msgid "如：1"
+msgstr "如：1"
+
+msgid "如：小影API"
+msgstr "如：小影API"
+
+msgid "如：技术 / 工具 / 导航"
+msgstr "如：技術 / 工具 / 導航"
+
+msgid "必填：完整 URL，全局唯一"
+msgstr "必填：完整 URL，全局唯一"
+
+msgid "必填：网站名称（可重复）"
+msgstr "必填：網站名稱（可重複）"
+
+msgid "按主键 id 删除一条友情链接。"
+msgstr "按主鍵 id 刪除一條友情鏈接。"
+
+msgid "按主键 id 获取一条友情链接详情。"
+msgstr "按主鍵 id 獲取一條友情鏈接詳情。"
+
+msgid "排序权重"
+msgstr "排序權重"
+
+msgid "新增一条友情链接（name 必填、url 必填且全局唯一）。"
+msgstr "新增一條友情鏈接（name 必填、url 必填且全局唯一）。"
+
+msgid "更新友情链接"
+msgstr "更新友情鏈接"
+
+msgid "查询全部友情链接，支持关键词/分类/状态筛选。"
+msgstr "查詢全部友情鏈接，支持關鍵詞/分類/狀態篩選。"
+
+msgid "状态过滤"
+msgstr "狀態過濾"
+
+msgid "站点友情链接库（seo_friend_link）"
+msgstr "站點友情鏈接庫（seo_friend_link）"
+
+msgid "网站名称"
+msgstr "網站名稱"
+
+msgid "网站描述"
+msgstr "網站描述"
+
+msgid "网站链接"
+msgstr "網站鏈接"
+
+msgid "联系方式"
+msgstr "聯繫方式"
+
+msgid "获取单条"
+msgstr "獲取單條"
+
+msgid "路径参数：友情链接主键 ID（创建/列表返回）"
+msgstr "路徑參數：友情鏈接主鍵 ID（創建/列表返回）"
+
+msgid "返回 data={items, total}，items 按 sort 降序排列。"
+msgstr "返回 data={items, total}，items 按 sort 降序排列。"
+
+msgid "选填"
+msgstr "選填"
+
+msgid "选填：便于按类目筛选"
+msgstr "選填：便於按類目篩選"
+
+msgid "选填：分类精确匹配"
+msgstr "選填：分類精確匹配"
+
+msgid "选填：新链接"
+msgstr "選填：新鏈接"
+
+msgid "选填：模糊匹配名称/链接/描述"
+msgstr "選填：模糊匹配名稱/鏈接/描述"
+
+msgid "选填：用于 SEO 友链展示"
+msgstr "選填：用於 SEO 友鏈展示"
+
+msgid "选填：网站 logo 完整 URL"
+msgstr "選填：網站 logo 完整 URL"
+
+msgid "选填：越大越靠前，默认 0"
+msgstr "選填：越大越靠前，默認 0"
+
+msgid "选填：默认启用"
+msgstr "選填：默認啟用"
+
+msgid "部分字段更新：只更新本次传入的字段，未传字段保持不变。"
+msgstr "部分字段更新：只更新本次傳入的字段，未傳字段保持不變。"
+
+
+# ==================== API 文档内容 · 爬虫验证 ====================
+msgid "4759 蜘蛛 IP 验证"
+msgstr "4759 蜘蛛 IP 驗證"
+
+msgid "4759 蜘蛛/爬虫 IP 库"
+msgstr "4759 蜘蛛/爬蟲 IP 庫"
+
+msgid "GET 查询接口；本服务需项目签名。"
+msgstr "GET 查詢接口；本服務需項目簽名。"
+
+msgid "只读查询接口：提交一个 IP，服务端查证其是否为搜索引擎（如百度/谷歌等）爬虫来源。"
+msgstr "只讀查詢接口：提交一個 IP，服務端查證其是否為搜索引擎（如百度/谷歌等）爬蟲來源。"
+
+msgid "如 66.249.65.205（Google 爬虫）"
+msgstr "如 66.249.65.205（Google 爬蟲）"
+
+msgid "对外部服务查询耗时可能较长，属正常；接口返回 data 为爬虫验证结果（含是否为爬虫及来源类型，以实际返回为准）。"
+msgstr "對外部服務查詢耗時可能較長，屬正常；接口返回 data 為爬蟲驗證結果（含是否為爬蟲及來源類型，以實際返回為準）。"
+
+msgid "待验证 IP"
+msgstr "待驗證 IP"
+
+msgid "必填：合法的 IPv4 或 IPv6 地址"
+msgstr "必填：合法的 IPv4 或 IPv6 地址"
+
+msgid "识别自动化/爬虫环境：验证指定 IP 是否属于搜索引擎爬虫。当前接入 4759 验证线路。"
+msgstr "識別自動化/爬蟲環境：驗證指定 IP 是否屬於搜索引擎爬蟲。當前接入 4759 驗證線路。"
+
+msgid "验证 IP 是否爬虫"
+msgstr "驗證 IP 是否爬蟲"
+
+msgid "验证给定 IP 是否为搜索引擎爬虫，返回识别结论与类型信息。"
+msgstr "驗證給定 IP 是否為搜索引擎爬蟲，返回識別結論與類型信息。"
+
+
+# ==================== API 文档内容 · 代理 IP ====================
+msgid "0=否"
+msgstr "0=否"
+
+msgid "1=是"
+msgstr "1=是"
+
+msgid "66 免费代理"
+msgstr "66 免費代理"
+
+msgid "66daili 聚合（支持可用性验证）"
+msgstr "66daili 聚合（支持可用性驗證）"
+
+msgid "91HTTP 动态代理"
+msgstr "91HTTP 動態代理"
+
+msgid "IP 地址"
+msgstr "IP 地址"
+
+msgid "JSON 文件存储（平台本地）"
+msgstr "JSON 文件存儲（平臺本地）"
+
+msgid "JSON 文件路径(绝对)"
+msgstr "JSON 文件路徑(絕對)"
+
+msgid "api.91http.com（国内动态代理）"
+msgstr "api.91http.com（國內動態代理）"
+
+msgid "qydailiip.com（短期存活 1-3 分钟）"
+msgstr "qydailiip.com（短期存活 1-3 分鐘）"
+
+msgid "不传（默认 1）"
+msgstr "不傳（默認 1）"
+
+msgid "不传（默认 HTTP）"
+msgstr "不傳（默認 HTTP）"
+
+msgid "代理源"
+msgstr "代理源"
+
+msgid "删除静态代理"
+msgstr "刪除靜態代理"
+
+msgid "动态短期代理，每次调用返回全新 IP；订单号/Token 由平台侧持有，调用方无需提供。"
+msgstr "動態短期代理，每次調用返回全新 IP；訂單號/Token 由平臺側持有，調用方無需提供。"
+
+msgid "协议类型"
+msgstr "協議類型"
+
+msgid "向 JSON 文件新增一条静态代理。"
+msgstr "向 JSON 文件新增一條靜態代理。"
+
+msgid "多源代理 IP 聚合：66 免费代理、青雨动态代理、91HTTP 动态代理与静态代理管理，支持可用性验证。"
+msgstr "多源代理 IP 聚合：66 免費代理、青雨動態代理、91HTTP 動態代理與靜態代理管理，支持可用性驗證。"
+
+msgid "如 1.2.3.4"
+msgstr "如 1.2.3.4"
+
+msgid "如 8080"
+msgstr "如 8080"
+
+msgid "按 ip:port 从 JSON 文件删除一条静态代理。"
+msgstr "按 ip:port 從 JSON 文件刪除一條靜態代理。"
+
+msgid "支持白名单或账号密码两种认证方式，二选一即可；修改授权后约 5 分钟生效。"
+msgstr "支持白名單或賬號密碼兩種認證方式，二選一即可；修改授權後約 5 分鐘生效。"
+
+msgid "数量"
+msgstr "數量"
+
+msgid "新增静态代理"
+msgstr "新增靜態代理"
+
+msgid "白名单认证：不传 username/password，需先在 91HTTP 后台加白本机公网 IP。"
+msgstr "白名單認證：不傳 username/password，需先在 91HTTP 後臺加白本機公網 IP。"
+
+msgid "端口"
+msgstr "端口"
+
+msgid "自动白名单"
+msgstr "自動白名單"
+
+msgid "获取 91HTTP 动态代理，可指定协议/白名单/过期时间等。"
+msgstr "獲取 91HTTP 動態代理，可指定協議/白名單/過期時間等。"
+
+msgid "获取代理并可选验证连通性；verify=true 时按速度排序返回最快的代理。"
+msgstr "獲取代理並可選驗證連通性；verify=true 時按速度排序返回最快的代理。"
+
+msgid "获取动态代理"
+msgstr "獲取動態代理"
+
+msgid "获取可用代理"
+msgstr "獲取可用代理"
+
+msgid "获取青雨动态代理 IP（存活约 1-3 分钟）。"
+msgstr "獲取青雨動態代理 IP（存活約 1-3 分鐘）。"
+
+msgid "获取静态代理列表"
+msgstr "獲取靜態代理列表"
+
+msgid "认证密码"
+msgstr "認證密碼"
+
+msgid "认证用户名"
+msgstr "認證用戶名"
+
+msgid "账号密码认证：返回每条代理附带 proxy 字段（含账号密码的完整地址）。"
+msgstr "賬號密碼認證：返回每條代理附帶 proxy 字段（含賬號密碼的完整地址）。"
+
+msgid "返回全部静态代理。"
+msgstr "返回全部靜態代理。"
+
+msgid "返回指定数量、可选验证的可用代理列表。"
+msgstr "返回指定數量、可選驗證的可用代理列表。"
+
+msgid "返回过期时间"
+msgstr "返回過期時間"
+
+msgid "选填：>=1，默认 10"
+msgstr "選填：>=1，默認 10"
+
+msgid "选填：与 username 成对出现；使用该模式无需白名单"
+msgstr "選填：與 username 成對出現；使用該模式無需白名單"
+
+msgid "选填：代理源名称，多个用英文逗号分隔，如 \"66daili,qy\""
+msgstr "選填：代理源名稱，多個用英文逗號分隔，如 \"66daili,qy\""
+
+msgid "选填：自定义 JSON 文件绝对路径；默认使用平台配置路径。涉及服务器文件读写，非必要请勿传。"
+msgstr "選填：自定義 JSON 文件絕對路徑；默認使用平臺配置路徑。涉及服務器文件讀寫，非必要請勿傳。"
+
+msgid "选填：账号密码认证模式，与 password 成对出现"
+msgstr "選填：賬號密碼認證模式，與 password 成對出現"
+
+msgid "选填：返回条数，>=1，默认 1（需多个请调大）"
+msgstr "選填：返回條數，>=1，默認 1（需多個請調大）"
+
+msgid "选填：返回条数，必须为正整数，默认 10"
+msgstr "選填：返回條數，必須為正整數，默認 10"
+
+msgid "选填：默认 true（验证并按速度排序）"
+msgstr "選填：默認 true（驗證並按速度排序）"
+
+msgid "重新从 JSON 文件加载代理列表（配置更新后调用）。"
+msgstr "重新從 JSON 文件加載代理列表（配置更新後調用）。"
+
+msgid "重新加载静态代理"
+msgstr "重新加載靜態代理"
+
+msgid "青雨动态代理"
+msgstr "青雨動態代理"
+
+msgid "静态代理以 JSON 文件管理：查询 / 新增 / 按 ip:port 删除 / 重新加载。写操作会改动平台文件，请谨慎。"
+msgstr "靜態代理以 JSON 文件管理：查詢 / 新增 / 按 ip:port 刪除 / 重新加載。寫操作會改動平臺文件，請謹慎。"
+
+msgid "验证可用性"
+msgstr "驗證可用性"
+
+
+# ==================== API 文档内容 · 问题反馈 ====================
+msgid "closed（已关闭）"
+msgstr "closed（已關閉）"
+
+msgid "pending（待处理）"
+msgstr "pending（待處理）"
+
+msgid "processing（处理中）"
+msgstr "processing（處理中）"
+
+msgid "resolved（已解决）"
+msgstr "resolved（已解決）"
+
+msgid "上级评论 ID"
+msgstr "上級評論 ID"
+
+msgid "二级评论列表"
+msgstr "二級評論列表"
+
+msgid "全部接口需项目签名；create/reply 额外校验用户登录 Token（反馈人身份以此为准）。同项目内所有用户可见全部反馈与评论。"
+msgstr "全部接口需項目簽名；create/reply 額外校驗用戶登錄 Token（反饋人身份以此為準）。同項目內所有用戶可見全部反饋與評論。"
+
+msgid "内容"
+msgstr "內容"
+
+msgid "单条反馈详情：一级评论分页返回，每条内嵌二级评论首页（默认 5 条）。"
+msgstr "單條反饋詳情：一級評論分頁返回，每條內嵌二級評論首頁（默認 5 條）。"
+
+msgid "反馈 ID"
+msgstr "反饋 ID"
+
+msgid "反馈列表"
+msgstr "反饋列表"
+
+msgid "反馈标题"
+msgstr "反饋標題"
+
+msgid "反馈详情+评论树"
+msgstr "反饋詳情+評論樹"
+
+msgid "当前项目内的反馈列表，支持按状态筛选。"
+msgstr "當前項目內的反饋列表，支持按狀態篩選。"
+
+msgid "必填"
+msgstr "必填"
+
+msgid "必填：反馈编号（create 返回的 feedback_id）"
+msgstr "必填：反饋編號（create 返回的 feedback_id）"
+
+msgid "必填：被查看的评论 ID"
+msgstr "必填：被查看的評論 ID"
+
+msgid "提交反馈"
+msgstr "提交反饋"
+
+msgid "新建一条反馈（title/content 必填），反馈人身份由 token 校验。"
+msgstr "新建一條反饋（title/content 必填），反饋人身份由 token 校驗。"
+
+msgid "某条评论的全部子孙回复（扁平、分页、不分层级），防海量评论撑爆响应。"
+msgstr "某條評論的全部子孫回復（扁平、分頁、不分層級），防海量評論撐爆響應。"
+
+msgid "标题"
+msgstr "標題"
+
+msgid "状态"
+msgstr "狀態"
+
+msgid "用户 Token"
+msgstr "用戶 Token"
+
+msgid "用户中心登录后获取"
+msgstr "用戶中心登錄後獲取"
+
+msgid "用户登录 Token（用户中心签发）：create/reply 用它校验反馈人真实身份，子项目无法伪造用户。"
+msgstr "用戶登錄 Token（用戶中心簽發）：create/reply 用它校驗反饋人真實身份，子項目無法偽造用戶。"
+
+msgid "站内反馈库（按项目隔离）"
+msgstr "站內反饋庫（按項目隔離）"
+
+msgid "给反馈追加评论；parent_id 为空=一级评论，非空=回复指定评论（支持嵌套）。"
+msgstr "給反饋追加評論；parent_id 為空=一級評論，非空=回復指定評論（支持嵌套）。"
+
+msgid "评论内容"
+msgstr "評論內容"
+
+msgid "评论内容…"
+msgstr "評論內容…"
+
+msgid "详细描述问题…"
+msgstr "詳細描述問題…"
+
+msgid "追加 / 回复评论"
+msgstr "追加 / 回複評論"
+
+msgid "选填：pending/processing/resolved/closed"
+msgstr "選填：pending/processing/resolved/closed"
+
+msgid "选填：为空=直接评论反馈；非空=回复该评论（须属于同一反馈）"
+msgstr "選填：為空=直接評論反饋；非空=回復該評論（須屬於同一反饋）"
+
+msgid "选填：每页条数"
+msgstr "選填：每頁條數"
+
+msgid "选填：每页条数（最大 100）"
+msgstr "選填：每頁條數（最大 100）"
+
+msgid "问题反馈中心"
+msgstr "問題反饋中心"
+
+msgid "问题反馈中心：提交反馈、追加/回复评论、查看项目内反馈与评论树。数据按接入项目隔离。"
+msgstr "問題反饋中心：提交反饋、追加/回複評論、查看項目內反饋與評論樹。數據按接入項目隔離。"
+
+
+# ==================== API 文档内容 · AI 服务 ====================
+msgid "DeepSeek AI 对话"
+msgstr "DeepSeek AI 對話"
+
+msgid "DeepSeek 内置模型"
+msgstr "DeepSeek 內置模型"
+
+msgid "DeepSeek（平台内置 API Key）"
+msgstr "DeepSeek（平臺內置 API Key）"
+
+msgid "[\"```\"] 或 ```"
+msgstr "[\"```\"] 或 ```"
+
+msgid "[{\"role\": \"system\", \"content\": \"你是数学老师，只回答数学问题\"}]"
+msgstr "[{\"role\": \"system\", \"content\": \"你是數學老師，只回答數學問題\"}]"
+
+msgid "[{\"role\": \"user\", \"content\": \"你好\"},{\"role\": \"assistant\", \"content\": \"你好！\"},{\"role\": \"user\", \"content\": \"今天天气怎么样？\"}]"
+msgstr "[{\"role\": \"user\", \"content\": \"你好\"},{\"role\": \"assistant\", \"content\": \"你好！\"},{\"role\": \"user\", \"content\": \"今天天氣怎麼樣？\"}]"
+
+msgid "content 与 messages 至少提供一个，否则返回参数缺失。"
+msgstr "content 與 messages 至少提供一個，否則返回參數缺失。"
+
+msgid "deepseek-v4-flash（快速版）"
+msgstr "deepseek-v4-flash（快速版）"
+
+msgid "deepseek-v4-pro（专业版）"
+msgstr "deepseek-v4-pro（專業版）"
+
+msgid "一个接口覆盖单轮/多轮对话；不传 api_key 时使用平台 .env 配置的 DeepSeek Key。"
+msgstr "一個接口覆蓋單輪/多輪對話；不傳 api_key 時使用平臺 .env 配置的 DeepSeek Key。"
+
+msgid "不传（默认 deepseek-v4-flash）"
+msgstr "不傳（默認 deepseek-v4-flash）"
+
+msgid "与 DeepSeek 对话：支持单条消息、完整消息列表、系统提示词、流式/前缀续写。"
+msgstr "與 DeepSeek 對話：支持單條消息、完整消息列表、系統提示詞、流式/前綴續寫。"
+
+msgid "你好，介绍一下你自己"
+msgstr "你好，介紹一下你自己"
+
+msgid "例如：```python\n"
+msgstr "例如：```python\n"
+
+msgid "停止词"
+msgstr "停止詞"
+
+msgid "内置模型能力，开箱即用的 AI 对话接口。当前接入 DeepSeek 内置模型（含多轮对话、流式、前缀续写）。"
+msgstr "內置模型能力，開箱即用的 AI 對話接口。當前接入 DeepSeek 內置模型（含多輪對話、流式、前綴續寫）。"
+
+msgid "前缀续写(Beta)"
+msgstr "前綴續寫(Beta)"
+
+msgid "单条消息内容"
+msgstr "單條消息內容"
+
+msgid "在线调用会真实消耗平台 DeepSeek 额度，请确认 Key/额度可用后再调试。"
+msgstr "在線調用會真實消耗平臺 DeepSeek 額度，請確認 Key/額度可用後再調試。"
+
+msgid "完整对话消息(JSON)"
+msgstr "完整對話消息(JSON)"
+
+msgid "模型名称"
+msgstr "模型名稱"
+
+msgid "流式模式返回 SSE（data: {...} … data: [DONE]），在线调试会以原文展示，无法在结果区逐字流式播放。"
+msgstr "流式模式返回 SSE（data: {...} … data: [DONE]），在線調試會以原文展示，無法在結果區逐字流式播放。"
+
+msgid "流式输出(SSE)"
+msgstr "流式輸出(SSE)"
+
+msgid "系统提示词(JSON)"
+msgstr "系統提示詞(JSON)"
+
+msgid "续写起点文本"
+msgstr "續寫起點文本"
+
+msgid "自定义 DeepSeek Key"
+msgstr "自定義 DeepSeek Key"
+
+msgid "请求体为 application/x-www-form-urlencoded 表单；本服务需项目签名。"
+msgstr "請求體為 application/x-www-form-urlencoded 表單；本服務需項目簽名。"
+
+msgid "选填：JSON 字符串数组或纯文本；前缀续写常用来限定输出边界"
+msgstr "選填：JSON 字符串數組或純文本；前綴續寫常用來限定輸出邊界"
+
+msgid "选填：deepseek-v4-flash（默认）/ deepseek-v4-pro"
+msgstr "選填：deepseek-v4-flash（默認）/ deepseek-v4-pro"
+
+msgid "选填：prefix=true 时必填，模型会从该文本继续输出"
+msgstr "選填：prefix=true 時必填，模型會從該文本繼續輸出"
+
+msgid "选填：true 时响应为 SSE(text/event-stream)，逐块推送"
+msgstr "選填：true 時響應為 SSE(text/event-stream)，逐塊推送"
+
+msgid "选填：true 时自动切 Beta 接口，从 prefix_content 继续续写"
+msgstr "選填：true 時自動切 Beta 接口，從 prefix_content 繼續續寫"
+
+msgid "选填：不传则用平台 .env 的 DEEPSEEK_API_KEY"
+msgstr "選填：不傳則用平臺 .env 的 DEEPSEEK_API_KEY"
+
+msgid "选填：发起简单单轮对话时的消息内容（与 messages 至少提供一个）"
+msgstr "選填：發起簡單單輪對話時的消息內容（與 messages 至少提供一個）"
+
+msgid "选填：多轮对话用，格式为 JSON 数组，role 取 user/assistant；优先级高于 content"
+msgstr "選填：多輪對話用，格式為 JSON 數組，role 取 user/assistant；優先級高於 content"
+
+msgid "选填：设定 AI 角色；不传=平台默认提示词；空字符串=不使用系统提示词"
+msgstr "選填：設定 AI 角色；不傳=平臺默認提示詞；空字符串=不使用系統提示詞"
+
+
+# ==================== API 文档内容 · 代练通 ====================
+msgid "-99=正在进行（默认），99=已完成"
+msgstr "-99=正在進行（默認），99=已完成"
+
+msgid "0=全部（默认）"
+msgstr "0=全部（默認）"
+
+msgid "12=登录"
+msgstr "12=登錄"
+
+msgid "17=注册（默认）"
+msgstr "17=註冊（默認）"
+
+msgid "1=安卓"
+msgstr "1=安卓"
+
+msgid "Password（密码）"
+msgstr "Password（密碼）"
+
+msgid "VerificationCode（验证码，默认）"
+msgstr "VerificationCode（驗證碼，默認）"
+
+msgid "qq（默认）"
+msgstr "qq（默認）"
+
+msgid "上传代练通头像（传图片 URL/路径，无需 token）。"
+msgstr "上傳代練通頭像（傳圖片 URL/路徑，無需 token）。"
+
+msgid "上传头像"
+msgstr "上傳頭像"
+
+msgid "个性签名"
+msgstr "個性簽名"
+
+msgid "代练时长"
+msgstr "代練時長"
+
+msgid "代练要求"
+msgstr "代練要求"
+
+msgid "代练通平台能力：验证码登录注册、用户资料、公共/个人代练订单查询与操作（接收/发布/删除）、图片上传。"
+msgstr "代練通平臺能力：驗證碼登錄註冊、用戶資料、公共/個人代練訂單查詢與操作（接收/發布/刪除）、圖片上傳。"
+
+msgid "代练通订单平台"
+msgstr "代練通訂單平臺"
+
+msgid "代练通（dlt.com）网页接口封装"
+msgstr "代練通（dlt.com）網頁接口封裝"
+
+msgid "价格"
+msgstr "價格"
+
+msgid "价格范围"
+msgstr "價格範圍"
+
+msgid "修改代练通登录密码（需登录上下文与旧密码）。"
+msgstr "修改代練通登錄密碼（需登錄上下文與舊密碼）。"
+
+msgid "修改密码"
+msgstr "修改密碼"
+
+msgid "公共订单列表"
+msgstr "公共訂單列表"
+
+msgid "删除原因"
+msgstr "刪除原因"
+
+msgid "删除自己的订单（默认原因“不用了”）。"
+msgstr "刪除自己的訂單（默認原因「不用了」）。"
+
+msgid "删除订单"
+msgstr "刪除訂單"
+
+msgid "区服"
+msgstr "區服"
+
+msgid "发布一笔代练订单（需较多游戏/保证金/支付信息，含真实下单）。"
+msgstr "發布一筆代練訂單（需較多遊戲/保證金/支付信息，含真實下單）。"
+
+msgid "发布订单"
+msgstr "發布訂單"
+
+msgid "发送验证码"
+msgstr "發送驗證碼"
+
+msgid "号主联系方式"
+msgstr "號主聯繫方式"
+
+msgid "向手机号发送注册/登录验证码。"
+msgstr "向手機號發送註冊/登錄驗證碼。"
+
+msgid "向订单留言上传图片（传图片 URL/路径）。"
+msgstr "向訂單留言上傳圖片（傳圖片 URL/路徑）。"
+
+msgid "图片路径/URL"
+msgstr "圖片路徑/URL"
+
+msgid "安全保证金"
+msgstr "安全保證金"
+
+msgid "实名认证信息"
+msgstr "實名認證信息"
+
+msgid "必填：QQ 号或手机号"
+msgstr "必填：QQ 號或手機號"
+
+msgid "必填：平台用户 ID（代练通登录/注册后返回）"
+msgstr "必填：平臺用戶 ID（代練通登錄/註冊後返回）"
+
+msgid "必填：平台登录令牌（代练通登录后返回）"
+msgstr "必填：平臺登錄令牌（代練通登錄後返回）"
+
+msgid "必填：旧密码（为空表示未设置过密码，传空字符串）"
+msgstr "必填：舊密碼（為空表示未設置過密碼，傳空字符串）"
+
+msgid "必填：登录返回的 login_id"
+msgstr "必填：登錄返回的 login_id"
+
+msgid "我的订单"
+msgstr "我的訂單"
+
+msgid "按 user_id + token 查询代练通用户信息。"
+msgstr "按 user_id + token 查詢代練通用戶信息。"
+
+msgid "接收订单"
+msgstr "接收訂單"
+
+msgid "接收（抢）一笔订单，需支付密码与 uid。"
+msgstr "接收（搶）一筆訂單，需支付密碼與 uid。"
+
+msgid "搜索关键词"
+msgstr "搜索關鍵詞"
+
+msgid "支付密码"
+msgstr "支付密碼"
+
+msgid "效率保证金"
+msgstr "效率保證金"
+
+msgid "新密码"
+msgstr "新密碼"
+
+msgid "旧密码"
+msgstr "舊密碼"
+
+msgid "是否公共"
+msgstr "是否公共"
+
+msgid "本项目侧需项目签名；业务侧还需先登录代练通取得 user_id / token。含资金/下单等高风险操作，调试请务必使用自己的真实小号并谨慎操作。"
+msgstr "本項目側需項目簽名；業務側還需先登錄代練通取得 user_id / token。含資金/下單等高風險操作，調試請務必使用自己的真實小號並謹慎操作。"
+
+msgid "查询单个代练订单详情。"
+msgstr "查詢單個代練訂單詳情。"
+
+msgid "查询大厅公共代练订单（默认王者荣耀）。"
+msgstr "查詢大廳公共代練訂單（默認王者榮耀）。"
+
+msgid "查询我的代练订单（进行中/已完成）。"
+msgstr "查詢我的代練訂單（進行中/已完成）。"
+
+msgid "查询账号实名认证信息。"
+msgstr "查詢賬號實名認證信息。"
+
+msgid "格式 最低_最高，默认 10_20"
+msgstr "格式 最低_最高，默認 10_20"
+
+msgid "每日签到领取代练币。"
+msgstr "每日簽到領取代練幣。"
+
+msgid "每页数量"
+msgstr "每頁數量"
+
+msgid "游戏ID"
+msgstr "遊戲ID"
+
+msgid "游戏区服ID"
+msgstr "遊戲區服ID"
+
+msgid "游戏密码"
+msgstr "遊戲密碼"
+
+msgid "游戏角色名"
+msgstr "遊戲角色名"
+
+msgid "游戏账号"
+msgstr "遊戲賬號"
+
+msgid "用户ID"
+msgstr "用戶ID"
+
+msgid "用手机号+验证码注册代练通账号。"
+msgstr "用手機號+驗證碼註冊代練通賬號。"
+
+msgid "登录ID"
+msgstr "登錄ID"
+
+msgid "登录令牌"
+msgstr "登錄令牌"
+
+msgid "签到得代币"
+msgstr "簽到得代幣"
+
+msgid "类型"
+msgstr "類型"
+
+msgid "英雄数量"
+msgstr "英雄數量"
+
+msgid "获取用户信息"
+msgstr "獲取用戶信息"
+
+msgid "订单ID"
+msgstr "訂單ID"
+
+msgid "订单标题"
+msgstr "訂單標題"
+
+msgid "订单留言传图"
+msgstr "訂單留言傳圖"
+
+msgid "订单详情"
+msgstr "訂單詳情"
+
+msgid "设置 QQ 或手机号联系方式。"
+msgstr "設置 QQ 或手機號聯繫方式。"
+
+msgid "设置个性签名"
+msgstr "設置個性簽名"
+
+msgid "设置个性签名（无需 token）。"
+msgstr "設置個性簽名（無需 token）。"
+
+msgid "设置联系方式"
+msgstr "設置聯繫方式"
+
+msgid "过滤敏感词"
+msgstr "過濾敏感詞"
+
+msgid "选填：默认提供平台通用要求文案"
+msgstr "選填：默認提供平臺通用要求文案"
+
+msgid "验证码或密码"
+msgstr "驗證碼或密碼"
+
+msgid "验证码或密码登录，返回 user_id / token。"
+msgstr "驗證碼或密碼登錄，返回 user_id / token。"
+
+msgid "默认 107=王者荣耀"
+msgstr "默認 107=王者榮耀"
+
+msgid "默认王者荣耀区服"
+msgstr "默認王者榮耀區服"
+
+
+# ==================== API 文档内容 · 代练丸子 ====================
+msgid "122=安卓QQ"
+msgstr "122=安卓QQ"
+
+msgid "1=王者"
+msgstr "1=王者"
+
+msgid "1=王者（默认）"
+msgstr "1=王者（默認）"
+
+msgid "2=安卓QQ"
+msgstr "2=安卓QQ"
+
+msgid "QQ号"
+msgstr "QQ號"
+
+msgid "代练丸子平台"
+msgstr "代練丸子平臺"
+
+msgid "代练丸子平台能力：验证码登录、用户资料/头像/实名/签到、公共与搜索订单、发布/取消订单、余额查询。"
+msgstr "代練丸子平臺能力：驗證碼登錄、用戶資料/頭像/實名/簽到、公共與搜索訂單、發布/取消訂單、餘額查詢。"
+
+msgid "代练丸子（llwanzi.com）网页接口封装"
+msgstr "代練丸子（llwanzi.com）網頁接口封裝"
+
+msgid "代练时长(小时)"
+msgstr "代練時長(小時)"
+
+msgid "代练类型"
+msgstr "代練類型"
+
+msgid "其他联系方式"
+msgstr "其他聯繫方式"
+
+msgid "区域ID"
+msgstr "區域ID"
+
+msgid "发单方联系方式"
+msgstr "發單方聯繫方式"
+
+msgid "发布一笔代练订单（默认王者/排位/安卓QQ，真实下单）。"
+msgstr "發布一筆代練訂單（默認王者/排位/安卓QQ，真實下單）。"
+
+msgid "发送登录验证码（内部自动完成图形验证码识别）。"
+msgstr "發送登錄驗證碼（內部自動完成圖形驗證碼識別）。"
+
+msgid "取消订单"
+msgstr "取消訂單"
+
+msgid "取消订单。"
+msgstr "取消訂單。"
+
+msgid "号主手机号"
+msgstr "號主手機號"
+
+msgid "大厅公共订单（默认王者、价格 10-50）。"
+msgstr "大廳公共訂單（默認王者、價格 10-50）。"
+
+msgid "头像图片URL"
+msgstr "頭像圖片URL"
+
+msgid "安卓QQ（默认）"
+msgstr "安卓QQ（默認）"
+
+msgid "安卓微信"
+msgstr "安卓微信"
+
+msgid "必填：平台登录令牌，形如 \"Bearer xxx\""
+msgstr "必填：平臺登錄令牌，形如 \"Bearer xxx\""
+
+msgid "我的余额"
+msgstr "我的餘額"
+
+msgid "按关键词搜索订单。"
+msgstr "按關鍵詞搜索訂單。"
+
+msgid "搜索订单"
+msgstr "搜索訂單"
+
+msgid "最低价格"
+msgstr "最低價格"
+
+msgid "最高价格"
+msgstr "最高價格"
+
+msgid "服务器ID"
+msgstr "服務器ID"
+
+msgid "本项目侧需项目签名；业务侧需先登录取得 authorization。发布/取消订单等操作会产生真实影响，请谨慎。"
+msgstr "本項目側需項目簽名；業務側需先登錄取得 authorization。發布/取消訂單等操作會產生真實影響，請謹慎。"
+
+msgid "查询单个订单详情。"
+msgstr "查詢單個訂單詳情。"
+
+msgid "查询实名认证信息。"
+msgstr "查詢實名認證信息。"
+
+msgid "查询账号余额（authorization 选填）。"
+msgstr "查詢賬號餘額（authorization 選填）。"
+
+msgid "每日签到。"
+msgstr "每日簽到。"
+
+msgid "游戏区域"
+msgstr "遊戲區域"
+
+msgid "游戏名称"
+msgstr "遊戲名稱"
+
+msgid "游戏图标URL"
+msgstr "遊戲圖標URL"
+
+msgid "游戏角色"
+msgstr "遊戲角色"
+
+msgid "用户信息"
+msgstr "用戶信息"
+
+msgid "登录令牌(authorization)"
+msgstr "登錄令牌(authorization)"
+
+msgid "签到"
+msgstr "簽到"
+
+msgid "苹果QQ"
+msgstr "蘋果QQ"
+
+msgid "苹果微信"
+msgstr "蘋果微信"
+
+msgid "获取当前登录用户信息。"
+msgstr "獲取當前登錄用戶信息。"
+
+msgid "订单说明"
+msgstr "訂單說明"
+
+msgid "订单金额(元)"
+msgstr "訂單金額(元)"
+
+msgid "设置个性信息"
+msgstr "設置個性信息"
+
+msgid "设置头像（传图片 URL）。"
+msgstr "設置頭像（傳圖片 URL）。"
+
+msgid "设置用户名/签名/QQ（username 必填，其它按需传）。"
+msgstr "設置用戶名/簽名/QQ（username 必填，其它按需傳）。"
+
+msgid "选填：平台登录令牌"
+msgstr "選填：平臺登錄令牌"
+
+msgid "选填：默认平台图标"
+msgstr "選填：默認平臺圖標"
+
+msgid "验证码或密码登录；未注册手机号用验证码登录会自动注册。"
+msgstr "驗證碼或密碼登錄；未註冊手機號用驗證碼登錄會自動註冊。"
+
+
+# ==================== API 文档内容 · 用户中心 ====================
+msgid "username/email/phone 按后台可用方式组合；两步注册时 data.need_verify=true。"
+msgstr "username/email/phone 按後臺可用方式組合；兩步註冊時 data.need_verify=true。"
+
+msgid "仅需项目签名参数，无需业务参数。"
+msgstr "僅需項目簽名參數，無需業務參數。"
+
+msgid "供子项目确认用户身份：校验 token 有效性。"
+msgstr "供子項目確認用戶身份：校驗 token 有效性。"
+
+msgid "删除当前项目下该 Token。"
+msgstr "刪除當前項目下該 Token。"
+
+msgid "发送两步注册的手机短信验证码（60 秒冷却）。"
+msgstr "發送兩步註冊的手機短信驗證碼（60 秒冷卻）。"
+
+msgid "发送注册短信"
+msgstr "發送註冊短信"
+
+msgid "发送登录验证码"
+msgstr "發送登錄驗證碼"
+
+msgid "可用注册/登录方式"
+msgstr "可用註冊/登錄方式"
+
+msgid "同一项目+凭证+IP 连续失败 5 次锁定 15 分钟（返回 20040）。"
+msgstr "同一項目+憑證+IP 連續失敗 5 次鎖定 15 分鐘（返回 20040）。"
+
+msgid "必填：用户在该项目下持有的登录 Token（login 成功返回）"
+msgstr "必填：用戶在該項目下持有的登錄 Token（login 成功返回）"
+
+msgid "成功返回 data={valid, user_id, account, username}。"
+msgstr "成功返回 data={valid, user_id, account, username}。"
+
+msgid "手机号两步验证"
+msgstr "手機號兩步驗證"
+
+msgid "手机验证码校验，通过后创建账号并发放。"
+msgstr "手機驗證碼校驗，通過後創建賬號並發放。"
+
+msgid "按 token 查询用户信息。"
+msgstr "按 token 查詢用戶信息。"
+
+msgid "接入项目信息"
+msgstr "接入項目信息"
+
+msgid "提供 email → 两步注册第一步，需再验证邮箱"
+msgstr "提供 email → 兩步註冊第一步，需再驗證郵箱"
+
+msgid "提供 phone → 两步注册第一步，需再验证手机号"
+msgstr "提供 phone → 兩步註冊第一步，需再驗證手機號"
+
+msgid "提供 username+password → 直接注册成功"
+msgstr "提供 username+password → 直接註冊成功"
+
+msgid "查询调用方（签名所属项目）自身信息，用于核对配置。"
+msgstr "查詢調用方（簽名所屬項目）自身信息，用於核對配置。"
+
+msgid "注册：username+password 直接建号；email 或 phone+password 走两步注册（先发验证码）。"
+msgstr "註冊：username+password 直接建號；email 或 phone+password 走兩步註冊（先發驗證碼）。"
+
+msgid "浏览器打开邮件内激活链接，校验通过后创建账号并发放。"
+msgstr "瀏覽器打開郵件內激活鏈接，校驗通過後創建賬號並發放。"
+
+msgid "激活令牌"
+msgstr "激活令牌"
+
+msgid "用户账号体系"
+msgstr "用戶賬號體系"
+
+msgid "登录：账号+密码，或邮箱/手机号+验证码；成功返回绑定项目的 Token。"
+msgstr "登錄：賬號+密碼，或郵箱/手機號+驗證碼；成功返回綁定項目的 Token。"
+
+msgid "统一账号中心（UAC）：全局用户池，多方式注册/登录、Token 签发与验证、两步注册邮箱/手机号校验。"
+msgstr "統一賬號中心（UAC）：全局用戶池，多方式註冊/登錄、Token 簽發與驗證、兩步註冊郵箱/手機號校驗。"
+
+msgid "统一账号池（Token 绑定接入项目）"
+msgstr "統一賬號池（Token 綁定接入項目）"
+
+msgid "账号"
+msgstr "賬號"
+
+msgid "账号+密码登录时使用（username）"
+msgstr "賬號+密碼登錄時使用（username）"
+
+msgid "返回 HTML 结果页；在线调试会得到 HTML 原文，属正常。"
+msgstr "返回 HTML 結果頁；在線調試會得到 HTML 原文，屬正常。"
+
+msgid "返回 data={methods:[email,phone], username:true}；客户端先查此接口再渲染表单。"
+msgstr "返回 data={methods:[email,phone], username:true}；客戶端先查此接口再渲染表單。"
+
+msgid "返回后台启用的注册/登录方式（公开，免签名）。"
+msgstr "返回後臺啟用的註冊/登錄方式（公開，免簽名）。"
+
+msgid "返回当前接入项目配置（含 Token 默认有效期等）。"
+msgstr "返回當前接入項目配置（含 Token 默認有效期等）。"
+
+msgid "邮件内链接专用（浏览器访问）"
+msgstr "郵件內鏈接專用（瀏覽器訪問）"
+
+msgid "邮箱/手机号登录时用"
+msgstr "郵箱/手機號登錄時用"
+
+msgid "邮箱/手机号验证码登录第一步：校验已注册后发码（60 秒冷却）。"
+msgstr "郵箱/手機號驗證碼登錄第一步：校驗已註冊後發碼（60 秒冷卻）。"
+
+msgid "邮箱两步验证(验证码)"
+msgstr "郵箱兩步驗證(驗證碼)"
+
+msgid "邮箱激活链接"
+msgstr "郵箱激活鏈接"
+
+msgid "邮箱激活链接（公开 GET）"
+msgstr "郵箱激活鏈接（公開 GET）"
+
+msgid "邮箱激活链接：用户在邮件里点击的链接，GET 免签名，返回友好 HTML 结果页（非 JSON）。"
+msgstr "郵箱激活鏈接：用戶在郵件裡點擊的鏈接，GET 免簽名，返回友好 HTML 結果頁（非 JSON）。"
+
+msgid "邮箱验证码校验，通过后创建账号并发放。"
+msgstr "郵箱驗證碼校驗，通過後創建賬號並發放。"
+
+msgid "重发两步注册验证邮件（60 秒冷却）。"
+msgstr "重發兩步註冊驗證郵件（60 秒冷卻）。"
+
+msgid "重发验证邮件"
+msgstr "重發驗證郵件"
+
+msgid "链接中的 token（系统生成），正常由用户点邮件链接触发"
+msgstr "鏈接中的 token（系統生成），正常由用戶點郵件鏈接觸發"
+
+msgid "除 methods 与邮箱激活链接(GET) 外均需项目签名。邮箱/手机号两步注册流程：先 register（仅暂存+发验证码），再调 verify/email 或 verify/phone 校验通过后才创建账号。"
+msgstr "除 methods 與郵箱激活鏈接(GET) 外均需項目簽名。郵箱/手機號兩步註冊流程：先 register（僅暫存+發驗證碼），再調 verify/email 或 verify/phone 校驗通過後才創建賬號。"
+
+msgid "项目信息"
+msgstr "項目信息"
+
+msgid "项目自身配置查询"
+msgstr "項目自身配置查詢"
+
+msgid "验证 Token"
+msgstr "驗證 Token"
+
+# ==================== 超级管理控制台 · API 服务分类（认证模式） ====================
+msgid "API 服务分类"
+msgstr "API 服務分類"
+
+msgid "API 服务分类 - 超级管理员 - 小影API"
+msgstr "API 服務分類 - 超級管理員 - 小影API"
+
+msgid "超级管理员,API服务分类,认证模式"
+msgstr "超級管理員,API服務分類,認證模式"
+
+msgid "小影API 超级管理员：配置 API 服务分类的认证模式（跟随上级 / 需要认证 / 开放）。"
+msgstr "小影API 超級管理員：配置 API 服務分類的認證模式（跟隨上級 / 需要認證 / 開放）。"
+
+msgid "共 %(total)s 个分类；修改后立即对接口鉴权生效，无需重启。"
+msgstr "共 %(total)s 個分類；修改後立即對接口鑑權生效，無需重啟。"
+
+msgid "生效规则：请求按「最长前缀」命中分类后，沿父链向上取第一个非「跟随上级」的模式生效。"
+msgstr "生效規則：請求按「最長前綴」命中分類後，沿父鏈向上取第一個非「跟隨上級」的模式生效。"
+
+msgid "跟随上级：继承父级配置；需要认证：调用方必须携带 APPID/APPSECRET 签名；开放：免签名可直接调用。"
+msgstr "跟隨上級：繼承父級配置；需要認證：調用方必須攜帶 APPID/APPSECRET 簽名；開放：免簽名可直接調用。"
+
+msgid "若整条链全为「跟随上级」或未命中任何分类，按安全默认「需要认证」处理（fail-closed）。"
+msgstr "若整條鏈全為「跟隨上級」或未命中任何分類，按安全默認「需要認證」處理（fail-closed）。"
+
+msgid "分类树由管理命令按 API/apis/ 目录生成（rebuild_category_tree）；本页只调整认证模式，重建不会覆盖它。"
+msgstr "分類樹由管理命令按 API/apis/ 目錄生成（rebuild_category_tree）；本頁只調整認證模式，重建不會覆蓋它。"
+
+msgid "本节点模式"
+msgstr "本節點模式"
+
+msgid "生效结果"
+msgstr "生效結果"
+
+msgid "跟随上级"
+msgstr "跟隨上級"
+
+msgid "需要认证"
+msgstr "需要認證"
+
+msgid "启用"
+msgstr "啟用"
+
+msgid "停用"
+msgstr "停用"
+
+msgid "保存"
+msgstr "保存"
+
+msgid "分类不存在"
+msgstr "分類不存在"
+
+msgid "非法的认证模式"
+msgstr "非法的認證模式"
+
+msgid "已把「%(path)s」的认证模式更新为「%(mode)s」"
+msgstr "已把「%(path)s」的認證模式更新為「%(mode)s」"
+
+# ==================== 登录 / 注册 / 发送验证码的图形验证（服务端二次校验） ====================
+msgid "请先完成图形验证"
+msgstr "請先完成圖形驗證"
+
+msgid "图形验证未通过，请重新验证"
+msgstr "圖形驗證未通過，請重新驗證"
+
+msgid "图形验证服务暂时不可用，请稍后重试"
+msgstr "圖形驗證服務暫時不可用，請稍後重試"
+
+# ==================== 忘记密码 / 重置密码 ====================
+msgid "重置密码 - 小影API"
+msgstr "重置密碼 - 小影API"
+
+msgid "重置密码,忘记密码,小影API"
+msgstr "重置密碼,忘記密碼,小影API"
+
+msgid "小影API 忘记密码：通过已绑定的邮箱或手机号接收验证码，校验通过后即可设置新密码。"
+msgstr "小影API 忘記密碼：通過已綁定的郵箱或手機號接收驗證碼，校驗通過後即可設置新密碼。"
+
+msgid "重置密码"
+msgstr "重置密碼"
+
+msgid "用已绑定的邮箱或手机号接收验证码，校验通过后设置新密码"
+msgstr "用已綁定的郵箱或手機號接收驗證碼，校驗通過後設置新密碼"
+
+msgid "验证方式"
+msgstr "驗證方式"
+
+msgid "确认新密码"
+msgstr "確認新密碼"
+
+msgid "再次输入新密码"
+msgstr "再次輸入新密碼"
+
+msgid "重置成功后，该账号在所有设备上的登录都会失效，需要用新密码重新登录。"
+msgstr "重置成功後，該賬號在所有設備上的登錄都會失效，需要用新密碼重新登錄。"
+
+msgid "当前未开放邮箱 / 手机号验证方式，无法自助重置密码。"
+msgstr "當前未開放郵箱 / 手機號驗證方式，無法自助重置密碼。"
+
+msgid "请通过页脚的联系方式联系管理员协助处理。"
+msgstr "請通過頁腳的聯繫方式聯繫管理員協助處理。"
+
+msgid "想起密码了？"
+msgstr "想起密碼了？"
+
+msgid "忘记密码？"
+msgstr "忘記密碼？"
+
+msgid "邮件验证码已发送"
+msgstr "郵件驗證碼已發送"
+
+msgid "短信验证码已发送"
+msgstr "短信驗證碼已發送"
+
+msgid "密码已重置，请用新密码登录"
+msgstr "密碼已重置，請用新密碼登錄"
+
+# ==================== API 调用统计（看板 / 文档展示 / 公开统计服务） ====================
+msgid "%(n)s 天内共 %(total)s 次"
+msgstr "%(n)s 天內共 %(total)s 次"
+
+msgid "%(r)s 天"
+msgstr "%(r)s 天"
+
+msgid "API 调用统计"
+msgstr "API 調用統計"
+
+msgid "API 调用统计 - 超级管理员 - 小影API"
+msgstr "API 調用統計 - 超級管理員 - 小影API"
+
+msgid "path 未登记时返回 code=20003；未传时返回 code=20001。"
+msgstr "path 未登記時返回 code=20003；未傳時返回 code=20001。"
+
+msgid "今日调用量"
+msgstr "今日調用量"
+
+msgid "公开接口，无需项目签名。"
+msgstr "公開接口，無需項目簽名。"
+
+msgid "区间内产生过调用的接入项目数"
+msgstr "區間內產生過調用的接入項目數"
+
+msgid "各服务调用量排行"
+msgstr "各服務調用量排行"
+
+msgid "失败"
+msgstr "失敗"
+
+msgid "小影API 内置调用统计（按天预聚合）"
+msgstr "小影API 內置調用統計（按天預聚合）"
+
+msgid "小影API 超级管理员：API 调用量统计看板（服务 / 接口 / 项目 / 状态码 / 耗时）。"
+msgstr "小影API 超級管理員：API 調用量統計看板（服務 / 接口 / 項目 / 狀態碼 / 耗時）。"
+
+msgid "平均"
+msgstr "平均"
+
+msgid "平均耗时"
+msgstr "平均耗時"
+
+msgid "开放接口 / 未认证"
+msgstr "開放接口 / 未認證"
+
+msgid "必填：文档中心已登记的接口路径；带路径参数的接口按文档写法传占位符，如 /api/music/xiaoying/musics/<uuid>"
+msgstr "必填：文檔中心已登記的接口路徑；帶路徑參數的接口按文檔寫法傳佔位符，如 /api/music/xiaoying/musics/<uuid>"
+
+msgid "成功"
+msgstr "成功"
+
+msgid "成功率"
+msgstr "成功率"
+
+msgid "按服务、接口、接入项目与结果统计调用量；数据按天聚合，写入最多延迟数秒。"
+msgstr "按服務、接口、接入項目與結果統計調用量；數據按天聚合，寫入最多延遲數秒。"
+
+msgid "接入项目"
+msgstr "接入項目"
+
+msgid "接入项目调用排行 Top 20"
+msgstr "接入項目調用排行 Top 20"
+
+msgid "接口调用排行 Top 20"
+msgstr "接口調用排行 Top 20"
+
+msgid "接口路径"
+msgstr "接口路徑"
+
+msgid "最大"
+msgstr "最大"
+
+msgid "服务"
+msgstr "服務"
+
+msgid "服务调用排行"
+msgstr "服務調用排行"
+
+msgid "查询单个接口调用量"
+msgstr "查詢單個接口調用量"
+
+msgid "每日调用量趋势"
+msgstr "每日調用量趨勢"
+
+msgid "活跃项目"
+msgstr "活躍項目"
+
+msgid "状态码"
+msgstr "狀態碼"
+
+msgid "状态码分布"
+msgstr "狀態碼分布"
+
+msgid "累计调用 %(n)s 次"
+msgstr "累計調用 %(n)s 次"
+
+msgid "统计口径：仅 /api/ 业务接口；认证被拒与未匹配路由也会计入；“开放接口 / 未认证”表示未携带有效项目签名的请求。"
+msgstr "統計口徑：僅 /api/ 業務接口；認證被拒與未匹配路由也會計入；「開放接口 / 未認證」表示未攜帶有效項目簽名的請求。"
+
+msgid "该接口历史累计调用次数（未登录也可见）"
+msgstr "該接口歷史累計調用次數（未登錄也可見）"
+
+msgid "该时间范围内暂无调用数据"
+msgstr "該時間範圍內暫無調用數據"
+
+msgid "说明"
+msgstr "說明"
+
+msgid "调用量为公开信息，接口开放（免签名）。数据按天聚合，写入最多延迟数秒；统计范围仅 /api/ 业务接口，认证被拒与未匹配路由同样计入。"
+msgstr "調用量為公開信息，接口開放（免簽名）。數據按天聚合，寫入最多延遲數秒；統計範圍僅 /api/ 業務接口，認證被拒與未匹配路由同樣計入。"
+
+msgid "调用量查询"
+msgstr "調用量查詢"
+
+msgid "超级管理员,调用统计,API 统计"
+msgstr "超級管理員,調用統計,API 統計"
+
+msgid "返回 data = {path, total_calls, today_calls}。"
+msgstr "返回 data = {path, total_calls, today_calls}。"
+
+msgid "返回 data = {services: [{service, name, total_calls, today_calls}, ...]}。"
+msgstr "返回 data = {services: [{service, name, total_calls, today_calls}, ...]}。"
+
+msgid "返回各服务的累计与今日调用次数，按累计调用量降序。"
+msgstr "返回各服務的累計與今日調用次數，按累計調用量降序。"
+
+msgid "返回某个接口的累计调用次数与今日调用次数。"
+msgstr "返回某個接口的累計調用次數與今日調用次數。"

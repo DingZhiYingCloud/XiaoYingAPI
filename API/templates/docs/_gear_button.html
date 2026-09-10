@@ -1,0 +1,15 @@
+{% load i18n %}
+{% comment %}文档侧栏“服务设置”齿轮按钮（仅超管可见，随 context 的 node 使用）
+justify-self-end：在 daisyUI 的 summary 三列 grid 中，让齿轮收缩宽度并靠右，
+与行尾下拉箭头保持一个 gap 相邻（否则会被 auto 列拉伸成满宽、图标居中）。{% endcomment %}
+{% if is_superadmin %}
+<button type="button"
+        class="btn btn-ghost btn-xs h-6 min-h-0 shrink-0 justify-self-end px-1"
+        data-open-service-settings
+        data-prefix="{{ node.url_prefix }}"
+        data-name="{{ node.name }}"
+        title="{% blocktrans with name=node.name %}服务设置：{{ name }}{% endblocktrans %}"
+        aria-label="{% trans '服务设置' %}">
+  <i data-lucide="settings" class="h-3.5 w-3.5"></i>
+</button>
+{% endif %}

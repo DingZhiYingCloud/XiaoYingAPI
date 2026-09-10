@@ -4,6 +4,8 @@
     POST /api/user_center/users/register              注册（两步注册第一步 / 纯用户名直接建号）
     POST /api/user_center/users/login/send            发送登录验证码（邮箱/手机号验证码登录第一步）
     POST /api/user_center/users/login                 登录（邮箱/手机号验证码登录 / 账号+密码）
+    POST /api/user_center/users/password/send          发送重置密码验证码（忘记密码第一步）
+    POST /api/user_center/users/password/reset         重置密码（校验验证码后改密，并作废该用户全部 Token）
     POST /api/user_center/users/logout                退出（删除 Token）
     GET  /api/user_center/users/info                  用户信息（携带 Token）—— 查询类，签名参数放 query
     POST /api/user_center/users/verify                验证 Token（供子项目调用）
@@ -21,6 +23,7 @@
   客户端先调用 methods 接口获取可用方式，再渲染注册/登录入口
 """
 from django.http import JsonResponse
+from django.shortcuts import render
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
@@ -141,6 +144,51 @@ def send_login_code_view(request):
     if not ok:
         return _fail_response(data)
     return _json_response(StatusCode.SUCCESS, data=None, msg='验证码已发送')
+
+
+@require_http_methods(['POST'])
+def send_reset_code_view(request):
+    """发送重置密码验证码（忘记密码第一步）
+
+    表单参数：email 或 phone + 签名参数(app_id/timestamp/nonce/sign)
+    仅对已注册的邮箱/手机号生效（校验账号存在且未封禁），60 秒冷却防刷；
+    纯用户名账号没有可验证的身份通道，无法自助重置。
+    """
+    params = _parse_params(request)
+    app, resp = _require_app(request)
+    if app is None:
+        return resp
+    method = utils.METHOD_EMAIL if params.get('email') else utils.METHOD_PHONE
+    credential = params.get('email') or params.get('phone')
+    if not credential:
+        return _fail_response('参数缺失: email(邮箱) / phone(手机号) 至少提供一个')
+    ok, data = utils.send_reset_code(app, method, credential, _base_url(request))
+    if not ok:
+        return _fail_response(data)
+    return _json_response(StatusCode.SUCCESS, data=None, msg='验证码已发送')
+
+
+@require_http_methods(['POST'])
+def reset_password_view(request):
+    """重置密码（忘记密码第二步）
+
+    表单参数：email 或 phone、code(验证码)、password(新密码) + 签名参数(app_id/timestamp/nonce/sign)
+    校验通过后更新密码，并在同一事务内作废该用户全部已签发 Token
+    （所有已登录设备需重新登录），适用于账号被盗后的紧急重置。
+    """
+    params = _parse_params(request)
+    app, resp = _require_app(request)
+    if app is None:
+        return resp
+    method = utils.METHOD_EMAIL if params.get('email') else utils.METHOD_PHONE
+    credential = params.get('email') or params.get('phone')
+    if not credential:
+        return _fail_response('参数缺失: email(邮箱) / phone(手机号) 至少提供一个')
+    ok, data = utils.reset_password(
+        app, method, credential, params.get('code'), params.get('password'))
+    if not ok:
+        return _fail_response(data)
+    return _json_response(StatusCode.SUCCESS, data=data, msg='密码已重置')
 
 
 @require_http_methods(['POST'])
@@ -270,9 +318,18 @@ def verify_email_view(request):
     """
     if request.method == 'GET':
         ok, data = utils.verify_by_token(request.GET.get('token'))
-        if not ok:
-            return _fail_response(data)
-        return _json_response(StatusCode.SUCCESS, data=data, msg='邮箱验证成功')
+        # 激活链接由用户在邮件中直接点击（浏览器访问），统一渲染友好 HTML 结果页，
+        # 避免把 JSON 直接暴露给普通用户。POST 验证码校验仍返回 JSON（供子项目调用）。
+        if ok:
+            return render(request, 'account/email_verify_result.html', {
+                'ok': True,
+                'msg': '邮箱验证成功',
+                **data,
+            })
+        return render(request, 'account/email_verify_result.html', {
+            'ok': False,
+            'msg': data,
+        })
     params = _parse_params(request)
     app, resp = _require_app(request)
     if app is None:

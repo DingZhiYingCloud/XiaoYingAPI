@@ -1,0 +1,85 @@
+{% load i18n %}
+{# 文档中心左侧服务导航：由 DocsMenuMiddleware 注入 docs_menu 自动渲染 #}
+<aside class="w-full shrink-0 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:w-64 lg:overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="{% trans 'API 服务导航' %}">
+  <div class="px-2 pb-2">
+    <span class="text-sm font-bold">{% trans "接口文档" %}</span>
+  </div>
+  <ul class="menu w-full rounded-box border border-base-300 bg-base-100 p-1 text-sm" data-docs-menu>
+    <li>
+      <a href="/docs/" data-docs-nav-root>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 opacity-60">
+          <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+          <path d="M9 22V12h6v10" />
+        </svg>
+        {% trans "文档中心首页" %}
+      </a>
+    </li>
+    {% for node in docs_menu %}
+    <li>
+      {% if node.disabled %}
+      <span class="flex items-center gap-1 opacity-70" aria-disabled="true">
+        <span class="min-w-0 flex-1 truncate">{{ node.name }}</span>
+        {% include 'docs/_gear_button.html' %}
+      </span>
+      {% elif node.children %}
+      <details data-docs-group data-active-url="{{ node.url }}">
+        <summary>
+          <span class="flex-1">{{ node.name }}</span>
+          {% include 'docs/_gear_button.html' %}
+        </summary>
+        <ul>
+          {% for child in node.children %}
+          <li>
+            <a href="{{ child.url }}" data-docs-leaf data-group-url="{{ node.url }}">{{ child.name }}</a>
+          </li>
+          {% endfor %}
+        </ul>
+      </details>
+      {% else %}
+      <a href="{{ node.url }}">{{ node.name }}</a>
+      {% endif %}
+    </li>
+    {% endfor %}
+
+    {% if is_superadmin %}
+    <li class="menu-title"><span>{% trans "超级管理员" %}</span></li>
+    <li>
+      <a href="/console/projects/" {% if request.path == '/console/projects/' %}class="active"{% endif %}>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 opacity-70">
+          <rect x="3" y="11" width="18" height="11" rx="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+        {% trans "接入项目管理" %}
+      </a>
+    </li>
+    <li>
+      <a href="/console/categories/" {% if request.path == '/console/categories/' %}class="active"{% endif %}>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 opacity-70">
+          <rect x="16" y="16" width="6" height="6" rx="1" />
+          <rect x="2" y="16" width="6" height="6" rx="1" />
+          <rect x="9" y="2" width="6" height="6" rx="1" />
+          <path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3" />
+          <path d="M12 12V8" />
+        </svg>
+        {% trans "API 服务分类" %}
+      </a>
+    </li>
+    {% endif %}
+  </ul>
+  <p class="mt-3 px-2 text-xs text-base-content/60">
+    {% trans "新增服务/线路后，在文档注册表补充声明即可，本菜单自动更新。" %}
+  </p>
+  {% if is_superadmin %}
+  <div class="mt-2 px-2 text-xs opacity-70">
+    <span>{% trans "当前：超级管理员" %}</span>
+    <span class="opacity-40"> · </span>
+    <form method="post" action="{% url 'website:logout' %}" class="inline">
+      {% csrf_token %}
+      <button type="submit" class="link link-hover">{% trans "退出" %}</button>
+    </form>
+  </div>
+  {% endif %}
+</aside>

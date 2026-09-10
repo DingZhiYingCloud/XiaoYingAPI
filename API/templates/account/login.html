@@ -1,0 +1,102 @@
+{% extends 'template.html' %}
+{% load static i18n %}
+
+{% block title %}{% trans "登录 - 小影API" %}{% endblock %}
+{% block keywords %}登录,小影API{% endblock %}
+{% block description %}{% trans "登录小影API，开启通用 API 聚合服务之旅。支持账号密码、邮箱验证码、手机验证码登录。" %}{% endblock %}
+
+{% block content %}
+<section class="flex min-h-[70vh] items-center justify-center px-4 py-10">
+  <div class="card w-full max-w-md border border-base-300 bg-base-100 shadow-xl">
+    <div class="card-body p-6 sm:p-8">
+
+      <div class="mb-2 flex flex-col items-center gap-2 text-center">
+        <img src="/media/images/logo.png" alt="小影API" class="h-10 w-auto" />
+        <h1 class="text-2xl font-bold">{% trans "欢迎回来" %}</h1>
+        <p class="text-sm text-base-content/60">{% trans "登录小影API 账号" %}</p>
+      </div>
+
+      {# 登录方式切换 #}
+      <div role="tablist" aria-label="{% trans '登录方式' %}" class="tabs tabs-box mt-2 grid grid-cols-3">
+        <button type="button" role="tab" class="tab tab-active" data-auth-tab="account">{% trans "账号登录" %}</button>
+        {% if email_enabled %}
+        <button type="button" role="tab" class="tab" data-auth-tab="email">{% trans "邮箱登录" %}</button>
+        {% endif %}
+        {% if phone_enabled %}
+        <button type="button" role="tab" class="tab" data-auth-tab="phone">{% trans "手机登录" %}</button>
+        {% endif %}
+      </div>
+
+      {# 结果提示区 #}
+      <div id="login-alert" role="alert" class="alert mt-3 hidden py-2 text-sm"></div>
+      <input type="hidden" id="login-next" value="{{ next }}" />
+
+      {# ---- 账号 + 密码登录 ---- #}
+      <form id="login-account-form" class="auth-panel mt-2" novalidate>
+        <label class="fieldset-label" for="login-account">{% trans "账号 / 管理员账号" %}</label>
+        <input id="login-account" name="account" type="text" class="input input-bordered w-full" placeholder="{% trans '注册数字账号 或 超管用户名' %}"
+               autocomplete="username" maxlength="64" required />
+        <label class="fieldset-label mt-3" for="login-password">{% trans "密码" %}</label>
+        <input id="login-password" name="password" type="password" class="input input-bordered w-full" placeholder="{% trans '请输入密码' %}"
+               autocomplete="current-password" maxlength="64" required />
+        <button type="submit" class="btn btn-primary btn-block mt-5" data-submit-label="{% trans '登 录' %}">{% trans "登 录" %}</button>
+      </form>
+
+      {# ---- 邮箱验证码登录 ---- #}
+      {% if email_enabled %}
+      <form id="login-email-form" class="auth-panel hidden mt-2" novalidate>
+        <label class="fieldset-label" for="login-email-credential">{% trans "邮箱" %}</label>
+        <input id="login-email-credential" type="email" class="input input-bordered w-full" placeholder="you@example.com"
+               autocomplete="email" maxlength="254" required />
+        <label class="fieldset-label mt-3" for="login-email-code">{% trans "邮箱验证码" %}</label>
+        <div class="flex gap-2">
+          <input id="login-email-code" type="text" class="input input-bordered w-full" placeholder="{% trans '6 位验证码' %}"
+                 inputmode="numeric" maxlength="6" autocomplete="one-time-code" required />
+          <button type="button" class="btn btn-outline shrink-0" data-send-code="login-email">{% trans "获取验证码" %}</button>
+        </div>
+        <p class="mt-2 text-xs text-base-content/60">{% trans "验证码将发送到你的邮箱，登录无需密码。" %}</p>
+        <button type="submit" class="btn btn-primary btn-block mt-4" data-submit-label="{% trans '登 录' %}">{% trans "登 录" %}</button>
+      </form>
+      {% endif %}
+
+      {# ---- 手机号验证码登录 ---- #}
+      {% if phone_enabled %}
+      <form id="login-phone-form" class="auth-panel hidden mt-2" novalidate>
+        {% csrf_token %}
+        <label class="fieldset-label" for="login-phone-credential">{% trans "手机号" %}</label>
+        <input id="login-phone-credential" type="tel" class="input input-bordered w-full" placeholder="{% trans '11 位手机号' %}"
+               autocomplete="tel" inputmode="numeric" maxlength="11" required />
+        <label class="fieldset-label mt-3" for="login-phone-code">{% trans "短信验证码" %}</label>
+        <div class="flex gap-2">
+          <input id="login-phone-code" type="text" class="input input-bordered w-full" placeholder="{% trans '6 位验证码' %}"
+                 inputmode="numeric" maxlength="6" autocomplete="one-time-code" required />
+          <button type="button" class="btn btn-outline shrink-0" data-send-code="login-phone">{% trans "获取验证码" %}</button>
+        </div>
+        <p class="mt-2 text-xs text-base-content/60">{% trans "验证码将发送到你的手机，登录无需密码。" %}</p>
+        <button type="submit" class="btn btn-primary btn-block mt-4" data-submit-label="{% trans '登 录' %}">{% trans "登 录" %}</button>
+      </form>
+      {% endif %}
+
+      <p class="mt-5 text-center text-sm text-base-content/60">
+        {% trans "还没有账号？" %}
+        <a class="link link-primary" href="{% url 'website:register' %}">{% trans "立即注册" %}</a>
+      </p>
+      <p class="mt-2 text-center text-sm text-base-content/60">
+        <a class="link link-hover" href="{% url 'website:reset_password' %}">{% trans "忘记密码？" %}</a>
+      </p>
+
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block js %}
+{% if email_enabled or phone_enabled or username_enabled %}
+{# 图形验证：启用时才加载 SDK；开关变量供 account.js 判断是否弹验证（与后端校验口径一致） #}
+{% if captcha_enabled %}
+<script src="{% static 'js/captcha_auth/aliyun/captcha-client.js' %}?v=20260910a"></script>
+{% endif %}
+<script>window.XY_CAPTCHA_ENABLED = {{ captcha_enabled|yesno:'true,false' }};</script>
+<script src="{% static 'js/site/account.js' %}?v=20260910a"></script>
+{% endif %}
+{% endblock %}

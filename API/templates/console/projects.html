@@ -1,0 +1,188 @@
+{% extends 'template.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "接入项目管理 - 超级管理员 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,接入项目" %}{% endblock %}
+{% block description %}{% trans "小影API 超级管理员：接入项目（APPID/APPSECRET）增删改查管理。" %}{% endblock %}
+
+{% block content %}
+{% trans "启用,停用" as v_status_text %}
+<section class="mx-auto w-full max-w-5xl px-4 py-6 sm:py-8">
+  <nav class="breadcrumbs text-sm">
+    <ul>
+      <li><a href="/docs/">{% trans "接口文档" %}</a></li>
+      <li><a href="/console/projects/">{% trans "超级管理员" %}</a></li>
+    </ul>
+  </nav>
+
+  <div class="mt-2 flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold sm:text-3xl">{% trans "接入项目管理" %}</h1>
+      <p class="mt-1 text-sm text-base-content/70">{% trans "创建 / 编辑 / 启停 / 删除接入项目；APPID、APPSECRET 由系统自动生成。" %}</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="{% url 'website:console_stats' %}" class="btn btn-outline btn-sm">{% trans "调用统计" %}</a>
+      <a href="{% url 'website:console_categories' %}" class="btn btn-outline btn-sm">{% trans "API 服务分类" %}</a>
+      <form method="post" action="{% url 'website:logout' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-ghost btn-sm">{% trans "退出管理员" %}</button>
+      </form>
+    </div>
+  </div>
+
+  {# 消息提示 #}
+  {% if messages %}
+  <div class="mt-3 space-y-2">
+    {% for message in messages %}
+    <div role="alert" class="alert py-2 text-sm {% if message.level_tag == 'success' %}alert-success{% elif message.level_tag == 'warning' %}alert-warning{% else %}alert-error{% endif %}">{{ message }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# 新建成功 → 一次性展示密钥 #}
+  {% if created %}
+  <div role="alert" class="alert alert-success mt-4 items-start">
+    <div class="w-full">
+      <p class="font-medium">{% trans "项目创建成功！密钥仅在此展示一次，请立即复制并妥善保存。" %}</p>
+      <div class="mt-2 space-y-1 font-mono text-xs">
+        <div class="flex items-center gap-2">
+          <code class="flex-1 rounded-box bg-base-200 px-2 py-1">APPID：{{ created.app_id }}</code>
+          <button type="button" class="btn btn-ghost btn-xs" data-copy="{{ created.app_id }}">{% trans "复制" %}</button>
+        </div>
+        <div class="flex items-center gap-2">
+          <code class="flex-1 break-all rounded-box bg-base-200 px-2 py-1">APPSECRET：{{ created.app_secret }}</code>
+          <button type="button" class="btn btn-ghost btn-xs" data-copy="{{ created.app_secret }}">{% trans "复制" %}</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {# 新建 + 搜索 #}
+  <div class="mt-5 flex flex-col gap-3 sm:flex-row">
+    <form method="post" action="/console/projects/" class="flex flex-1 gap-2">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create" />
+      <input name="name" type="text" class="input input-bordered w-full text-sm" placeholder="{% trans '新项目名称（全局唯一）' %}" required />
+      <button type="submit" class="btn btn-primary shrink-0">{% trans "新建项目" %}</button>
+    </form>
+    <form method="get" action="/console/projects/" class="flex gap-2">
+      <input name="q" type="text" class="input input-bordered w-full text-sm sm:w-56" placeholder="{% trans '按名称 / APPID 搜索' %}" value="{{ keyword }}" />
+      <button type="submit" class="btn btn-ghost shrink-0">{% trans "搜索" %}</button>
+    </form>
+  </div>
+
+  {# 项目列表 #}
+  <div class="mt-5 space-y-3">
+    {% if not apps %}
+    <div class="rounded-box border border-dashed border-base-300 p-8 text-center text-sm text-base-content/60">
+      {% trans "暂无接入项目" %}{% if keyword %}{% blocktrans %}（未找到与「{{ keyword }}」匹配的项目）{% endblocktrans %}{% endif %}
+    </div>
+    {% endif %}
+
+    {% for app in apps %}
+    <article class="card border border-base-300 bg-base-100">
+      <div class="card-body gap-3 p-4">
+        <div class="flex flex-wrap items-start justify-between gap-2">
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 class="text-base font-semibold">{{ app.name }}</h2>
+              <span class="badge badge-sm {{ app.status|yesno:'badge-success,badge-error' }}">
+                {{ app.status|yesno:v_status_text }}
+              </span>
+            </div>
+            <code class="mt-1 block font-mono text-xs opacity-70">APPID：{{ app.app_id }}</code>
+            <p class="mt-1 text-xs text-base-content/60">
+              {% blocktrans with days=app.token_expire_days created=app.create_time|date:'Y-m-d H:i' %}Token 有效期 {{ days }} 天 · 创建于 {{ created }}{% endblocktrans %}
+            </p>
+            <div class="mt-1.5 flex items-center gap-2">
+              <button type="button" class="btn btn-ghost btn-xs" data-secret-toggle
+                      data-secret="{{ app.app_secret }}">{% trans "查看 APPSECRET" %}</button>
+              <code class="hidden break-all font-mono text-xs opacity-80" data-secret-box></code>
+              <button type="button" class="btn btn-ghost btn-xs hidden" data-copy-target>{% trans "复制" %}</button>
+            </div>
+          </div>
+        </div>
+
+        {# 编辑 / 删除 #}
+        <div class="flex flex-wrap items-center gap-2 border-t border-base-300 pt-3">
+          <details class="grow">
+            <summary class="btn btn-outline btn-sm w-full sm:w-auto">{% trans "编辑项目" %}</summary>
+            <form method="post" action="/console/projects/" class="mt-3 grid gap-2 sm:grid-cols-2 sm:items-end">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="edit" />
+              <input type="hidden" name="id" value="{{ app.pk }}" />
+              <label class="fieldset-label block">
+                <span class="mb-1 block text-xs">{% trans "应用名称" %}</span>
+                <input name="name" type="text" class="input input-bordered w-full text-sm" value="{{ app.name }}" required />
+              </label>
+              <label class="fieldset-label block">
+                <span class="mb-1 block text-xs">{% trans "Token 有效天数" %}</span>
+                <input name="token_expire_days" type="number" min="1" class="input input-bordered w-full text-sm"
+                       value="{{ app.token_expire_days }}" required />
+              </label>
+              <label class="flex cursor-pointer items-center gap-2 text-sm">
+                <input type="checkbox" name="status" class="toggle toggle-primary toggle-sm" {% if app.status %}checked{% endif %} />
+                {% trans "启用状态" %}
+              </label>
+              <button type="submit" class="btn btn-primary btn-sm">{% trans "保存修改" %}</button>
+            </form>
+          </details>
+          <form method="post" action="/console/projects/"
+                data-confirm="{% trans '删除后该项目的 APPID/APPSECRET 立即失效、所有 Token 作废且不可恢复，确认删除？' %}"
+                data-confirm-title="{% trans '删除接入项目' %}"
+                data-confirm-ok="{% trans '删除' %}"
+                data-confirm-danger="1">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete" />
+            <input type="hidden" name="id" value="{{ app.pk }}" />
+            <button type="submit" class="btn btn-error btn-sm btn-outline">{% trans "删除" %}</button>
+          </form>
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+
+{% block js %}
+{% trans "已复制" as v_copied %}
+<script>
+(function () {
+  // 一次性复制
+  function copyText(text, btn) {
+    function done() { var old = btn.textContent; btn.textContent = "{{ v_copied|escapejs }}"; setTimeout(function () { btn.textContent = old; }, 1200); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text, btn, done); });
+    } else { fallbackCopy(text, btn, done); }
+  }
+  function fallbackCopy(text, btn, done) {
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+  document.querySelectorAll('[data-copy]').forEach(function (btn) {
+    btn.addEventListener('click', function () { copyText(btn.dataset.copy, btn); });
+  });
+
+  // 查看/复制 APPSECRET（仅超管会话页可见）
+  document.querySelectorAll('[data-secret-toggle]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var box = btn.parentElement.querySelector('[data-secret-box]');
+      var copy = btn.parentElement.querySelector('[data-copy-target]');
+      if (!box) return;
+      var hidden = box.classList.contains('hidden');
+      box.classList.toggle('hidden', !hidden);
+      copy.classList.toggle('hidden', !hidden);
+      if (hidden) {
+        box.textContent = btn.dataset.secret;
+        copy.addEventListener('click', function () { copyText(btn.dataset.secret, copy); });
+      }
+    });
+  });
+})();
+</script>
+{% endblock %}

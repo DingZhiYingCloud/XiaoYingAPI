@@ -1,0 +1,33 @@
+{% load i18n %}
+{% comment %}
+===== 服务设置弹窗（全局通用，所有页面可复用）=====
+地基说明：弹窗主体由 static/js/site/service_settings.js 按“设置分组(section)”渲染；
+以后新增设置功能：后端 console.services_api 的 sections 里加一个分组，
+前端在 service_settings.js 的 SECTIONS 注册表登记同名渲染器即可，无需改动本壳。
+{% endcomment %}
+<dialog id="service-settings-modal" class="modal">
+  <div class="modal-box max-w-lg">
+    {# 关闭按钮 #}
+    <form method="dialog">
+      <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" aria-label="{% trans '关闭' %}">
+        <i data-lucide="x" class="h-4 w-4"></i>
+      </button>
+    </form>
+
+    {# CSRF 令牌：渲染一次即种下 Cookie，供弹窗内 fetch 提交使用 #}
+    {% csrf_token %}
+
+    {# 标题区 #}
+    <div class="pr-8">
+      <h3 id="service-settings-title" class="text-lg font-bold"></h3>
+      <p id="service-settings-sub" class="mt-0.5 break-all font-mono text-xs text-base-content/60"></p>
+    </div>
+
+    {# 全局提示（加载失败/接口异常） #}
+    <div id="service-settings-alert" class="alert mt-3 hidden py-2 text-sm" role="alert"></div>
+
+    {# 设置分组容器：service_settings.js 依 sections 逐个填充 #}
+    <div id="service-settings-body" class="mt-4 space-y-3"></div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>{% trans "关闭" %}</button></form>
+</dialog>

@@ -1,0 +1,262 @@
+{% extends 'template.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "接入向导 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "接入向导,小影API,签名,APPID" %}{% endblock %}
+{% block description %}{% trans "小影API 互动式接入向导：从注册开通到签名调用，按步骤带你完成接入。" %}{% endblock %}
+
+{% block content %}
+<section class="mx-auto w-full max-w-4xl px-4 py-8 sm:py-10">
+  <nav class="breadcrumbs text-sm">
+    <ul>
+      <li><a href="/">{% trans "首页" %}</a></li>
+      <li>{% trans "接入向导" %}</li>
+    </ul>
+  </nav>
+
+  <div class="mt-2">
+    <h1 class="text-2xl font-bold sm:text-3xl">{% trans "接入向导" %}</h1>
+    <p class="mt-1 text-sm text-base-content/70">{% trans "按步骤完成注册 → 开通 → 签名 → 调试 → 上线。" %}</p>
+  </div>
+
+  {# ===== 步骤进度 ===== #}
+  <ul class="steps steps-5 mt-6 w-full overflow-x-auto" data-wizard-steps>
+    <li data-wizard-step="0" class="step"><button type="button">{% trans "开始" %}</button></li>
+    <li data-wizard-step="1" class="step"><button type="button">{% trans "账号凭证" %}</button></li>
+    <li data-wizard-step="2" class="step"><button type="button">{% trans "签名机制" %}</button></li>
+    <li data-wizard-step="3" class="step"><button type="button">{% trans "在线调试" %}</button></li>
+    <li data-wizard-step="4" class="step"><button type="button">FAQ</button></li>
+  </ul>
+
+  <div class="card mt-4 border border-base-300 bg-base-100">
+    <div class="card-body gap-4 p-5 sm:p-6">
+
+      {# ---------- 步骤 0：开始 ---------- #}
+      <div data-wizard-panel="0">
+        <h2 class="text-lg font-bold">{% trans "接入共 4 步" %}</h2>
+        <p class="mt-1 text-sm text-base-content/70">{% trans "其它都交给小影API —— 统一响应" %} <code class="font-mono text-xs">{code, msg, data}</code>{% trans "。" %}</p>
+        <ol class="mt-4 space-y-3">
+          <li class="flex gap-3 rounded-box border border-base-300 p-3 text-sm">
+            <span class="badge badge-primary badge-lg">1</span>
+            <div><p class="font-semibold">{% trans "注册账号" %}</p><p class="text-xs text-base-content/60">{% trans "用户名 / 邮箱 / 手机号任意方式注册（邮箱、手机号可配开启）。" %}</p></div>
+          </li>
+          <li class="flex gap-3 rounded-box border border-base-300 p-3 text-sm">
+            <span class="badge badge-primary badge-lg">2</span>
+            <div><p class="font-semibold">{% trans "开通接入项目" %}</p><p class="text-xs text-base-content/60">{% trans "联系站长开通「接入项目」，获得专属 APPID 与 APPSECRET。" %}</p></div>
+          </li>
+          <li class="flex gap-3 rounded-box border border-base-300 p-3 text-sm">
+            <span class="badge badge-primary badge-lg">3</span>
+            <div><p class="font-semibold">{% trans "读文档 + 在线调试" %}</p><p class="text-xs text-base-content/60">{% trans "在接口文档填上你的密钥，页面会替你完成签名并真实转发，先验证再写代码。" %}</p></div>
+          </li>
+          <li class="flex gap-3 rounded-box border border-base-300 p-3 text-sm">
+            <span class="badge badge-primary badge-lg">4</span>
+            <div><p class="font-semibold">{% trans "代码接入生产" %}</p><p class="text-xs text-base-content/60">{% trans "在你的服务端实现 HMAC-SHA256 签名，把密钥放进环境变量，绝不进前端。" %}</p></div>
+          </li>
+        </ol>
+      </div>
+
+      {# ---------- 步骤 1：账号与凭证 ---------- #}
+      <div data-wizard-panel="1" class="hidden">
+        <h2 class="text-lg font-bold">{% trans "账号与凭证" %}</h2>
+        <div class="mt-3 space-y-3 text-sm">
+          <div class="alert border border-base-300 text-sm">
+            <span>{% trans "① 注册/登录" %}</span>
+            <span class="text-base-content/70">{% trans "先注册小影API 账号（入口在首页右上角）。" %}</span>
+          </div>
+          <div class="alert border border-base-300 text-sm">
+            <span>{% trans "② 开通接入项目" %}</span>
+            <span class="text-base-content/70">{% trans "当前由站长在「接入项目管理」中创建你的项目；创建后会" %}<strong>{% trans "一次性展示" %}</strong> {% trans "APPID 与 APPSECRET，请立即妥善保存。" %}</span>
+          </div>
+          <div class="alert border border-base-300 text-sm">
+            <span>{% trans "③ 密钥使用须知" %}</span>
+            <span class="text-base-content/70">{% trans "APPID 是公开标识；APPSECRET 是签名密钥，只应保存在你的服务端。泄露请立即联系站长重置。" %}</span>
+          </div>
+        </div>
+        <dl class="mt-4 grid gap-3 sm:grid-cols-2">
+          <div class="rounded-box border border-base-300 p-3">
+            <dt class="text-sm font-semibold">APPID</dt>
+            <dd class="mt-1 text-xs text-base-content/70">{% trans "形如" %} <code class="font-mono">app_xxx</code>{% trans "，用于标识是哪个项目在调用，参与签名。" %}</dd>
+          </div>
+          <div class="rounded-box border border-base-300 p-3">
+            <dt class="text-sm font-semibold">APPSECRET</dt>
+            <dd class="mt-1 text-xs text-base-content/70">{% trans "形如" %} <code class="font-mono">sk_xxx</code>{% trans "，只用于服务端计算签名，" %}<strong>{% trans "严禁下发前端" %}</strong>{% trans "。" %}</dd>
+          </div>
+        </dl>
+      </div>
+
+      {# ---------- 步骤 2：签名机制 ---------- #}
+      <div data-wizard-panel="2" class="hidden">
+        <h2 class="text-lg font-bold">{% trans "签名机制（HMAC-SHA256）" %}</h2>
+        <p class="mt-1 text-sm text-base-content/70">{% trans "需要签名（auth）的接口，每次请求都要带上公共参数：" %}
+          <code class="font-mono text-xs">app_id / timestamp / nonce / sign</code>{% trans "。" %}</p>
+        <ol class="mt-3 list-inside list-decimal space-y-1 text-sm">
+          <li>{% trans "取" %}<strong>{% trans "除 sign 外" %}</strong>{% trans "的全部参数（含 app_id/timestamp/nonce 与业务参数），过滤空值；" %}</li>
+          <li>{% trans "按键名 ASCII 升序排序；" %}</li>
+          <li>{% trans "拼接为" %} <code class="font-mono text-xs">key=value&key=value…</code>{% trans "；" %}</li>
+          <li>{% trans "以 APPSECRET 为密钥做" %} <strong>HMAC-SHA256</strong>{% trans "，输出小写 hex 即 sign。" %}</li>
+        </ol>
+        <p class="mt-2 text-xs text-base-content/60">{% trans "timestamp 为秒级时间戳，有效窗口 ±5 分钟；nonce 每次请求唯一（服务端去重防重放）。" %}</p>
+
+        <div class="mt-3">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-semibold">{% trans "Python 签名示例" %}</span>
+            <button type="button" class="btn btn-ghost btn-xs" data-copy="guide-sign-py">{% trans "复制" %}</button>
+          </div>
+          <pre id="guide-sign-py" class="mt-1 max-h-80 overflow-auto rounded-box bg-base-200 p-3 font-mono text-xs">import hashlib
+import hmac
+import time
+import secrets
+
+APP_ID = 'app_yourAppId'
+APP_SECRET = 'sk_yourAppSecret'
+
+
+def build_sign(params: dict, secret: str) -> str:
+    """{% trans "按键名 ASCII 升序拼接 key=value，HMAC-SHA256 输出小写 hex" %}"""
+    items = sorted(
+        (k, str(v)) for k, v in params.items()
+        if k != 'sign' and v not in (None, '')
+    )
+    raw = '&amp;'.join(f'{k}={v}' for k, v in items)
+    return hmac.new(secret.encode(), raw.encode(), hashlib.sha256).hexdigest()
+
+
+def signed_params(biz: dict):
+    params = dict(biz)
+    params.update({
+        'app_id': APP_ID,
+        'timestamp': str(int(time.time())),
+        'nonce': secrets.token_hex(8),
+    })
+    params['sign'] = build_sign(params, APP_SECRET)
+    return params</pre>
+        </div>
+        <p class="mt-3 text-xs text-base-content/60">{% trans "提示：在线调试页会自动用你填写的密钥代签，初学无需手工算签名；上生产前请务必实现与服务端一致的口径。" %}</p>
+      </div>
+
+      {# ---------- 步骤 3：在线调试 ---------- #}
+      <div data-wizard-panel="3" class="hidden">
+        <h2 class="text-lg font-bold">{% trans "在线调试" %}</h2>
+        <ol class="mt-3 list-inside list-decimal space-y-2 text-sm">
+          <li>{% trans "打开" %} <a class="link link-primary" href="/docs/">{% trans "接口文档中心" %}</a>{% trans "，左侧选择目标服务；" %}</li>
+          <li>{% trans "页面右侧「鉴权设置」填入你的 APPID / APPSECRET（" %}<strong>{% trans "仅保存在本机浏览器" %}</strong>{% trans "，用于本次代签）；" %}</li>
+          <li>{% trans "填好参数点「发送请求」，页面服务端代调真实 /api/ 接口并返回结果；" %}</li>
+          <li>{% trans "开放接口（徽标「开放·免签名」）无需密钥即可调试。" %}</li>
+        </ol>
+        <div class="mt-4 rounded-box border border-base-300 bg-base-100 p-3 text-sm">
+          <p class="font-semibold">{% trans "先试哪个？" %}</p>
+          <p class="mt-1 text-xs text-base-content/70">
+            <a class="link link-primary" href="/docs/user_center/">{% trans "用户中心" %}</a> ·
+            <a class="link link-primary" href="/docs/upload/">{% trans "文件上传" %}</a> ·
+            <a class="link link-primary" href="/docs/ddddocr/">{% trans "验证码识别" %}</a> ·
+            <a class="link link-primary" href="/docs/ai/">{% trans "AI 对话" %}</a> {% trans "等 15 个服务均可在线调试。" %}
+          </p>
+        </div>
+        <p class="mt-3 text-xs text-base-content/60">{% trans "注意：短信、图形验证、AI 等会真实调用外部或产生费用/短信，调试前先确认。" %}</p>
+      </div>
+
+      {# ---------- 步骤 4：FAQ ---------- #}
+      <div data-wizard-panel="4" class="hidden">
+        <h2 class="text-lg font-bold">{% trans "常见问题" %}</h2>
+        <div class="mt-3 space-y-2 text-sm">
+          <details class="collapse-arrow collapse border border-base-300 bg-base-100">
+            <summary class="collapse-title font-medium">{% trans "为什么返回 code=20011？" %}</summary>
+            <div class="collapse-content text-xs text-base-content/70">{% trans "签名相关失败：缺少 app_id/timestamp/nonce/sign、timestamp 超出 ±5 分钟、app_id 未注册/停用、sign 不匹配或 nonce 重放。请逐项核对公共参数与签名算法。" %}</div>
+          </details>
+          <details class="collapse-arrow collapse border border-base-300 bg-base-100">
+            <summary class="collapse-title font-medium">{% trans "在线调试会保存我的密钥吗？" %}</summary>
+            <div class="collapse-content text-xs text-base-content/70">{% trans "不会上传服务器。密钥只保存在你的浏览器 localStorage，仅在发起调试请求时用于服务端本次代签。" %}</div>
+          </details>
+          <details class="collapse-arrow collapse border border-base-300 bg-base-100">
+            <summary class="collapse-title font-medium">{% trans "怎么看接口要不要签名？" %}</summary>
+            <div class="collapse-content text-xs text-base-content/70">{% trans "文档服务/线路旁有徽标：「开放·免签名」直接可调；「需签名」必须携带项目签名；个别公开 GET（如用户中心 methods、图形验证 config）也免签名。" %}</div>
+          </details>
+          <details class="collapse-arrow collapse border border-base-300 bg-base-100">
+            <summary class="collapse-title font-medium">{% trans "常见返回码？" %}</summary>
+            <div class="collapse-content text-xs text-base-content/70">{% trans "10000=成功；20001/20002/20003=参数缺失/格式错误/值非法；20011=签名或认证失败；20040=触发频率限制（如登录连续失败被临时锁定）；40001=外部服务调用失败（请稍后重试或核对被调用的第三方资源）。" %}</div>
+          </details>
+          <details class="collapse-arrow collapse border border-base-300 bg-base-100">
+            <summary class="collapse-title font-medium">{% trans "APPSECRET 泄露了怎么办？" %}</summary>
+            <div class="collapse-content text-xs text-base-content/70">{% trans "立即联系站长：删除该接入项目并重建，重建后会生成全新的 APPID/APPSECRET，旧密钥即刻失效。" %}</div>
+          </details>
+        </div>
+      </div>
+
+      {# ---------- 底部操作 ---------- #}
+      <div class="divider my-1"></div>
+      <div class="flex items-center justify-between gap-3">
+        <button type="button" id="wizard-prev" class="btn btn-ghost btn-sm">{% trans "上一步" %}</button>
+        <span id="wizard-progress" class="text-xs text-base-content/50">{% trans "第 1 / 5 步" %}</span>
+        <button type="button" id="wizard-next" class="btn btn-primary btn-sm">{% trans "下一步" %}</button>
+        <a href="/docs/" id="wizard-finish" class="btn btn-primary btn-sm hidden">{% trans "去接口文档" %}</a>
+      </div>
+
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block js %}
+{% trans "第 " as v_step_prefix %}
+{% trans " 步" as v_step_suffix %}
+{% trans "已复制" as v_copied %}
+<script>
+(function () {
+  'use strict';
+  var STEPS = 5;
+  var current = 0;
+  var stepsEls = Array.prototype.slice.call(document.querySelectorAll('[data-wizard-step]'));
+  var panels = Array.prototype.slice.call(document.querySelectorAll('[data-wizard-panel]'));
+  var prevBtn = document.getElementById('wizard-prev');
+  var nextBtn = document.getElementById('wizard-next');
+  var finishBtn = document.getElementById('wizard-finish');
+  var progressEl = document.getElementById('wizard-progress');
+
+  function render() {
+    panels.forEach(function (p, i) { p.classList.toggle('hidden', i !== current); });
+    stepsEls.forEach(function (li, i) { li.classList.toggle('step-primary', i <= current); });
+    prevBtn.classList.toggle('btn-disabled', current === 0);
+    prevBtn.disabled = current === 0;
+    var isLast = current === STEPS - 1;
+    nextBtn.classList.toggle('hidden', isLast);
+    finishBtn.classList.toggle('hidden', !isLast);
+    progressEl.textContent = "{{ v_step_prefix|escapejs }}" + (current + 1) + ' / ' + STEPS + "{{ v_step_suffix|escapejs }}";
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  prevBtn.addEventListener('click', function () { if (current > 0) { current--; render(); } });
+  nextBtn.addEventListener('click', function () { if (current < STEPS - 1) { current++; render(); } });
+  finishBtn.addEventListener('click', function () { location.href = '/docs/'; });
+
+  stepsEls.forEach(function (li) {
+    li.addEventListener('click', function () {
+      var target = parseInt(li.dataset.wizardStep, 10);
+      if (!isNaN(target) && target >= 0 && target < STEPS) { current = target; render(); }
+    });
+  });
+
+  // 复制代码
+  function copyText(text, btn) {
+    function done() { var old = btn.textContent; btn.textContent = "{{ v_copied|escapejs }}"; setTimeout(function () { btn.textContent = old; }, 1200); }
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, fallback);
+    } else { fallback(); }
+  }
+  document.querySelectorAll('[data-copy]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var pre = document.getElementById(btn.dataset.copy);
+      if (pre) copyText(pre.textContent, btn);
+    });
+  });
+
+  render();
+})();
+</script>
+{% endblock %}

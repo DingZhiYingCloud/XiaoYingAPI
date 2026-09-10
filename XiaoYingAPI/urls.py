@@ -4,9 +4,10 @@ import os
 from django.conf.urls.static import static
 from django.conf import settings
 from django.urls import path, include, re_path
-from django.contrib import admin
 from django.views.generic import RedirectView
 from django.views.static import serve
+
+from API.common.views import handler404 as _web404_view
 
 # 危险可渲染类型扩展名：/media/ 下此类文件强制附件下载，禁止内联渲染（S-02 整改）
 DANGEROUS_MEDIA_EXTS = {'.svg', '.html', '.htm', '.xhtml', '.xml', '.js',
@@ -30,11 +31,13 @@ def _media_serve(request, path, document_root):
 
 
 urlpatterns = [
-    path('admin/', admin.site.urls), # 管理员站点
+    # Django 原生后台已移除（前台 /login/ 统一登录 + 超管页面接管管理功能）
     path('api/', include('API.apis.urls')), # API路由
+    path('', include('API.website.urls')), # 官网前台路由（首页/登录/注册/文档/控制台）
 ]
 
-# 全局 JSON 兜底：未匹配路由返回 JSON 404、未捕获异常返回 JSON 500
+# 全局兜底：非 /api/ 网站页面渲染友好 HTML 错误页，/api/ 返回统一 JSON
+handler400 = 'API.common.views.handler400'
 handler404 = 'API.common.views.handler404'
 handler500 = 'API.common.views.handler500'
 
@@ -50,4 +53,11 @@ if not settings.DEBUG:
 else:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# 网页 404 兜底（放在最后，且排除 /static /media）：
+# DEBUG=True 时 Django 对未匹配路由默认弹“技术调试页”，这里接管为友好 404 页；
+# /api 的未匹配路径同样在此兜底并返回统一 JSON（保持 API 契约），
+# /static /media 由上面的静态路由先行匹配。
+urlpatterns.append(re_path(r'^api/.*$', _web404_view))
+urlpatterns.append(re_path(r'^(?!api/|static/|media/).*$', _web404_view))
 

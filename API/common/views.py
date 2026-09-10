@@ -1,27 +1,60 @@
 """全局兜底视图
 
-统一返回 JSON 格式的错误响应，避免 Django 默认 HTML 错误页。
-例如访问不存在的路径、路径参数格式不匹配（如 UUID 路由传入非 UUID）时，
-Django 会触发 handler404；未捕获异常触发 handler500。
+规则：
+- /api/ 前缀：统一返回 JSON 错误（保持各 API 子服务的 JSON 契约）；
+- 其它路径（官网网页）：渲染友好 HTML 错误页（400.html / 404.html / 500.html），
+  避免用户看到 JSON 或 Django 调试页。
 """
 from django.http import JsonResponse
+from django.shortcuts import render
 
 from API.common import StatusCode
 
+_JSON_STATUS = {
+    400: StatusCode.PARAM_FORMAT_ERROR,
+    404: StatusCode.NOT_FOUND,
+    500: StatusCode.INTERNAL_ERROR,
+}
+
+
+def _is_api(request) -> bool:
+    return request.path.startswith('/api/')
+
+
+def _json(request, status):
+    return JsonResponse({
+        'code': _JSON_STATUS.get(status, StatusCode.UNKNOWN_ERROR),
+        'msg': '请求参数错误' if status == 400 else (
+            f'请求的资源不存在: {request.path}' if status == 404 else '服务器内部错误'),
+        'data': None,
+    }, status=status)
+
+
+def _page(request, template, status):
+    try:
+        return render(request, template, status=status)
+    except Exception:
+        # 错误页自身渲染失败（如数据库不可用）时退回最小 HTML，保证始终有响应
+        from django.http import HttpResponse
+        return HttpResponse(f'<h1>{status}</h1>', status=status, content_type='text/html')
+
+
+def handler400(request, exception=None):
+    """请求错误（400）"""
+    if _is_api(request):
+        return _json(request, 400)
+    return _page(request, '400.html', 400)
+
 
 def handler404(request, exception=None):
-    """未匹配到任何路由时返回 JSON 404（兼容所有 API 子服务）"""
-    return JsonResponse({
-        'code': StatusCode.NOT_FOUND,
-        'msg': f'请求的资源不存在: {request.path}',
-        'data': None,
-    }, status=404)
+    """未匹配到任何路由（404）"""
+    if _is_api(request):
+        return _json(request, 404)
+    return _page(request, '404.html', 404)
 
 
 def handler500(request):
-    """服务器内部异常时返回 JSON 500"""
-    return JsonResponse({
-        'code': StatusCode.INTERNAL_ERROR,
-        'msg': '服务器内部错误',
-        'data': None,
-    }, status=500)
+    """服务器内部异常（500）"""
+    if _is_api(request):
+        return _json(request, 500)
+    return _page(request, '500.html', 500)

@@ -1,0 +1,57 @@
+{% load static i18n %}
+{% get_current_language as CURRENT_LANG %}
+<!DOCTYPE html>
+<html lang="{{ CURRENT_LANG }}" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="renderer" content="webkit" />
+    <meta name="force-rendering" content="webkit" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1" />
+    <meta name="baidu-site-verification" content="codeva-D86XF7EVRs" />
+    <meta name="viewport"
+        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <title>{% block title %}{% endblock %}</title>
+    <meta name="keywords" content="{% block keywords %}{% endblock %}" />
+    <meta name="description" content="{% block description %}{% endblock %}" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="{% block canonical %}{{ request.build_absolute_uri }}{% endblock %}" />
+    <meta name="theme-color" content="#1677ff" />
+    <link rel="shortcut icon" href="/media/favicon.ico">
+    <link rel="bookmark" href="/media/favicon.ico">
+    <!-- daisyUI 样式（编译产物）：改类名/样式后需重新编译，见 API/static/css/input.css 与《前端开发必看》 -->
+    <script>
+      /* 主题防闪烁：在样式渲染前恢复上次选择的主题 */
+      (function () {
+        try {
+          var t = localStorage.getItem('xyapi_theme');
+          if (t) document.documentElement.setAttribute('data-theme', t);
+        } catch (e) { /* 忽略隐私模式等异常 */ }
+      })();
+    </script>
+    <link href="{% static 'css/output.css' %}?v=20260910b" rel="stylesheet" type="text/css" />
+    <!-- 结构化数据（schema.org）：声明站点信息与站内搜索，助力搜索引擎理解网站 -->
+
+    {% block head %}{% endblock %}
+
+</head>
+
+<body>
+    {% include 'common_html/headers.html' %}
+    {% block content %}{% endblock %}
+    {% include 'common_html/footer.html' %}
+
+    {# 服务设置弹窗 + 图标库 + 全局交互（地基：后续新设置只需在后端 sections 与 JS 注册表各加一项） #}
+    {% include 'common_html/service_settings_modal.html' %}
+    {# JS 多语言目录（window.gettext 等），必须早于所有站点脚本加载 #}
+    <script src="{% url 'website:javascript-catalog' %}"></script>
+    <script src="{% static 'js/site/ui.js' %}?v=20260909a"></script>
+    <script src="{% static 'js/site/theme.js' %}?v=20260909d"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="{% static 'js/site/service_settings.js' %}?v=20260909c"></script>
+
+    {% block js %}{% endblock %}
+    
+</body>
+
+</html>

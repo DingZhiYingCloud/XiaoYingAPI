@@ -1,0 +1,22 @@
+{% extends 'template.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "请求错误 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "400,请求错误,小影API" %}{% endblock %}
+{% block description %}{% trans "小影API 400错误页面：请求无法被处理，请检查后重试或返回首页。" %}{% endblock %}
+
+{% block content %}
+<section class="flex min-h-[60vh] items-center justify-center px-4">
+  <div class="hero-content text-center">
+    <div class="max-w-md">
+      <p class="text-7xl font-black text-primary/20">400</p>
+      <h1 class="mt-2 text-2xl font-bold">{% trans "请求无法处理" %}</h1>
+      <p class="mt-3 text-base-content/70">{% trans "您的请求格式有误或不被支持，请检查后重试。" %}</p>
+      <div class="mt-6 flex justify-center gap-3">
+        <a href="/" class="btn btn-primary">{% trans "返回首页" %}</a>
+        <button type="button" class="btn btn-ghost" onclick="history.back()">{% trans "返回上一页" %}</button>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

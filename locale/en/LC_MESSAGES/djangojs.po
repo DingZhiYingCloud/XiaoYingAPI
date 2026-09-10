@@ -1,0 +1,443 @@
+# English translations for XiaoYingAPI front-end JS
+# 简体中文为源语言（msgid），本文件提供英文译文。
+# 修改后必须执行：python scripts/compile_locale.py
+#
+# 二进制文件头（空 msgid 条目）由 scripts/compile_locale.py 自动生成，此处无需手写。
+
+# ==================== 前端 JS 文案（static/js/site/*.js） ====================
+msgid "%(seconds)ss 后重发"
+msgstr "%(seconds)ss to resend"
+
+msgid "(空响应)"
+msgstr "(empty response)"
+
+msgid "万圣夜"
+msgstr "Halloween"
+
+msgid "丝绸"
+msgstr "Silk"
+
+msgid "二次校验通过，data 如下："
+msgstr "Secondary verification passed, data as follows:"
+
+msgid "低保真"
+msgstr "Lo-Fi"
+
+msgid "保存中…"
+msgstr "Saving…"
+
+msgid "保存失败，请稍后重试"
+msgstr "Failed to save, please try again later"
+
+msgid "保存成功后页面自动刷新生效。"
+msgstr "The page will refresh automatically after saving."
+
+msgid "保存状态"
+msgstr "Save Status"
+
+msgid "全部设置"
+msgstr "All Settings"
+
+msgid "关闭"
+msgstr "Close"
+
+msgid "冬日"
+msgstr "Winter"
+
+msgid "初始化失败：%(error)s"
+msgstr "Initialization failed: %(error)s"
+
+msgid "加载中…"
+msgstr "Loading…"
+
+msgid "加载失败，请稍后重试"
+msgstr "Load failed, please try again later"
+
+msgid "加载设置中…"
+msgstr "Loading settings…"
+
+msgid "北极"
+msgstr "Nord"
+
+msgid "去登录"
+msgstr "Log In"
+
+msgid "发送失败，请稍后重试"
+msgstr "Failed to send, please try again later"
+
+msgid "取消"
+msgstr "Cancel"
+
+msgid "合成波"
+msgstr "Synthwave"
+
+msgid "咖啡"
+msgstr "Coffee"
+
+msgid "商务"
+msgstr "Corporate"
+
+msgid "商务夜"
+msgstr "Business"
+
+msgid "四个验证参数会自动回填到上方表单，你也可以再用「发送请求」走平台代调复验。"
+msgstr "The four verification parameters will be filled into the form above automatically. You can also click \"Send Request\" to verify again through the platform proxy."
+
+msgid "图形验证 + 二次校验通过"
+msgstr "Captcha + secondary verification passed"
+
+msgid "图形验证联调（真实弹窗）"
+msgstr "Captcha integration test (real popup)"
+
+msgid "复古"
+msgstr "Retro"
+
+msgid "大黄蜂"
+msgstr "Bumblebee"
+
+msgid "奢华"
+msgstr "Luxury"
+
+msgid "安全校验失败，请刷新页面后重试"
+msgstr "Security check failed, please refresh the page and try again"
+
+msgid "安全校验失败，页面可能已过期，请刷新后重试"
+msgstr "Security check failed, the page may have expired, please refresh and try again"
+
+msgid "密码长度至少 8 位"
+msgstr "Password must be at least 8 characters"
+
+msgid "尚未开始"
+msgstr "Not started"
+
+msgid "已保存"
+msgstr "Saved"
+
+msgid "已保存到本机"
+msgstr "Saved locally"
+
+msgid "已关闭，可再次点击「开始图形验证」"
+msgstr "Closed. You can click \"Start captcha\" again"
+
+msgid "已恢复默认"
+msgstr "Reset to default"
+
+msgid "幻想"
+msgstr "Fantasy"
+
+msgid "开始图形验证"
+msgstr "Start captcha"
+
+msgid "当前状态："
+msgstr "Current status: "
+
+msgid "微光"
+msgstr "Dim"
+
+msgid "德古拉"
+msgstr "Dracula"
+
+msgid "恢复中…"
+msgstr "Resetting…"
+
+msgid "恢复默认"
+msgstr "Reset to Default"
+
+msgid "恢复默认后，将按“已接入文档=开放 / 未接入文档=建设中”自动派生。"
+msgstr "After resetting to default, the status will be derived automatically (\"documented = Open / undocumented = Under Construction\")."
+
+msgid "恢复默认状态"
+msgstr "Reset to Default Status"
+
+msgid "情人节"
+msgstr "Valentine"
+
+msgid "手动指定"
+msgstr "Manual"
+
+msgid "手机号"
+msgstr "Phone Number"
+
+msgid "提交中…"
+msgstr "Submitting…"
+
+msgid "搜索主题…"
+msgstr "Search themes…"
+
+msgid "操作失败，请稍后重试"
+msgstr "Operation failed, please try again later"
+
+msgid "日落"
+msgstr "Sunset"
+
+msgid "明亮"
+msgstr "Light"
+
+msgid "暗黑"
+msgstr "Dark"
+
+msgid "服务状态数据缺失"
+msgstr "Service status data is missing"
+
+msgid "未知"
+msgstr "Unknown"
+
+msgid "未知错误"
+msgstr "Unknown error"
+
+msgid "柠檬水"
+msgstr "Lemonade"
+
+msgid "森林"
+msgstr "Forest"
+
+msgid "模拟前端完成验证"
+msgstr "Simulate frontend captcha completion"
+
+msgid "正在加载验证码资源…"
+msgstr "Loading captcha resources…"
+
+msgid "正在请求 %(path)s …"
+msgstr "Requesting %(path)s …"
+
+msgid "水蓝"
+msgstr "Aqua"
+
+msgid "注册中…"
+msgstr "Registering…"
+
+msgid "注册失败，请稍后重试"
+msgstr "Registration failed, please try again later"
+
+msgid "注册成功！您的账号为 %(account)s，请妥善保存。"
+msgstr "Registered successfully! Your account is %(account)s, please keep it safe."
+
+msgid "深夜"
+msgstr "Night"
+
+msgid "深渊"
+msgstr "Abyss"
+
+msgid "点击下方按钮会弹出阿里云官方图形验证，拖动/点选通过后自动完成服务端二次校验；"
+msgstr "Clicking the button below opens the official Alibaba Cloud captcha. After you drag/select to pass it, the server-side secondary verification is completed automatically; "
+
+msgid "焦糖拿铁"
+msgstr "Caramel Latte"
+
+msgid "现在 "
+msgstr "Now "
+
+msgid "登录中…"
+msgstr "Logging in…"
+
+msgid "登录失败，请稍后重试"
+msgstr "Login failed, please try again later"
+
+msgid "登录成功，正在跳转…"
+msgstr "Logged in successfully, redirecting…"
+
+msgid "确认"
+msgstr "Confirm"
+
+msgid "确认恢复「%(name)s」为默认状态？"
+msgstr "Reset \"%(name)s\" to the default status?"
+
+msgid "确认操作"
+msgstr "Confirm Action"
+
+msgid "秋日"
+msgstr "Autumn"
+
+msgid "管理员登录状态已失效，请重新登录"
+msgstr "Admin session has expired, please log in again"
+
+msgid "粉彩"
+msgstr "Pastel"
+
+msgid "纯黑"
+msgstr "Black"
+
+msgid "纸杯蛋糕"
+msgstr "Cupcake"
+
+msgid "线框"
+msgstr "Wireframe"
+
+msgid "网络异常，请检查网络后重试"
+msgstr "Network error, please check your connection and try again"
+
+msgid "网络异常，请稍后重试"
+msgstr "Network error, please try again later"
+
+msgid "翡翠"
+msgstr "Emerald"
+
+msgid "耗时 %(ms)s ms"
+msgstr "Elapsed %(ms)s ms"
+
+msgid "花园"
+msgstr "Garden"
+
+msgid "获取验证码"
+msgstr "Get code"
+
+msgid "该服务"
+msgstr "this service"
+
+msgid "该服务暂无可用设置项。"
+msgstr "This service has no available settings."
+
+msgid "该设置功能暂未实现渲染。"
+msgstr "This settings feature is not rendered yet."
+
+msgid "该设置功能渲染失败：%(error)s"
+msgstr "Failed to render this settings feature: %(error)s"
+
+msgid "请先填写%(type)s"
+msgstr "Please enter %(type)s first"
+
+msgid "请填写%(type)s"
+msgstr "Please enter %(type)s"
+
+msgid "请填写%(type)s和验证码"
+msgstr "Please enter %(type)s and the verification code"
+
+msgid "请求中…"
+msgstr "Requesting…"
+
+msgid "请求失败（HTTP %(status)s），请稍后重试"
+msgstr "Request failed (HTTP %(status)s), please try again later"
+
+msgid "请稍候…"
+msgstr "Please wait…"
+
+msgid "请输入用户名"
+msgstr "Please enter a username"
+
+msgid "请输入账号和密码"
+msgstr "Please enter your account and password"
+
+msgid "请输入验证码"
+msgstr "Please enter the verification code"
+
+msgid "赛博朋克"
+msgstr "Cyberpunk"
+
+msgid "选择主题"
+msgstr "Select theme"
+
+msgid "选择要设置的功能："
+msgstr "Choose a feature to configure: "
+
+msgid "邮箱"
+msgstr "Email"
+
+msgid "酸性"
+msgstr "Acid"
+
+msgid "重新图形验证"
+msgstr "Restart captcha"
+
+msgid "页面安全校验信息缺失，请刷新页面后重试"
+msgstr "Page security verification information is missing, please refresh the page and try again"
+
+msgid "验证失败，请稍后重试"
+msgstr "Verification failed, please try again later"
+
+msgid "验证未通过，请重新验证"
+msgstr "Verification failed, please try again"
+
+msgid "验证未通过："
+msgstr "Verification failed: "
+
+msgid "验证码已发送"
+msgstr "Code sent"
+
+msgid "验证码已就绪，正在弹出…"
+msgstr "Captcha is ready, opening…"
+
+msgid "验证码已重新发送"
+msgstr "Code resent"
+
+msgid "验证通过，参数已自动回填，正在二次校验…"
+msgstr "Verification passed, parameters filled in automatically, running secondary verification…"
+
+msgid "默认"
+msgstr "Default"
+
+msgid "默认：%(label)s"
+msgstr "Default: %(label)s"
+
+# ==================== 登录 / 注册页的图形验证 ====================
+msgid "正在加载图形验证，请稍候…"
+msgstr "Loading the CAPTCHA, please wait…"
+
+msgid "已取消图形验证"
+msgstr "CAPTCHA cancelled"
+
+msgid "图形验证加载失败，请刷新页面后重试"
+msgstr "Failed to load the CAPTCHA. Please refresh the page and try again."
+
+# ==================== 忘记密码 / 重置密码 ====================
+msgid "密码已重置，请用新密码登录。"
+msgstr "Password reset. Please log in with your new password."
+
+msgid "两次输入的密码不一致"
+msgstr "The two passwords do not match"
+
+msgid "重置失败，请稍后重试"
+msgstr "Reset failed, please try again later"
+
+# ==================== 自研图形验证码（static/js/captcha_auth/self/、site/docs_captcha_self.js） ====================
+msgid "安全验证"
+msgstr "Security Verification"
+
+msgid "字符图片"
+msgstr "Character image"
+
+msgid "换一张"
+msgstr "Refresh"
+
+msgid "校验请求失败，请重试"
+msgstr "Verification request failed, please try again"
+
+msgid "校验通过，data 如下："
+msgstr "Validation passed, data as follows:"
+
+msgid "点击下方按钮会弹出自研验证码弹窗（本页真实调用 generate 与 verify 两个接口）；"
+msgstr "Clicking the button below opens the self-developed CAPTCHA popup (this page calls the real generate and verify Endpoints); "
+
+msgid "算术"
+msgstr "Arithmetic"
+
+msgid "自研验证码联调（真实弹窗）"
+msgstr "Self-developed CAPTCHA integration test (real popup)"
+
+msgid "请计算下图算式的结果，完成安全验证"
+msgstr "Calculate the result of the expression below to complete the security check"
+
+msgid "请输入下图中的字符，完成安全验证"
+msgstr "Enter the characters shown below to complete the security check"
+
+msgid "输入图中字符后确认即可完成校验。验证码为一次性，失败会自动换新图。"
+msgstr "Enter the characters shown and confirm to complete validation. The CAPTCHA is single-use, and a new image is fetched automatically on failure."
+
+msgid "验证码"
+msgstr "CAPTCHA"
+
+msgid "验证码获取失败"
+msgstr "Failed to load the CAPTCHA"
+
+msgid "验证类型"
+msgstr "Verification type"
+
+msgid "验证通过"
+msgstr "Verification passed"
+
+# ==================== API 调用统计看板（console/stats.html） ====================
+msgid "失败量"
+msgstr "Failed"
+
+msgid "调用量"
+msgstr "Call Volume"
+

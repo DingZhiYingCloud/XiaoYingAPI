@@ -7,6 +7,9 @@ Django数据库迁移命令（A-05：迁移文件入库，线上仅 migrate，�
 python manage.py collectstatic --noinput
 source .venv/bin/activate
 
+删除缓存
+Get-ChildItem -Path . -Recurse -Directory -Filter __pycache__ | Remove-Item -Recurse -Force
+
 1P面板: pip install -r requirements.txt && python manage.py migrate && python manage.py runserver 0.0.0.0:10000
 """
 

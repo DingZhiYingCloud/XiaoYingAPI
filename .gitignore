@@ -52,3 +52,8 @@ Test/
 # collectstatic 产物目录（simpleui 等静态文件收集到此，部署时重新生成）
 /static/admin/
 /static/API/
+
+# daisyUI 前端编译工具：Tailwind 独立可执行文件(约 107MB，不入库；按官方文档重新下载即可)
+# 下载地址: https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-windows-x64.exe
+# 通配所有目录（源目录 API/static/css 与 collectstatic 产物目录 static/css 各有一份副本）
+tailwindcss.exe
