@@ -184,10 +184,10 @@
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'js/site/docs.js' %}?v=20260909a"></script>
+<script src="{% static 'js/site/docs.js' %}?v=20260911b"></script>
 {% if doc.slug == 'captcha_auth' %}
 {# 图形验证：在线调试中模拟“前端真实弹窗”完成验证（仅该服务需要） #}
-<script src="{% static 'js/captcha_auth/aliyun/captcha-client.js' %}?v=20260909a"></script>
+<script src="{% static 'js/captcha_auth/aliyun/captcha-client.js' %}?v=20260911b"></script>
 <script src="{% static 'js/site/docs_captcha.js' %}?v=20260909a"></script>
 {% elif doc.slug == 'captcha_self' %}
 {# 自研图形验证码：在线调试中弹出真实验证码弹窗完成验证（仅该服务需要） #}

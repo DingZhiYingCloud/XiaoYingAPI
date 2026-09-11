@@ -56,9 +56,11 @@ unpackage/
 
 Test/
 
-# collectstatic 产物目录（simpleui 等静态文件收集到此，部署时重新生成）
-/static/admin/
-/static/API/
+# collectstatic 产物目录（整个 STATIC_ROOT 均为部署时重新生成的产物，禁止入库）
+# 源文件统一放在 API/static/；历史误提交的 static/js、static/css 等副本已取消跟踪。
+# 注意：collectstatic 默认按 mtime 判断“是否修改”，仓库 checkout 的文件时间戳相同会被
+# 误判为未修改而跳过更新，部署时请使用：python manage.py collectstatic --noinput --clear
+/static/
 
 # daisyUI 前端编译工具：Tailwind 独立可执行文件(约 107MB，不入库；按官方文档重新下载即可)
 # 下载地址: https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-windows-x64.exe
