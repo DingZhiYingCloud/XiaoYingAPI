@@ -93,41 +93,45 @@
     }, 1000);
   }
 
-  /* ---------- 图形验证（阿里云图形认证） ----------
-   * 以服务端二次校验为准：这里只负责「先让用户完成图形验证，再把 4 个验证参数并入请求交给后端」。
-   * 后端在密钥未配置时会跳过校验，页面据 window.XY_CAPTCHA_ENABLED 同步不弹，前后端口径一致。
+  /* ---------- 图形验证（自研验证码） ----------
+   * 以服务端二次校验为准：这里只负责「先让用户完成图形验证，再把 captcha_id + answer 并入请求交给后端」。
+   * 因此弹窗必须用 autoVerify:false —— 客户端先校验会把一次性验证码消费掉，后端复验必然失败。
+   * 后端可用 CAPTCHA_SELF_ENABLED=false 关闭校验，页面据 window.XY_CAPTCHA_ENABLED 同步不弹，前后端口径一致。
    */
-  var captchaReady = false;   // SDK 是否已初始化就绪
+  var captchaStarted = false; // 是否已初始化（惰性初始化：不提交就不取验证码）
+  var captchaReady = false;   // 验证码是否已就绪
   var captchaPending = null;  // 等待图形验证的提交 { payload, post, alertEl }
 
   function captchaNeeded() {
-    return window.XY_CAPTCHA_ENABLED === true && !!window.XYCaptcha;
+    return window.XY_CAPTCHA_ENABLED === true && !!window.XYCaptchaSelf;
   }
 
-  /* 提交：需要图形验证时先弹验证码，用户通过后再把验证参数并入 payload 真正提交 */
+  /* 提交：需要图形验证时先弹验证码，用户填写后把验证参数并入 payload 真正提交 */
   function submitWithCaptcha(payload, post, alertEl) {
     if (!captchaNeeded()) return post(payload);
     captchaPending = { payload: payload, post: post, alertEl: alertEl };
     if (captchaReady) {
-      XYCaptcha.show();
-    } else {
-      setAlert(alertEl, 'info', gettext('正在加载图形验证，请稍候…'));
+      XYCaptchaSelf.show();
+    } else if (!captchaStarted) {
+      startCaptcha(alertEl);
     }
+    // 已在初始化中：等 onReady 回调自动弹出
   }
 
-  /* 图形验证只初始化一次，之后每次提交复用同一实例（反复 init 会重复创建验证码实例） */
-  function initCaptcha() {
-    if (!captchaNeeded()) return;
-    XYCaptcha.init({
-      autoVerify: false,   // 交后端二次校验；客户端先校验会消耗掉一次性凭证
+  /* 首次提交时才初始化（会顺带取一张验证码），就绪后自动弹出 */
+  function startCaptcha(alertEl) {
+    captchaStarted = true;
+    setAlert(alertEl, 'info', gettext('正在加载图形验证，请稍候…'));
+    XYCaptchaSelf.init({
+      autoVerify: false,   // 交后端二次校验；客户端先校验会消耗掉一次性验证码
       onReady: function () {
         captchaReady = true;
-        if (captchaPending) XYCaptcha.show();
+        if (captchaPending) XYCaptchaSelf.show();
       },
-      onValidate: function (validate) {
+      onValidate: function (data) {   // data = {captcha_id, answer}
         var job = captchaPending;
         captchaPending = null;
-        if (job) job.post(Object.assign({}, job.payload, validate));
+        if (job) job.post(Object.assign({}, job.payload, data));
       },
       onClose: function () {
         var job = captchaPending;
@@ -135,6 +139,7 @@
         if (job) setAlert(job.alertEl, 'info', gettext('已取消图形验证'));
       },
       onError: function (msg) {
+        captchaStarted = false;   // 初始化失败：允许下次提交重新初始化
         var job = captchaPending;
         captchaPending = null;
         setAlert(job ? job.alertEl : null, 'error', msg || gettext('图形验证加载失败，请刷新页面后重试'));
@@ -480,7 +485,6 @@
     });
   }
 
-  initCaptcha();
   if (pageKind() === 'register') {
     bindRegister();
   } else if (pageKind() === 'reset') {

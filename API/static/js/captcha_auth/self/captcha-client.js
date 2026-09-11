@@ -22,6 +22,15 @@
  *   });
  *   XYCaptchaSelf.show();                   // 就绪后弹出（未就绪会自动先取一张）
  *
+ * ⚠️ 交给自己后端校验时（如官网登录 / 注册表单）必须传 autoVerify: false：
+ *   XYCaptchaSelf.init({
+ *     autoVerify: false,                    // 默认 true：客户端调 /verify 校验并回调 onResult
+ *                                           // 传 false：不调服务端校验，只把参数交给接入方后端
+ *     onValidate: function (data) { ... },  // 仅 autoVerify=false 时回调
+ *                                           // data = {captcha_id, answer}
+ *   });
+ *   验证码是一次性的：客户端先校验会把凭证消费掉，导致后端复验失败，所以必须由后端校验。
+ *
  * 说明：验证码为一次性——verify 提交后无论对错都已失效，故失败后会自动换新图。
  */
 (function (global) {
@@ -292,6 +301,18 @@
     var answer = _dialog.input.value.trim();
     if (!answer) { _setError(_t('请填写验证码')); return; }
     if (!_popup.captchaId) { _setError(_t('验证码获取失败')); return; }
+
+    // autoVerify=false：不调服务端校验，只把 captcha_id + answer 交给接入方后端消费
+    // （验证码一次性，客户端先校验会让后端复验失败）
+    if (_popup.options.autoVerify === false) {
+      var handoff = { captcha_id: _popup.captchaId, answer: answer };
+      _popup.captchaId = '';   // 已交给后端，下次 show() 必须重新取一张
+      _closePopup(false);      // 流程性关闭，不算“用户主动取消”
+      if (typeof _popup.options.onValidate === 'function') {
+        _popup.options.onValidate(handoff);
+      }
+      return;
+    }
 
     _setError('');
     _dialog.submit.disabled = true;

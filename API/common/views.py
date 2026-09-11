@@ -4,6 +4,9 @@
 - /api/ 前缀：统一返回 JSON 错误（保持各 API 子服务的 JSON 契约）；
 - 其它路径（官网网页）：渲染友好 HTML 错误页（400.html / 404.html / 500.html），
   避免用户看到 JSON 或 Django 调试页。
+
+另提供占位视图 service_building_view：供「路由保留、服务暂时关闭」的旧前缀使用
+（能力已迁移到新服务的接口，访问旧地址时返回统一的 JSON 提示，而不是 404）。
 """
 from django.http import JsonResponse
 from django.shortcuts import render
@@ -58,3 +61,17 @@ def handler500(request):
     if _is_api(request):
         return _json(request, 500)
     return _page(request, '500.html', 500)
+
+
+def service_building_view(request, **kwargs):
+    """服务建设中占位响应
+
+    用于「路由保留、服务暂时关闭」的旧前缀（如 /api/video_analysis/、/api/auto_comment/）：
+    其中的能力已迁移到新服务（/api/douyin/），旧地址不再提供功能，
+    但仍返回项目统一的 JSON 契约，方便调用方明确识别「服务不可用」而非「地址写错」。
+    """
+    return JsonResponse({
+        'code': StatusCode.SERVICE_UNAVAILABLE,
+        'msg': '服务建设中，暂不可用',
+        'data': None,
+    })

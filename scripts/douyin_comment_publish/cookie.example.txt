@@ -1,0 +1,16 @@
+# 抖音单账号登录态（沙箱专用）
+#
+# 用法：把下面的示例复制为同目录下的 cookie.txt，填入真实登录 Cookie（一行一个，可多行）。
+# 注意：
+#   1. cookie.txt 不要提交到仓库（Test/ 已在 .gitignore 中整目录忽略）；
+#   2. 必须来自**已登录**的浏览器（F12 → Network → 任意 douyin.com 请求 → Request Headers → Cookie 整串）；
+#   3. 除 Cookie 外，发布评论还需要 X-Secsdk-Csrf-Token（见 route_a_browser.py 的说明）。
+#
+# 示例（把 xxx 换成真实值）：
+sessionid=xxx
+sessionid_ss=xxx
+sid_guard=xxx
+passport_csrf_token=xxx
+ttwid=xxx
+odin_tt=xxx
+s_v_web_id=xxx

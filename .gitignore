@@ -14,9 +14,16 @@ __pycache__
 # 环境文件
 .env
 .env.*
+# 但模板必须入库（供新部署复制）
+!.env.example
 
 # 敏感文件（实际敏感的配置）
 **/env.json
+
+# 抖音评论沙箱的登录态/票据文件（真实账号敏感信息，不入库）
+/scripts/douyin_comment_publish/cookie.txt
+/scripts/douyin_comment_publish/ms_token.txt
+/scripts/douyin_comment_publish/sec_headers.json
 
 # 日志文件
 *.log

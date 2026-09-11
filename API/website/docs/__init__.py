@@ -14,7 +14,7 @@ from django.utils.translation import gettext as _
 
 from . import email as _email
 from . import music as _music
-from . import video_analysis as _video
+from . import douyin as _douyin
 from . import sms_verify as _sms_verify
 from . import captcha_auth as _captcha_auth
 from . import captcha_self as _captcha_self
@@ -35,7 +35,7 @@ from .schema import (ChannelSpec, EndpointSpec, ParamSpec, ServiceSpec)  # noqa:
 _SERVICES = [
     _email.SERVICE,
     _music.SERVICE,
-    _video.SERVICE,
+    _douyin.SERVICE,
     _sms_verify.SERVICE,
     _captcha_auth.SERVICE,
     _captcha_self.SERVICE,

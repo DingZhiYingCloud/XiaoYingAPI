@@ -20,5 +20,6 @@ urlpatterns = [
     path('captcha_self/', include('API.apis.captcha_self.urls')), # 自研图形验证码服务路由
     path('feedback/', include('API.apis.feedback.urls')),       # 问题反馈中心服务路由
     path('statistics/', include('API.apis.statistics.urls')),   # API 调用统计服务路由
+    path('douyin/', include('API.apis.Douyin.urls')),           # 抖音服务路由（视频解析 + 评论发布）
 ]
 

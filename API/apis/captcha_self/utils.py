@@ -9,6 +9,7 @@
 """
 import base64
 import os
+import uuid
 from datetime import timedelta
 
 from django.utils import timezone
@@ -59,7 +60,9 @@ def create_challenge(kind=CaptchaChallenge.KIND_CHAR, length=None):
 def verify_challenge(captcha_id, answer):
     """校验验证码答案（一次性消费）
 
-    :param captcha_id: 验证码 ID（UUID 字符串，格式已由视图层校验）
+    :param captcha_id: 验证码 ID；**格式非法按「不存在」处理**——本函数有多个调用方
+                       （开放接口 / 官网表单），不能因为客户端传入非 UUID 字符串就让
+                       ORM 抛 ValidationError（那会变成 500）
     :param answer: 用户提交的答案
     :return: (success, data_or_msg) 二元组
         (True, '')           校验通过
@@ -68,6 +71,11 @@ def verify_challenge(captcha_id, answer):
     安全性：采用条件更新做原子消费——同一验证码的并发重复提交只有一次能成功，
     且无论对错都作废，防止同一张图被反复暴力尝试。
     """
+    try:
+        uuid.UUID(str(captcha_id))
+    except (ValueError, TypeError, AttributeError):
+        return False, '验证码不存在或已失效，请重新获取'
+
     challenge = CaptchaChallenge.objects.filter(id=captcha_id).first()
     if challenge is None:
         return False, '验证码不存在或已失效，请重新获取'

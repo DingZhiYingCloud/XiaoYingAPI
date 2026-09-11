@@ -56,18 +56,19 @@ class Command(BaseCommand):
     help = '根据 API/apis/ 目录重建 API 服务分类树（幂等）'
 
     def handle(self, *args, **options):
-        created, kept = self._build_tree()
+        created, kept, removed = self._build_tree()
         # A-02：重建后使分类树进程内缓存失效，新节点/层级即时参与认证判定
         from API.common.middleware import invalidate_api_category_cache
         invalidate_api_category_cache()
         self.stdout.write(self.style.SUCCESS(
-            f'分类树重建完成：新建 {created} 个，保留 {kept} 个'
+            f'分类树重建完成：新建 {created} 个，保留 {kept} 个，清理失效 {removed} 个'
         ))
 
     def _build_tree(self):
         """递归扫描 urls.py include 链，为每个服务目录建立分类节点"""
         created = 0
         kept = 0
+        scanned = set()
 
         def build(urls_path, parent, acc_prefix):
             nonlocal created, kept
@@ -77,6 +78,7 @@ class Command(BaseCommand):
                     build(self._module_urls_path(module), parent, acc_prefix)
                     continue
                 child_prefix = acc_prefix + prefix
+                scanned.add(child_prefix)
                 name = comment or module.split('.')[-1]
                 node, is_new = ApiCategory.objects.get_or_create(
                     path_prefix=child_prefix,
@@ -94,7 +96,10 @@ class Command(BaseCommand):
                 build(self._module_urls_path(module), node, child_prefix)
 
         build(os.path.join(_API_APIS_DIR, 'urls.py'), None, '/api/')
-        return created, kept
+        # 停用（status=False）且当前代码中已不存在的分类 → 删除，保持与目录一致
+        # （只清理显式停用的：仍在用但临时停用的节点不会被误删）
+        removed = ApiCategory.objects.filter(status=False).exclude(path_prefix__in=scanned).delete()[0]
+        return created, kept, removed
 
     @staticmethod
     def _module_urls_path(module):

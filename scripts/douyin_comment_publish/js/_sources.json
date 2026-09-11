@@ -1,0 +1,32 @@
+[
+  {
+    "name": "bdms_1.0.1.19_fix.js",
+    "url": "https://p-pc-weboff.byteimg.com/tos-cn-i-9r5gewecjs/bdms_1.0.1.19_fix.js",
+    "status": 200,
+    "bytes": 147530
+  },
+  {
+    "name": "webmssdk.es5.js",
+    "url": "https://lf-c-flwb.bytetos.com/obj/rc-client-security/c-webmssdk/1.0.0.20/webmssdk.es5.js",
+    "status": 200,
+    "bytes": 387196
+  },
+  {
+    "name": "sdk-glue.js",
+    "url": "https://lf-c-flwb.bytetos.com/obj/rc-client-security/web/glue/1.0.0.64-fix.01/sdk-glue.js",
+    "status": 200,
+    "bytes": 100348
+  },
+  {
+    "name": "runtime_bundler_34.js",
+    "url": "https://lf-security.bytegoofy.com/obj/security-secsdk/runtime_bundler_34.js",
+    "status": 200,
+    "bytes": 177610
+  },
+  {
+    "name": "uc-secure-dtrait-core.js",
+    "url": "https://lf-douyin-pc-web.douyinstatic.com/obj/passport-fe/ucenter_fe/@byted/uc-secure-dtrait-core/1.0.0.16/dist/index.umd.production.js",
+    "status": 200,
+    "bytes": 87576
+  }
+]

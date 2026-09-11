@@ -213,7 +213,12 @@ def call(request):
         response = client.post(path, body)
     elapsed_ms = int((time.monotonic() - started) * 1000)
 
-    raw = response.content.decode('utf-8', 'ignore')
+    # 流式响应（如 AI 接口 stream=true 的 SSE）没有 .content，必须先消费 streaming_content；
+    # 否则读取时会抛 AttributeError 让调试接口整个 500（原实现只按普通响应处理）。
+    if response.streaming:
+        raw = b''.join(response.streaming_content).decode('utf-8', 'ignore')
+    else:
+        raw = response.content.decode('utf-8', 'ignore')
     parsed = None
     if response['Content-Type'].startswith('application/json'):
         try:
