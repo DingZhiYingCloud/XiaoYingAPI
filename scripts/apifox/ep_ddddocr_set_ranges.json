@@ -1,0 +1,117 @@
+{
+  "name": "设置 OCR 字符范围",
+  "type": "http",
+  "method": "post",
+  "path": "/api/ddddocr/set-ranges",
+  "status": "developing",
+  "folderId": 90674351,
+  "description": "## 功能说明\n\n设置本次识别实例的字符范围（预定义编号或自定义字符集）。\n\n> **注意**：后端每次调用都会新建识别实例，本接口只对“该次调用”的实例生效，**不会改变之后 `/api/ddddocr/ocr` 请求的字符集**。\n\n预定义编号：0=数字 / 1=小写 / 2=大写 / 3=大小写 / 4=小写+数字 / 5=大写+数字 / 6=大小写+数字 / 7=默认；也可直接传自定义字符串，如 `0123456789+-x/=`。\n\n## 鉴权（A-01）\n\n本接口需要签名认证 —— 须携带签名公共参数 `app_id / timestamp / nonce / sign`（HMAC-SHA256，密钥为接入项目 app_secret），未签名或签名错误返回 20011。\n\n## 请求方式\n\n- 表单提交（application/x-www-form-urlencoded 或 multipart/form-data）",
+  "requestBody": {
+    "type": "application/x-www-form-urlencoded",
+    "parameters": [
+      {
+        "id": "ranges#0",
+        "name": "ranges",
+        "required": true,
+        "description": "字符范围：预定义编号 0-7，或自定义字符串（如 0123456789+-x/=）",
+        "type": "string",
+        "example": "0123456789+-x/="
+      },
+      {
+        "id": "beta#1",
+        "name": "beta",
+        "required": false,
+        "description": "是否启用 Beta 模型：true/false（选填）",
+        "type": "string",
+        "example": "false"
+      },
+      {
+        "id": "app_id#2",
+        "name": "app_id",
+        "required": true,
+        "description": "接入项目 APPID（app_ 前缀，公开标识）",
+        "type": "string",
+        "example": "app_5f3a9c2b7e6d8f1a2b3c4d5e6f7a8b9c"
+      },
+      {
+        "id": "timestamp#3",
+        "name": "timestamp",
+        "required": true,
+        "description": "10 位时间戳（秒），与服务器时间差须在 ±5 分钟内，防重放",
+        "type": "string",
+        "example": "1725000000"
+      },
+      {
+        "id": "nonce#4",
+        "name": "nonce",
+        "required": true,
+        "description": "随机字符串，每次请求唯一",
+        "type": "string",
+        "example": "a1b2c3d4e5f6a7b8"
+      },
+      {
+        "id": "sign#5",
+        "name": "sign",
+        "required": true,
+        "description": "HMAC-SHA256 签名（小写 hex），密钥为项目 app_secret",
+        "type": "string",
+        "example": "3f9a7c1e...（64 位小写 hex）"
+      }
+    ]
+  },
+  "responses": [
+    {
+      "id": "0",
+      "name": "设置成功",
+      "code": 200,
+      "contentType": "json",
+      "description": "字符范围已设置",
+      "jsonSchema": {
+        "type": "object",
+        "required": ["code", "msg", "data"],
+        "properties": {
+          "code": { "type": "integer", "description": "10000=成功" },
+          "msg": { "type": "string", "description": "设置成功" },
+          "data": { "type": "null", "description": "无返回数据" }
+        }
+      }
+    },
+    {
+      "id": "1",
+      "name": "参数缺失",
+      "code": 200,
+      "contentType": "json",
+      "description": "缺少 ranges",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "description": "20001 参数缺失" },
+          "msg": { "type": "string", "description": "参数缺失: ranges(字符范围)" },
+          "data": { "type": "null" }
+        }
+      }
+    },
+    {
+      "id": "2",
+      "name": "设置失败",
+      "code": 200,
+      "contentType": "json",
+      "description": "字符范围不合法（如预定义编号越界），错误信息透传",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "description": "40001 外部API调用失败" },
+          "msg": { "type": "string", "description": "如：设置字符范围失败: ..." },
+          "data": { "type": "null" }
+        }
+      }
+    }
+  ],
+  "responseExamples": [
+    {
+      "name": "设置成功示例",
+      "responseId": "0",
+      "data": "{\n  \"code\": 10000,\n  \"msg\": \"设置成功\",\n  \"data\": null\n}"
+    }
+  ]
+}

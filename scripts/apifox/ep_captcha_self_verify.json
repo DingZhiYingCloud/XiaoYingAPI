@@ -1,0 +1,128 @@
+{
+  "name": "校验验证码",
+  "type": "http",
+  "method": "post",
+  "path": "/api/captcha_self/verify",
+  "status": "released",
+  "folderId": 95704839,
+  "description": "## 功能说明\n\n提交用户答案校验自研图形验证码，**一次性消费**（校验后无论对错立即失效）。\n\n- 校验通过：`code=10000` 且 `data.passed=true`\n- 未通过（答案错误 / 已过期 / 已被使用 / 不存在）：`code=20003` 且 `data.passed=false`，原因见 `msg`\n\n答案一次性：同一条验证码重复提交只会成功一次，失败后需重新调用 `/api/captcha_self/generate` 换新图。\n\n## 鉴权\n\n本服务为**开放接口**（分类树 `/api/captcha_self/` 设为 open），无需项目签名。\n\n## 请求方式\n\n- 表单提交（application/x-www-form-urlencoded）\n- 不支持 GET 方法（返回 405）",
+  "requestBody": {
+    "type": "application/x-www-form-urlencoded",
+    "parameters": [
+      {
+        "id": "captcha_id#0",
+        "name": "captcha_id",
+        "required": true,
+        "description": "生成接口返回的 captcha_id（UUID）",
+        "type": "string",
+        "example": "9f1c1f14-6b0a-4a3e-9c31-2c9b6f0d1a55"
+      },
+      {
+        "id": "answer#1",
+        "name": "answer",
+        "required": true,
+        "description": "用户填写的答案（字符不区分大小写；算术填计算结果）",
+        "type": "string",
+        "example": "7H4K"
+      }
+    ]
+  },
+  "responses": [
+    {
+      "id": "0",
+      "name": "校验通过",
+      "code": 200,
+      "contentType": "json",
+      "description": "答案正确",
+      "jsonSchema": {
+        "type": "object",
+        "required": ["code", "msg", "data"],
+        "properties": {
+          "code": { "type": "integer", "description": "10000=成功" },
+          "msg": { "type": "string", "description": "校验通过" },
+          "data": {
+            "type": "object",
+            "required": ["passed"],
+            "properties": {
+              "passed": { "type": "boolean", "description": "true=校验通过" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "1",
+      "name": "校验未通过",
+      "code": 200,
+      "contentType": "json",
+      "description": "答案错误 / 已过期 / 已被使用 / 不存在",
+      "jsonSchema": {
+        "type": "object",
+        "required": ["code", "msg", "data"],
+        "properties": {
+          "code": { "type": "integer", "description": "20003 参数值非法" },
+          "msg": { "type": "string", "description": "如：答案错误 / 验证码已过期，请重新获取" },
+          "data": {
+            "type": "object",
+            "required": ["passed"],
+            "properties": {
+              "passed": { "type": "boolean", "description": "false=未通过" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "2",
+      "name": "参数缺失",
+      "code": 200,
+      "contentType": "json",
+      "description": "缺少 captcha_id 或 answer",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "description": "20001 参数缺失" },
+          "msg": { "type": "string", "description": "如：参数缺失: captcha_id, answer" },
+          "data": {
+            "type": "object",
+            "properties": {
+              "passed": { "type": "boolean", "description": "false" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "3",
+      "name": "参数格式错误",
+      "code": 200,
+      "contentType": "json",
+      "description": "captcha_id 不是合法 UUID",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "description": "20002 参数格式错误" },
+          "msg": { "type": "string", "description": "如：参数格式错误: captcha_id 必须为 UUID" },
+          "data": {
+            "type": "object",
+            "properties": {
+              "passed": { "type": "boolean", "description": "false" }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "responseExamples": [
+    {
+      "name": "校验通过示例",
+      "responseId": "0",
+      "data": "{\n  \"code\": 10000,\n  \"msg\": \"校验通过\",\n  \"data\": {\n    \"passed\": true\n  }\n}"
+    },
+    {
+      "name": "校验未通过示例",
+      "responseId": "1",
+      "data": "{\n  \"code\": 20003,\n  \"msg\": \"答案错误\",\n  \"data\": {\n    \"passed\": false\n  }\n}"
+    }
+  ]
+}

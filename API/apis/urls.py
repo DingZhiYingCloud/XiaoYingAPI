@@ -21,5 +21,6 @@ urlpatterns = [
     path('feedback/', include('API.apis.feedback.urls')),       # 问题反馈中心服务路由
     path('statistics/', include('API.apis.statistics.urls')),   # API 调用统计服务路由
     path('douyin/', include('API.apis.Douyin.urls')),           # 抖音服务路由（视频解析 + 评论发布）
+    path('VMEmail_mailcx/', include('API.apis.VMEmail_mailcx.urls')), # VMEmail 虚拟邮件(mail.cx)服务路由
 ]
 

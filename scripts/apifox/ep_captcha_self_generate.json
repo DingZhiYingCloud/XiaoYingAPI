@@ -1,0 +1,98 @@
+{
+  "name": "生成验证码",
+  "type": "http",
+  "method": "get",
+  "path": "/api/captcha_self/generate",
+  "status": "released",
+  "folderId": 95704839,
+  "description": "## 功能说明\n\n生成一张自研图形验证码（Pillow 本地绘制，无第三方依赖），返回 `captcha_id` 与 base64 图片。用户作答后需调用 `/api/captcha_self/verify` 校验；**答案一次性**，校验后无论对错立即失效，需重新调用本接口换新图。\n\n支持两类验证码：\n\n| kind | 说明 |\n|------|------|\n| `char`（默认） | 字符图片（数字 + 大写字母），长度可选 4-6 |\n| `arithmetic` | 算术加减法，用户填计算结果 |\n\n## 鉴权\n\n本服务为**开放接口**（分类树 `/api/captcha_self/` 设为 open），无需项目签名。\n\n## 请求方式\n\n- GET，参数放 query string\n- 不支持其它方法（返回 405）",
+  "parameters": {
+    "query": [
+      {
+        "id": "kind#0",
+        "name": "kind",
+        "required": false,
+        "description": "验证码类型：char=字符图片（默认）/ arithmetic=算术",
+        "type": "string",
+        "example": "char"
+      },
+      {
+        "id": "length#1",
+        "name": "length",
+        "required": false,
+        "description": "字符个数，仅 kind=char 生效，取值 4-6（默认 4）",
+        "type": "string",
+        "example": "4"
+      }
+    ]
+  },
+  "responses": [
+    {
+      "id": "0",
+      "name": "生成成功",
+      "code": 200,
+      "contentType": "json",
+      "description": "返回 captcha_id、类型、base64 图片与有效期",
+      "jsonSchema": {
+        "type": "object",
+        "required": ["code", "msg", "data"],
+        "properties": {
+          "code": { "type": "integer", "description": "10000=成功" },
+          "msg": { "type": "string", "description": "生成成功" },
+          "data": {
+            "type": "object",
+            "required": ["captcha_id", "kind", "image", "expire_in"],
+            "properties": {
+              "captcha_id": { "type": "string", "description": "验证码 ID（UUID），校验时必须回传" },
+              "kind": { "type": "string", "description": "验证码类型：char / arithmetic" },
+              "image": { "type": "string", "description": "base64 data URI（可直接用于 <img src>）" },
+              "expire_in": { "type": "integer", "description": "有效期（秒），默认 300" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "1",
+      "name": "参数值非法",
+      "code": 200,
+      "contentType": "json",
+      "description": "kind 不是 char/arithmetic，或 length 超出 4-6",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "description": "20003 参数值非法" },
+          "msg": { "type": "string", "description": "如：参数值非法: kind 仅支持 char/arithmetic" },
+          "data": { "type": "null" }
+        }
+      }
+    },
+    {
+      "id": "2",
+      "name": "参数格式错误",
+      "code": 200,
+      "contentType": "json",
+      "description": "length 不是正整数",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "description": "20002 参数格式错误" },
+          "msg": { "type": "string", "description": "如：参数格式错误: length 必须为正整数" },
+          "data": { "type": "null" }
+        }
+      }
+    }
+  ],
+  "responseExamples": [
+    {
+      "name": "生成成功示例",
+      "responseId": "0",
+      "data": "{\n  \"code\": 10000,\n  \"msg\": \"生成成功\",\n  \"data\": {\n    \"captcha_id\": \"9f1c1f14-6b0a-4a3e-9c31-2c9b6f0d1a55\",\n    \"kind\": \"char\",\n    \"image\": \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUg...\",\n    \"expire_in\": 300\n  }\n}"
+    },
+    {
+      "name": "参数值非法示例",
+      "responseId": "1",
+      "data": "{\n  \"code\": 20003,\n  \"msg\": \"参数值非法: length 取值范围 4-6\",\n  \"data\": null\n}"
+    }
+  ]
+}

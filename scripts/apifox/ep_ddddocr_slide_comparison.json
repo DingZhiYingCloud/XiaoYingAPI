@@ -1,0 +1,140 @@
+{
+  "name": "滑块匹配（差异比较法）",
+  "type": "http",
+  "method": "post",
+  "path": "/api/ddddocr/slide-comparison",
+  "status": "developing",
+  "folderId": 90674351,
+  "description": "## 功能说明\n\n直接比较滑块图与背景图的差异定位缺口（算法二）。成功返回缺口左上角坐标 `data={target_x, target_y}`。\n\n滑块（slide_image / slide_image_url）与背景（bg_image / bg_image_url）**各至少提供其一**；同时提供时文件优先。\n\n## 安全说明（S-01 整改）\n\n图片仅接受三类输入：上传的文件 bytes、http(s) 图片 URL、base64 字符串。URL 带 SSRF 防护（仅公网 http/https，不跟随重定向，限时 5 秒、限 10MB）；本地文件路径仅允许读取服务器 `captcha_samples` 调试目录内的图片。\n\n## 鉴权（A-01）\n\n本接口需要签名认证 —— 须携带签名公共参数 `app_id / timestamp / nonce / sign`，未签名或签名错误返回 20011。\n\n## 请求方式\n\n- 上传文件时请求体为 multipart/form-data",
+  "requestBody": {
+    "type": "multipart/form-data",
+    "parameters": [
+      {
+        "id": "slide_image#0",
+        "name": "slide_image",
+        "required": false,
+        "description": "滑块图片文件（与 slide_image_url 至少提供一个，同时提供时文件优先）",
+        "type": "file",
+        "example": ""
+      },
+      {
+        "id": "slide_image_url#1",
+        "name": "slide_image_url",
+        "required": false,
+        "description": "或填写滑块图片 URL / base64 字符串",
+        "type": "string",
+        "example": "https://example.com/slide.png"
+      },
+      {
+        "id": "bg_image#2",
+        "name": "bg_image",
+        "required": false,
+        "description": "背景图片文件（与 bg_image_url 至少提供一个，同时提供时文件优先）",
+        "type": "file",
+        "example": ""
+      },
+      {
+        "id": "bg_image_url#3",
+        "name": "bg_image_url",
+        "required": false,
+        "description": "或填写背景图片 URL / base64 字符串",
+        "type": "string",
+        "example": "https://example.com/bg.png"
+      },
+      {
+        "id": "app_id#4",
+        "name": "app_id",
+        "required": true,
+        "description": "接入项目 APPID（app_ 前缀，公开标识）",
+        "type": "string",
+        "example": "app_5f3a9c2b7e6d8f1a2b3c4d5e6f7a8b9c"
+      },
+      {
+        "id": "timestamp#5",
+        "name": "timestamp",
+        "required": true,
+        "description": "10 位时间戳（秒），与服务器时间差须在 ±5 分钟内，防重放",
+        "type": "string",
+        "example": "1725000000"
+      },
+      {
+        "id": "nonce#6",
+        "name": "nonce",
+        "required": true,
+        "description": "随机字符串，每次请求唯一",
+        "type": "string",
+        "example": "a1b2c3d4e5f6a7b8"
+      },
+      {
+        "id": "sign#7",
+        "name": "sign",
+        "required": true,
+        "description": "HMAC-SHA256 签名（小写 hex），密钥为项目 app_secret",
+        "type": "string",
+        "example": "3f9a7c1e...（64 位小写 hex）"
+      }
+    ]
+  },
+  "responses": [
+    {
+      "id": "0",
+      "name": "匹配成功",
+      "code": 200,
+      "contentType": "json",
+      "description": "返回缺口左上角坐标",
+      "jsonSchema": {
+        "type": "object",
+        "required": ["code", "msg", "data"],
+        "properties": {
+          "code": { "type": "integer", "description": "10000=成功" },
+          "msg": { "type": "string", "description": "匹配成功" },
+          "data": {
+            "type": "object",
+            "required": ["target_x", "target_y"],
+            "properties": {
+              "target_x": { "type": "integer", "description": "缺口左上角 x 坐标" },
+              "target_y": { "type": "integer", "description": "缺口左上角 y 坐标" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "1",
+      "name": "参数缺失",
+      "code": 200,
+      "contentType": "json",
+      "description": "滑块图或背景图缺失",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "description": "20001 参数缺失" },
+          "msg": { "type": "string", "description": "如：参数缺失: bg_image(背景图片文件/URL/base64)" },
+          "data": { "type": "null" }
+        }
+      }
+    },
+    {
+      "id": "2",
+      "name": "匹配失败",
+      "code": 200,
+      "contentType": "json",
+      "description": "图片无法读取 / URL 被安全策略拒绝 / 匹配异常",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "description": "40001 外部API调用失败" },
+          "msg": { "type": "string", "description": "具体错误信息" },
+          "data": { "type": "null" }
+        }
+      }
+    }
+  ],
+  "responseExamples": [
+    {
+      "name": "匹配成功示例",
+      "responseId": "0",
+      "data": "{\n  \"code\": 10000,\n  \"msg\": \"匹配成功\",\n  \"data\": {\n    \"target_x\": 152,\n    \"target_y\": 48\n  }\n}"
+    }
+  ]
+}
