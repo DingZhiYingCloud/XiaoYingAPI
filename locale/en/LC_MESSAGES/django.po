@@ -29,9 +29,6 @@ msgstr "Open menu"
 msgid "接入向导"
 msgstr "Setup Wizard"
 
-msgid "接入指南"
-msgstr "Integration Guide"
-
 msgid "接口文档"
 msgstr "API Docs"
 
@@ -49,6 +46,9 @@ msgstr "User menu"
 
 msgid "登录"
 msgstr "Log In"
+
+msgid "计算程序"
+msgstr "Programs"
 
 msgid "账号："
 msgstr "Account: "
@@ -3321,4 +3321,88 @@ msgstr "Returns each service's total and today's call count, sorted by total cal
 
 msgid "返回某个接口的累计调用次数与今日调用次数。"
 msgstr "Returns the total and today's call count of an Endpoint."
+
+
+# ==================== 计算程序模块（programs/index.html、programs/detail.html） ====================
+msgid "%(n)s 个分类"
+msgstr "%(n)s categories"
+
+msgid "%(n)s 个文件"
+msgstr "%(n)s files"
+
+msgid "%(n)s 个程序"
+msgstr "%(n)s programs"
+
+msgid "%(name)s - 计算程序 - 小影API"
+msgstr "%(name)s - Programs - XiaoYingAPI"
+
+msgid "%(name)s 的实现原理、分析报告与源码文件下载，供安全研究与技术学习使用。"
+msgstr "Implementation principles, analysis reports, and source code downloads for %(name)s, for security research and technical learning."
+
+msgid "%(name)s,%(category)s,计算程序,脚本,源码,安全研究"
+msgstr "%(name)s,%(category)s,Programs,Scripts,Source Code,Security Research"
+
+msgid "下载"
+msgstr "Download"
+
+msgid "小影API 计算程序模块：收录各类计算机程序与脚本的实现原理、分析报告与源码，供安全研究与技术学习使用。"
+msgstr "XiaoYingAPI Programs: a collection of computer programs and scripts with their implementation principles, analysis reports, and source code, for security research and technical learning."
+
+msgid "复制内容"
+msgstr "Copy content"
+
+msgid "打包下载"
+msgstr "Download ZIP"
+
+msgid "收录各类计算机程序与脚本，按分类整理其实现原理、分析报告与源码，供安全研究与技术学习使用。"
+msgstr "A collection of computer programs and scripts, organized by category with their implementation principles, analysis reports, and source code, for security research and technical learning."
+
+msgid "文件"
+msgstr "File"
+
+msgid "文件不存在"
+msgstr "File not found"
+
+msgid "文件清单"
+msgstr "File List"
+
+msgid "文件超过 1 MB，不支持在线预览，请下载后查看"
+msgstr "The file exceeds 1 MB and cannot be previewed online. Please download it to view."
+
+msgid "暂无可展示的程序，请稍后再来。"
+msgstr "No programs to display yet. Please check back later."
+
+msgid "查看内容"
+msgstr "View Content"
+
+msgid "查看详情"
+msgstr "View Details"
+
+msgid "本模块收录的程序与脚本仅用于安全研究、原理分析与防护能力建设。请勿将其用于任何未授权的攻击、欺诈或其他违法场景；下载与使用前，请自行确认符合所在地法律法规及目标平台的服务条款，风险自负。"
+msgstr "The programs and scripts in this module are provided solely for security research, principle analysis, and defensive capability building. Do not use them for any unauthorized attack, fraud, or other illegal activity. Before downloading or using them, confirm that you comply with the laws of your jurisdiction and the terms of service of any target platform. You bear all risks."
+
+msgid "本程序仅用于安全研究、原理分析与防护能力建设。请勿将其用于任何未授权的攻击、欺诈或其他违法场景；下载与使用前，请自行确认符合所在地法律法规及目标平台的服务条款，风险自负。"
+msgstr "This program is provided solely for security research, principle analysis, and defensive capability building. Do not use it for any unauthorized attack, fraud, or other illegal activity. Before downloading or using it, confirm that you comply with the laws of your jurisdiction and the terms of service of any target platform. You bear all risks."
+
+msgid "源码可下载"
+msgstr "Source Available"
+
+msgid "计算程序 - 小影API"
+msgstr "Programs - XiaoYingAPI"
+
+msgid "计算程序,脚本,源码,斗篷,安全研究,小影API"
+msgstr "Programs,Scripts,Source Code,Cloaking,Security Research,XiaoYingAPI"
+
+msgid "该文件不是文本文件，不支持在线预览，请下载后查看"
+msgstr "The file is not a text file and cannot be previewed online. Please download it to view."
+
+msgid "该程序目录下暂无可下载文件。"
+msgstr "No downloadable files in this program directory."
+
+msgid "该说明文档读取失败，请确认文件编码为 UTF-8。"
+msgstr "Failed to read this document. Please make sure the file is saved as UTF-8."
+
+msgid "超过 1 MB，请下载后查看"
+msgstr "Over 1 MB — download to view"
+
 

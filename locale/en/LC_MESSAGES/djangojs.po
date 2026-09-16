@@ -92,6 +92,12 @@ msgstr "Captcha integration test (real popup)"
 msgid "复古"
 msgstr "Retro"
 
+msgid "复制内容"
+msgstr "Copy content"
+
+msgid "复制失败，请手动选择复制"
+msgstr "Copy failed, please select the text and copy manually"
+
 msgid "大黄蜂"
 msgstr "Bumblebee"
 
@@ -118,6 +124,9 @@ msgstr "Saved locally"
 
 msgid "已关闭，可再次点击「开始图形验证」"
 msgstr "Closed. You can click \"Start captcha\" again"
+
+msgid "已复制"
+msgstr "Copied"
 
 msgid "已恢复默认"
 msgstr "Reset to default"

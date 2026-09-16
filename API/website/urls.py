@@ -2,7 +2,7 @@
 from django.urls import path
 from django.views.i18n import JavaScriptCatalog
 
-from . import console, docs_views, views
+from . import console, docs_views, programs_views, views
 
 app_name = 'website'
 
@@ -26,6 +26,13 @@ urlpatterns = [
     path('docs/', docs_views.index, name='docs_index'),        # 文档目录
     path('docs/_call/', docs_views.call, name='docs_call'),    # 在线调试代调（白名单）
     path('docs/<str:slug>/', docs_views.service, name='docs_service'),  # 单服务文档页
+
+    # 计算程序模块（内容取自 settings.PROGRAMS_ROOT 目录树）
+    # 注意：download / content 必须排在 <path:rel> 之前，否则会被详情路由抢先匹配
+    path('programs/', programs_views.index, name='programs_index'),          # 程序列表
+    path('programs/download/', programs_views.download, name='programs_download'),  # 文件 / 整包下载
+    path('programs/content/', programs_views.content, name='programs_content'),     # 文件在线预览
+    path('programs/<path:rel>/', programs_views.detail, name='programs_detail'),    # 程序详情
 
     # 超级管理员控制台（服务端 is_superuser 二次鉴权；超管在 /login/ 登录后即可访问）
     path('console/projects/', console.projects_view, name='console_projects'),   # 接入项目管理

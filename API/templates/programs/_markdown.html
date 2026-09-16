@@ -1,0 +1,22 @@
+{# Markdown 渲染结果的统一排版容器 #}
+{# 项目未启用 typography 插件（无 prose 类），故用 Tailwind 任意变体给容器内的元素挂样式； #}
+{# 集中在这一处维护，列表页的分类说明与详情页的正文共用，避免各页面重复写长类名。 #}
+<div class="overflow-x-auto text-sm leading-relaxed text-base-content/80
+            [&_h1]:mt-8 [&_h1]:mb-3 [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:text-base-content
+            [&_h2]:mt-8 [&_h2]:mb-3 [&_h2]:border-b [&_h2]:border-base-300 [&_h2]:pb-2 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-base-content
+            [&_h3]:mt-6 [&_h3]:mb-2 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-base-content
+            [&_h4]:mt-5 [&_h4]:mb-2 [&_h4]:font-semibold [&_h4]:text-base-content
+            [&_p]:my-3
+            [&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2
+            [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-6
+            [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-6
+            [&_li]:my-1
+            [&_strong]:font-semibold [&_strong]:text-base-content
+            [&_blockquote]:my-4 [&_blockquote]:border-l-4 [&_blockquote]:border-base-300 [&_blockquote]:pl-4 [&_blockquote]:text-base-content/70
+            [&_code]:rounded [&_code]:bg-base-200 [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[0.85em]
+            [&_pre]:my-4 [&_pre]:rounded-box [&_pre]:bg-base-200 [&_pre]:p-4
+            [&_pre_code]:bg-transparent [&_pre_code]:p-0
+            [&_hr]:my-6 [&_hr]:border-base-300
+            [&_table]:my-4 [&_table]:w-full [&_table]:text-left
+            [&_th]:border-b [&_th]:border-base-300 [&_th]:px-3 [&_th]:py-2 [&_th]:font-semibold [&_th]:whitespace-nowrap
+            [&_td]:border-b [&_td]:border-base-200 [&_td]:px-3 [&_td]:py-2 [&_td]:align-top">{{ content|safe }}</div>

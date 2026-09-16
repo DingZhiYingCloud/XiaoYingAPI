@@ -9,7 +9,8 @@
 - **统一的 API 契约**：所有服务共用 `{code, msg, data}` 响应结构与 `API/common/status_code.py` 状态码体系
 - **分类树认证（fail-closed）**：按服务路径配置「需要认证 / 开放 / 跟随上级」；未显式配置的服务默认拒绝匿名访问
 - **开箱即用的接口文档中心**：声明式描述「服务 → 线路 → 端点 → 参数」，自动生成文档页、侧栏导航与在线调试（服务端代签，浏览器不接触密钥）
-- **自带官网前台**：首页、接入向导、统一登录注册、超级管理员控制台，无需额外后台
+- **自带官网前台**：首页、接入向导、统一登录注册、计算程序、超级管理员控制台，无需额外后台
+- **计算程序库**：目录即数据源，往 `CalculationProgram/` 丢一个带 `README.md` 的目录即自动生成列表页、说明文档与文件下载（见第八章第 6 节）
 - **多语言 + 多主题**：简体中文 / 繁體中文 / English；35 款 daisyUI 主题可切换
 - **调用统计**：按天预聚合的调用量看板 + 公开查询接口
 - **前端零 Node 构建链**：daisyUI 5 + Tailwind 4 由独立可执行文件编译，不需要 npm（**注**：抖音评论线路运行时需要 Node.js，见第三章）
@@ -28,6 +29,7 @@
 | django-cors-headers             | 跨域请求支持                                                 |
 | whitenoise                      | 生产模式静态文件服务                                             |
 | requests / httpx / lxml         | HTTP 请求与网页解析                                            |
+| markdown                        | 把「计算程序」模块的说明文档（README.md）渲染成 HTML（见第八章第 6 节）           |
 | pycryptodome                    | 加解密（Crypto）                                             |
 | ddddocr                         | 验证码识别                                                  |
 | python-dotenv                   | 环境变量加载（`.env`）                                         |
@@ -49,8 +51,9 @@ XiaoYingAPI/
 │   ├── apis/                     # 各业务 API 服务「三件套」，路由汇总在 apis/urls.py
 │   ├── common/                   # 公共模块，全站复用，禁止在业务里重复实现
 │   ├── models/                   # 数据模型（按业务域分目录，规则见其目录内 数据库模型创建规则.md）
-│   ├── website/                  # 官网前台：首页 / 接入向导 / 登录注册 / 文档中心 / 超管控制台
-│   │   └── docs/                 # 文档中心的「服务 × 线路 × 端点」声明式数据
+│   ├── website/                  # 官网前台：首页 / 接入向导 / 登录注册 / 文档中心 / 计算程序 / 超管控制台
+│   │   ├── docs/                 # 文档中心的「服务 × 线路 × 端点」声明式数据
+│   │   └── programs.py           # 「计算程序」模块：扫描内容目录、渲染说明文档（见第八章第 6 节）
 │   ├── middlewares/              # 独立中间件组件（cloak_guard 斗篷守卫，见其目录内 README.md）
 │   ├── management/commands/      # 自定义管理命令（rebuild_category_tree / security_backfill）
 │   ├── migrations/               # 数据库迁移（随代码入库，详见第六章）
@@ -60,6 +63,7 @@ XiaoYingAPI/
 ├── SpiderServices/               # 爬虫源码（被 API 层 utils.py 调用，与业务解耦）
 │   └── Douyin/                   # 抖音：Video/（视频解析）、Comment/（评论发布，含 sign/ 与 js/）
 ├── scripts/                      # 辅助脚本：回归测试 / 词条编译 / Apifox 文档 / douyin_comment_publish（抖音补环境沙箱）
+├── CalculationProgram/           # 「计算程序」模块的内容目录（前台 /programs/ 的唯一数据源，见第八章第 6 节）
 ├── locale/                       # 多语言词条（en / zh_Hant）+ 多语言开发指南.md
 ├── BugAndRepair/                 # 部署手册 / 事故复盘 / 安全整改报告（索引见其 README.md）
 ├── media/                        # 媒体文件（用户上传 / 站点 logo）
@@ -186,6 +190,7 @@ python manage.py runserver 0.0.0.0:10000
 | `CORS_ORIGIN_ALLOW_ALL`       | 否  | 是否允许所有跨域来源，默认 `False`                                                                    |
 | `XYAPI_COOKIE_ISOLATION`      | 否  | **环境模式单一开关**：`true`=本地开发（独立 Cookie 名隔离多项目 + 不强制 HTTPS）；删除或 `false`=生产（标准 Cookie 名 + 强制 HTTPS Cookie）。生产务必不设置或设为 `false` |
 | `XYAPI_WEB_APP_NAME`          | 否  | 官网在「接入项目」中的应用名称，默认 `小影API官网`；首次使用自动创建                                                  |
+| `XYAPI_PROGRAMS_ROOT`         | 否  | 「计算程序」模块的内容根目录，默认 `CalculationProgram/`；**该目录下的文件会被前台完整对外展示并提供下载**，请勿放入密钥、Cookie 等敏感文件 |
 | `QQ_MAIL_ACCOUNT`             | 否  | QQ 邮箱发件账号（邮件服务用）                                                                       |
 | `QQ_MAIL_AUTH_CODE`           | 否  | QQ 邮箱 SMTP 授权码                                                                         |
 | `EMAIL_VERIFY_MODE`           | 否  | 邮箱验证方式，默认 `both`                                                                        |
@@ -312,6 +317,10 @@ python manage.py rebuild_category_tree
 | `/docs/`                                    | 接口文档中心     | 左侧「服务 → 线路」导航 + 服务卡片目录                              |
 | `/docs/<服务slug>/`                          | 单服务文档      | 线路 tab + 端点参数表 + **在线调试**                           |
 | `/docs/_call/`                              | 在线调试代调接口   | 白名单校验后由**服务端代签**并转发真实 `/api/` 端点，浏览器不接触 APPSECRET   |
+| `/programs/`                                | 计算程序列表     | 按分类展示 `CalculationProgram/` 下的全部程序条目（见第 6 节）         |
+| `/programs/<分类>/<程序>/`                     | 程序详情       | 说明文档正文 + 可下载文件清单（含「查看内容」在线预览）+ 打包下载              |
+| `/programs/download/`                       | 程序文件下载     | `?path=` 单个文件、`?pack=` 整包 zip；仅允许内容目录内的相对路径            |
+| `/programs/content/`                        | 程序文件预览     | `?path=` 返回文本正文（供详情页弹窗）；超 1 MB 或非文本文件返回提示         |
 | `/console/projects/`                        | 超级管理员控制台   | 接入项目增删改查（超管专属）                                      |
 | `/console/categories/`                      | API 服务分类   | 配置分类认证模式并显示真实生效结果（超管专属）                             |
 | `/console/stats/`                           | API 调用统计   | 调用量趋势、服务/接口/项目排行、状态码分布与耗时（超管专属）                     |
@@ -350,6 +359,34 @@ python manage.py rebuild_category_tree
 ### 5. 多主题
 
 前端内置 35 款 daisyUI 主题，可在页头「主题」下拉切换；选择存于浏览器 `localStorage`（不落库），页面加载时由内联脚本提前恢复以避免闪烁。增删主题需修改 `API/static/css/input.css` 的 daisyUI 插件配置并重新编译。
+
+### 6. 计算程序模块（`/programs/`）
+
+一个**目录即数据源**的程序 / 脚本展示与下载模块：内容全部来自 `CalculationProgram/`（可用 `XYAPI_PROGRAMS_ROOT` 指向别处），**不建表、不写数据库**，页面按磁盘现状实时生成。
+
+**目录约定**
+
+```
+CalculationProgram/
+├── Documents.md          # 模块总述（可选，展示在列表页顶部）
+└── <分类>/                # 一级子目录即一个分类
+    ├── README.md         # 分类说明（可选）
+    └── <程序目录>/         # 「含 README.md 且含普通文件」的目录 = 一个程序条目
+        ├── README.md     # 程序说明（渲染为详情页正文）
+        └── ...           # 其余文件全部作为可下载文件
+```
+
+- 程序展示名 = 去掉分类后的路径片段用 `-` 连接（`cloak/dp-2026/1` → `dp-2026-1`），完整相对路径同时作为 URL 与下载键。
+- 中间层目录（如 `cloak/dp-2026/`）若只有 `README.md`、没有普通文件，则**不算**程序条目，其说明不会被展示；要让这段说明出现，把它放进对应**分类目录**的 `README.md`。
+- 同级目录按自然序排列（`2` 排在 `10` 之前）；分类下没有任何程序条目的目录不会展示。
+
+**新增一个程序**：建目录 → 写 `README.md` → 放入文件，刷新页面即可生效，**无需改代码、无需迁移**（内容目录是运行时读取的，改的是 `XYAPI_PROGRAMS_ROOT` 本身才需要重启）。
+
+> 说明文档（`README.md` 与 `Documents.md`）请存为 **UTF-8** 编码——Windows 记事本「另存为」默认是 ANSI/GBK。存错编码不会让页面报错，但该段说明会显示一条「读取失败」提示，其余内容照常展示。
+
+**下载与在线预览**：`/programs/download/` 只接受内容根目录内的相对路径，越界（`../`）与指向目录外的符号链接一律拒绝，整包下载用临时文件回传不占内存；`/programs/content/` 提供文本文件的在线预览（详情页「查看内容」弹窗按纯文本展示，不解析其中的 HTML），**单文件超过 1 MB 或非文本文件不提供预览**，按钮置灰并提示下载（阈值见 `API/website/programs.py` 的 `PREVIEW_MAX_BYTES`；接口侧会再校验一次，直接调接口也绕不过）。
+
+> ⚠️ **该目录下的文件会被完整对外展示并提供下载（无需登录）**。请勿把密钥、Cookie、`.env` 等敏感文件放进 `CalculationProgram/`。列表页与详情页均已内置合规提示，内容仅限合法研究用途。
 
 ***
 

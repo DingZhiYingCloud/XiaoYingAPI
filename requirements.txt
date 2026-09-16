@@ -3,6 +3,7 @@ Django
 django-cors-headers 
 requests 
 lxml
+markdown
 pycryptodome
 python-dotenv 
 ddddocr

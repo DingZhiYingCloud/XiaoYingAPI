@@ -238,6 +238,13 @@ PHONE_VERIFY_EXPIRE_MINUTES = int(os.getenv('PHONE_VERIFY_EXPIRE_MINUTES', '5'))
 # 官网会话中签发的 Token 即绑定在该项目下，与用户中心契约保持一致。
 WEB_APP_NAME = os.getenv('XYAPI_WEB_APP_NAME', '小影API官网')
 
+# 「计算程序」模块的内容根目录（前台 /programs/ 展示与下载的唯一数据源）。
+# 目录约定：一级子目录 = 分类，其下每个「含 README.md 且含普通文件」的目录 = 一个程序条目。
+# 该目录下的文件会被前台直接对外提供下载，请勿放入密钥、Cookie 等敏感文件。
+# 用 or 而非 getenv 默认值兜底：.env 里留空（XYAPI_PROGRAMS_ROOT=）时 getenv 返回空串，
+# 而 Path('') 会解析成当前工作目录（即项目根），把整个项目当成内容目录扫描并对外提供下载。
+PROGRAMS_ROOT = Path(os.getenv('XYAPI_PROGRAMS_ROOT') or BASE_DIR / 'CalculationProgram')
+
 
 # ==================== 文件上传配置 ====================
 # 单次上传请求体最大大小(110MB，预留10MB余量给表单字段)

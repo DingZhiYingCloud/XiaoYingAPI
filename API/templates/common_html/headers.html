@@ -18,13 +18,9 @@
          aria-label="{% trans '主导航' %}">
       <ul class="menu menu-horizontal mx-auto w-max gap-1 px-1">
         <li><a href="/">{% trans "首页" %}</a></li>
-        <li><a href="/#services">{% trans "服务能力" %}</a></li>
-        <li><a href="/#join">{% trans "接入指南" %}</a></li>
         <li><a href="/guide/">{% trans "接入向导" %}</a></li>
-        <li><a href="/#faq">{% trans "常见问题" %}</a></li>
-        <li>
-          <a href="/docs/">{% trans "接口文档" %}</a>
-        </li>
+        <li><a href="/docs/">{% trans "接口文档" %}</a></li>
+        <li><a href="/programs/">{% trans "计算程序" %}</a></li>
       </ul>
     </nav>
 
@@ -109,13 +105,9 @@
         </summary>
         <ul class="menu dropdown-content z-10 mt-3 w-64 rounded-box border border-base-300 bg-base-100 p-2 shadow-md">
           <li><a href="/">{% trans "首页" %}</a></li>
-          <li><a href="/#services">{% trans "服务能力" %}</a></li>
-          <li><a href="/#join">{% trans "接入指南" %}</a></li>
           <li><a href="/guide/">{% trans "接入向导" %}</a></li>
-          <li><a href="/#faq">{% trans "常见问题" %}</a></li>
-          <li>
-            <a href="/docs/">{% trans "接口文档" %}</a>
-          </li>
+          <li><a href="/docs/">{% trans "接口文档" %}</a></li>
+          <li><a href="/programs/">{% trans "计算程序" %}</a></li>
           <li><div class="divider my-1"></div></li>
           {% if website_user %}
           <li class="menu-title"><span>{{ website_user.username|default:website_user.account }}（{{ website_user.account }}）</span></li>

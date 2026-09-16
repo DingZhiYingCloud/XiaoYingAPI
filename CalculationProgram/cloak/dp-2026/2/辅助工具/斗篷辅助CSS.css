@@ -1,0 +1,81 @@
+/* ==========================================================================
+ * dp-2026-2 斗篷辅助样式 · 全屏空白 + Loading 遮罩
+ * --------------------------------------------------------------------------
+ * 用途：页面一进来就用它盖住整屏（纯色 + 居中旋转动画），让访问者/检测系统
+ *       只看到"页面正在加载"；JS 判定为有效流量后，再淡出遮罩并展示目标页。
+ *
+ * 配套 HTML（建议放在 <body> 直属层级；不要放进带 transform / filter 的容器里，
+ * 否则 position: fixed 会以该容器为参照，导致遮罩覆盖不满全屏）：
+ *
+ *   <div class="dp-mask">
+ *     <div class="dp-mask-spinner"></div>
+ *   </div>
+ *
+ * 配色 / 节奏：全部集中在 .dp-mask 顶部的 CSS 变量里，改那几行即可；
+ * 也可以在元素上写 style="--dp-mask-bg:#111" 单独覆盖某一项。
+ *
+ * 淡出切换（推荐用法）：
+ *   1) 先把目标内容插进 body —— 不要用 body.innerHTML 整体覆盖，
+ *      那样遮罩会被一起销毁，就没有淡出效果了
+ *   2) 给遮罩加 .dp-mask--fade-out，等过渡结束后再移除元素
+ *
+ *   var mask = document.querySelector('.dp-mask');
+ *   document.body.insertAdjacentHTML('beforeend', '<iframe src="..." ...></iframe>');
+ *   mask.classList.add('dp-mask--fade-out');
+ *   mask.addEventListener('transitionend', function () { mask.remove(); }, { once: true });
+ *
+ *   不需要淡出时，直接 mask.remove() 即可（会瞬间消失）。
+ * ========================================================================== */
+
+/* 全屏遮罩：纯色背景 + flex 居中，始终盖在页面最上层 */
+.dp-mask {
+  /* ---------- 可配置项（改这里就能配色 / 调节奏） ---------- */
+  --dp-mask-bg: #fff; /* 遮罩背景色 */
+  --dp-mask-spinner-track: #e3e3e3; /* 圆环底色 */
+  --dp-mask-spinner-active: #09f; /* 圆环旋转高亮色 */
+  --dp-mask-fade-duration: 0.35s; /* 淡出时长 */
+
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2147483647; /* 取最大层级，避免被宿主页面的高 z-index 元素（导航栏、弹窗等）压住 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--dp-mask-bg);
+  /* 归零盒模型默认值，防止宿主页面的全局样式影响遮罩尺寸 */
+  margin: 0;
+  padding: 0;
+  border: 0;
+  box-sizing: border-box;
+  opacity: 1;
+  transition: opacity var(--dp-mask-fade-duration) ease;
+}
+
+/* 淡出态：加上这个类后遮罩渐隐，并立刻放行鼠标事件（过渡结束后由 JS 移除元素） */
+.dp-mask--fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 旋转圆环：用 border 画环、只给上边框上色，配合旋转动画形成 Loading 效果 */
+.dp-mask-spinner {
+  width: 40px;
+  height: 40px;
+  box-sizing: border-box;
+  border: 4px solid var(--dp-mask-spinner-track);
+  border-top-color: var(--dp-mask-spinner-active);
+  border-radius: 50%;
+  animation: dp-mask-spin 1s linear infinite;
+}
+
+@keyframes dp-mask-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

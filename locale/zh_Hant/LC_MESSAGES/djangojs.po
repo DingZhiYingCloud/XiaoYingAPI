@@ -91,6 +91,12 @@ msgstr "圖形驗證聯調（真實彈窗）"
 msgid "复古"
 msgstr "復古"
 
+msgid "复制内容"
+msgstr "複製內容"
+
+msgid "复制失败，请手动选择复制"
+msgstr "複製失敗，請手動選擇複製"
+
 msgid "大黄蜂"
 msgstr "大黃蜂"
 
@@ -117,6 +123,9 @@ msgstr "已保存到本機"
 
 msgid "已关闭，可再次点击「开始图形验证」"
 msgstr "已關閉，可再次點擊「開始圖形驗證」"
+
+msgid "已复制"
+msgstr "已複製"
 
 msgid "已恢复默认"
 msgstr "已恢復默認"

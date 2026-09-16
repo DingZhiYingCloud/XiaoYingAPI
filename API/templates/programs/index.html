@@ -1,0 +1,90 @@
+{% extends 'template.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "计算程序 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "计算程序,脚本,源码,斗篷,安全研究,小影API" %}{% endblock %}
+{% block description %}{% trans "小影API 计算程序模块：收录各类计算机程序与脚本的实现原理、分析报告与源码，供安全研究与技术学习使用。" %}{% endblock %}
+
+{% block content %}
+<section class="mx-auto w-full max-w-6xl px-4 py-6 lg:py-8">
+
+  <nav class="breadcrumbs text-sm">
+    <ul>
+      <li><a href="/">{% trans "首页" %}</a></li>
+      <li>{% trans "计算程序" %}</li>
+    </ul>
+  </nav>
+
+  {# ===== 模块头部 ===== #}
+  <div class="mt-2 rounded-box border border-base-300 bg-gradient-to-br from-base-100 to-base-200 p-6 sm:p-8">
+    <div class="flex flex-wrap items-center gap-3">
+      <h1 class="text-2xl font-bold sm:text-3xl">{% trans "计算程序" %}</h1>
+      <span class="badge badge-soft badge-primary">{% trans "CalculationProgram" %}</span>
+    </div>
+    {% if intro_html %}
+    <div class="mt-2 max-w-3xl">
+      {% include 'programs/_markdown.html' with content=intro_html %}
+    </div>
+    {% else %}
+    <p class="mt-2 max-w-3xl text-sm text-base-content/70 sm:text-base">
+      {% blocktrans %}收录各类计算机程序与脚本，按分类整理其实现原理、分析报告与源码，供安全研究与技术学习使用。{% endblocktrans %}
+    </p>
+    {% endif %}
+    <div class="mt-4 flex flex-wrap gap-2 text-sm">
+      <span class="badge badge-soft badge-secondary">{% blocktrans with n=total %}{{ n }} 个程序{% endblocktrans %}</span>
+      <span class="badge badge-soft badge-accent">{% blocktrans with n=categories|length %}{{ n }} 个分类{% endblocktrans %}</span>
+      <span class="badge badge-soft badge-info">{% trans "源码可下载" %}</span>
+    </div>
+  </div>
+
+  {# ===== 合规提示 ===== #}
+  <div role="alert" class="alert alert-warning alert-soft mt-6 items-start text-left">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="mt-0.5 h-5 w-5 shrink-0">
+      <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
+    </svg>
+    <span class="text-sm">
+      {% blocktrans %}本模块收录的程序与脚本仅用于安全研究、原理分析与防护能力建设。请勿将其用于任何未授权的攻击、欺诈或其他违法场景；下载与使用前，请自行确认符合所在地法律法规及目标平台的服务条款，风险自负。{% endblocktrans %}
+    </span>
+  </div>
+
+  {# ===== 分类与程序清单 ===== #}
+  {% for cat in categories %}
+  <section class="mt-8">
+    <div class="flex flex-wrap items-center gap-3">
+      <h2 class="font-mono text-lg font-semibold">{{ cat.name }}</h2>
+      <span class="badge badge-soft badge-primary badge-sm">{{ cat.programs|length }}</span>
+    </div>
+    {% if cat.desc_html %}
+    <div class="mt-2 max-w-3xl">
+      {% include 'programs/_markdown.html' with content=cat.desc_html %}
+    </div>
+    {% endif %}
+
+    <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {% for program in cat.programs %}
+      <article class="card card-border bg-base-100 transition hover:-translate-y-0.5 hover:shadow-md">
+        <div class="card-body gap-2 p-5">
+          <div class="flex items-start justify-between gap-2">
+            <h3 class="card-title font-mono text-base">{{ program.name }}</h3>
+            <span class="badge badge-ghost badge-sm shrink-0">{% blocktrans with n=program.files|length %}{{ n }} 个文件{% endblocktrans %}</span>
+          </div>
+          <p class="text-xs text-base-content/60">{{ program.total_size_label }}</p>
+          <div class="card-actions mt-2 justify-end">
+            <a href="{% url 'website:programs_download' %}?pack={{ program.rel|urlencode }}"
+               class="btn btn-ghost btn-sm">{% trans "打包下载" %}</a>
+            <a href="{% url 'website:programs_detail' program.rel %}"
+               class="btn btn-primary btn-sm">{% trans "查看详情" %}</a>
+          </div>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+  {% empty %}
+  <div role="alert" class="alert alert-info alert-soft mt-8">
+    <span>{% trans "暂无可展示的程序，请稍后再来。" %}</span>
+  </div>
+  {% endfor %}
+
+</section>
+{% endblock %}

@@ -1,0 +1,211 @@
+{% extends 'template.html' %}
+{% load i18n %}
+
+{% block title %}{% blocktrans with name=program.name %}{{ name }} - 计算程序 - 小影API{% endblocktrans %}{% endblock %}
+{% block keywords %}{% blocktrans with name=program.name category=program.category %}{{ name }},{{ category }},计算程序,脚本,源码,安全研究{% endblocktrans %}{% endblock %}
+{% block description %}{% blocktrans with name=program.name %}{{ name }} 的实现原理、分析报告与源码文件下载，供安全研究与技术学习使用。{% endblocktrans %}{% endblock %}
+
+{% block content %}
+<section class="mx-auto w-full max-w-6xl px-4 py-6 lg:py-8">
+
+  <nav class="breadcrumbs text-sm">
+    <ul>
+      <li><a href="/">{% trans "首页" %}</a></li>
+      <li><a href="{% url 'website:programs_index' %}">{% trans "计算程序" %}</a></li>
+      {% for part in path_parts %}<li>{{ part }}</li>{% endfor %}
+    </ul>
+  </nav>
+
+  {# ===== 标题与操作 ===== #}
+  <div class="mt-2 flex flex-wrap items-start justify-between gap-4 rounded-box border border-base-300 bg-gradient-to-br from-base-100 to-base-200 p-6">
+    <div class="min-w-0">
+      <h1 class="font-mono text-2xl font-bold sm:text-3xl">{{ program.name }}</h1>
+      <p class="mt-2 font-mono text-xs text-base-content/60">{{ program.rel }}</p>
+      <div class="mt-3 flex flex-wrap gap-2 text-sm">
+        <span class="badge badge-soft badge-secondary badge-sm">{% blocktrans with n=program.files|length %}{{ n }} 个文件{% endblocktrans %}</span>
+        <span class="badge badge-soft badge-accent badge-sm">{{ program.total_size_label }}</span>
+      </div>
+    </div>
+    <a href="{% url 'website:programs_download' %}?pack={{ program.rel|urlencode }}" class="btn btn-primary">
+      <i data-lucide="download" class="h-4 w-4"></i>
+      {% trans "打包下载" %}
+    </a>
+  </div>
+
+  {# ===== 文件清单 ===== #}
+  <div class="mt-6">
+    <h2 class="text-lg font-semibold">{% trans "文件清单" %}</h2>
+    {% if program.files %}
+    <div class="mt-3 overflow-x-auto rounded-box border border-base-300 bg-base-100">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th>{% trans "文件" %}</th>
+            <th class="w-24">{% trans "大小" %}</th>
+            <th class="w-44"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for file in program.files %}
+          <tr>
+            <td class="font-mono text-xs">{{ file.path }}</td>
+            <td class="text-xs whitespace-nowrap text-base-content/60">{{ file.size_label }}</td>
+            <td class="text-right whitespace-nowrap">
+              {% if file.previewable %}
+              <button type="button" class="btn btn-ghost btn-xs"
+                      data-preview-url="{% url 'website:programs_content' %}?path={{ program.rel|urlencode }}/{{ file.path|urlencode }}"
+                      data-preview-name="{{ file.path }}">{% trans "查看内容" %}</button>
+              {% else %}
+              <span class="tooltip tooltip-left" data-tip="{% trans '超过 1 MB，请下载后查看' %}">
+                <button type="button" class="btn btn-ghost btn-xs" disabled>{% trans "查看内容" %}</button>
+              </span>
+              {% endif %}
+              <a href="{% url 'website:programs_download' %}?path={{ program.rel|urlencode }}/{{ file.path|urlencode }}"
+                 class="btn btn-ghost btn-xs">{% trans "下载" %}</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="mt-3 text-sm text-base-content/60">{% trans "该程序目录下暂无可下载文件。" %}</p>
+    {% endif %}
+  </div>
+
+  {# ===== 说明文档 ===== #}
+  {% if readme_html %}
+  <div class="mt-8 rounded-box border border-base-300 bg-base-100 p-6 sm:p-8">
+    {% include 'programs/_markdown.html' with content=readme_html %}
+  </div>
+  {% endif %}
+
+  {# ===== 合规提示 ===== #}
+  <div role="alert" class="alert alert-warning alert-soft mt-6 items-start text-left">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="mt-0.5 h-5 w-5 shrink-0">
+      <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
+    </svg>
+    <span class="text-sm">
+      {% blocktrans %}本程序仅用于安全研究、原理分析与防护能力建设。请勿将其用于任何未授权的攻击、欺诈或其他违法场景；下载与使用前，请自行确认符合所在地法律法规及目标平台的服务条款，风险自负。{% endblocktrans %}
+    </span>
+  </div>
+
+</section>
+
+{# ===== 文件内容预览弹窗（内容由本页 JS 填充） ===== #}
+<dialog id="cp-viewer" class="modal">
+  <div class="modal-box max-w-5xl">
+    <form method="dialog">
+      <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" aria-label="{% trans '关闭' %}">
+        <i data-lucide="x" class="h-4 w-4"></i>
+      </button>
+    </form>
+    <h3 id="cp-viewer-title" class="break-all pr-8 font-mono text-sm font-semibold sm:text-base"></h3>
+    <div id="cp-viewer-body" class="mt-3"></div>
+    <div class="modal-action mt-4">
+      {# 仅在正文加载成功时显示：提示态（超限/非文本/加载失败）没有可复制的内容 #}
+      <button type="button" id="cp-viewer-copy" class="btn btn-sm hidden">
+        <i data-lucide="copy" class="h-4 w-4"></i>
+        <span id="cp-viewer-copy-label">{% trans "复制内容" %}</span>
+      </button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>{% trans "关闭" %}</button></form>
+</dialog>
+{% endblock %}
+
+{% block js %}
+<script>
+/* 文件内容在线预览：点「查看内容」向 /programs/content/ 取正文并塞进弹窗；
+   超限或非文本文件由服务端返回提示，前端只负责把提示显示出来。 */
+(function () {
+  var viewer = document.getElementById('cp-viewer');
+  var titleEl = document.getElementById('cp-viewer-title');
+  var bodyEl = document.getElementById('cp-viewer-body');
+  var copyBtn = document.getElementById('cp-viewer-copy');
+  var copyLabel = document.getElementById('cp-viewer-copy-label');
+  if (!viewer || !titleEl || !bodyEl || !copyBtn || typeof viewer.showModal !== 'function') return;
+
+  var currentText = '';   // 当前弹窗里的正文，供「复制内容」使用
+  var copyTimer = null;
+
+  // 统一用 textContent 写入，文件正文一律按纯文本展示，不解析其中的 HTML
+  function fill(node) {
+    bodyEl.innerHTML = '';
+    if (node) bodyEl.appendChild(node);
+  }
+
+  // 仅正文加载成功时开放复制；提示态（超限/非文本/加载失败）没有可复制的内容，收起按钮
+  function setCopyText(text) {
+    currentText = text || '';
+    copyBtn.classList.toggle('hidden', !currentText);
+  }
+
+  function showText(text, className) {
+    var p = document.createElement('p');
+    p.className = className;
+    p.textContent = text;
+    fill(p);
+    setCopyText('');
+  }
+
+  function showLoading() {
+    var box = document.createElement('p');
+    box.className = 'flex items-center gap-2 text-sm text-base-content/60';
+    var spinner = document.createElement('span');
+    spinner.className = 'loading loading-spinner loading-sm';
+    box.appendChild(spinner);
+    box.appendChild(document.createTextNode(gettext('加载中…')));
+    fill(box);
+    setCopyText('');
+  }
+
+  // 复制结果只改按钮文案（2 秒后还原），不再弹额外提示，避免打断阅读
+  function flashCopyLabel(text) {
+    copyLabel.textContent = text;
+    if (copyTimer) clearTimeout(copyTimer);
+    copyTimer = setTimeout(function () {
+      copyLabel.textContent = gettext('复制内容');
+    }, 2000);
+  }
+
+  copyBtn.addEventListener('click', function () {
+    if (!currentText) return;
+    if (!navigator.clipboard) {
+      // 非安全上下文（http 且非 localhost）下没有该 API，只能提示手动复制
+      flashCopyLabel(gettext('复制失败，请手动选择复制'));
+      return;
+    }
+    navigator.clipboard.writeText(currentText).then(function () {
+      flashCopyLabel(gettext('已复制'));
+    }, function () {
+      flashCopyLabel(gettext('复制失败，请手动选择复制'));
+    });
+  });
+
+  document.querySelectorAll('[data-preview-url]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      titleEl.textContent = button.getAttribute('data-preview-name') || '';
+      showLoading();
+      viewer.showModal();
+      fetch(button.getAttribute('data-preview-url'))
+        .then(function (response) { return response.json(); })
+        .then(function (result) {
+          if (!result || !result.data) {
+            showText((result && result.msg) || gettext('加载失败，请稍后重试'), 'text-sm text-warning');
+            return;
+          }
+          var pre = document.createElement('pre');
+          pre.className = 'max-h-[60vh] overflow-auto rounded-box bg-base-200 p-4 font-mono text-xs leading-relaxed';
+          pre.textContent = result.data.content;
+          fill(pre);
+          setCopyText(result.data.content);
+        })
+        .catch(function () {
+          showText(gettext('加载失败，请稍后重试'), 'text-sm text-warning');
+        });
+    });
+  });
+})();
+</script>
+{% endblock %}
