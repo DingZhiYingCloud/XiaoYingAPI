@@ -3,17 +3,25 @@
 所有函数返回 (success, data_or_msg) 二元组，便于视图层统一处理。
 异常已在内部捕获，调用方无需再 try/except。
 """
+import io
+import json
 import uuid
+import zipfile
 
 from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 
 from API.models.Music.music import Music, MusicSource
 
 # 批量导入接口配置（可按需调整）
 MAX_IMPORT_COUNT = 9999                 # 单次导入最大条数
 MAX_IMPORT_FILE_SIZE = 10 * 1024 * 1024  # 上传文件大小上限：10MB
+
+# 批量导出配置
+EXPORT_CHUNK_SIZE = MAX_IMPORT_COUNT    # 单个导出文件最大条数，超出则拆片打包 zip
+EXPORT_BASENAME = 'xiaoying_music'      # 导出文件基名
 
 
 def _format_time(dt):
@@ -400,3 +408,67 @@ def _parse_bool(val, default: bool) -> bool:
     if s in ('false', '0', 'no', 'off', '禁用'):
         return False
     return default
+
+
+# ==================== 批量导出 ====================
+
+def _export_queryset(online: str = '', keyword: str = ''):
+    """导出查询集：不传 online 导出全部（含离线），可按 keyword 过滤名称/歌手"""
+    qs = Music.objects.all()
+    if keyword:
+        qs = qs.filter(Q(name__icontains=keyword) | Q(singer__icontains=keyword))
+    if online in ('true', 'false'):
+        qs = qs.filter(online=(online == 'true'))
+    # 固定排序，保证多次导出结果可复现
+    return qs.order_by('create_time', 'id')
+
+
+def _music_export_record(music: Music) -> dict:
+    """导出记录：字段与批量导入格式完全一致，可直接回灌导入"""
+    return {
+        'name': music.name,
+        'singer': _normalize_singers(music.singer),
+        'online': music.online,
+        'music_sources': [s.url for s in music.music_sources.all()],
+    }
+
+
+def build_export(online: str = '', keyword: str = '') -> tuple:
+    """导出音乐数据（含播放源）
+
+    - 总量 ≤ EXPORT_CHUNK_SIZE：返回单个 JSON 文件内容（UTF-8 编码字节）
+    - 总量 >  EXPORT_CHUNK_SIZE：拆分为多个文件（每个 ≤ EXPORT_CHUNK_SIZE 条）
+      打包为 zip，文件名 {basename}_1.json、{basename}_2.json ...
+
+    :return: (True, {'kind': 'json'|'zip', 'content': bytes, 'total': int, 'files': int})
+             或 (False, 错误消息)
+    """
+    try:
+        qs = _export_queryset(online=online, keyword=keyword)
+        total = qs.count()
+
+        if total <= EXPORT_CHUNK_SIZE:
+            records = [_music_export_record(m) for m in qs.prefetch_related('music_sources')]
+            content = json.dumps(records, ensure_ascii=False).encode('utf-8')
+            return True, {'kind': 'json', 'content': content, 'total': total, 'files': 1}
+
+        # 超量：逐片序列化写入 zip，避免一次性把所有记录堆在内存里
+        buffer = io.BytesIO()
+        files = 0
+        chunk = []
+        with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+            # iterator + prefetch_related：分块读取并预取播放源，避免 N+1 查询
+            for music in qs.prefetch_related('music_sources').iterator(chunk_size=1000):
+                chunk.append(_music_export_record(music))
+                if len(chunk) >= EXPORT_CHUNK_SIZE:
+                    files += 1
+                    zf.writestr(f'{EXPORT_BASENAME}_{files}.json',
+                                json.dumps(chunk, ensure_ascii=False))
+                    chunk = []
+            if chunk:
+                files += 1
+                zf.writestr(f'{EXPORT_BASENAME}_{files}.json',
+                            json.dumps(chunk, ensure_ascii=False))
+        return True, {'kind': 'zip', 'content': buffer.getvalue(), 'total': total, 'files': files}
+    except Exception as e:
+        return False, f'导出音乐失败: {e}'

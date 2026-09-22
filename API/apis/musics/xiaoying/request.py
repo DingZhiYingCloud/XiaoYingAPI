@@ -11,12 +11,16 @@
     PATCH  /api/music/xiaoying/music_sources/<uuid>     更新播放源(部分字段)
     DELETE /api/music/xiaoying/music_sources/<uuid>     删除播放源
 
+    POST   /api/music/xiaoying/import            批量导入（上传 JSON 文件，音乐+播放源一次入库）
+    GET    /api/music/xiaoying/export            批量导出（与导入同格式；超量打包 zip）
+
 说明: 播放源不提供独立列表/详情查询接口，通过「获取音乐详情」接口返回指定音乐的播放源。
 """
 import json
 import uuid
 
-from django.http import JsonResponse, QueryDict
+from django.http import HttpResponse, JsonResponse, QueryDict
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
@@ -230,3 +234,40 @@ def music_import_view(request):
         return _json_response(StatusCode.INTERNAL_ERROR, msg=data)
     return _json_response(StatusCode.SUCCESS, data=data,
                           msg=f'导入完成：成功 {data["success_count"]} 条，失败 {data["failed_count"]} 条')
+
+
+# ==================== 批量导出 ====================
+
+@require_http_methods(['GET'])
+def export_view(request):
+    """批量导出音乐（与批量导入格式完全一致，可直接回灌导入）
+
+    Query 参数:
+        keyword (选填): 匹配名称/歌手的关键词
+        online  (选填): true=仅在线 / false=仅离线；不传导出全部（含离线）
+
+    返回: 文件下载（Content-Disposition: attachment），不走统一 JSON 包裹
+        - 数据量 ≤ 9999 条：单个 .json 文件，内容为音乐数组
+        - 数据量 >  9999 条：.zip 压缩包，内含 xiaoying_music_1.json、
+          xiaoying_music_2.json … 每个文件 ≤ 9999 条
+    """
+    keyword = request.GET.get('keyword', '').strip()
+    online = request.GET.get('online', '').strip().lower()
+    if online and online not in ('true', 'false'):
+        return _json_response(StatusCode.PARAM_VALUE_INVALID, msg='参数值非法: online 仅支持 true/false')
+
+    ok, result = utils.build_export(online=online, keyword=keyword)
+    if not ok:
+        return _json_response(StatusCode.INTERNAL_ERROR, msg=result)
+
+    timestamp = timezone.localtime().strftime('%Y%m%d%H%M%S')
+    if result['kind'] == 'json':
+        filename = f'{utils.EXPORT_BASENAME}_{timestamp}.json'
+        content_type = 'application/json; charset=utf-8'
+    else:
+        filename = f'{utils.EXPORT_BASENAME}_{timestamp}.zip'
+        content_type = 'application/zip'
+
+    response = HttpResponse(result['content'], content_type=content_type)
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response

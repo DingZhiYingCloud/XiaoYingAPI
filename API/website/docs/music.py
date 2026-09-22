@@ -2,7 +2,7 @@
 
 数据与 API/apis/musics/ 实际实现对齐，两条线路（分类树中 /api/music/ 为需签名）：
 - 爱听音乐网 2t58：4 个只读接口（爬虫抓取，均为 GET）
-- 小影音乐 xiaoying：Music / MusicSource 的 RESTful 增删改查 + 批量 JSON 导入
+- 小影音乐 xiaoying：Music / MusicSource 的 RESTful 增删改查 + 批量 JSON 导入/导出
 """
 from .schema import ChannelSpec, EndpointSpec, ParamSpec, ServiceSpec
 
@@ -135,6 +135,22 @@ SERVICE = ServiceSpec(
                              ],
                              notes=['示例单条：{"name":"晴天","singer":["周杰伦"],"online":true,"music_sources":["https://..."]}',
                                     '部分成功：单条记录失败会整体回滚该条，响应返回 failures 明细。']),
+                EndpointSpec('export_musics', '批量导出', 'GET', '/api/music/xiaoying/export',
+                             summary='导出全部音乐（与导入格式一致，可直接回灌导入）：≤9999 条返回单个 .json；超出返回 .zip（内含多个 ≤9999 条的 json）。',
+                             params=[
+                                 ParamSpec('keyword', '关键词', kind='text',
+                                           placeholder='名称或歌手', desc='选填：匹配音乐名称/歌手'),
+                                 ParamSpec('online', '在线状态', kind='select',
+                                           options=[{'value': '', 'label': '不传（全部，含离线）'},
+                                                    {'value': 'true', 'label': 'true（仅在线）'},
+                                                    {'value': 'false', 'label': 'false（仅离线）'}],
+                                           desc='选填：不传导出全部（含离线）'),
+                             ],
+                             notes=['返回为文件下载（Content-Disposition: attachment），不走统一 JSON 包裹，'
+                                    'curl 需加 -OJ 或 -o 保存文件。',
+                                    '导出内容与「批量导入」的 JSON 数组格式完全一致（name / singer / online / music_sources），可直接回灌导入。',
+                                    '≤9999 条返回单个 .json；超出返回 .zip，内含 xiaoying_music_1.json、xiaoying_music_2.json…每个文件 ≤9999 条。',
+                                    '文档页在线调试面板对二进制 zip 只能显示乱码文本，建议用 curl / 代码下载。']),
             ],
         ),
     ],

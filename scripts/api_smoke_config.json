@@ -184,6 +184,7 @@
      "params": {"music_id": "${MusicId}"}},
     {"name": "音乐-小影批量导入", "method": "POST", "path": "/api/music/xiaoying/import",
      "files": {"file": "${MusicImportPath}"}},
+    {"name": "音乐-小影批量导出(文件下载)", "method": "GET", "path": "/api/music/xiaoying/export", "file": true},
 
     {"name": "SEO-友情链接列表", "method": "GET", "path": "/api/seo/friend_links"},
     {"name": "SEO-友情链接创建", "method": "POST", "path": "/api/seo/friend_links",

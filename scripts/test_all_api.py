@@ -194,7 +194,7 @@ class Runner:
             body = resp.json()
         except ValueError:
             body = None
-        return resp.status_code, body
+        return resp.status_code, body, resp.headers
 
 
 # ------------------------- 主流程 -------------------------
@@ -257,8 +257,8 @@ def run_cases(runner, cases, ctx):
 
         started = time.monotonic()
         try:
-            http_status, body = runner.call(method, path, params,
-                                            sign=case.get('sign', True), files=files)
+            http_status, body, headers = runner.call(method, path, params,
+                                                     sign=case.get('sign', True), files=files)
         except Exception as e:  # 网络层异常
             for fh in (files or {}).values():
                 fh[1].close()
@@ -272,7 +272,14 @@ def run_cases(runner, cases, ctx):
 
         code = (body or {}).get('code')
         msg = (body or {}).get('msg', '')
-        ok = http_status == 200 and code in expect
+        content_type = headers.get('Content-Type', '')
+        if case.get('file'):
+            # 文件下载类接口：校验为附件下载（非统一 JSON 包裹）
+            ok = http_status == 200 and 'attachment' in (headers.get('Content-Disposition') or '')
+            msg = f'{content_type} | {headers.get("Content-Disposition", "")}'
+            code = content_type
+        else:
+            ok = http_status == 200 and code in expect
         status = 'PASS' if ok else 'FAIL'
         line = f'  [{status}] {name} — HTTP {http_status} code={code} cost={cost_ms}ms' + (f' msg={msg}' if msg else '')
         print(line)

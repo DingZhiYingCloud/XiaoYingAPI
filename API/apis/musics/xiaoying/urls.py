@@ -22,4 +22,8 @@ urlpatterns = [
     # 批量导入: POST 上传 JSON 文件（音乐+播放源一次性入库）
     path('import', request.music_import_view, name='xiaoying_music_import'),
     path('import/', request.music_import_view, name='xiaoying_music_import_slash'),
+
+    # 批量导出: GET 下载文件（≤9999 条为 json，超出为 zip）
+    path('export', request.export_view, name='xiaoying_music_export'),
+    path('export/', request.export_view, name='xiaoying_music_export_slash'),
 ]

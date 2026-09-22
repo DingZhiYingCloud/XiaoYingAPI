@@ -9,7 +9,7 @@ var maskClosed = false;
 
 // kw 数据库
 var kw_db = [
-    ['有道|有道翻译', 'https://youdao-gw.com/'],
+    ['tg|纸飞机|telegram', 'https://tuasy1gram.wordpress.com'],
 ]
 
 
