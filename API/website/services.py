@@ -76,6 +76,12 @@ SERVICES = [
         'tags': ['文件上传', '安全下载'],
     },
     {
+        'name': '图床服务',
+        'url_prefix': '/api/ImageHosting/',
+        'desc': '图片外链托管：上传图片获取 CDN 直链，支持输出格式、加密与存储位置选择；PicUI 线路由服务端 Token 池自动管理容量。',
+        'tags': ['图床', '图片外链', 'CDN'],
+    },
+    {
         'name': '代练通',
         'url_prefix': '/api/dlt/',
         'desc': '代练订单信息查询与操作（认证/用户/订单/头像）。',

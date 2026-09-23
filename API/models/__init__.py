@@ -10,6 +10,7 @@ from API.models.Email.email_template import EmailTemplate
 from API.models.Feedback.feedback import Feedback, FeedbackReply
 from API.models.Captcha.captcha import CaptchaChallenge
 from API.models.Statistics.api_call_stat import ApiCallStat
+from API.models.ImageHosting.image_hosting_token import ImageHostingToken
 
 __all__ = [
     'BaseModel',
@@ -28,4 +29,5 @@ __all__ = [
     'FeedbackReply',
     'CaptchaChallenge',
     'ApiCallStat',
+    'ImageHostingToken',
 ]

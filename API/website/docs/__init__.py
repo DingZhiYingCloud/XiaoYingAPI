@@ -20,6 +20,7 @@ from . import captcha_auth as _captcha_auth
 from . import captcha_self as _captcha_self
 from . import ddddocr as _ddddocr
 from . import upload as _upload
+from . import image_hosting as _image_hosting
 from . import seo as _seo
 from . import spider_verification as _spider_verification
 from . import proxy_ip as _proxy_ip
@@ -41,6 +42,7 @@ _SERVICES = [
     _captcha_self.SERVICE,
     _ddddocr.SERVICE,
     _upload.SERVICE,
+    _image_hosting.SERVICE,
     _seo.SERVICE,
     _spider_verification.SERVICE,
     _proxy_ip.SERVICE,
