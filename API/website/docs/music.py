@@ -77,7 +77,9 @@ SERVICE = ServiceSpec(
                                            options=[{'value': 'true', 'label': 'true（在线，默认）'},
                                                     {'value': 'false', 'label': 'false（离线）'}],
                                            default='true', desc='选填：默认 true'),
-                             ]),
+                             ],
+                             notes=['去重规则：同名且同歌手（忽略顺序、大小写与首尾空格）视为重复，返回 20031；'
+                                    '名称相同但歌手不同（多/少/换歌手）可正常入库。']),
                 EndpointSpec('music_detail', '获取音乐详情', 'GET',
                              '/api/music/xiaoying/musics/<uuid>',
                              summary='按音乐 UUID 查询单条音乐，同时返回其全部播放源（music_sources）。',
@@ -97,7 +99,9 @@ SERVICE = ServiceSpec(
                                            options=[{'value': 'true', 'label': 'true'},
                                                     {'value': 'false', 'label': 'false'}],
                                            desc='选填：true/false'),
-                             ]),
+                             ],
+                             notes=['去重规则：更新后若与他条「同名且同歌手」会返回 20031（排除自身）；'
+                                    '只改名称或只改歌手到不冲突的组合均可正常更新。']),
                 EndpointSpec('delete_music', '删除音乐', 'DELETE',
                              '/api/music/xiaoying/musics/<uuid>',
                              summary='按 UUID 删除音乐（其播放源级联删除）。',
@@ -134,7 +138,8 @@ SERVICE = ServiceSpec(
                                                 '页面在线调试暂不支持文件上传，请在代码中调用。'),
                              ],
                              notes=['示例单条：{"name":"晴天","singer":["周杰伦"],"online":true,"music_sources":["https://..."]}',
-                                    '部分成功：单条记录失败会整体回滚该条，响应返回 failures 明细。']),
+                                    '部分成功：单条记录失败只回滚该条；同名且同歌手的重复记录'
+                                    '（与库中已有或同文件内前面已接受者比较，忽略顺序/大小写）计入 failures，其余正常入库。']),
                 EndpointSpec('export_musics', '批量导出', 'GET', '/api/music/xiaoying/export',
                              summary='导出全部音乐（与导入格式一致，可直接回灌导入）：≤9999 条返回单个 .json；超出返回 .zip（内含多个 ≤9999 条的 json）。',
                              params=[

@@ -36,6 +36,11 @@ def _json_response(code, data=None, msg=None):
     })
 
 
+def _error_response(msg, fallback=StatusCode.PARAM_VALUE_INVALID):
+    """按业务错误消息映射状态码（统一口径，见 StatusCode.from_message）"""
+    return _json_response(StatusCode.from_message(msg, fallback=fallback), msg=msg)
+
+
 def _parse_body(request):
     """解析 x-www-form-urlencoded 表单请求体
 
@@ -109,7 +114,7 @@ def musics_view(request):
 
     ok, result = utils.create_music(data)
     if not ok:
-        return _json_response(StatusCode.PARAM_VALUE_INVALID, msg=result)
+        return _error_response(result)
     return _json_response(StatusCode.SUCCESS, data=result, msg='创建成功')
 
 
@@ -135,7 +140,7 @@ def music_detail_view(request, music_id: uuid.UUID):
             return _json_response(StatusCode.PARAM_MISSING, msg='请求体不能为空')
         ok, data = utils.update_music(music_id, body)
         if not ok:
-            return _json_response(StatusCode.PARAM_VALUE_INVALID, msg=data)
+            return _error_response(data)
         return _json_response(StatusCode.SUCCESS, data=data, msg='更新成功')
 
     # DELETE
@@ -162,7 +167,7 @@ def music_source_create_view(request):
 
     ok, result = utils.create_music_source(data)
     if not ok:
-        return _json_response(StatusCode.PARAM_VALUE_INVALID, msg=result)
+        return _error_response(result)
     return _json_response(StatusCode.SUCCESS, data=result, msg='创建成功')
 
 
@@ -181,7 +186,7 @@ def music_source_detail_view(request, source_id: uuid.UUID):
             return _json_response(StatusCode.PARAM_MISSING, msg='请求体不能为空')
         ok, data = utils.update_music_source(source_id, body)
         if not ok:
-            return _json_response(StatusCode.PARAM_VALUE_INVALID, msg=data)
+            return _error_response(data)
         return _json_response(StatusCode.SUCCESS, data=data, msg='更新成功')
 
     # DELETE

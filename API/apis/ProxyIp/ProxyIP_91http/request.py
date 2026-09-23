@@ -69,6 +69,8 @@ def get_91http_proxies_view(request):
         return _json_response(StatusCode.PARAM_FORMAT_ERROR, msg="参数格式错误: num 必须为整数")
     if num < 1:
         return _json_response(StatusCode.PARAM_VALUE_INVALID, msg="参数值非法: num 必须大于 0")
+    if num > 100:
+        return _json_response(StatusCode.PARAM_VALUE_INVALID, msg="参数值非法: num 最大为 100")
 
     # ── protocol 验证 ──
     protocol = None

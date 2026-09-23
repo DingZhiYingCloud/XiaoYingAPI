@@ -96,10 +96,16 @@
               {% blocktrans with days=app.token_expire_days created=app.create_time|date:'Y-m-d H:i' %}Token 有效期 {{ days }} 天 · 创建于 {{ created }}{% endblocktrans %}
             </p>
             <div class="mt-1.5 flex items-center gap-2">
+              {% if reveal and app.pk|stringformat:'s' == reveal.id %}
               <button type="button" class="btn btn-ghost btn-xs" data-secret-toggle
-                      data-secret="{{ app.app_secret }}">{% trans "查看 APPSECRET" %}</button>
+                      data-secret="{{ reveal.app_secret }}">{% trans "查看 APPSECRET" %}</button>
               <code class="hidden break-all font-mono text-xs opacity-80" data-secret-box></code>
               <button type="button" class="btn btn-ghost btn-xs hidden" data-copy-target>{% trans "复制" %}</button>
+              {% else %}
+              {# 明文密钥不随列表下发，需按项目单独点击（服务端只在该次响应中返回这一个密钥） #}
+              <a class="btn btn-ghost btn-xs"
+                 href="?reveal={{ app.pk }}{% if keyword %}&amp;q={{ keyword|urlencode }}{% endif %}">{% trans "查看 APPSECRET" %}</a>
+              {% endif %}
             </div>
           </div>
         </div>

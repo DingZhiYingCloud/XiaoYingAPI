@@ -20,6 +20,14 @@ __pycache__
 # 敏感文件（实际敏感的配置）
 **/env.json
 
+# 静态代理IP 数据文件：由接口运行时写入，内含真实代理账号口令，不入库
+# （文件缺失时代码会作为空列表处理，新部署可通过接口重新录入）
+SpiderServices/ProxyIp/ProxyIP_Static/proxies.json
+
+# 图床 Token 明细文件（一行一个真实 Token），仅本地保存，禁止入库
+tokens.txt
+toekns.txt
+
 # 抖音评论沙箱的登录态/票据文件（真实账号敏感信息，不入库）
 /scripts/douyin_comment_publish/cookie.txt
 /scripts/douyin_comment_publish/ms_token.txt

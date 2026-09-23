@@ -61,6 +61,10 @@ def _raw_cursor():
     异常。本模块操作的是自建原生表（未走 ORM），直接使用底层 sqlite3 游标，
     参数化 '?' 由 sqlite3 原生绑定，行为一致且规避该调试格式化问题。
     """
+    # connection.connection 在本次进程内尚未建立连接时为 None，先确保连接可用，
+    # 否则本模块一旦成为该请求/进程中第一个访问数据库的地方就会抛 AttributeError
+    if connection.connection is None:
+        connection.ensure_connection()
     cur = connection.connection.cursor()
     try:
         yield cur
@@ -152,30 +156,26 @@ def login_fail(key: str, max_fails: int = LOGIN_MAX_FAILS,
         lock_until_val = (timezone.now() + timedelta(minutes=lock_minutes)).strftime(_TS_FMT)
 
     with _raw_cursor() as cur:
-        # 读取当前行（锁定中或计数器）
-        cur.execute("SELECT fail_count, lock_until FROM api_login_guard WHERE key = ?", [key])
-        row = cur.fetchone()
-        if row and row[1] and row[1] > now:
-            # 仍在锁定：返回剩余时间，不累加
-            return True, _minutes_left(row[1])
-
-        # 无行 / 锁定已过期 / 纯计数行 → 计数 +1
-        new_count = (row[0] if row else 0) + 1
-        if new_count >= max_fails and lock_until_val:
-            cur.execute(
-                "INSERT INTO api_login_guard(key, fail_count, lock_until, update_time) "
-                "VALUES(?, ?, ?, ?) ON CONFLICT(key) DO UPDATE SET "
-                "fail_count=excluded.fail_count, lock_until=excluded.lock_until, update_time=excluded.update_time",
-                [key, new_count, lock_until_val, now],
-            )
-            return True, lock_minutes
-        # 未达上限（或 max_fails<=0 仅计数）
+        # 先原子累加失败次数（单条 UPSERT，无「读取-计算-写回」间隙），再读取结果判定是否上锁，
+        # 避免并发请求同时失败时相互覆盖、导致锁定上限被绕过
         cur.execute(
             "INSERT INTO api_login_guard(key, fail_count, lock_until, update_time) "
-            "VALUES(?, ?, NULL, ?) ON CONFLICT(key) DO UPDATE SET "
-            "fail_count=excluded.fail_count, lock_until=NULL, update_time=excluded.update_time",
-            [key, new_count, now],
+            "VALUES(?, 1, NULL, ?) ON CONFLICT(key) DO UPDATE SET "
+            "fail_count = api_login_guard.fail_count + 1, update_time = excluded.update_time",
+            [key, now],
         )
+        cur.execute("SELECT fail_count, lock_until FROM api_login_guard WHERE key = ?", [key])
+        row = cur.fetchone()
+
+        if row and row[1] and row[1] > now:
+            # 仍在锁定：返回剩余时间，不重复上锁
+            # （锁定期内累加的计数会在锁到期后被 _purge_guard_rows 清掉，等价于重新计数）
+            return True, _minutes_left(row[1])
+
+        if row and lock_until_val and row[0] >= max_fails:
+            cur.execute("UPDATE api_login_guard SET lock_until = ? WHERE key = ?", [lock_until_val, key])
+            return True, lock_minutes
+
         return False, 0
 
 
@@ -197,18 +197,19 @@ def code_fail_exhausted(key: str, max_fails: int = CODE_MAX_FAILS) -> bool:
     _purge_guard_rows()
     now = _now_str()
     with _raw_cursor() as cur:
-        cur.execute("SELECT fail_count FROM api_login_guard WHERE key = ?", [key])
-        row = cur.fetchone()
-        new_count = (row[0] if row else 0) + 1
-        if new_count >= max_fails:
-            cur.execute("DELETE FROM api_login_guard WHERE key = ?", [key])
-            return True
+        # 原子累加（单条 UPSERT），再读取结果判断是否达到上限，
+        # 避免并发猜解时同一验证码的失败次数被少计
         cur.execute(
             "INSERT INTO api_login_guard(key, fail_count, lock_until, update_time) "
-            "VALUES(?, ?, NULL, ?) ON CONFLICT(key) DO UPDATE SET "
-            "fail_count=excluded.fail_count, lock_until=NULL, update_time=excluded.update_time",
-            [key, new_count, now],
+            "VALUES(?, 1, NULL, ?) ON CONFLICT(key) DO UPDATE SET "
+            "fail_count = api_login_guard.fail_count + 1, lock_until = NULL, update_time = excluded.update_time",
+            [key, now],
         )
+        cur.execute("SELECT fail_count FROM api_login_guard WHERE key = ?", [key])
+        count = cur.fetchone()[0]
+        if count >= max_fails:
+            cur.execute("DELETE FROM api_login_guard WHERE key = ?", [key])
+            return True
         return False
 
 

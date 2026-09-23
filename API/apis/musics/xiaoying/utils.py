@@ -12,6 +12,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
 from django.db import IntegrityError, transaction
 from django.db.models import Q
+from django.db.models.functions import Lower
 
 from API.models.Music.music import Music, MusicSource
 
@@ -40,6 +41,52 @@ def _normalize_singers(singer) -> list:
     if isinstance(singer, (list, tuple)):
         return [s for s in singer if s]
     return []
+
+
+# ==================== 重复校验：同名 + 同歌手视为重复 ====================
+
+def _norm_text(value) -> str:
+    """统一比较口径：去除首尾空格并忽略大小写"""
+    return str(value if value is not None else '').strip().lower()
+
+
+def _singer_set(singers) -> frozenset:
+    """歌手集合：去重、忽略顺序与大小写（用于判定「歌手完全相同」）"""
+    return frozenset(_norm_text(s) for s in _normalize_singers(singers))
+
+
+def _dedup_key(name, singers) -> tuple:
+    """去重键：(规范化名称, 歌手集合)"""
+    return _norm_text(name), _singer_set(singers)
+
+
+def _find_duplicate(name, singers, exclude_id=None) -> bool:
+    """是否存在与 (name, singers) 完全相同（同名且同歌手）的音乐
+
+    :param exclude_id: 更新场景排除自身
+    """
+    key_name, key_singers = _dedup_key(name, singers)
+    qs = Music.objects.annotate(_lower_name=Lower('name')).filter(_lower_name=key_name)
+    if exclude_id is not None:
+        qs = qs.exclude(id=exclude_id)
+    return any(_singer_set(s) == key_singers for s in qs.values_list('singer', flat=True))
+
+
+def _candidate_map(name_keys) -> dict:
+    """按规范化名称批量查询库中候选：{规范化名称: [歌手集合, ...]}
+
+    分块查询，避免单条 SQL 变量过多（SQLite 变量数上限）。
+    """
+    result = {}
+    keys = list(name_keys)
+    for i in range(0, len(keys), 500):
+        chunk = keys[i:i + 500]
+        rows = (Music.objects.annotate(_lower_name=Lower('name'))
+                .filter(_lower_name__in=chunk)
+                .values_list('name', 'singer'))
+        for name, singers in rows:
+            result.setdefault(_norm_text(name), []).append(_singer_set(singers))
+    return result
 
 
 def _music_to_dict(music: Music) -> dict:
@@ -147,6 +194,10 @@ def create_music(data: dict) -> tuple:
     if not singers:
         return False, '参数值非法: singer(音乐歌手) 不能为空'
 
+    # 同名 + 同歌手（忽略顺序/大小写/首尾空格）视为重复，拒绝入库
+    if _find_duplicate(name, singers):
+        return False, f'资源已存在: 同名且同歌手的音乐已存在（{name}）'
+
     try:
         music = Music(
             name=name,
@@ -184,6 +235,10 @@ def update_music(music_id: uuid.UUID, data: dict) -> tuple:
         music.singer = singers
     if 'online' in data:
         music.online = _parse_bool(data['online'], default=music.online)
+
+    # 更新后若与他人「同名且同歌手」则拒绝（排除自身）
+    if _find_duplicate(music.name, music.singer, exclude_id=music.id):
+        return False, f'资源已存在: 同名且同歌手的音乐已存在（{music.name}）'
 
     try:
         music.full_clean()
@@ -357,14 +412,15 @@ def import_musics(records: list) -> tuple:
     性能优化：先对所有记录做纯内存校验，将合法记录组装为实例，
     再通过 bulk_create 在单个事务内批量写入，避免逐条 save 与逐条事务的
     数据库往返开销（9999 条由约 80 秒降至秒级）。
-    非法记录在校验阶段即被筛出并返回失败原因，其余正常入库，不去重。
+    非法记录在校验阶段即被筛出；同名且同歌手的重复记录（与库中已有、
+    或同一文件内前面已接受的记录比较）判为失败并给出原因，其余正常入库。
 
     :param records: 数据列表，每条为 dict:
         {"name": str, "singer": [str, ...], "online": bool?, "music_sources": [url, ...]?}
     :return: (True, {total, success_count, failed_count, failures})
     """
     total = len(records)
-    musics, sources, failures = [], [], []
+    parsed, failures = [], []
     for index, record in enumerate(records):
         # 校验失败时也要能返回原始名称，故先提取（非对象记录取不到则留空）
         name = record.get('name') if isinstance(record, dict) else ''
@@ -373,8 +429,25 @@ def import_musics(records: list) -> tuple:
         except Exception as e:
             failures.append({'index': index, 'name': name, 'msg': str(e)})
             continue
+        parsed.append((index, name, music, item_sources))
+
+    # 去重：同名且同歌手视为重复，与「库中已有」及「同一文件内前面已接受」比较
+    name_keys = {_dedup_key(music.name, music.singer)[0] for _, _, music, _ in parsed}
+    db_candidates = _candidate_map(name_keys) if name_keys else {}
+    accepted_keys = set()
+    musics, sources = [], []
+    for index, name, music, item_sources in parsed:
+        key = _dedup_key(music.name, music.singer)
+        if key[1] in db_candidates.get(key[0], []) or key in accepted_keys:
+            failures.append({'index': index, 'name': name,
+                             'msg': '资源已存在: 同名且同歌手的音乐已存在'})
+            continue
+        accepted_keys.add(key)
         musics.append(music)
         sources.extend(item_sources)
+
+    # 按原始行号排序，保证 failures 顺序稳定（校验失败与重复失败混合）
+    failures.sort(key=lambda x: x['index'])
 
     if musics:
         try:

@@ -53,6 +53,8 @@ def get_proxies_view(request):
 
     if count < 1:
         return _json_response(StatusCode.PARAM_VALUE_INVALID, msg="参数值非法: count 必须大于 0")
+    if count > 100:
+        return _json_response(StatusCode.PARAM_VALUE_INVALID, msg="参数值非法: count 最大为 100")
 
     # sources: 逗号分隔，转为列表
     sources = [s.strip() for s in sources_str.split(",") if s.strip()]

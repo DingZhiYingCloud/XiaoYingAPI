@@ -33,6 +33,10 @@ REPLY_DEFAULT_PAGE_SIZE = 20
 # 详情接口中每条一级评论内嵌的二级首页条数（防止某条一级评论下海量回复撑爆响应）
 SUB_REPLY_FIRST_PAGE_SIZE = 5
 
+# 详情 / 子评论接口单次最多载入的评论条数（内存建树需要全量，这里做硬上限兜底，
+# 超出时响应里 truncated=true 提示调用方改用子评论分页接口）
+REPLY_FETCH_LIMIT = 2000
+
 
 def _require_user(app, token):
     """校验用户 Token 真实性，返回 (True, user_info) 或 (False, err_msg)
@@ -294,8 +298,9 @@ def get_feedback_detail(app, feedback_id, page=1, page_size=REPLY_DEFAULT_PAGE_S
 
     page, page_size = _pagination(page, page_size, REPLY_DEFAULT_PAGE_SIZE)
 
-    # 一次查询拉取该反馈全部评论（含 user），按创建时间正序，内存建树
-    all_replies = list(fb.replies.select_related('user').order_by('create_time'))
+    # 一次查询拉取该反馈评论（含 user），按创建时间正序，内存建树；超过硬上限时截断并标记
+    total_replies = fb.replies.count()
+    all_replies = list(fb.replies.select_related('user').order_by('create_time')[:REPLY_FETCH_LIMIT])
     roots, nodes = _build_tree(all_replies)
 
     # 一级评论分页（roots 已按创建时间正序）
@@ -321,6 +326,7 @@ def get_feedback_detail(app, feedback_id, page=1, page_size=REPLY_DEFAULT_PAGE_S
         'page_size': page_size,
         'total_pages': total_pages,
         'replies': page_replies,
+        'truncated': total_replies > len(all_replies),
     }
     return True, data
 
@@ -362,8 +368,9 @@ def list_replies(app, feedback_id, parent_id, page=1, page_size=REPLY_DEFAULT_PA
 
     page, page_size = _pagination(page, page_size, REPLY_DEFAULT_PAGE_SIZE)
 
-    # 一次查询该反馈全部评论，在内存筛出 parent 的全部子孙（按时间正序）
-    all_replies = list(fb.replies.select_related('user').order_by('create_time'))
+    # 一次查询该反馈评论，在内存筛出 parent 的全部子孙（按时间正序）；超过硬上限时截断并标记
+    total_replies = fb.replies.count()
+    all_replies = list(fb.replies.select_related('user').order_by('create_time')[:REPLY_FETCH_LIMIT])
     nodes = {r.id: _serialize_reply(r) for r in all_replies}
     descendants = _collect_descendants(all_replies, nodes, str(parent.id))
 
@@ -378,5 +385,6 @@ def list_replies(app, feedback_id, parent_id, page=1, page_size=REPLY_DEFAULT_PA
         'page_size': page_size,
         'total_pages': total_pages,
         'items': items,
+        'truncated': total_replies > len(all_replies),
     }
     return True, data

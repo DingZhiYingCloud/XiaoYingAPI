@@ -171,3 +171,33 @@ class StatusCode:
         """获取状态码所属类别"""
         first_digit = code // 10000
         return cls._CATEGORIES.get(first_digit, '未分类')
+
+    @classmethod
+    def from_message(cls, msg: str, fallback: int = None) -> int:
+        """按业务错误消息映射状态码（各服务统一口径，避免同一语义返回不同码）
+
+        命中规则（按顺序，命中即返回）：
+            参数缺失 -> 20001；参数格式错误 -> 20002；参数值非法 -> 20003；
+            不存在 / 未找到 -> 20030；已存在 / 已被注册 / 已使用 -> 20031；
+            频繁 / 频率限制 -> 20040
+
+        :param msg: 业务层返回的错误消息（约定「参数缺失: xxx」这类前缀写法）
+        :param fallback: 未命中任何规则时使用的状态码，默认 20003（参数值非法）
+        """
+        text = str(msg or '')
+        rules = (
+            ('参数缺失', cls.PARAM_MISSING),
+            ('参数格式错误', cls.PARAM_FORMAT_ERROR),
+            ('参数值非法', cls.PARAM_VALUE_INVALID),
+            ('不存在', cls.NOT_FOUND),
+            ('未找到', cls.NOT_FOUND),
+            ('已存在', cls.RESOURCE_ALREADY_EXISTS),
+            ('已被注册', cls.RESOURCE_ALREADY_EXISTS),
+            ('已使用', cls.RESOURCE_ALREADY_EXISTS),
+            ('频繁', cls.RATE_LIMITED),
+            ('频率限制', cls.RATE_LIMITED),
+        )
+        for keyword, code in rules:
+            if keyword in text:
+                return code
+        return cls.PARAM_VALUE_INVALID if fallback is None else fallback

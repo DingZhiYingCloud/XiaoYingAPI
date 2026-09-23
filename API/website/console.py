@@ -114,10 +114,24 @@ def _render_projects(request):
                 'app_id': app.app_id,
                 'app_secret': app.app_secret,
             }
+
+    # APPSECRET 只按需下发：创建后一次性展示（created）或超管显式点击查看某个项目（reveal），
+    # 避免列表页把全部项目的明文密钥一次性渲染进 HTML
+    reveal = None
+    reveal_id = (request.GET.get('reveal') or '').strip()
+    if reveal_id:
+        app = _project_or_404(reveal_id)
+        if app:
+            reveal = {
+                'id': str(app.pk),
+                'app_id': app.app_id,
+                'app_secret': app.app_secret,
+            }
     return render(request, 'console/projects.html', {
         'apps': apps,
         'keyword': keyword,
         'created': created,
+        'reveal': reveal,
     })
 
 

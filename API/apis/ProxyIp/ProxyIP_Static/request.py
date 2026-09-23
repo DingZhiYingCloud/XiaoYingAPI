@@ -33,6 +33,20 @@ def _spider_result(result):
         return _json_response(StatusCode.EXTERNAL_API_FAILED, msg=result.get("message", "操作失败"))
 
 
+def _parse_json_body(request):
+    """解析 application/json 请求体
+
+    :return: (body 字典, None) 或 (None, 错误响应)
+    """
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return None, _json_response(StatusCode.PARAM_FORMAT_ERROR, msg="参数格式错误: 请求体 JSON 解析失败")
+    if not isinstance(body, dict):
+        return None, _json_response(StatusCode.PARAM_FORMAT_ERROR, msg="参数格式错误: 请求体必须为 JSON 对象")
+    return body, None
+
+
 # ── 统一入口：GET/POST/DELETE /api/ProxyIp/static/proxies ──
 
 @require_http_methods(["GET", "POST", "DELETE"])
@@ -78,15 +92,14 @@ def _add_proxy(request):
     """
     # 支持 JSON body 和 form-data
     if request.content_type and "application/json" in request.content_type:
-        try:
-            body = json.loads(request.body)
-        except json.JSONDecodeError:
-            return _json_response(StatusCode.PARAM_FORMAT_ERROR, msg="请求体 JSON 解析失败")
-        ip = (body.get("ip") or "").strip()
-        port = (body.get("port") or "").strip()
-        username = (body.get("username") or "").strip()
-        password = (body.get("password") or "").strip()
-        json_path = (body.get("json_path") or "").strip() or None
+        body, err = _parse_json_body(request)
+        if err:
+            return err
+        ip = str(body.get("ip") or "").strip()
+        port = str(body.get("port") or "").strip()
+        username = str(body.get("username") or "").strip()
+        password = str(body.get("password") or "").strip()
+        json_path = str(body.get("json_path") or "").strip() or None
     else:
         ip = request.POST.get("ip", "").strip()
         port = request.POST.get("port", "").strip()
@@ -115,13 +128,12 @@ def _delete_proxy(request):
         json_path (选填, str): 自定义 JSON 文件路径（绝对路径）
     """
     if request.content_type and "application/json" in request.content_type:
-        try:
-            body = json.loads(request.body)
-        except json.JSONDecodeError:
-            return _json_response(StatusCode.PARAM_FORMAT_ERROR, msg="请求体 JSON 解析失败")
-        ip = (body.get("ip") or "").strip()
-        port = (body.get("port") or "").strip()
-        json_path = (body.get("json_path") or "").strip() or None
+        body, err = _parse_json_body(request)
+        if err:
+            return err
+        ip = str(body.get("ip") or "").strip()
+        port = str(body.get("port") or "").strip()
+        json_path = str(body.get("json_path") or "").strip() or None
     else:
         ip = request.GET.get("ip", "").strip()
         port = request.GET.get("port", "").strip()
@@ -150,11 +162,10 @@ def reload_proxies_view(request):
         json_path (选填, str): 自定义 JSON 文件路径（绝对路径），默认使用配置文件路径
     """
     if request.content_type and "application/json" in request.content_type:
-        try:
-            body = json.loads(request.body)
-        except json.JSONDecodeError:
-            return _json_response(StatusCode.PARAM_FORMAT_ERROR, msg="请求体 JSON 解析失败")
-        json_path = (body.get("json_path") or "").strip() or None
+        body, err = _parse_json_body(request)
+        if err:
+            return err
+        json_path = str(body.get("json_path") or "").strip() or None
     else:
         json_path = request.POST.get("json_path", "").strip() or None
 

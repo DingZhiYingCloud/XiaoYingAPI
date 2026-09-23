@@ -68,7 +68,7 @@ def friend_links_view(request):
 
     ok, result = utils.create_friend_link(data)
     if not ok:
-        return _json_response(StatusCode.PARAM_VALUE_INVALID, msg=result)
+        return _json_response(StatusCode.from_message(result), msg=result)
     return _json_response(StatusCode.SUCCESS, data=result, msg='创建成功')
 
 
@@ -94,7 +94,7 @@ def friend_link_detail_view(request, link_id: int):
             return _json_response(StatusCode.PARAM_MISSING, msg='请求体不能为空')
         ok, data = utils.update_friend_link(link_id, body)
         if not ok:
-            return _json_response(StatusCode.PARAM_VALUE_INVALID, msg=data)
+            return _json_response(StatusCode.from_message(data), msg=data)
         return _json_response(StatusCode.SUCCESS, data=data, msg='更新成功')
 
     # DELETE

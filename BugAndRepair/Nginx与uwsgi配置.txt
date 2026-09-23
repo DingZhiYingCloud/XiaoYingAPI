@@ -1,4 +1,13 @@
 # ===================== 静态资源配置开始 =====================
+# 【请把下面这段 map 放在 nginx 的 http {} 块内（server 块外）】
+# S-02/S-11：/media/ 若由 nginx 直服，Django 侧的 _media_serve 不生效，
+# 需在此按扩展名强制附件下载，避免上传的危险文件被浏览器内联渲染（存储型 XSS）。
+# 扩展名与 XiaoYingAPI/urls.py 的 DANGEROUS_MEDIA_EXTS 保持一致。
+map $uri $media_disposition {
+    default                                        "";
+    ~*\.(svg|html?|xhtml|xml|js|mht|mhtml|php|phtml)$  "attachment";
+}
+
 location /static/ {
     alias {XIAOYING_API_ROOT}/static/;
     expires 30d; # 浏览器缓存30天
@@ -9,9 +18,9 @@ location /media/ {
     alias {XIAOYING_API_ROOT}/media/;
     expires 30d; # 浏览器缓存30天
     add_header Cache-Control "public, no-transform";
-    # S-02/S-11 安全：禁止嗅探 MIME 类型；.svg/.html/.xml/.js/.php 等可渲染文件
-    # 建议在 server 段用 map 按扩展名返回 Content-Disposition: attachment，强制下载而非内联执行
+    # S-02/S-11 安全：禁止嗅探 MIME 类型；可渲染/可执行类型强制下载（值为空时 nginx 不发送该头）
     add_header X-Content-Type-Options nosniff;
+    add_header Content-Disposition $media_disposition;
     access_log off; # 关闭静态文件日志，减少磁盘IO
 }
 

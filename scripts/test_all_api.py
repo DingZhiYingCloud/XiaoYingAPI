@@ -278,6 +278,11 @@ def run_cases(runner, cases, ctx):
             ok = http_status == 200 and 'attachment' in (headers.get('Content-Disposition') or '')
             msg = f'{content_type} | {headers.get("Content-Disposition", "")}'
             code = content_type
+        elif case.get('expect_html'):
+            # 浏览器直开的 HTML 页面（如邮箱激活链接）：无统一 JSON 包裹，只校验状态码与内容类型
+            ok = http_status == 200 and 'text/html' in content_type
+            msg = content_type
+            code = content_type
         else:
             ok = http_status == 200 and code in expect
         status = 'PASS' if ok else 'FAIL'

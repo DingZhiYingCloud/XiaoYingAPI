@@ -8,6 +8,9 @@ from django.db import IntegrityError
 
 from .models import FriendLink
 
+# 列表接口单次最多返回的条数（防御无界查询；超出时响应里 truncated=true 提示）
+MAX_LIST_COUNT = 500
+
 
 def _to_dict(link: FriendLink) -> dict:
     """将 FriendLink 实例序列化为字典"""
@@ -47,11 +50,14 @@ def list_friend_links(keyword: str = '',
             qs = qs.filter(status=(status == 'true'))
 
         qs = qs.order_by('-sort', '-create_time')
-        items = list(qs)
+        # 防御无界查询：单次最多返回 MAX_LIST_COUNT 条，超出时用 truncated 标记提示
+        total = qs.count()
+        items = list(qs[:MAX_LIST_COUNT])
 
         return True, {
             'items': [_to_dict(x) for x in items],
-            'total': len(items),
+            'total': total,
+            'truncated': total > len(items),
         }
     except Exception as e:
         return False, f'查询友情链接失败: {e}'

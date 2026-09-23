@@ -59,12 +59,8 @@ def _parse_params(request):
 
 
 def _fail_response(msg, fallback_code=StatusCode.PARAM_VALUE_INVALID):
-    """根据业务错误消息映射状态码：参数缺失→20001，格式错误→20002，其余→fallback"""
-    if msg.startswith('参数缺失'):
-        return _json_response(StatusCode.PARAM_MISSING, msg=msg)
-    if msg.startswith('参数格式错误'):
-        return _json_response(StatusCode.PARAM_FORMAT_ERROR, msg=msg)
-    return _json_response(fallback_code, msg=msg)
+    """按业务错误消息映射状态码（统一口径，见 StatusCode.from_message）"""
+    return _json_response(StatusCode.from_message(msg, fallback=fallback_code), msg=msg)
 
 
 def _require_app(request):

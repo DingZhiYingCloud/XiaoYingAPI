@@ -745,16 +745,21 @@ def verify_by_code(app, method, credential, code):
         return False, '验证码错误'
 
     try:
-        # 原子消费验证记录：并发下只有一个请求能把 is_used 置 True，其余判定为已使用
-        # S-06: 消费同时清空验证码明文
-        updated = UserVerifyRecord.objects.filter(pk=verify.pk, is_used=False).update(
-            is_used=True, code='')
-        if updated == 0:
-            return False, '验证码不存在或已使用'
+        # 消费验证码与建号放在同一事务：建号失败则回滚消费，验证码仍可用，用户可直接重试
+        with transaction.atomic():
+            # 原子消费验证记录：并发下只有一个请求能把 is_used 置 True，其余判定为已使用
+            # S-06: 消费同时清空验证码明文
+            updated = UserVerifyRecord.objects.filter(pk=verify.pk, is_used=False).update(
+                is_used=True, code='')
+            if updated == 0:
+                return False, '验证码不存在或已使用'
+            ok, payload = _complete_register(verify)
+            if not ok:
+                transaction.set_rollback(True)
+                return False, payload
+            return True, payload
     except Exception as e:
         return False, f'验证失败: {e}'
-
-    return _complete_register(verify)
 
 
 def verify_by_token(token):
@@ -784,25 +789,28 @@ def verify_by_token(token):
         return False, '激活链接已失效（已使用或已过期）'
 
     try:
-        # 原子消费：并发下只有一个请求能成功激活
-        # S-06: 消费同时清空验证码明文
-        updated = UserVerifyRecord.objects.filter(pk=verify.pk, is_used=False).update(
-            is_used=True, code='')
-        if updated == 0:
-            return False, '激活链接已失效（已使用或已过期）'
+        # 消费链接令牌与建号/激活放在同一事务：失败则回滚消费，链接仍可重试
+        with transaction.atomic():
+            # 原子消费：并发下只有一个请求能成功激活
+            # S-06: 消费同时清空验证码明文
+            updated = UserVerifyRecord.objects.filter(pk=verify.pk, is_used=False).update(
+                is_used=True, code='')
+            if updated == 0:
+                return False, '激活链接已失效（已使用或已过期）'
+
+            # 两步注册意向：建号并发放（含批次合并）
+            if verify.user_id is None or verify.scene == SCENE_REGISTER:
+                ok, payload = _complete_register(verify)
+                if not ok:
+                    transaction.set_rollback(True)
+                    return False, payload
+                return True, payload
+
+            # 存量已验证用户：激活邮箱
+            User.objects.filter(pk=verify.user_id).update(email_verified=True)
+            return True, {'user_id': str(verify.user_id), 'email': verify.credential}
     except Exception as e:
         return False, f'验证失败: {e}'
-
-    # 两步注册意向：建号并发放（含批次合并）
-    if verify.user_id is None or verify.scene == SCENE_REGISTER:
-        return _complete_register(verify)
-
-    # 存量已验证用户：激活邮箱
-    try:
-        User.objects.filter(pk=verify.user_id).update(email_verified=True)
-    except Exception as e:
-        return False, f'验证失败: {e}'
-    return True, {'user_id': str(verify.user_id), 'email': verify.credential}
 
 
 def send_login_code(app, method, credential):

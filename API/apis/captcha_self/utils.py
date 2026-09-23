@@ -20,8 +20,15 @@ from SpiderServices.Captcha import generator
 
 load_dotenv()
 
-# 验证码有效期（秒）
-EXPIRE_SECONDS = int(os.getenv('CAPTCHA_SELF_EXPIRE_SECONDS', '300'))
+# 验证码有效期（秒）；环境变量留空或写得不是数字时回退默认值，避免导入即崩
+def _env_int(name: str, default: int) -> int:
+    try:
+        return int(os.getenv(name) or default)
+    except (TypeError, ValueError):
+        return default
+
+
+EXPIRE_SECONDS = _env_int('CAPTCHA_SELF_EXPIRE_SECONDS', 300)
 
 
 def _to_data_uri(png_bytes):

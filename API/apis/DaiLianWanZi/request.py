@@ -237,6 +237,9 @@ def orders_public_view(request):
     except ValueError:
         return _json_response(StatusCode.PARAM_FORMAT_ERROR, msg="参数格式错误: 数值参数必须为整数")
 
+    if page_size < 1 or page_size > 100:
+        return _json_response(StatusCode.PARAM_VALUE_INVALID, msg="参数值非法: page_size 必须在 1-100 之间")
+
     ok, data = utils.get_public_order_list(auth, price_gt=price_gt,
                                            price_lt=price_lt, page_no=page_no,
                                            page_size=page_size, game_id=game_id)

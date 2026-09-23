@@ -291,6 +291,9 @@ def orders_public_view(request):
     except ValueError:
         return _json_response(StatusCode.PARAM_FORMAT_ERROR, msg="参数格式错误: page_index/page_size/game_id 必须为整数")
 
+    if page_size < 1 or page_size > 100:
+        return _json_response(StatusCode.PARAM_VALUE_INVALID, msg="参数值非法: page_size 必须在 1-100 之间")
+
     price_str = request.GET.get("price_str", "10_20").strip()
     is_pub = request.GET.get("is_pub", "1").strip()
     search_str = request.GET.get("search_str", "").strip()

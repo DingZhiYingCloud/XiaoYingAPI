@@ -50,6 +50,8 @@ def get_qy_proxies_view(request):
 
     if num < 1:
         return _json_response(StatusCode.PARAM_VALUE_INVALID, msg="参数值非法: num 必须大于 0")
+    if num > 100:
+        return _json_response(StatusCode.PARAM_VALUE_INVALID, msg="参数值非法: num 最大为 100")
 
     # ── 调用爬虫服务 ──
     ok, data = utils.get_qy_proxies(num=num)

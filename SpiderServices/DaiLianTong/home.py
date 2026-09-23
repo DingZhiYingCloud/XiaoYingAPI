@@ -717,8 +717,8 @@ class DaiLianTongService:
 if __name__ == "__main__":
     dailiantong_service = DaiLianTongService()
     print(dailiantong_service.get_public_order_list(
-        user_id="24479174",
-        token="E74C430D9CC24338B654B9339069F36F",
+        user_id="<你的 user_id>",
+        token="<你的 token>",
         page_index=1,
         page_size=20,
         game_id=107,
