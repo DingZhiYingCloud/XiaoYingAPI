@@ -17,6 +17,8 @@ API 文档:
     spider = ProxyIPQy()
     result = spider.get_proxies(pages=1)  # 返回 1 条（默认 num=1）
     result = spider.get_proxies(count=5)  # 返回 5 条
+    # 调用方使用自己购买的订单（不传则用 .env 默认订单）
+    result = spider.get_proxies(num=5, order="2026xxxx", apikey="xxxx")
 """
 
 import requests
@@ -38,7 +40,9 @@ class ProxyIPQy:
 
         :param pages: 忽略（API 无分页概念），使用 count 替代
         :param page_size: 忽略
-        :param kwargs: 可选业务参数（凭据固定取 .env 配置，禁止调用方覆盖）:
+        :param kwargs: 可选业务参数:
+            - order: str, 青雨订单号（默认取 .env PROXY_QY_ORDER；调用方可传自己的订单）
+            - apikey: str, 账户 token（默认取 .env PROXY_QY_APIKEY；与 order 必须成对出现）
             - num: int, 返回IP数量（默认 1）
             - sep: str, 换行符（默认 \\n）
             - type: str, 返回格式 json/text（默认 json）
@@ -52,20 +56,33 @@ class ProxyIPQy:
                 fetched: 返回数,
               }
         """
-        if not (DEFAULT_ORDER and DEFAULT_APIKEY):
+        # 订单号 / apikey 按「整对」处理：调用方都没传 → 用 .env 默认整对；
+        # 只传一个 → 非法。允许调用方使用自己购买的订单。
+        order = str(kwargs.get("order") or "").strip()
+        apikey = str(kwargs.get("apikey") or "").strip()
+        if not order and not apikey:
+            order, apikey = DEFAULT_ORDER, DEFAULT_APIKEY
+        elif not (order and apikey):
             return response_dict(
                 code=1,
-                message="青雨代理凭据未配置：请在 .env 设置 PROXY_QY_ORDER / PROXY_QY_APIKEY",
+                message="参数缺失: order 和 apikey 必须同时传入",
                 data={"proxies": [], "total": 0, "fetched": 0},
             )
-        # 构建请求参数（order/apikey 固定取 .env 配置，不接收调用方覆盖）
+        if not (order and apikey):
+            return response_dict(
+                code=1,
+                message="青雨代理凭据未配置：请在 .env 设置 PROXY_QY_ORDER / PROXY_QY_APIKEY，"
+                        "或由调用方传入 order / apikey",
+                data={"proxies": [], "total": 0, "fetched": 0},
+            )
+        # 构建请求参数（调用方未传凭据时取 .env 默认订单）
         params = {
-            "order": DEFAULT_ORDER,
+            "order": order,
             "num": kwargs.get("num", 1),
             "sep": kwargs.get("sep", "\\n"),
             "type": kwargs.get("type", "json"),
             "end_time": kwargs.get("end_time", 1),
-            "apikey": DEFAULT_APIKEY,
+            "apikey": apikey,
         }
         # num 确保整数且 >= 1
         try:
@@ -90,11 +107,14 @@ class ProxyIPQy:
         elif isinstance(data, dict):
             # 也兼容 {"code": 0, "data": [...]} 格式
             code = data.get("code", -1)
-            if code != 0:
-                msg = data.get("msg", data.get("message", f"API 返回错误码 {code}"))
+            msg = str(data.get("msg") or data.get("message") or "").strip()
+            # 青雨在订单到期 / 凭据错误时仍返回 code=0，只在 msg 里以 ERROR 开头提示（data 为空），
+            # 需按失败处理，否则调用方只会看到「成功获取 0 条」而拿不到真实原因
+            if code != 0 or "ERROR" in msg.upper():
+                detail = msg.split(":", 1)[-1].strip() if ":" in msg else msg
                 return response_dict(
                     code=1,
-                    message=msg,
+                    message=detail or f"API 返回错误码 {code}",
                     data={"proxies": [], "total": 0, "fetched": 0},
                 )
             items = data.get("data", data.get("list", []))

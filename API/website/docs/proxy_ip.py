@@ -2,7 +2,8 @@
 
 数据与 API/apis/ProxyIp/ 实际实现对齐（分类树 /api/ProxyIp/ 默认需签名）：
 - 66daili：66 免费代理（聚合，可验证可用性并排序）
-- qy：青雨动态代理（短期存活）
+- qy：青雨动态代理（短期存活，凭据可由调用方自带）
+- qy_res：青雨住宅长效代理（提取节点，带到期时间）
 - 91http：91HTTP 动态代理
 - static：静态代理（JSON 文件存储的管理）
 - thordata：Thordata 动态住宅代理（网关型，入口固定、出口 IP 轮换）
@@ -35,7 +36,7 @@ SERVICE = ServiceSpec(
     slug='proxy_ip',
     name='代理 IP',
     prefix='/api/ProxyIp/',
-    summary='多源代理 IP 聚合：66 免费代理、青雨动态代理、91HTTP 动态代理、静态代理管理与 Thordata 动态住宅代理，支持可用性验证。',
+    summary='多源代理 IP 聚合：66 免费代理、青雨动态代理与住宅长效、91HTTP 动态代理、静态代理管理与 Thordata 动态住宅代理，支持可用性验证。',
     channels=[
         ChannelSpec(
             slug='66daili',
@@ -59,11 +60,49 @@ SERVICE = ServiceSpec(
             name='青雨动态代理',
             provider='qydailiip.com（短期存活 1-3 分钟）',
             auth_note='auth',
-            note='动态短期代理，每次调用返回全新 IP；订单号/Token 由平台侧持有，调用方无需提供。',
+            note='动态短期代理，每次调用返回全新 IP；订单号/apikey 默认由平台侧持有，'
+                 '调用方也可传自己的 order/apikey 使用自己购买的订单。',
             endpoints=[
                 EndpointSpec('proxies', '获取动态代理', 'GET', '/api/ProxyIp/qy/proxies',
                              summary='获取青雨动态代理 IP（存活约 1-3 分钟）。',
-                             params=[_num('num', '数量', 1, desc='选填：返回条数，>=1，默认 1（需多个请调大）')]),
+                             params=[
+                                 _num('num', '数量', 1, desc='选填：返回条数，>=1，默认 1（需多个请调大）'),
+                                 ParamSpec('order', '订单号', kind='text',
+                                           desc='选填：青雨订单号，与 apikey 成对出现；不传则用平台 .env（PROXY_QY_ORDER）'),
+                                 ParamSpec('apikey', '账户 apikey', kind='password',
+                                           desc='选填：账户 token，与 order 成对出现；不传则用平台 .env（PROXY_QY_APIKEY）'),
+                             ],
+                             notes=['订单到期或凭据错误时，服务端会返回真实原因（如「您的订单已到期」）。']),
+            ],
+        ),
+        ChannelSpec(
+            slug='qy_res',
+            name='青雨住宅长效代理',
+            provider='qydailiip.com（住宅长效节点，提取后可用至到期）',
+            auth_note='auth',
+            note='住宅长效节点由青雨侧提取得到一组固定连接信息（主机/端口/账号/密码），节点带到期时间、到期需重新提取，'
+                 '故返回的是可直接使用的代理地址而非 IP 列表。连接信息可由调用方传入（使用自己购买的节点），'
+                 '不传则用平台 .env 配置；verify=true 会真实经代理发一次请求。',
+            endpoints=[
+                EndpointSpec('proxies', '获取住宅长效代理', 'GET', '/api/ProxyIp/qy_res/proxies',
+                             summary='返回可直接使用的住宅长效代理地址（含账号密码）。',
+                             params=[
+                                 ParamSpec('host', '连接主机', kind='text', placeholder='如 183.131.35.91',
+                                           desc='选填：不传则用平台 .env（PROXY_QY_RES_HOST）'),
+                                 ParamSpec('port', '端口', kind='text', placeholder='如 20277',
+                                           desc='选填：1-65535；不传则用平台 .env（PROXY_QY_RES_PORT）'),
+                                 ParamSpec('username', '账号', kind='text',
+                                           desc='选填：不传则用平台 .env（PROXY_QY_RES_USERNAME）'),
+                                 ParamSpec('password', '密码', kind='password',
+                                           desc='选填：不传则用平台 .env（PROXY_QY_RES_PASSWORD）'),
+                                 _bool_sel('verify', '验证可用性', default='false',
+                                           desc='选填：默认 false（仅拼装）；true 时真实经代理发一次请求'),
+                             ],
+                             notes=['username 与 password 必须成对出现（传一个会返回 20001）。',
+                                    'data.proxies[0].proxy 即完整代理地址，可直接用作 requests 的 proxies。',
+                                    'verify=true 时每项额外返回 available / speed_ms / external_ip。',
+                                    'host 指向内网 / 回环 / 保留地址会被拒绝（20003，仅 verify=true 时会做该连通性校验）。',
+                                    '节点到期后连接会失败，需重新提取并在 .env 更新，或由调用方传入新节点信息。']),
             ],
         ),
         ChannelSpec(

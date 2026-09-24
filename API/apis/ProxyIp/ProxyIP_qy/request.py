@@ -34,13 +34,25 @@ def get_qy_proxies_view(request):
 
     从青雨代理 API (qydailiip.com) 获取国内动态短期代理IP，存活约 1-3 分钟。
     每次调用会返回全新的 IP，如需多个请调大 num。
-    订单号/账户 token 由平台侧 .env 唯一持有，不开放给调用方。
+    订单号/apikey 默认由平台侧 .env 提供；调用方也可传自己的 order/apikey
+    使用自己购买的订单（两者必须成对出现）。
 
     参数:
-        num (选填, int): 返回 IP 数量，默认 1，必须 >= 1
+        num    (选填, int): 返回 IP 数量，默认 1，必须 >= 1
+        order  (选填, str): 青雨订单号，与 apikey 成对出现；
+                           不传则用平台 .env（PROXY_QY_ORDER）
+        apikey (选填, str): 账户 token，与 order 成对出现；
+                           不传则用平台 .env（PROXY_QY_APIKEY）
     """
     # ── 参数解析 ──
     num_str = request.GET.get("num", "1").strip()
+    order = request.GET.get("order", "").strip()
+    apikey = request.GET.get("apikey", "").strip()
+
+    # ── 自定义凭据成对校验 ──
+    if bool(order) != bool(apikey):
+        return _json_response(StatusCode.PARAM_MISSING,
+                              msg="参数缺失: order 和 apikey 必须同时传入")
 
     # ── num 验证 ──
     try:
@@ -54,7 +66,7 @@ def get_qy_proxies_view(request):
         return _json_response(StatusCode.PARAM_VALUE_INVALID, msg="参数值非法: num 最大为 100")
 
     # ── 调用爬虫服务 ──
-    ok, data = utils.get_qy_proxies(num=num)
+    ok, data = utils.get_qy_proxies(num=num, order=order or None, apikey=apikey or None)
     if not ok:
         return _json_response(StatusCode.EXTERNAL_API_FAILED, msg=data)
 

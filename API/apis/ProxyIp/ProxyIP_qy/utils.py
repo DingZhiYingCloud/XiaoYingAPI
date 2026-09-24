@@ -16,19 +16,22 @@ if _SPIDER_ROOT not in sys.path:
 from ProxyIp.ProxyIP_qy.home import ProxyIPQy
 
 
-def get_qy_proxies(num: int = 1) -> tuple:
+def get_qy_proxies(num: int = 1, order: str = None, apikey: str = None) -> tuple:
     """获取青雨动态代理IP
 
-    每次调用创建新实例（Session 无状态）。订单号/账户 token 由平台侧 .env 唯一持有，
-    调用方不可覆盖。
+    每次调用创建新实例（Session 无状态）。订单号 / apikey 优先取调用方传入，
+    未传则回退平台 .env 默认订单（PROXY_QY_ORDER / PROXY_QY_APIKEY）。
 
     :param num: 返回 IP 数量，默认 1，必须 >= 1
+    :param order: 青雨订单号（可选，与 apikey 成对）
+    :param apikey: 账户 token（可选，与 order 成对）
     :return: (True, dict) 或 (False, error_msg)
     """
     try:
         spider = ProxyIPQy()
         # get_proxies 参数签名为 (pages=1, page_size=None, **kwargs)
-        result = spider.get_proxies(pages=1, page_size=None, num=num)
+        result = spider.get_proxies(pages=1, page_size=None, num=num,
+                                    order=order, apikey=apikey)
         return True, result
     except Exception as e:
         return False, f'get_qy_proxies 调用异常: {e}'
