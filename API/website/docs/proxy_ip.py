@@ -5,6 +5,7 @@
 - qy：青雨动态代理（短期存活）
 - 91http：91HTTP 动态代理
 - static：静态代理（JSON 文件存储的管理）
+- thordata：Thordata 动态住宅代理（网关型，入口固定、出口 IP 轮换）
 后续新增代理源时在 channels 追加即可。
 """
 from .schema import ChannelSpec, EndpointSpec, ParamSpec, ServiceSpec
@@ -34,7 +35,7 @@ SERVICE = ServiceSpec(
     slug='proxy_ip',
     name='代理 IP',
     prefix='/api/ProxyIp/',
-    summary='多源代理 IP 聚合：66 免费代理、青雨动态代理、91HTTP 动态代理与静态代理管理，支持可用性验证。',
+    summary='多源代理 IP 聚合：66 免费代理、青雨动态代理、91HTTP 动态代理、静态代理管理与 Thordata 动态住宅代理，支持可用性验证。',
     channels=[
         ChannelSpec(
             slug='66daili',
@@ -130,6 +131,36 @@ SERVICE = ServiceSpec(
                 EndpointSpec('reload', '重新加载静态代理', 'POST', '/api/ProxyIp/static/proxies/reload',
                              summary='重新从 JSON 文件加载代理列表（配置更新后调用）。',
                              params=[_json_path_param()]),
+            ],
+        ),
+        ChannelSpec(
+            slug='thordata',
+            name='Thordata 动态住宅代理',
+            provider='thordata.com（海外住宅网关，出口 IP 按请求轮换）',
+            auth_note='auth',
+            note='网关型代理：入口主机 / 端口固定，出口 IP 由 Thordata 侧轮换，故返回的是可直接使用的入口地址，而非 IP 列表。'
+                 '主机 / 端口 / 账号 / 密码可由调用方传入，不传则用平台 .env 配置；verify=true 会真实经代理发一次请求（消耗住宅流量）。',
+            endpoints=[
+                EndpointSpec('proxies', '获取住宅代理', 'GET', '/api/ProxyIp/thordata/proxies',
+                             summary='返回可直接使用的住宅代理入口地址（含账号密码）。',
+                             params=[
+                                 ParamSpec('host', '网关主机', kind='text',
+                                           placeholder='如 1rdjtq76.pr.thordata.net',
+                                           desc='选填：不传则用平台 .env（PROXY_THORDATA_HOST）'),
+                                 ParamSpec('port', '网关端口', kind='text', placeholder='如 9999',
+                                           desc='选填：1-65535；不传则用平台 .env（PROXY_THORDATA_PORT）'),
+                                 ParamSpec('username', '账号', kind='text',
+                                           desc='选填：不传则用平台 .env（PROXY_THORDATA_USERNAME）'),
+                                 ParamSpec('password', '密码', kind='password',
+                                           desc='选填：不传则用平台 .env（PROXY_THORDATA_PASSWORD）'),
+                                 _bool_sel('verify', '验证可用性', default='false',
+                                           desc='选填：默认 false（仅拼装，不消耗流量）；true 时真实经代理发一次请求'),
+                             ],
+                             notes=['username 与 password 必须成对出现（传一个会返回 20001）。',
+                                    'data.proxies[0].proxy 即完整代理地址，可直接用作 requests 的 proxies。',
+                                    'verify=true 时每项额外返回 available / speed_ms / external_ip。',
+                                    'host 指向内网 / 回环 / 保留地址会被拒绝（20003，仅 verify=true 时会做该连通性校验）。',
+                                    '未传 username/password 而使用平台默认账号时，响应会把该账号回显给调用方。']),
             ],
         ),
     ],
