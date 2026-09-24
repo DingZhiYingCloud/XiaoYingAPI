@@ -20,7 +20,7 @@
       </p>
       <div class="mt-8 flex flex-wrap gap-3">
         <a href="{% url 'website:register' %}" class="btn btn-primary btn-lg">{% trans "免费注册" %}</a>
-        <a href="https://b7hm6mvwv6.apifox.cn/" target="_blank" rel="noopener nofollow" class="btn btn-outline btn-lg">{% trans "查看接口文档" %}</a>
+        <a href="{% url 'website:docs_index' %}" class="btn btn-outline btn-lg">{% trans "查看接口文档" %}</a>
       </div>
       <ul class="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-sm text-base-content/60">
         <li class="flex items-center gap-1.5">
@@ -202,7 +202,7 @@
     </div>
     <div class="flex shrink-0 flex-wrap justify-center gap-3">
       <a href="{% url 'website:register' %}" class="btn btn-lg bg-base-100 text-base-content hover:bg-base-200">{% trans "免费注册" %}</a>
-      <a href="https://b7hm6mvwv6.apifox.cn/" target="_blank" rel="noopener nofollow" class="btn btn-lg btn-outline border-primary-content text-primary-content hover:bg-primary-content hover:text-primary">{% trans "查看文档" %}</a>
+      <a href="{% url 'website:docs_index' %}" class="btn btn-lg btn-outline border-primary-content text-primary-content hover:bg-primary-content hover:text-primary">{% trans "查看文档" %}</a>
     </div>
   </div>
 </section>

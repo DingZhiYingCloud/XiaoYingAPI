@@ -130,6 +130,8 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 # 官网前台登录态（会话驱动），供全站模板（导航/页脚等）判断是否已登录
                 'API.website.context.website_user',
+                # 页脚友情链接（取自 SEO 友情链接模块的启用项）
+                'API.website.context.friend_links',
                 # 文档中心左侧服务菜单（仅 /docs/* 由中间件注入）
                 'API.website.docs_menu.docs_menu_context',
             ],

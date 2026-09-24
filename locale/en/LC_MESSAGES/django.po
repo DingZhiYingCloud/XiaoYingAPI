@@ -892,6 +892,9 @@ msgstr "AI Service"
 msgid "API 服务状态"
 msgstr "API Service Status"
 
+msgid "CDN"
+msgstr "CDN"
+
 msgid "HTTP代理"
 msgstr "HTTP Proxy"
 
@@ -943,6 +946,9 @@ msgstr "Built-in Models"
 msgid "内置模型能力，开箱即用的 AI 文本/内容接口。"
 msgstr "Built-in model capabilities; out-of-the-box AI text / content APIs."
 
+msgid "原短视频解析服务；抖音解析能力已迁移至「抖音」服务，本服务暂时关闭。"
+msgstr "Former short-video parsing service; Douyin parsing has moved to the Douyin service, so this service is currently closed."
+
 msgid "去水印"
 msgstr "Watermark Removal"
 
@@ -958,8 +964,17 @@ msgstr "Feedback"
 msgid "可用性检测"
 msgstr "Availability Check"
 
+msgid "图床"
+msgstr "Image Host"
+
 msgid "图形验证"
 msgstr "Graphic CAPTCHA"
+
+msgid "图片外链"
+msgstr "Image Links"
+
+msgid "图片外链托管：上传图片获取 CDN 直链，支持输出格式、加密与存储位置选择；PicUI 线路由服务端 Token 池自动管理容量。"
+msgstr "Image hosting: upload images to get CDN direct links, with output format, encryption and storage location options; the PicUI channel manages capacity automatically via a server-side Token pool."
 
 msgid "基于 ddddocr 的通用图片验证码识别服务。"
 msgstr "General-purpose image CAPTCHA recognition service powered by ddddocr."
@@ -985,8 +1000,14 @@ msgstr "Restored to default (%(label)s)"
 msgid "已更新为「%(label)s」"
 msgstr "Updated to \"%(label)s\""
 
+msgid "已迁移"
+msgstr "Moved"
+
 msgid "应用名称已存在，请更换"
 msgstr "Application name already exists, please use another one."
+
+msgid "抖音平台能力聚合：视频/图文解析（无水印提取）与评论自动发布。"
+msgstr "Douyin capabilities in one place: video/image post parsing (watermark-free extraction) and automated comment publishing."
 
 msgid "抖音等短视频解析，无水印提取视频/图文内容。"
 msgstr "Short-video parsing for Douyin and more; extract watermark-free videos / image-text content."
@@ -1002,6 +1023,9 @@ msgstr "Data Query"
 
 msgid "文本生成"
 msgstr "Text Generation"
+
+msgid "暂时关闭"
+msgstr "Temporarily Closed"
 
 msgid "服务下线，不可用"
 msgstr "Service retired, unavailable"
@@ -1130,11 +1154,32 @@ msgid "验证码"
 msgstr "Verification Code"
 
 # ==================== API 文档内容 · 邮箱服务 ====================
+msgid "1440"
+msgstr "1440"
+
+msgid "9k3r.com"
+msgstr "9k3r.com"
+
 msgid "UUID，如 3fa85f64-..."
 msgstr "UUID, e.g. 3fa85f64-..."
 
+msgid "VMEmail"
+msgstr "VMEmail"
+
+msgid "VMEmail(mail.cx)"
+msgstr "VMEmail(mail.cx)"
+
+msgid "VMEmail（mail.cx）临时邮箱（仅收信）"
+msgstr "VMEmail (mail.cx) temporary mailbox (receive only)"
+
 msgid "VMEmail（minmail.app）临时邮箱"
 msgstr "VMEmail (minmail.app) Temporary Mailbox"
+
+msgid "a@example.com\nb@example.com"
+msgstr "a@example.com\nb@example.com"
+
+msgid "ddker.com"
+msgstr "ddker.com"
 
 msgid "false（默认复用）"
 msgstr "false (reuse by default)"
@@ -1145,8 +1190,17 @@ msgstr "UUID returned by generate"
 msgid "generate 返回的 visitor_id 请妥善保存，查询邮件时需复用。"
 msgstr "Keep the visitor_id returned by generate safe; it must be reused when querying emails."
 
+msgid "mail.cx 临时邮箱：地址本地随机生成、无需注册，地址即唯一标识（邮件保留约 1 小时）；服务端不保存会话，查询邮件需回传 address。需项目签名调用。"
+msgstr "mail.cx temporary mailbox: the address is generated locally at random with no registration, and the address itself is the unique identifier (mail is kept for about 1 hour); the server keeps no session, so queries must send the address back. Requires a project signature."
+
 msgid "true（丢弃原邮箱新建）"
 msgstr "true (discard the existing mailbox and create a new one)"
+
+msgid "uqu.me（默认）"
+msgstr "uqu.me (default)"
+
+msgid "上游为长轮询：无新邮件时会挂起约 25 秒后返回空列表，客户端 HTTP 超时应大于 35 秒。"
+msgstr "The upstream uses long polling: with no new mail it hangs for about 25 seconds before returning an empty list, so the client HTTP timeout should exceed 35 seconds."
 
 msgid "发送一封邮件，可指定多个收件人。"
 msgstr "Send an email to one or more recipients."
@@ -1160,8 +1214,23 @@ msgstr "Send Email"
 msgid "发送邮件（默认线路）"
 msgstr "Send Email (default channel)"
 
+msgid "后缀域名"
+msgstr "Suffix Domain"
+
+msgid "增量时间戳(秒)"
+msgstr "Incremental Timestamp (seconds)"
+
 msgid "多个邮箱用逗号或换行分隔，也可通过同一字段多次传递"
 msgstr "Separate multiple email addresses with commas or line breaks, or pass the same field multiple times"
+
+msgid "如 1725000000"
+msgstr "e.g. 1725000000"
+
+msgid "如 abc123@uqu.me"
+msgstr "e.g. abc123@uqu.me"
+
+msgid "客户端标识"
+msgstr "Client ID"
 
 msgid "强制新建"
 msgstr "Force New"
@@ -1169,8 +1238,20 @@ msgstr "Force New"
 msgid "必填：generate 接口返回的 visitor_id"
 msgstr "Required: the visitor_id returned by the generate API"
 
+msgid "必填：邮件唯一标识（长度上限 128）"
+msgstr "Required: unique mail identifier (max length 128)"
+
+msgid "必填：邮箱地址，来自「生成临时邮箱」的返回值"
+msgstr "Required: mailbox address, from the response of Generate Temporary Mailbox"
+
 msgid "成功返回 data 含 subject / recipients / count；发送失败归为外部服务错误。"
 msgstr "On success, data contains subject / recipients / count; a failed send is reported as an external service error."
+
+msgid "拉取指定邮箱的邮件摘要列表（长轮询，无新邮件时挂起约 25 秒后返回空列表）。"
+msgstr "Fetch the mail summary list of a mailbox (long polling; hangs for about 25 seconds and returns an empty list when there is no new mail)."
+
+msgid "按邮件 id 获取完整详情（含完整正文与附件）。"
+msgstr "Get the full detail by mail id (including the complete body and attachments)."
 
 msgid "收件人支持两种写法：同一字段重复传多次，或单个字段内用逗号分隔。"
 msgstr "Recipients can be supplied in two ways: repeat the same field multiple times, or separate them with commas within a single field."
@@ -1181,6 +1262,9 @@ msgstr "Recipient Email"
 msgid "收件人邮箱（必填，支持多个）"
 msgstr "Recipient email (Required, multiple values supported)"
 
+msgid "来自邮件列表的 id 字段"
+msgstr "The id field from the mail list"
+
 msgid "查询当前临时邮箱收到的邮件列表。"
 msgstr "Get the list of emails received by the current temporary mailbox."
 
@@ -1190,11 +1274,29 @@ msgstr "Generate/reuse a temporary mailbox and receive emails; Open (No signatur
 msgid "生成/获取临时邮箱"
 msgstr "Generate/Get Temporary Mailbox"
 
+msgid "生成一个临时邮箱地址（仅收信），返回邮箱地址与客户端标识。"
+msgstr "Generate a temporary mailbox address (receive only) and return the address and the client ID."
+
 msgid "生成一个全新临时邮箱，或凭 visitor_id 复用已有邮箱。"
 msgstr "Generate a brand-new temporary mailbox, or reuse an existing one with visitor_id."
 
+msgid "生成临时邮箱"
+msgstr "Generate Temporary Mailbox"
+
+msgid "留空自动生成 UUID"
+msgstr "Leave empty to generate a UUID automatically"
+
+msgid "获取可用域名列表"
+msgstr "Get Available Domains"
+
+msgid "获取当前可用的全部后缀域名，用于生成邮箱时指定 domain。"
+msgstr "Get all currently available suffix domains, used to specify domain when generating a mailbox."
+
 msgid "获取邮件列表"
 msgstr "Get Email List"
+
+msgid "获取邮件详情"
+msgstr "Get Mail Detail"
 
 msgid "访客标识"
 msgstr "Visitor ID"
@@ -1202,17 +1304,50 @@ msgstr "Visitor ID"
 msgid "过期时间(分钟)"
 msgstr "Expiry Time (minutes)"
 
+msgid "返回 data 为域名字符串数组，如 [\"ddker.com\",\"9k3r.com\",\"uqu.me\"]；上游异常时返回内置默认域名，保证可用。"
+msgstr "data is an array of domain strings such as ddker.com, 9k3r.com and uqu.me; on upstream failure the built-in default domains are returned so the service stays usable."
+
+msgid "返回 data 为邮件摘要数组（id / from_name / from_email / subject / preview_text / preview_status / size / created_at）；完整正文用 id 查「获取邮件详情」。"
+msgstr "data is an array of mail summaries (id / from_name / from_email / subject / preview_text / preview_status / size / created_at); use the id with Get Mail Detail for the full body."
+
+msgid "返回 data 含 id / from / from_email / from_name / to / subject / text_body / html_body / attachments / date / created_at，以实际返回为准。"
+msgstr "data contains id / from / from_email / from_name / to / subject / text_body / html_body / attachments / date / created_at; the actual response prevails."
+
+msgid "返回 data：{address, domain, client_id}；address 为邮箱地址，client_id 建议保存并在后续查询邮件时回传。"
+msgstr "data: {address, domain, client_id}; address is the mailbox address, and client_id should be saved and sent back when querying mail later."
+
 msgid "选填：true 时强制生成新邮箱，原邮箱及其邮件将被丢弃"
 msgstr "Optional: when true, force a new mailbox to be generated, discarding the original mailbox and its emails"
 
 msgid "选填：不传则随机生成；传入已有值可复用有效期内邮箱"
 msgstr "Optional: if omitted, a random value is generated; pass an existing value to reuse a mailbox within its validity period"
 
+msgid "选填：与生成邮箱时的 client_id 保持一致"
+msgstr "Optional: keep it the same as the client_id used when generating the mailbox"
+
+msgid "选填：客户端标识（X-Client-ID）；不传由服务端随机生成，传已有值可复用同一身份"
+msgstr "Optional: client identifier (X-Client-ID); if omitted the server generates one at random, and reusing an existing value reuses the same identity"
+
+msgid "选填：指定后缀域名，缺省使用默认域名 uqu.me"
+msgstr "Optional: specify the suffix domain; defaults to uqu.me"
+
 msgid "选填：邮箱有效分钟数，正整数，默认 1440（24 小时）"
 msgstr "Optional: mailbox validity in minutes, a positive integer, Default 1440 (24 hours)"
 
+msgid "选填：非负整数时间戳（秒）；不传返回当前全部邮件，传入后仅返回该时间之后的新邮件"
+msgstr "Optional: non-negative integer timestamp (seconds); if omitted all current mail is returned, otherwise only mail newer than that time"
+
+msgid "邮件 ID"
+msgstr "Mail ID"
+
+msgid "邮件不存在（或已过期，保留约 1 小时）返回 20030。"
+msgstr "Returns 20030 when the mail does not exist (or has expired, since mail is kept for about 1 hour)."
+
 msgid "邮件发送与虚拟邮箱收发能力。当前接入 2 条线路，后续可继续扩展更多平台/线路。"
 msgstr "Email sending plus virtual mailbox send/receive capabilities. 2 channels are currently integrated; more platforms/channels can be added later."
+
+msgid "邮件发送与虚拟邮箱收发能力。当前接入 3 条线路，后续可继续扩展更多平台/线路。"
+msgstr "Mail sending plus virtual mailbox send/receive. 3 channels are currently available, with more platforms/channels to come."
 
 msgid "邮件标题"
 msgstr "Email subject"
@@ -1232,6 +1367,8 @@ msgstr "Email body content (Required)"
 msgid "邮箱 v1"
 msgstr "Email v1"
 
+msgid "邮箱地址"
+msgstr "Mailbox Address"
 
 # ==================== API 文档内容 · 音乐服务 ====================
 msgid "2t58.com 歌手歌曲列表页完整地址（必填）"
@@ -1249,14 +1386,32 @@ msgstr "JSON file"
 msgid "[{\"name\":\"晴天\",\"singer\":[\"周杰伦\"],\"online\":true,\"music_sources\":[\"https://...\"]}]"
 msgstr "[{\"name\":\"Sunny Day\",\"singer\":[\"Jay Chou\"],\"online\":true,\"music_sources\":[\"https://...\"]}]"
 
+msgid "false"
+msgstr "false"
+
+msgid "false（仅离线）"
+msgstr "false (offline only)"
+
 msgid "false（含离线）"
 msgstr "false (include offline)"
 
 msgid "false（离线）"
 msgstr "false (offline)"
 
+msgid "https://..."
+msgstr "https://..."
+
+msgid "https://www.2t58.com/singer/bm1z/1.html"
+msgstr "https://www.2t58.com/singer/bm1z/1.html"
+
+msgid "https://www.2t58.com/song/d3dkc2t3.html"
+msgstr "https://www.2t58.com/song/d3dkc2t3.html"
+
 msgid "multipart 文件字段 file，内容为 JSON 数组。页面在线调试暂不支持文件上传，请在代码中调用。"
 msgstr "multipart file field file, whose content is a JSON array. Online debugging on this page does not support file upload yet; call it from your code."
+
+msgid "true"
+msgstr "true"
 
 msgid "true（仅在线）"
 msgstr "true (online only)"
@@ -1264,8 +1419,14 @@ msgstr "true (online only)"
 msgid "true（在线，默认）"
 msgstr "true (online, Default)"
 
+msgid "≤9999 条返回单个 .json；超出返回 .zip，内含 xiaoying_music_1.json、xiaoying_music_2.json…每个文件 ≤9999 条。"
+msgstr "Up to 9999 records returns a single .json; beyond that returns a .zip containing xiaoying_music_1.json, xiaoying_music_2.json and so on, each with at most 9999 records."
+
 msgid "上传 JSON 文件批量导入音乐+播放源（单文件 ≤10MB、单次 ≤9999 条，不去重）。"
 msgstr "Upload a JSON file to bulk-import music + playback sources (single file ≤10MB, up to 9999 records per call, no deduplication)."
+
+msgid "不传（全部，含离线）"
+msgstr "Not provided (all, including offline)"
 
 msgid "不传（默认仅在线）"
 msgstr "Omit (online only by default)"
@@ -1291,6 +1452,12 @@ msgstr "Delete Playback Source"
 msgid "删除音乐"
 msgstr "Delete Music"
 
+msgid "去重规则：同名且同歌手（忽略顺序、大小写与首尾空格）视为重复，返回 20031；名称相同但歌手不同（多/少/换歌手）可正常入库。"
+msgstr "Deduplication rule: the same name and same singer (ignoring order, case and leading/trailing spaces) counts as a duplicate and returns 20031; the same name with a different singer (extra, missing or changed) can be stored normally."
+
+msgid "去重规则：更新后若与他条「同名且同歌手」会返回 20031（排除自身）；只改名称或只改歌手到不冲突的组合均可正常更新。"
+msgstr "Deduplication rule: if after the update it matches another record with the same name and singer it returns 20031 (excluding itself); changing only the name or only the singer to a non-conflicting combination updates normally."
+
 msgid "名称或歌手"
 msgstr "Name or singer"
 
@@ -1309,11 +1476,20 @@ msgstr "e.g. Sunny Day"
 msgid "如：王小草"
 msgstr "e.g. Wang Xiaocao"
 
+msgid "导出全部音乐（与导入格式一致，可直接回灌导入）：≤9999 条返回单个 .json；超出返回 .zip（内含多个 ≤9999 条的 json）。"
+msgstr "Export all music (same format as import, so it can be fed straight back in): up to 9999 records returns a single .json; beyond that returns a .zip containing several json files of at most 9999 records each."
+
+msgid "导出内容与「批量导入」的 JSON 数组格式完全一致（name / singer / online / music_sources），可直接回灌导入。"
+msgstr "The exported content matches the JSON array format of Batch Import exactly (name / singer / online / music_sources) and can be fed straight back in."
+
 msgid "小影音乐"
 msgstr "XiaoYing Music"
 
 msgid "批量导入"
 msgstr "Bulk Import"
+
+msgid "批量导出"
+msgstr "Batch Export"
 
 msgid "抓取热门/歌手/歌曲/搜索数据。url 参数必须为 2t58.com 域名地址。"
 msgstr "Scrape trending/singer/song/search data. The url parameter must be a 2t58.com domain address."
@@ -1347,6 +1523,9 @@ msgstr "Playback Source UUID"
 
 msgid "播放链接"
 msgstr "Playback URL"
+
+msgid "文档页在线调试面板对二进制 zip 只能显示乱码文本，建议用 curl / 代码下载。"
+msgstr "The online debugger on the docs page only shows garbled text for binary zips, so download with curl or code."
 
 msgid "新建一条音乐，返回 music_id（UUID），供详情/播放源关联使用。"
 msgstr "Create a music record and return music_id (UUID), for use in detail lookups / playback source association."
@@ -1411,6 +1590,9 @@ msgstr "Path parameter: UUID of the music to update"
 msgid "路径参数：音乐 UUID（文档页代调时请替换 URL 中的 <uuid>）"
 msgstr "Path parameter: music UUID (when testing from this doc page, replace <uuid> in the URL)"
 
+msgid "返回为文件下载（Content-Disposition: attachment），不走统一 JSON 包裹，curl 需加 -OJ 或 -o 保存文件。"
+msgstr "The response is a file download (Content-Disposition: attachment) rather than the unified JSON wrapper; with curl use -OJ or -o to save the file."
+
 msgid "返回热门歌手、歌曲飙升榜、流行趋势榜三个模块。"
 msgstr "Returns three modules: trending singers, song rising chart and pop trend chart."
 
@@ -1419,6 +1601,9 @@ msgstr "Optional: 1-100, Default 10"
 
 msgid "选填：true/false"
 msgstr "Optional: true/false"
+
+msgid "选填：不传导出全部（含离线）"
+msgstr "Optional: omit to export everything (including offline items)"
 
 msgid "选填：匹配音乐名称/歌手"
 msgstr "Optional: match music name/singer"
@@ -1450,6 +1635,9 @@ msgstr "Partially update music (singer replaces the whole list)."
 msgid "部分成功：单条记录失败会整体回滚该条，响应返回 failures 明细。"
 msgstr "Partial success: if a single record fails, that record is rolled back entirely, and the response returns the failure details in failures."
 
+msgid "部分成功：单条记录失败只回滚该条；同名且同歌手的重复记录（与库中已有或同文件内前面已接受者比较，忽略顺序/大小写）计入 failures，其余正常入库。"
+msgstr "Partial success: a failing record only rolls back that record; duplicate records with the same name and singer (compared against existing rows or earlier accepted ones in the same file, ignoring order/case) are counted in failures while the rest are stored normally."
+
 msgid "音乐 UUID"
 msgstr "Music UUID"
 
@@ -1477,13 +1665,36 @@ msgstr "Page Number"
 msgid "首页数据"
 msgstr "Home Data"
 
-
 # ==================== API 文档内容 · 视频分析 ====================
 msgid "5.89 dAT:/ ... https://v.douyin.com/xxxxx/ 复制此链接...\n或直接粘贴链接 / aweme_id"
 msgstr "5.89 dAT:/ ... https://v.douyin.com/xxxxx/ copy this link...\nOr paste the link / aweme_id directly"
 
+msgid "7622798120358923583"
+msgstr "7622798120358923583"
+
+msgid "一级纯文本评论内容"
+msgstr "Plain-text top-level comment"
+
+msgid "发布抖音评论"
+msgstr "Publish Douyin Comment"
+
+msgid "在指定视频下发布一条一级纯文本评论，返回评论 ID、内容与发布时间。"
+msgstr "Publish a plain-text top-level comment under the given video and return the comment ID, content and publish time."
+
+msgid "在指定视频下发布一级纯文本评论，需携带真实抖音登录 Cookie。"
+msgstr "Publish a plain-text top-level comment under the given video; a real Douyin login Cookie is required."
+
+msgid "必填：抖音登录 Cookie 完整字符串（含 sessionid 等）。仅透传给抖音，服务端不落盘；Cookie 失效会返回外部服务错误。"
+msgstr "Required: the full Douyin login Cookie string (including sessionid and so on). It is only passed through to Douyin and never stored by the server; an invalid Cookie returns an external-service error."
+
 msgid "必填：支持三种输入 —— ①完整分享文本 ②链接（v.douyin.com 短链 或 www.douyin.com/video/xxx）③纯数字 aweme_id"
 msgstr "Required: three input formats are supported — ① the full share text ② a link (v.douyin.com short link or www.douyin.com/video/xxx) ③ a numeric-only aweme_id"
+
+msgid "必填：目标视频 ID，纯数字，取自视频页 URL 的 /video/<aweme_id> 部分。"
+msgstr "Required: target video ID, digits only, taken from the /video/<aweme_id> part of the video page URL."
+
+msgid "必填：评论内容。当前仅支持一级纯文本评论，不支持 @ / 话题 / 图片。"
+msgstr "Required: comment content. Only plain-text top-level comments are supported; @ mentions, topics and images are not."
 
 msgid "把抖音分享内容解析为可直接下载的视频/图文数据。"
 msgstr "Parse Douyin share content into directly downloadable video / image & text post data."
@@ -1494,11 +1705,35 @@ msgstr "Douyin"
 msgid "抖音分享文本"
 msgstr "Douyin Share Text"
 
+msgid "抖音平台能力聚合：视频/图文解析（无水印提取）与评论自动发布（纯服务端签名，无需浏览器）。"
+msgstr "Douyin capabilities in one place: video/image post parsing (watermark-free extraction) and automated comment publishing (server-side signing only, no browser needed)."
+
+msgid "抖音登录 Cookie"
+msgstr "Douyin Login Cookie"
+
 msgid "抖音视频/图文解析"
 msgstr "Douyin video / image & text post parsing"
 
+msgid "抖音评论发布"
+msgstr "Douyin Comment Publishing"
+
+msgid "抖音风控严格：高频调用会导致账号被限流，请低频调用并对失败做退避。"
+msgstr "Douyin enforces strict risk control: frequent calls will rate-limit the account, so call at a low frequency and back off on failures."
+
+msgid "浏览器登录抖音后，从开发者工具「网络」面板复制完整 Cookie"
+msgstr "Log in to Douyin in a browser, then copy the full Cookie from the Network panel of the developer tools"
+
 msgid "短视频解析能力，提取无水印视频/图文内容。当前接入抖音线路，后续可继续扩展平台。"
 msgstr "Short video parsing that extracts watermark-free video / image & text post content. The Douyin channel is currently integrated; more platforms can be added later."
+
+msgid "被风控拦截时抖音返回空响应，此处统一映射为「外部API调用失败」。"
+msgstr "When blocked by risk control Douyin returns an empty response, which is mapped uniformly to an external API call failure."
+
+msgid "视频 ID"
+msgstr "Video ID"
+
+msgid "视频解析"
+msgstr "Video Parsing"
 
 msgid "解析抖音内容"
 msgstr "Parse Douyin Content"
@@ -1506,16 +1741,27 @@ msgstr "Parse Douyin Content"
 msgid "解析抖音视频或图文，返回无水印地址等信息。"
 msgstr "Parse a Douyin video or image & text post and return the watermark-free URL and other information."
 
+msgid "评论发布"
+msgstr "Comment Publishing"
+
 msgid "请使用真实可访问的分享内容测试；解析失败返回外部服务错误。"
 msgstr "Test with real, accessible share content; a failed parse is reported as an external service error."
 
 msgid "请求体为 application/x-www-form-urlencoded 表单。"
 msgstr "The request body is an application/x-www-form-urlencoded form."
 
+msgid "请求体为 application/x-www-form-urlencoded 表单；参数放表单字段，不要放 URL 查询串。"
+msgstr "The request body is an application/x-www-form-urlencoded form; put parameters in form fields, not in the URL query string."
+
+msgid "需先准备真实抖音登录 Cookie，且该账号有权限评论目标视频（视频需存在且公开）。"
+msgstr "Prepare a real Douyin login Cookie first, and make sure that account may comment on the target video (the video must exist and be public)."
 
 # ==================== API 文档内容 · 短信验证 ====================
 msgid "11 位手机号（必填）"
 msgstr "11-digit phone number (Required)"
+
+msgid "13800138000"
+msgstr "13800138000"
 
 msgid "1（不区分大小写，默认）"
 msgstr "1 (case-insensitive, Default)"
@@ -1634,8 +1880,10 @@ msgstr "Verification Code Type"
 msgid "验证码长度"
 msgstr "Verification Code Length"
 
-
 # ==================== API 文档内容 · 图形验证 ====================
+msgid "4dc3cfc2cdff448cad8d13107198d473"
+msgstr "4dc3cfc2cdff448cad8d13107198d473"
+
 msgid "success=验证有效，fail=验证无效（pass_token 过期/流水号已用等），原因见 data.reason。"
 msgstr "success=verification valid, fail=verification invalid (pass_token expired, serial number already used, etc.); see data.reason for the cause."
 
@@ -1696,8 +1944,16 @@ msgstr "Verification Pass Timestamp"
 msgid "验证通过标识"
 msgstr "Verification Pass Token"
 
-
 # ==================== API 文档内容 · 自研图形验证码 ====================
+msgid "4"
+msgstr "4"
+
+msgid "7H4K"
+msgstr "7H4K"
+
+msgid "9f1c1f14-6b0a-4a3e-9c31-2c9b6f0d1a55"
+msgstr "9f1c1f14-6b0a-4a3e-9c31-2c9b6f0d1a55"
+
 msgid "SpiderServices/Captcha 自研生成引擎（Pillow 绘制）"
 msgstr "SpiderServices/Captcha self-developed generation engine (drawn with Pillow)"
 
@@ -1752,6 +2008,9 @@ msgstr "Self-developed CAPTCHA (character image / arithmetic), rendered locally 
 msgid "自研验证码"
 msgstr "Self-developed CAPTCHA"
 
+msgid "请求体为 application/x-www-form-urlencoded 表单；开放接口，无需项目签名。"
+msgstr "The request body is an application/x-www-form-urlencoded form; this is an open endpoint and needs no project signature."
+
 msgid "请求方式 GET，参数放 query string；公开接口，无需项目签名。"
 msgstr "Request method GET with parameters in the query string; public Endpoint, no project signature required."
 
@@ -1767,7 +2026,6 @@ msgstr "Optional: only applies when kind=char; valid range 4-6 (default 4)"
 msgid "验证码ID"
 msgstr "CAPTCHA ID"
 
-
 # ==================== API 文档内容 · 验证码识别 ====================
 msgid "Beta 模型"
 msgstr "Beta Model"
@@ -1778,11 +2036,17 @@ msgstr "OCR Text Recognition"
 msgid "Python ddddocr（本地模型）"
 msgstr "Python ddddocr (local model)"
 
+msgid "[\"red\",\"blue\"]"
+msgstr "[\"red\",\"blue\"]"
+
 msgid "ddddocr 通用识别"
 msgstr "ddddocr General Recognition"
 
 msgid "false（默认）"
 msgstr "false (default)"
+
+msgid "https://example.com/captcha.png"
+msgstr "https://example.com/captcha.png"
 
 msgid "true 时使用 Beta 版 OCR 模型（对部分验证码更准）"
 msgstr "When true, use the Beta OCR model (more accurate for some CAPTCHAs)"
@@ -1792,6 +2056,9 @@ msgstr "When true, apply white-background repair to images with a transparent ch
 
 msgid "true 时返回 data={text, probability}；false 时 data 为文本"
 msgstr "When true, returns data={text, probability}; when false, data is the text"
+
+msgid "{\"red\": [[0,0,0],[10,255,255]]}"
+msgstr "{\"red\": [[0,0,0],[10,255,255]]}"
 
 msgid "上传本地图片（页面调试现支持真实文件上传）"
 msgstr "Upload a local image (page debugging now supports real file upload)"
@@ -1904,7 +2171,6 @@ msgstr "Match the gap position of the slider thumbnail within the background ima
 msgid "颜色过滤(JSON 数组)"
 msgstr "Color Filter (JSON Array)"
 
-
 # ==================== API 文档内容 · 文件上传 ====================
 msgid "multipart/form-data 文件字段 file：直接用下方“选择文件”上传即可。"
 msgstr "multipart/form-data file field file: just use the \"Select File\" button below to upload."
@@ -1982,6 +2248,12 @@ msgstr "SEO-related capabilities: unified management of the Friend links collect
 
 msgid "false（禁用）"
 msgstr "false (Disabled)"
+
+msgid "https://example.com"
+msgstr "https://example.com"
+
+msgid "https://example.com/logo.png"
+msgstr "https://example.com/logo.png"
 
 msgid "true（启用）"
 msgstr "true (Enabled)"
@@ -2106,6 +2378,300 @@ msgstr "Optional: enabled by default"
 msgid "部分字段更新：只更新本次传入的字段，未传字段保持不变。"
 msgstr "Partial update: only the fields provided in this request are updated; unprovided fields remain unchanged."
 
+# ==================== API 文档内容 · 图床服务 ====================
+msgid "0（私有）"
+msgstr "0 (private)"
+
+msgid "1（公开）"
+msgstr "1 (public)"
+
+msgid "2026-12-31 23:59:59"
+msgstr "2026-12-31 23:59:59"
+
+msgid "657|xxxxxxxxxxxxxxxx"
+msgstr "657|xxxxxxxxxxxxxxxx"
+
+msgid "CDN 域名"
+msgstr "CDN Domain"
+
+msgid "PicUI 图床"
+msgstr "PicUI Image Host"
+
+msgid "PicUI 账号 Token 由服务端 Token 池自动选取，调用方无需（也无法）指定；上传成功后按 PicUI 返回的图片大小扣减该 Token 容量，容量用尽自动删除并切换下一个。"
+msgstr "The PicUI account Token is selected automatically from the server-side Token pool, so the caller neither needs nor is able to specify it; after a successful upload the Token capacity is decremented by the image size returned by PicUI, and once the capacity is exhausted the Token is deleted automatically and the next one is used."
+
+msgid "PicUI（v2.picui.cn）图片托管"
+msgstr "PicUI (v2.picui.cn) image hosting"
+
+msgid "Token"
+msgstr "Token"
+
+msgid "Token 唯一：同一个 Token 只会入库一条，重复导入不会重复写入（库中已存在、或同一批请求里重复出现的，都计入 duplicated 跳过）。"
+msgstr "Tokens are unique: the same Token is stored only once, so repeated imports create no duplicates (those already in the database, or repeated within the same request, are counted in duplicated and skipped)."
+
+msgid "Token 文件"
+msgstr "Token File"
+
+msgid "Token 池为空或容量均已用尽时返回 50002，请先调用「导入 Token」接口补充。"
+msgstr "Returns 50002 when the Token pool is empty or all capacities are exhausted; call the Import Tokens endpoint first."
+
+msgid "auto（默认，静态图转 webp）"
+msgstr "auto (default, static images are converted to webp)"
+
+msgid "count：当前池内可用的 Token 数量"
+msgstr "count: number of usable Tokens currently in the pool"
+
+msgid "gif"
+msgstr "gif"
+
+msgid "https://example.com/a.jpg"
+msgstr "https://example.com/a.jpg"
+
+msgid "items[].capacity_mb / items[].capacity_bytes：该 Token 的总容量"
+msgstr "items[].capacity_mb / items[].capacity_bytes: total capacity of the Token"
+
+msgid "items[].create_time：该 Token 的入库时间"
+msgstr "items[].create_time: when the Token was added"
+
+msgid "items[].remaining_mb / items[].remaining_bytes：该 Token 的剩余容量（= 容量 − 已用，最小为 0）"
+msgstr "items[].remaining_mb / items[].remaining_bytes: remaining capacity of the Token (= capacity minus used, minimum 0)"
+
+msgid "items[].token：Token 脱敏值（保留首 6 位与末 4 位，如 657|uN****afdb）"
+msgstr "items[].token: masked Token value (first 6 and last 4 characters kept, e.g. 657|uN****afdb)"
+
+msgid "items[].used_mb / items[].used_bytes：该 Token 的已用容量"
+msgstr "items[].used_mb / items[].used_bytes: used capacity of the Token"
+
+msgid "items：池内每个 Token 的明细，字段如下："
+msgstr "items: details of each Token in the pool, with these fields:"
+
+msgid "jpg"
+msgstr "jpg"
+
+msgid "local"
+msgstr "local"
+
+msgid "plain（普通密码）"
+msgstr "plain (plain password)"
+
+msgid "png"
+msgstr "png"
+
+msgid "qa（问答式）"
+msgstr "qa (question and answer)"
+
+msgid "r2（Cloudflare R2）"
+msgstr "r2 (Cloudflare R2)"
+
+msgid "scdn.io 图床"
+msgstr "scdn.io Image Host"
+
+msgid "scdn.io（img.scdn.io）图片托管"
+msgstr "scdn.io (img.scdn.io) image hosting"
+
+msgid "telegram"
+msgstr "telegram"
+
+msgid "token_file 为按行存放 Token 的文本文件（一行一个），可与 tokens 同时使用。"
+msgstr "token_file is a text file with one Token per line; it can be used together with tokens."
+
+msgid "tokens 支持重复字段、逗号或换行分隔，一次可提交多个 Token；Token 内不能含空格等空白字符（文件里若带注释/多余列会被拒绝，避免导入无效 Token）。"
+msgstr "tokens supports repeated fields and comma- or newline-separated values, so several Tokens can be submitted at once; Tokens must not contain whitespace such as spaces (files with comments or extra columns are rejected to avoid importing invalid Tokens)."
+
+msgid "total_capacity_bytes / total_used_bytes / total_remaining_bytes：与上面三项一一对应的字节值，便于程序精确计算"
+msgstr "total_capacity_bytes / total_used_bytes / total_remaining_bytes: byte values corresponding one-to-one to the three fields above, for precise computation in code"
+
+msgid "total_capacity_mb：全部 Token 的总容量合计（MB）"
+msgstr "total_capacity_mb: total capacity of all Tokens (MB)"
+
+msgid "total_remaining_mb：全部 Token 的剩余容量合计（MB）—— 即系统当前还能上传的总容量，看这个字段判断是否要补货"
+msgstr "total_remaining_mb: total remaining capacity of all Tokens (MB) — how much you can still upload; use this field to decide whether to restock"
+
+msgid "total_used_mb：全部 Token 的已用容量合计（MB）"
+msgstr "total_used_mb: total used capacity of all Tokens (MB)"
+
+msgid "true（加密上传）"
+msgstr "true (encrypted upload)"
+
+msgid "webp"
+msgstr "webp"
+
+msgid "webp_animated（动图）"
+msgstr "webp_animated (animated)"
+
+msgid "上传一张图片，返回可直接引用的 CDN 外链。"
+msgstr "Upload an image and get a directly usable CDN link."
+
+msgid "上传一张图片，返回可直接引用的外链地址（含 html / markdown 等多种引用格式）。"
+msgstr "Upload an image and get a directly usable link (with html / markdown and other reference formats)."
+
+msgid "上传图片返回外链；PicUI 账号 Token 由服务端 Token 池统一持有并记账，容量用尽自动切换，调用方无需提供账号。需项目签名调用。"
+msgstr "Uploads an image and returns a link; the PicUI account Token is held and accounted for by the server-side Token pool, switching automatically when capacity runs out, so the caller needs no account. Requires a project signature."
+
+msgid "上传图片返回外链；服务端按 SHA-256 秒传，重复图片直接返回已有链接。需项目签名调用。"
+msgstr "Uploads an image and returns a link; the server deduplicates by SHA-256 and returns the existing link for duplicate images. Requires a project signature."
+
+msgid "不传（PicUI 默认公开）"
+msgstr "Not provided (PicUI default: public)"
+
+msgid "不传（默认 local）"
+msgstr "Not provided (default local)"
+
+msgid "临时上传Token"
+msgstr "Temporary Upload Token"
+
+msgid "令牌池告警：上传后若池内剩余容量跌破 50MB，系统会自动向管理员邮箱（环境变量 QQ_MAIL_ACCOUNT，未配置则不发送）发送一封补货提醒邮件；该告警只在「跌破」的那一次发送，补货回到 50MB 以上后再次跌破才会重新告警。"
+msgstr "Pool alert: after an upload, if the remaining pool capacity drops below 50MB the system automatically sends one restock reminder to the admin mailbox (environment variable QQ_MAIL_ACCOUNT; nothing is sent if it is not configured). The alert is sent only on the crossing itself, and fires again only after the pool is restocked above 50MB and drops below again."
+
+msgid "储存策略ID"
+msgstr "Storage Strategy ID"
+
+msgid "单个容量(MB)"
+msgstr "Capacity per Token (MB)"
+
+msgid "单位说明：容量同时提供 MB（保留 2 位小数，便于阅读）与字节（便于计算）两种单位。"
+msgstr "Units: capacity is provided both in MB (2 decimal places, easy to read) and in bytes (easy to compute)."
+
+msgid "单次最多导入 1000 个 Token；本服务需项目签名（app_id/timestamp/nonce/sign）。"
+msgstr "Up to 1000 Tokens per import; this service requires a project signature (app_id/timestamp/nonce/sign)."
+
+msgid "可重复传参，或用逗号、换行分隔一次提交多个"
+msgstr "Repeatable; or separate several values with commas or newlines to submit them at once"
+
+msgid "向 Token 池新增一个或多个 Token（支持直接输入，也支持上传按行存放的 Token 文件）。"
+msgstr "Add one or more Tokens to the pool (enter them directly, or upload a file with one Token per line)."
+
+msgid "启用密码"
+msgstr "Enable Password"
+
+msgid "图床服务"
+msgstr "Image Hosting"
+
+msgid "图片外链托管：上传图片（或 ≤10 秒短视频）返回可直链访问的 CDN 地址，支持输出格式、加密与存储位置选择。当前接入 2 条线路。"
+msgstr "Image hosting: upload an image (or a video up to 10 seconds) and get a directly linkable CDN address, with options for output format, encryption and storage location. 2 channels are currently available."
+
+msgid "图片权限"
+msgstr "Image Permission"
+
+msgid "存储位置"
+msgstr "Storage Location"
+
+msgid "容量用尽（已用 ≥ 容量）的 Token 会被自动删除，因此 items 中出现的 Token 均可继续使用；服务器只做容量记账，不参与图片存储。"
+msgstr "Tokens whose capacity is exhausted (used ≥ capacity) are deleted automatically, so every Token listed in items can still be used; the server only keeps capacity records and never stores images."
+
+msgid "密码模式"
+msgstr "Password Mode"
+
+msgid "导入 Token"
+msgstr "Import Tokens"
+
+msgid "服务端按 SHA-256 秒传：命中时 message 为「图片已存在，秒传成功！」，deduped=true。"
+msgstr "The server deduplicates by SHA-256: on a hit the message reports that the image already exists and was deduplicated, and deduped=true."
+
+msgid "本地图片文件（multipart 字段 image），必需"
+msgstr "Local image file (multipart field image), required"
+
+msgid "本地图片文件（multipart 字段 image，支持 jpg/png/webp/gif/bmp/tiff）；与 image_url 二选一"
+msgstr "Local image file (multipart field image; supports jpg/png/webp/gif/bmp/tiff); choose either this or image_url"
+
+msgid "本服务需项目签名（app_id/timestamp/nonce/sign）；在线调试由服务端自动代签。"
+msgstr "This service requires a project signature (app_id/timestamp/nonce/sign); the online debugger signs automatically on the server side."
+
+msgid "查看 Token 池整体容量与每个 Token 的已用 / 剩余容量（Token 已脱敏）。"
+msgstr "View the overall pool capacity plus the used / remaining capacity of each Token (Tokens are masked)."
+
+msgid "查询 Token 池"
+msgstr "Query Token Pool"
+
+msgid "留空由服务端自动选择"
+msgstr "Leave empty to let the server choose"
+
+msgid "相册ID"
+msgstr "Album ID"
+
+msgid "访问密码"
+msgstr "Access Password"
+
+msgid "请求体为 multipart/form-data（文件字段 image，可直接用下方“选择文件”上传）。"
+msgstr "The request body is multipart/form-data (file field image; use the file picker below to upload directly)."
+
+msgid "请求体为 multipart/form-data（文件字段 image，可直接用下方“选择文件”上传）；用 image_url 时也可用 application/x-www-form-urlencoded。"
+msgstr "The request body is multipart/form-data (file field image; use the file picker below to upload directly); when using image_url you may also use application/x-www-form-urlencoded."
+
+msgid "输出格式"
+msgstr "Output Format"
+
+msgid "过期时间"
+msgstr "Expiry Time"
+
+msgid "返回 data 含 url / filename / storage_backend / 压缩统计 / deduped（是否秒传） / password_protected。"
+msgstr "data contains url / filename / storage_backend / compression stats / deduped (whether the image was deduplicated) / password_protected."
+
+msgid "返回 data 含 url / size_kb / size_bytes / mimetype / extension / md5 / sha1 / links（html、bbcode、markdown、markdown_with_link、thumbnail_url 等）。"
+msgstr "data contains url / size_kb / size_bytes / mimetype / extension / md5 / sha1 / links (html, bbcode, markdown, markdown_with_link, thumbnail_url, etc.)."
+
+msgid "返回 data 字段：submitted 本次提交的 Token 数（已按行/逗号拆分并去重）；created 实际新增数量；duplicated 因已存在而跳过的数量；duplicated_tokens 被跳过的 Token 脱敏列表；capacity_bytes / capacity_mb 每个新 Token 的容量。"
+msgstr "data fields: submitted = number of Tokens submitted (after splitting by line/comma and deduplicating); created = number actually added; duplicated = number skipped as already existing; duplicated_tokens = masked list of skipped Tokens; capacity_bytes / capacity_mb = capacity of each new Token."
+
+msgid "返回 data 顶层字段："
+msgstr "data top-level fields:"
+
+msgid "远程图片 URL"
+msgstr "Remote Image URL"
+
+msgid "远程图片地址（http/https），服务端代理拉取；与 image 二选一"
+msgstr "Remote image address (http/https), fetched by the server; choose either this or image"
+
+msgid "选填：PicUI 临时上传 Token（对应其 token 字段），一般不传"
+msgstr "Optional: PicUI temporary upload Token (its token field); usually not passed"
+
+msgid "选填：PicUI 储存策略 ID，默认 1（「普通用户」策略）"
+msgstr "Optional: PicUI storage strategy ID, default 1 (the regular user strategy)"
+
+msgid "选填：password_enabled=true 时必填"
+msgstr "Optional: required when password_enabled=true"
+
+msgid "选填：password_type=qa 时必填"
+msgstr "Optional: required when password_type=qa"
+
+msgid "选填：加密上传（加密图永不参与秒传）"
+msgstr "Optional: encrypted upload (encrypted images never take part in deduplication)"
+
+msgid "选填：图片权限，留空使用 PicUI 默认值"
+msgstr "Optional: image permission; leave empty to use the PicUI default"
+
+msgid "选填：图片过期时间，格式 yyyy-MM-dd HH:mm:ss"
+msgstr "Optional: image expiry time, format yyyy-MM-dd HH:mm:ss"
+
+msgid "选填：存储位置"
+msgstr "Optional: storage location"
+
+msgid "选填：密码模式，默认 plain"
+msgstr "Optional: password mode, default plain"
+
+msgid "选填：待新增的 Token，可多个（与 token_file 至少传一项）"
+msgstr "Optional: Tokens to add, several allowed (provide at least one of this and token_file)"
+
+msgid "选填：指定外链 CDN 域名（如 img.scdn.io），留空自动选择"
+msgstr "Optional: specify the CDN domain for the links (e.g. img.scdn.io); leave empty to choose automatically"
+
+msgid "选填：文本文件，按行存放 Token（一行一个，UTF-8）"
+msgstr "Optional: text file with one Token per line (UTF-8)"
+
+msgid "选填：每个 Token 的容量（MB），默认 50"
+msgstr "Optional: capacity of each Token (MB), default 50"
+
+msgid "选填：目标相册 ID"
+msgstr "Optional: target album ID"
+
+msgid "选填：输出格式，默认 auto"
+msgstr "Optional: output format, default auto"
+
+msgid "问题文本"
+msgstr "Issue Text"
+
+msgid "默认 1"
+msgstr "Default 1"
 
 # ==================== API 文档内容 · 爬虫验证 ====================
 msgid "4759 蜘蛛 IP 验证"
@@ -2146,8 +2712,20 @@ msgstr "Verify whether a given IP is a search engine crawler and return the reco
 msgid "0=否"
 msgstr "0=No"
 
+msgid "1=HTTP"
+msgstr "1=HTTP"
+
 msgid "1=是"
 msgstr "1=Yes"
+
+msgid "2=HTTPS"
+msgstr "2=HTTPS"
+
+msgid "3=SOCKS5"
+msgstr "3=SOCKS5"
+
+msgid "4=HTTP(S)"
+msgstr "4=HTTP(S)"
 
 msgid "66 免费代理"
 msgstr "66 Free Proxy"
@@ -2554,6 +3132,9 @@ msgstr "deepseek-v4-flash (Fast)"
 msgid "deepseek-v4-pro（专业版）"
 msgstr "deepseek-v4-pro (Pro)"
 
+msgid "sk-…"
+msgstr "sk-…"
+
 msgid "一个接口覆盖单轮/多轮对话；不传 api_key 时使用平台 .env 配置的 DeepSeek Key。"
 msgstr "One endpoint covers both single-turn and multi-turn chat; when api_key is omitted, the DeepSeek Key configured in the platform .env is used."
 
@@ -2635,7 +3216,6 @@ msgstr "Optional: for multi-turn chat, formatted as a JSON array with role set t
 msgid "选填：设定 AI 角色；不传=平台默认提示词；空字符串=不使用系统提示词"
 msgstr "Optional: set the AI's role; omit = platform default prompt; empty string = no system prompt"
 
-
 # ==================== API 文档内容 · 代练通 ====================
 msgid "-99=正在进行（默认），99=已完成"
 msgstr "-99=In progress (default), 99=Completed"
@@ -2652,11 +3232,20 @@ msgstr "17=Register (default)"
 msgid "1=安卓"
 msgstr "1=Android"
 
+msgid "2=IOS"
+msgstr "2=IOS"
+
 msgid "Password（密码）"
 msgstr "Password"
 
+msgid "UID"
+msgstr "UID"
+
 msgid "VerificationCode（验证码，默认）"
 msgstr "VerificationCode (default)"
+
+msgid "mobile"
+msgstr "mobile"
 
 msgid "qq（默认）"
 msgstr "qq (default)"
@@ -2889,7 +3478,6 @@ msgstr "Default 107=Honor of Kings"
 msgid "默认王者荣耀区服"
 msgstr "Default Honor of Kings Server / Realm"
 
-
 # ==================== API 文档内容 · 代练丸子 ====================
 msgid "122=安卓QQ"
 msgstr "122=Android QQ"
@@ -2905,6 +3493,9 @@ msgstr "2=Android QQ"
 
 msgid "QQ号"
 msgstr "QQ number"
+
+msgid "https://…/avatar.png"
+msgstr "https://…/avatar.png"
 
 msgid "代练丸子平台"
 msgstr "DaiLianWanZi Platform"
@@ -3047,10 +3638,12 @@ msgstr "Optional: default platform icon"
 msgid "验证码或密码登录；未注册手机号用验证码登录会自动注册。"
 msgstr "Log in with a Verification code or Password; logging in with a Verification code for an unregistered Phone number will register automatically."
 
-
 # ==================== API 文档内容 · 用户中心 ====================
 msgid "username/email/phone 按后台可用方式组合；两步注册时 data.need_verify=true。"
 msgstr "Combine username/email/phone according to the methods enabled in the backend; for two-step sign-up, data.need_verify=true."
+
+msgid "仅支持已绑定邮箱/手机号的账号；纯用户名账号没有可验证通道，无法自助重置。"
+msgstr "Only accounts with a bound email/phone are supported; username-only accounts have no verification channel and cannot reset the password themselves."
 
 msgid "仅需项目签名参数，无需业务参数。"
 msgstr "Only the project signature parameters are required; no business parameters."
@@ -3070,6 +3663,9 @@ msgstr "Send Sign-up SMS"
 msgid "发送登录验证码"
 msgstr "Send Login Verification Code"
 
+msgid "发送重置密码验证码"
+msgstr "Send Password Reset Code"
+
 msgid "可用注册/登录方式"
 msgstr "Available Sign-up / Login Methods"
 
@@ -3078,6 +3674,12 @@ msgstr "5 consecutive failures for the same project + credential + IP locks it f
 
 msgid "必填：用户在该项目下持有的登录 Token（login 成功返回）"
 msgstr "Required: the login Token the user holds under this project (returned by a successful login)"
+
+msgid "忘记密码第一步：校验邮箱/手机号已注册后发码（60 秒冷却）。"
+msgstr "Forgot-password step 1: verify that the email/phone is registered, then send the code (60-second cooldown)."
+
+msgid "忘记密码第二步：校验验证码通过后设置新密码。"
+msgstr "Forgot-password step 2: after the code is verified, set the new password."
 
 msgid "成功返回 data={valid, user_id, account, username}。"
 msgstr "Returns data={valid, user_id, account, username} on success."
@@ -3175,11 +3777,17 @@ msgstr "Resend the two-step sign-up verification email (60-second cooldown)."
 msgid "重发验证邮件"
 msgstr "Resend Verification Email"
 
+msgid "重置成功会作废该用户全部已签发 Token（所有已登录设备需重新登录）。"
+msgstr "A successful reset invalidates all Tokens issued to that user (every signed-in device must log in again)."
+
 msgid "链接中的 token（系统生成），正常由用户点邮件链接触发"
 msgstr "The token in the link (system-generated), normally triggered when the user clicks the email link"
 
 msgid "除 methods 与邮箱激活链接(GET) 外均需项目签名。邮箱/手机号两步注册流程：先 register（仅暂存+发验证码），再调 verify/email 或 verify/phone 校验通过后才创建账号。"
 msgstr "All endpoints require the project signature except methods and the email activation link (GET). Email/phone two-step sign-up flow: call register first (which only stages the data and sends the code), then call verify/email or verify/phone; the account is created only after verification passes."
+
+msgid "除 methods 与邮箱激活链接(GET) 外均需项目签名。邮箱/手机号两步注册流程：先 register（仅暂存+发验证码），再调 verify/email 或 verify/phone 校验通过后才创建账号。忘记密码流程：先调 password/send 发码，再调 password/reset 校验通过后改密（并作废该用户全部 Token）。"
+msgstr "Everything except methods and the email activation link (GET) requires a project signature. Two-step email/phone registration: call register first (it only stores the intent and sends a code), then call verify/email or verify/phone to create the account. Forgot password: call password/send for a code, then password/reset to set a new password (which also invalidates all of that user's Tokens)."
 
 msgid "项目信息"
 msgstr "Project Info"
@@ -3314,6 +3922,9 @@ msgstr "A total of %(total)s calls in %(n)s days"
 msgid "%(r)s 天"
 msgstr "%(r)s days"
 
+msgid "/api/email/v1/send"
+msgstr "/api/email/v1/send"
+
 msgid "API 调用统计"
 msgstr "API Call Statistics"
 
@@ -3328,6 +3939,9 @@ msgstr "Today's Call Volume"
 
 msgid "公开接口，无需项目签名。"
 msgstr "Public Endpoint, no project signature required."
+
+msgid "公开查询 API 调用量：某个接口被调用了多少次、各服务调用量排行。仅公开调用次数，不含项目与耗时。"
+msgstr "Publicly query API call volume: how many times an endpoint was called, and the ranking of call volume per service. Only call counts are public; project and latency data are not."
 
 msgid "区间内产生过调用的接入项目数"
 msgstr "Number of integrated projects that made calls in this period"
@@ -3436,7 +4050,6 @@ msgstr "Returns each service's total and today's call count, sorted by total cal
 
 msgid "返回某个接口的累计调用次数与今日调用次数。"
 msgstr "Returns the total and today's call count of an Endpoint."
-
 
 # ==================== 计算程序模块（programs/index.html、programs/detail.html） ====================
 msgid "%(n)s 个分类"

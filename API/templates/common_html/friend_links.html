@@ -1,0 +1,14 @@
+{% load i18n %}
+{% comment %}
+页脚友情链接：数据由上下文处理器 API.website.context.friend_links 注入 footer_friend_links，
+取自 SEO 友情链接模块（仅启用项，按排序权重倒序）；无数据时整块不渲染。
+注意：模板注释必须用 {% comment %}，`{# … #}` 跨行会原样渲染到页面上。
+{% endcomment %}
+{% if footer_friend_links %}
+<nav>
+  <h6 class="footer-title">{% trans "友情链接" %}</h6>
+  {% for item in footer_friend_links %}
+  <a class="link link-hover text-sm" href="{{ item.url }}" target="_blank" rel="noopener">{{ item.name }}</a>
+  {% endfor %}
+</nav>
+{% endif %}

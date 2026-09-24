@@ -1,6 +1,4 @@
 {% load i18n %}
-{# 友情链接区（内容由后台/API 维护，当前为空则自动隐藏） #}
-{% include 'common_html/friend_links.html' %}
 
 {# 全站公共页脚 #}
 <footer class="footer border-t border-base-300 bg-base-200 px-6 py-10 sm:footer-horizontal">
@@ -13,7 +11,7 @@
       {% trans "通用 API 聚合服务：统一签名认证、标准 JSON 响应，助力你的产品快速接入各类能力。" %}
     </p>
     <div class="flex gap-2">
-      <a class="link link-hover text-sm" href="https://b7hm6mvwv6.apifox.cn/" target="_blank" rel="noopener nofollow">{% trans "接口文档" %}</a>
+      <a class="link link-hover text-sm" href="{% url 'website:docs_index' %}">{% trans "接口文档" %}</a>
       <span class="opacity-40">|</span>
       <a class="link link-hover text-sm" href="{% url 'website:register' %}">{% trans "免费注册" %}</a>
     </div>
@@ -30,6 +28,8 @@
     <span class="link link-hover text-sm">{% trans "微信：" %}duyanbz</span>
     <a class="link link-hover text-sm" href="https://t.me/xiaoying1216" target="_blank" rel="noopener nofollow">Telegram</a>
   </nav>
+  {# 友情链接区（数据来自 SEO 友情链接模块，无启用数据时整块隐藏） #}
+  {% include 'common_html/friend_links.html' %}
 </footer>
 <div class="bg-base-300/60 py-3 text-center text-xs opacity-70">
   {% trans "小影API · 通用 API 聚合服务" %}

@@ -891,6 +891,9 @@ msgstr "AI 服務"
 msgid "API 服务状态"
 msgstr "API 服務狀態"
 
+msgid "CDN"
+msgstr "CDN"
+
 msgid "HTTP代理"
 msgstr "HTTP代理"
 
@@ -942,6 +945,9 @@ msgstr "內置模型"
 msgid "内置模型能力，开箱即用的 AI 文本/内容接口。"
 msgstr "內置模型能力，開箱即用的 AI 文本/內容接口。"
 
+msgid "原短视频解析服务；抖音解析能力已迁移至「抖音」服务，本服务暂时关闭。"
+msgstr "原短視頻解析服務；抖音解析能力已遷移至「抖音」服務，本服務暫時關閉。"
+
 msgid "去水印"
 msgstr "去水印"
 
@@ -957,8 +963,17 @@ msgstr "反饋"
 msgid "可用性检测"
 msgstr "可用性檢測"
 
+msgid "图床"
+msgstr "圖床"
+
 msgid "图形验证"
 msgstr "圖形驗證"
+
+msgid "图片外链"
+msgstr "圖片外鏈"
+
+msgid "图片外链托管：上传图片获取 CDN 直链，支持输出格式、加密与存储位置选择；PicUI 线路由服务端 Token 池自动管理容量。"
+msgstr "圖片外鏈託管：上傳圖片獲取 CDN 直鏈，支持輸出格式、加密與存儲位置選擇；PicUI 線路由服務端 Token 池自動管理容量。"
 
 msgid "基于 ddddocr 的通用图片验证码识别服务。"
 msgstr "基於 ddddocr 的通用圖片驗證碼識別服務。"
@@ -984,8 +999,14 @@ msgstr "已恢復默認（%(label)s）"
 msgid "已更新为「%(label)s」"
 msgstr "已更新為「%(label)s」"
 
+msgid "已迁移"
+msgstr "已遷移"
+
 msgid "应用名称已存在，请更换"
 msgstr "應用名稱已存在，請更換"
+
+msgid "抖音平台能力聚合：视频/图文解析（无水印提取）与评论自动发布。"
+msgstr "抖音平臺能力聚合：視頻/圖文解析（無水印提取）與評論自動發布。"
 
 msgid "抖音等短视频解析，无水印提取视频/图文内容。"
 msgstr "抖音等短視頻解析，無水印提取視頻/圖文內容。"
@@ -1001,6 +1022,9 @@ msgstr "數據查詢"
 
 msgid "文本生成"
 msgstr "文本生成"
+
+msgid "暂时关闭"
+msgstr "暫時關閉"
 
 msgid "服务下线，不可用"
 msgstr "服務下線，不可用"
@@ -1129,11 +1153,32 @@ msgid "验证码"
 msgstr "驗證碼"
 
 # ==================== API 文档内容 · 邮箱服务 ====================
+msgid "1440"
+msgstr "1440"
+
+msgid "9k3r.com"
+msgstr "9k3r.com"
+
 msgid "UUID，如 3fa85f64-..."
 msgstr "UUID，如 3fa85f64-..."
 
+msgid "VMEmail"
+msgstr "VMEmail"
+
+msgid "VMEmail(mail.cx)"
+msgstr "VMEmail(mail.cx)"
+
+msgid "VMEmail（mail.cx）临时邮箱（仅收信）"
+msgstr "VMEmail（mail.cx）臨時郵箱（僅收信）"
+
 msgid "VMEmail（minmail.app）临时邮箱"
 msgstr "VMEmail（minmail.app）臨時郵箱"
+
+msgid "a@example.com\nb@example.com"
+msgstr "a@example.com\nb@example.com"
+
+msgid "ddker.com"
+msgstr "ddker.com"
 
 msgid "false（默认复用）"
 msgstr "false（默認復用）"
@@ -1144,8 +1189,17 @@ msgstr "generate 返回的 UUID"
 msgid "generate 返回的 visitor_id 请妥善保存，查询邮件时需复用。"
 msgstr "generate 返回的 visitor_id 請妥善保存，查詢郵件時需復用。"
 
+msgid "mail.cx 临时邮箱：地址本地随机生成、无需注册，地址即唯一标识（邮件保留约 1 小时）；服务端不保存会话，查询邮件需回传 address。需项目签名调用。"
+msgstr "mail.cx 臨時郵箱：地址本地隨機生成、無需註冊，地址即唯一標識（郵件保留約 1 小時）；服務端不保存會話，查詢郵件需回傳 address。需項目簽名調用。"
+
 msgid "true（丢弃原邮箱新建）"
 msgstr "true（丟棄原郵箱新建）"
+
+msgid "uqu.me（默认）"
+msgstr "uqu.me（默認）"
+
+msgid "上游为长轮询：无新邮件时会挂起约 25 秒后返回空列表，客户端 HTTP 超时应大于 35 秒。"
+msgstr "上遊為長輪詢：無新郵件時會掛起約 25 秒後返回空列表，客戶端 HTTP 超時應大於 35 秒。"
 
 msgid "发送一封邮件，可指定多个收件人。"
 msgstr "發送一封郵件，可指定多個收件人。"
@@ -1159,8 +1213,23 @@ msgstr "發送郵件"
 msgid "发送邮件（默认线路）"
 msgstr "發送郵件（默認線路）"
 
+msgid "后缀域名"
+msgstr "後綴域名"
+
+msgid "增量时间戳(秒)"
+msgstr "增量時間戳(秒)"
+
 msgid "多个邮箱用逗号或换行分隔，也可通过同一字段多次传递"
 msgstr "多個郵箱用逗號或換行分隔，也可通過同一字段多次傳遞"
+
+msgid "如 1725000000"
+msgstr "如 1725000000"
+
+msgid "如 abc123@uqu.me"
+msgstr "如 abc123@uqu.me"
+
+msgid "客户端标识"
+msgstr "客戶端標識"
 
 msgid "强制新建"
 msgstr "強制新建"
@@ -1168,8 +1237,20 @@ msgstr "強制新建"
 msgid "必填：generate 接口返回的 visitor_id"
 msgstr "必填：generate 接口返回的 visitor_id"
 
+msgid "必填：邮件唯一标识（长度上限 128）"
+msgstr "必填：郵件唯一標識（長度上限 128）"
+
+msgid "必填：邮箱地址，来自「生成临时邮箱」的返回值"
+msgstr "必填：郵箱地址，來自「生成臨時郵箱」的返回值"
+
 msgid "成功返回 data 含 subject / recipients / count；发送失败归为外部服务错误。"
 msgstr "成功返回 data 含 subject / recipients / count；發送失敗歸為外部服務錯誤。"
+
+msgid "拉取指定邮箱的邮件摘要列表（长轮询，无新邮件时挂起约 25 秒后返回空列表）。"
+msgstr "拉取指定郵箱的郵件摘要列表（長輪詢，無新郵件時掛起約 25 秒後返回空列表）。"
+
+msgid "按邮件 id 获取完整详情（含完整正文与附件）。"
+msgstr "按郵件 id 獲取完整詳情（含完整正文與附件）。"
 
 msgid "收件人支持两种写法：同一字段重复传多次，或单个字段内用逗号分隔。"
 msgstr "收件人支持兩種寫法：同一字段重複傳多次，或單個字段內用逗號分隔。"
@@ -1180,6 +1261,9 @@ msgstr "收件人郵箱"
 msgid "收件人邮箱（必填，支持多个）"
 msgstr "收件人郵箱（必填，支持多個）"
 
+msgid "来自邮件列表的 id 字段"
+msgstr "來自郵件列表的 id 字段"
+
 msgid "查询当前临时邮箱收到的邮件列表。"
 msgstr "查詢當前臨時郵箱收到的郵件列表。"
 
@@ -1189,11 +1273,29 @@ msgstr "生成/復用臨時郵箱並收取郵件；開放調用（免簽名）�
 msgid "生成/获取临时邮箱"
 msgstr "生成/獲取臨時郵箱"
 
+msgid "生成一个临时邮箱地址（仅收信），返回邮箱地址与客户端标识。"
+msgstr "生成一個臨時郵箱地址（僅收信），返回郵箱地址與客戶端標識。"
+
 msgid "生成一个全新临时邮箱，或凭 visitor_id 复用已有邮箱。"
 msgstr "生成一個全新臨時郵箱，或憑 visitor_id 復用已有郵箱。"
 
+msgid "生成临时邮箱"
+msgstr "生成臨時郵箱"
+
+msgid "留空自动生成 UUID"
+msgstr "留空自動生成 UUID"
+
+msgid "获取可用域名列表"
+msgstr "獲取可用域名列表"
+
+msgid "获取当前可用的全部后缀域名，用于生成邮箱时指定 domain。"
+msgstr "獲取當前可用的全部後綴域名，用於生成郵箱時指定 domain。"
+
 msgid "获取邮件列表"
 msgstr "獲取郵件列表"
+
+msgid "获取邮件详情"
+msgstr "獲取郵件詳情"
 
 msgid "访客标识"
 msgstr "訪客標識"
@@ -1201,17 +1303,50 @@ msgstr "訪客標識"
 msgid "过期时间(分钟)"
 msgstr "過期時間(分鐘)"
 
+msgid "返回 data 为域名字符串数组，如 [\"ddker.com\",\"9k3r.com\",\"uqu.me\"]；上游异常时返回内置默认域名，保证可用。"
+msgstr "返回 data 為域名字符串數組，如 [\"ddker.com\",\"9k3r.com\",\"uqu.me\"]；上遊異常時返回內置默認域名，保證可用。"
+
+msgid "返回 data 为邮件摘要数组（id / from_name / from_email / subject / preview_text / preview_status / size / created_at）；完整正文用 id 查「获取邮件详情」。"
+msgstr "返回 data 為郵件摘要數組（id / from_name / from_email / subject / preview_text / preview_status / size / created_at）；完整正文用 id 查「獲取郵件詳情」。"
+
+msgid "返回 data 含 id / from / from_email / from_name / to / subject / text_body / html_body / attachments / date / created_at，以实际返回为准。"
+msgstr "返回 data 含 id / from / from_email / from_name / to / subject / text_body / html_body / attachments / date / created_at，以實際返回為準。"
+
+msgid "返回 data：{address, domain, client_id}；address 为邮箱地址，client_id 建议保存并在后续查询邮件时回传。"
+msgstr "返回 data：{address, domain, client_id}；address 為郵箱地址，client_id 建議保存並在後續查詢郵件時回傳。"
+
 msgid "选填：true 时强制生成新邮箱，原邮箱及其邮件将被丢弃"
 msgstr "選填：true 時強制生成新郵箱，原郵箱及其郵件將被丟棄"
 
 msgid "选填：不传则随机生成；传入已有值可复用有效期内邮箱"
 msgstr "選填：不傳則隨機生成；傳入已有值可復用有效期內郵箱"
 
+msgid "选填：与生成邮箱时的 client_id 保持一致"
+msgstr "選填：與生成郵箱時的 client_id 保持一致"
+
+msgid "选填：客户端标识（X-Client-ID）；不传由服务端随机生成，传已有值可复用同一身份"
+msgstr "選填：客戶端標識（X-Client-ID）；不傳由服務端隨機生成，傳已有值可復用同一身份"
+
+msgid "选填：指定后缀域名，缺省使用默认域名 uqu.me"
+msgstr "選填：指定後綴域名，缺省使用默認域名 uqu.me"
+
 msgid "选填：邮箱有效分钟数，正整数，默认 1440（24 小时）"
 msgstr "選填：郵箱有效分鐘數，正整數，默認 1440（24 小時）"
 
+msgid "选填：非负整数时间戳（秒）；不传返回当前全部邮件，传入后仅返回该时间之后的新邮件"
+msgstr "選填：非負整數時間戳（秒）；不傳返回當前全部郵件，傳入後僅返回該時間之後的新郵件"
+
+msgid "邮件 ID"
+msgstr "郵件 ID"
+
+msgid "邮件不存在（或已过期，保留约 1 小时）返回 20030。"
+msgstr "郵件不存在（或已過期，保留約 1 小時）返回 20030。"
+
 msgid "邮件发送与虚拟邮箱收发能力。当前接入 2 条线路，后续可继续扩展更多平台/线路。"
 msgstr "郵件發送與虛擬郵箱收發能力。當前接入 2 條線路，後續可繼續擴展更多平臺/線路。"
+
+msgid "邮件发送与虚拟邮箱收发能力。当前接入 3 条线路，后续可继续扩展更多平台/线路。"
+msgstr "郵件發送與虛擬郵箱收發能力。當前接入 3 條線路，後續可繼續擴展更多平臺/線路。"
 
 msgid "邮件标题"
 msgstr "郵件標題"
@@ -1231,6 +1366,8 @@ msgstr "郵件正文內容（必填）"
 msgid "邮箱 v1"
 msgstr "郵箱 v1"
 
+msgid "邮箱地址"
+msgstr "郵箱地址"
 
 # ==================== API 文档内容 · 音乐服务 ====================
 msgid "2t58.com 歌手歌曲列表页完整地址（必填）"
@@ -1248,14 +1385,32 @@ msgstr "JSON 文件"
 msgid "[{\"name\":\"晴天\",\"singer\":[\"周杰伦\"],\"online\":true,\"music_sources\":[\"https://...\"]}]"
 msgstr "[{\"name\":\"晴天\",\"singer\":[\"周杰倫\"],\"online\":true,\"music_sources\":[\"https://...\"]}]"
 
+msgid "false"
+msgstr "false"
+
+msgid "false（仅离线）"
+msgstr "false（僅離線）"
+
 msgid "false（含离线）"
 msgstr "false（含離線）"
 
 msgid "false（离线）"
 msgstr "false（離線）"
 
+msgid "https://..."
+msgstr "https://..."
+
+msgid "https://www.2t58.com/singer/bm1z/1.html"
+msgstr "https://www.2t58.com/singer/bm1z/1.html"
+
+msgid "https://www.2t58.com/song/d3dkc2t3.html"
+msgstr "https://www.2t58.com/song/d3dkc2t3.html"
+
 msgid "multipart 文件字段 file，内容为 JSON 数组。页面在线调试暂不支持文件上传，请在代码中调用。"
 msgstr "multipart 文件字段 file，內容為 JSON 數組。頁面在線調試暫不支持文件上傳，請在代碼中調用。"
+
+msgid "true"
+msgstr "true"
 
 msgid "true（仅在线）"
 msgstr "true（僅在線）"
@@ -1263,8 +1418,14 @@ msgstr "true（僅在線）"
 msgid "true（在线，默认）"
 msgstr "true（在線，默認）"
 
+msgid "≤9999 条返回单个 .json；超出返回 .zip，内含 xiaoying_music_1.json、xiaoying_music_2.json…每个文件 ≤9999 条。"
+msgstr "≤9999 條返回單個 .json；超出返回 .zip，內含 xiaoying_music_1.json、xiaoying_music_2.json…每個文件 ≤9999 條。"
+
 msgid "上传 JSON 文件批量导入音乐+播放源（单文件 ≤10MB、单次 ≤9999 条，不去重）。"
 msgstr "上傳 JSON 文件批量導入音樂+播放源（單文件 ≤10MB、單次 ≤9999 條，不去重）。"
+
+msgid "不传（全部，含离线）"
+msgstr "不傳（全部，含離線）"
 
 msgid "不传（默认仅在线）"
 msgstr "不傳（默認僅在線）"
@@ -1290,6 +1451,12 @@ msgstr "刪除播放源"
 msgid "删除音乐"
 msgstr "刪除音樂"
 
+msgid "去重规则：同名且同歌手（忽略顺序、大小写与首尾空格）视为重复，返回 20031；名称相同但歌手不同（多/少/换歌手）可正常入库。"
+msgstr "去重規則：同名且同歌手（忽略順序、大小寫與首尾空格）視為重複，返回 20031；名稱相同但歌手不同（多/少/換歌手）可正常入庫。"
+
+msgid "去重规则：更新后若与他条「同名且同歌手」会返回 20031（排除自身）；只改名称或只改歌手到不冲突的组合均可正常更新。"
+msgstr "去重規則：更新後若與他條「同名且同歌手」會返回 20031（排除自身）；只改名稱或只改歌手到不衝突的組合均可正常更新。"
+
 msgid "名称或歌手"
 msgstr "名稱或歌手"
 
@@ -1308,11 +1475,20 @@ msgstr "如：晴天"
 msgid "如：王小草"
 msgstr "如：王小草"
 
+msgid "导出全部音乐（与导入格式一致，可直接回灌导入）：≤9999 条返回单个 .json；超出返回 .zip（内含多个 ≤9999 条的 json）。"
+msgstr "導出全部音樂（與導入格式一致，可直接回灌導入）：≤9999 條返回單個 .json；超出返回 .zip（內含多個 ≤9999 條的 json）。"
+
+msgid "导出内容与「批量导入」的 JSON 数组格式完全一致（name / singer / online / music_sources），可直接回灌导入。"
+msgstr "導出內容與「批量導入」的 JSON 數組格式完全一致（name / singer / online / music_sources），可直接回灌導入。"
+
 msgid "小影音乐"
 msgstr "小影音樂"
 
 msgid "批量导入"
 msgstr "批量導入"
+
+msgid "批量导出"
+msgstr "批量導出"
 
 msgid "抓取热门/歌手/歌曲/搜索数据。url 参数必须为 2t58.com 域名地址。"
 msgstr "抓取熱門/歌手/歌曲/搜索數據。url 參數必須為 2t58.com 域名地址。"
@@ -1346,6 +1522,9 @@ msgstr "播放源 UUID"
 
 msgid "播放链接"
 msgstr "播放鏈接"
+
+msgid "文档页在线调试面板对二进制 zip 只能显示乱码文本，建议用 curl / 代码下载。"
+msgstr "文檔頁在線調試面板對二進制 zip 只能顯示亂碼文本，建議用 curl / 代碼下載。"
 
 msgid "新建一条音乐，返回 music_id（UUID），供详情/播放源关联使用。"
 msgstr "新建一條音樂，返回 music_id（UUID），供詳情/播放源關聯使用。"
@@ -1410,6 +1589,9 @@ msgstr "路徑參數：要更新的音樂 UUID"
 msgid "路径参数：音乐 UUID（文档页代调时请替换 URL 中的 <uuid>）"
 msgstr "路徑參數：音樂 UUID（文檔頁代調時請替換 URL 中的 <uuid>）"
 
+msgid "返回为文件下载（Content-Disposition: attachment），不走统一 JSON 包裹，curl 需加 -OJ 或 -o 保存文件。"
+msgstr "返回為文件下載（Content-Disposition: attachment），不走統一 JSON 包裹，curl 需加 -OJ 或 -o 保存文件。"
+
 msgid "返回热门歌手、歌曲飙升榜、流行趋势榜三个模块。"
 msgstr "返回熱門歌手、歌曲飆升榜、流行趨勢榜三個模塊。"
 
@@ -1418,6 +1600,9 @@ msgstr "選填：1-100，默認 10"
 
 msgid "选填：true/false"
 msgstr "選填：true/false"
+
+msgid "选填：不传导出全部（含离线）"
+msgstr "選填：不傳導出全部（含離線）"
 
 msgid "选填：匹配音乐名称/歌手"
 msgstr "選填：匹配音樂名稱/歌手"
@@ -1449,6 +1634,9 @@ msgstr "部分字段更新音樂（singer 為整體替換）。"
 msgid "部分成功：单条记录失败会整体回滚该条，响应返回 failures 明细。"
 msgstr "部分成功：單條記錄失敗會整體回滾該條，響應返回 failures 明細。"
 
+msgid "部分成功：单条记录失败只回滚该条；同名且同歌手的重复记录（与库中已有或同文件内前面已接受者比较，忽略顺序/大小写）计入 failures，其余正常入库。"
+msgstr "部分成功：單條記錄失敗只回滾該條；同名且同歌手的重複記錄（與庫中已有或同文件內前面已接受者比較，忽略順序/大小寫）計入 failures，其餘正常入庫。"
+
 msgid "音乐 UUID"
 msgstr "音樂 UUID"
 
@@ -1476,13 +1664,36 @@ msgstr "頁碼"
 msgid "首页数据"
 msgstr "首頁數據"
 
-
 # ==================== API 文档内容 · 视频分析 ====================
 msgid "5.89 dAT:/ ... https://v.douyin.com/xxxxx/ 复制此链接...\n或直接粘贴链接 / aweme_id"
 msgstr "5.89 dAT:/ ... https://v.douyin.com/xxxxx/ 複製此鏈接...\n或直接粘貼鏈接 / aweme_id"
 
+msgid "7622798120358923583"
+msgstr "7622798120358923583"
+
+msgid "一级纯文本评论内容"
+msgstr "一級純文本評論內容"
+
+msgid "发布抖音评论"
+msgstr "發布抖音評論"
+
+msgid "在指定视频下发布一条一级纯文本评论，返回评论 ID、内容与发布时间。"
+msgstr "在指定視頻下發布一條一級純文本評論，返回評論 ID、內容與發布時間。"
+
+msgid "在指定视频下发布一级纯文本评论，需携带真实抖音登录 Cookie。"
+msgstr "在指定視頻下發布一級純文本評論，需攜帶真實抖音登錄 Cookie。"
+
+msgid "必填：抖音登录 Cookie 完整字符串（含 sessionid 等）。仅透传给抖音，服务端不落盘；Cookie 失效会返回外部服务错误。"
+msgstr "必填：抖音登錄 Cookie 完整字符串（含 sessionid 等）。僅透傳給抖音，服務端不落盤；Cookie 失效會返回外部服務錯誤。"
+
 msgid "必填：支持三种输入 —— ①完整分享文本 ②链接（v.douyin.com 短链 或 www.douyin.com/video/xxx）③纯数字 aweme_id"
 msgstr "必填：支持三種輸入 —— ①完整分享文本 ②鏈接（v.douyin.com 短鏈 或 www.douyin.com/video/xxx）③純數字 aweme_id"
+
+msgid "必填：目标视频 ID，纯数字，取自视频页 URL 的 /video/<aweme_id> 部分。"
+msgstr "必填：目標視頻 ID，純數字，取自視頻頁 URL 的 /video/<aweme_id> 部分。"
+
+msgid "必填：评论内容。当前仅支持一级纯文本评论，不支持 @ / 话题 / 图片。"
+msgstr "必填：評論內容。當前僅支持一級純文本評論，不支持 @ / 話題 / 圖片。"
 
 msgid "把抖音分享内容解析为可直接下载的视频/图文数据。"
 msgstr "把抖音分享內容解析為可直接下載的視頻/圖文數據。"
@@ -1493,11 +1704,35 @@ msgstr "抖音"
 msgid "抖音分享文本"
 msgstr "抖音分享文本"
 
+msgid "抖音平台能力聚合：视频/图文解析（无水印提取）与评论自动发布（纯服务端签名，无需浏览器）。"
+msgstr "抖音平臺能力聚合：視頻/圖文解析（無水印提取）與評論自動發布（純服務端簽名，無需瀏覽器）。"
+
+msgid "抖音登录 Cookie"
+msgstr "抖音登錄 Cookie"
+
 msgid "抖音视频/图文解析"
 msgstr "抖音視頻/圖文解析"
 
+msgid "抖音评论发布"
+msgstr "抖音評論發布"
+
+msgid "抖音风控严格：高频调用会导致账号被限流，请低频调用并对失败做退避。"
+msgstr "抖音風控嚴格：高頻調用會導致賬號被限流，請低頻調用並對失敗做退避。"
+
+msgid "浏览器登录抖音后，从开发者工具「网络」面板复制完整 Cookie"
+msgstr "瀏覽器登錄抖音後，從開發者工具「網絡」面板複製完整 Cookie"
+
 msgid "短视频解析能力，提取无水印视频/图文内容。当前接入抖音线路，后续可继续扩展平台。"
 msgstr "短視頻解析能力，提取無水印視頻/圖文內容。當前接入抖音線路，後續可繼續擴展平臺。"
+
+msgid "被风控拦截时抖音返回空响应，此处统一映射为「外部API调用失败」。"
+msgstr "被風控攔截時抖音返回空響應，此處統一映射為「外部API調用失敗」。"
+
+msgid "视频 ID"
+msgstr "視頻 ID"
+
+msgid "视频解析"
+msgstr "視頻解析"
 
 msgid "解析抖音内容"
 msgstr "解析抖音內容"
@@ -1505,16 +1740,27 @@ msgstr "解析抖音內容"
 msgid "解析抖音视频或图文，返回无水印地址等信息。"
 msgstr "解析抖音視頻或圖文，返回無水印地址等信息。"
 
+msgid "评论发布"
+msgstr "評論發布"
+
 msgid "请使用真实可访问的分享内容测试；解析失败返回外部服务错误。"
 msgstr "請使用真實可訪問的分享內容測試；解析失敗返回外部服務錯誤。"
 
 msgid "请求体为 application/x-www-form-urlencoded 表单。"
 msgstr "請求體為 application/x-www-form-urlencoded 表單。"
 
+msgid "请求体为 application/x-www-form-urlencoded 表单；参数放表单字段，不要放 URL 查询串。"
+msgstr "請求體為 application/x-www-form-urlencoded 表單；參數放表單字段，不要放 URL 查詢串。"
+
+msgid "需先准备真实抖音登录 Cookie，且该账号有权限评论目标视频（视频需存在且公开）。"
+msgstr "需先準備真實抖音登錄 Cookie，且該賬號有權限評論目標視頻（視頻需存在且公開）。"
 
 # ==================== API 文档内容 · 短信验证 ====================
 msgid "11 位手机号（必填）"
 msgstr "11 位手機號（必填）"
+
+msgid "13800138000"
+msgstr "13800138000"
 
 msgid "1（不区分大小写，默认）"
 msgstr "1（不區分大小寫，默認）"
@@ -1633,8 +1879,10 @@ msgstr "驗證碼類型"
 msgid "验证码长度"
 msgstr "驗證碼長度"
 
-
 # ==================== API 文档内容 · 图形验证 ====================
+msgid "4dc3cfc2cdff448cad8d13107198d473"
+msgstr "4dc3cfc2cdff448cad8d13107198d473"
+
 msgid "success=验证有效，fail=验证无效（pass_token 过期/流水号已用等），原因见 data.reason。"
 msgstr "success=驗證有效，fail=驗證無效（pass_token 過期/流水號已用等），原因見 data.reason。"
 
@@ -1695,8 +1943,16 @@ msgstr "驗證通過時間戳"
 msgid "验证通过标识"
 msgstr "驗證通過標識"
 
-
 # ==================== API 文档内容 · 自研图形验证码 ====================
+msgid "4"
+msgstr "4"
+
+msgid "7H4K"
+msgstr "7H4K"
+
+msgid "9f1c1f14-6b0a-4a3e-9c31-2c9b6f0d1a55"
+msgstr "9f1c1f14-6b0a-4a3e-9c31-2c9b6f0d1a55"
+
 msgid "SpiderServices/Captcha 自研生成引擎（Pillow 绘制）"
 msgstr "SpiderServices/Captcha 自研生成引擎（Pillow 繪製）"
 
@@ -1751,6 +2007,9 @@ msgstr "自研圖形驗證碼（字符圖片 / 算術），Pillow 本地繪製�
 msgid "自研验证码"
 msgstr "自研驗證碼"
 
+msgid "请求体为 application/x-www-form-urlencoded 表单；开放接口，无需项目签名。"
+msgstr "請求體為 application/x-www-form-urlencoded 表單；開放接口，無需項目簽名。"
+
 msgid "请求方式 GET，参数放 query string；公开接口，无需项目签名。"
 msgstr "請求方式 GET，參數放 query string；公開接口，無需項目簽名。"
 
@@ -1766,7 +2025,6 @@ msgstr "選填：僅 kind=char 生效，取值 4-6（默認 4）"
 msgid "验证码ID"
 msgstr "驗證碼ID"
 
-
 # ==================== API 文档内容 · 验证码识别 ====================
 msgid "Beta 模型"
 msgstr "Beta 模型"
@@ -1777,11 +2035,17 @@ msgstr "OCR 文字識別"
 msgid "Python ddddocr（本地模型）"
 msgstr "Python ddddocr（本地模型）"
 
+msgid "[\"red\",\"blue\"]"
+msgstr "[\"red\",\"blue\"]"
+
 msgid "ddddocr 通用识别"
 msgstr "ddddocr 通用識別"
 
 msgid "false（默认）"
 msgstr "false（默認）"
+
+msgid "https://example.com/captcha.png"
+msgstr "https://example.com/captcha.png"
 
 msgid "true 时使用 Beta 版 OCR 模型（对部分验证码更准）"
 msgstr "true 時使用 Beta 版 OCR 模型（對部分驗證碼更準）"
@@ -1791,6 +2055,9 @@ msgstr "true 時對透明通道圖片做白底修復"
 
 msgid "true 时返回 data={text, probability}；false 时 data 为文本"
 msgstr "true 時返回 data={text, probability}；false 時 data 為文本"
+
+msgid "{\"red\": [[0,0,0],[10,255,255]]}"
+msgstr "{\"red\": [[0,0,0],[10,255,255]]}"
 
 msgid "上传本地图片（页面调试现支持真实文件上传）"
 msgstr "上傳本地圖片（頁面調試現支持真實文件上傳）"
@@ -1903,7 +2170,6 @@ msgstr "通過邊緣檢測匹配滑塊小圖在背景大圖中的缺口位置（
 msgid "颜色过滤(JSON 数组)"
 msgstr "顏色過濾(JSON 數組)"
 
-
 # ==================== API 文档内容 · 文件上传 ====================
 msgid "multipart/form-data 文件字段 file：直接用下方“选择文件”上传即可。"
 msgstr "multipart/form-data 文件字段 file：直接用下方「選擇文件」上傳即可。"
@@ -1981,6 +2247,12 @@ msgstr "SEO 周邊能力：友情鏈接集合的統一管理（列表/詳情/新
 
 msgid "false（禁用）"
 msgstr "false（禁用）"
+
+msgid "https://example.com"
+msgstr "https://example.com"
+
+msgid "https://example.com/logo.png"
+msgstr "https://example.com/logo.png"
 
 msgid "true（启用）"
 msgstr "true（啟用）"
@@ -2105,6 +2377,300 @@ msgstr "選填：默認啟用"
 msgid "部分字段更新：只更新本次传入的字段，未传字段保持不变。"
 msgstr "部分字段更新：只更新本次傳入的字段，未傳字段保持不變。"
 
+# ==================== API 文档内容 · 图床服务 ====================
+msgid "0（私有）"
+msgstr "0（私有）"
+
+msgid "1（公开）"
+msgstr "1（公開）"
+
+msgid "2026-12-31 23:59:59"
+msgstr "2026-12-31 23:59:59"
+
+msgid "657|xxxxxxxxxxxxxxxx"
+msgstr "657|xxxxxxxxxxxxxxxx"
+
+msgid "CDN 域名"
+msgstr "CDN 域名"
+
+msgid "PicUI 图床"
+msgstr "PicUI 圖床"
+
+msgid "PicUI 账号 Token 由服务端 Token 池自动选取，调用方无需（也无法）指定；上传成功后按 PicUI 返回的图片大小扣减该 Token 容量，容量用尽自动删除并切换下一个。"
+msgstr "PicUI 賬號 Token 由服務端 Token 池自動選取，調用方無需（也無法）指定；上傳成功後按 PicUI 返回的圖片大小扣減該 Token 容量，容量用儘自動刪除並切換下一個。"
+
+msgid "PicUI（v2.picui.cn）图片托管"
+msgstr "PicUI（v2.picui.cn）圖片託管"
+
+msgid "Token"
+msgstr "Token"
+
+msgid "Token 唯一：同一个 Token 只会入库一条，重复导入不会重复写入（库中已存在、或同一批请求里重复出现的，都计入 duplicated 跳过）。"
+msgstr "Token 唯一：同一個 Token 只會入庫一條，重複導入不會重複寫入（庫中已存在、或同一批請求裡重複出現的，都計入 duplicated 跳過）。"
+
+msgid "Token 文件"
+msgstr "Token 文件"
+
+msgid "Token 池为空或容量均已用尽时返回 50002，请先调用「导入 Token」接口补充。"
+msgstr "Token 池為空或容量均已用盡時返回 50002，請先調用「導入 Token」接口補充。"
+
+msgid "auto（默认，静态图转 webp）"
+msgstr "auto（默認，靜態圖轉 webp）"
+
+msgid "count：当前池内可用的 Token 数量"
+msgstr "count：當前池內可用的 Token 數量"
+
+msgid "gif"
+msgstr "gif"
+
+msgid "https://example.com/a.jpg"
+msgstr "https://example.com/a.jpg"
+
+msgid "items[].capacity_mb / items[].capacity_bytes：该 Token 的总容量"
+msgstr "items[].capacity_mb / items[].capacity_bytes：該 Token 的總容量"
+
+msgid "items[].create_time：该 Token 的入库时间"
+msgstr "items[].create_time：該 Token 的入庫時間"
+
+msgid "items[].remaining_mb / items[].remaining_bytes：该 Token 的剩余容量（= 容量 − 已用，最小为 0）"
+msgstr "items[].remaining_mb / items[].remaining_bytes：該 Token 的剩餘容量（= 容量 − 已用，最小為 0）"
+
+msgid "items[].token：Token 脱敏值（保留首 6 位与末 4 位，如 657|uN****afdb）"
+msgstr "items[].token：Token 脫敏值（保留首 6 位與末 4 位，如 657|uN****afdb）"
+
+msgid "items[].used_mb / items[].used_bytes：该 Token 的已用容量"
+msgstr "items[].used_mb / items[].used_bytes：該 Token 的已用容量"
+
+msgid "items：池内每个 Token 的明细，字段如下："
+msgstr "items：池內每個 Token 的明細，字段如下："
+
+msgid "jpg"
+msgstr "jpg"
+
+msgid "local"
+msgstr "local"
+
+msgid "plain（普通密码）"
+msgstr "plain（普通密碼）"
+
+msgid "png"
+msgstr "png"
+
+msgid "qa（问答式）"
+msgstr "qa（問答式）"
+
+msgid "r2（Cloudflare R2）"
+msgstr "r2（Cloudflare R2）"
+
+msgid "scdn.io 图床"
+msgstr "scdn.io 圖床"
+
+msgid "scdn.io（img.scdn.io）图片托管"
+msgstr "scdn.io（img.scdn.io）圖片託管"
+
+msgid "telegram"
+msgstr "telegram"
+
+msgid "token_file 为按行存放 Token 的文本文件（一行一个），可与 tokens 同时使用。"
+msgstr "token_file 為按行存放 Token 的文本文件（一行一個），可與 tokens 同時使用。"
+
+msgid "tokens 支持重复字段、逗号或换行分隔，一次可提交多个 Token；Token 内不能含空格等空白字符（文件里若带注释/多余列会被拒绝，避免导入无效 Token）。"
+msgstr "tokens 支持重複字段、逗號或換行分隔，一次可提交多個 Token；Token 內不能含空格等空白字符（文件裡若帶注釋/多餘列會被拒絕，避免導入無效 Token）。"
+
+msgid "total_capacity_bytes / total_used_bytes / total_remaining_bytes：与上面三项一一对应的字节值，便于程序精确计算"
+msgstr "total_capacity_bytes / total_used_bytes / total_remaining_bytes：與上面三項一一對應的字節值，便於程序精確計算"
+
+msgid "total_capacity_mb：全部 Token 的总容量合计（MB）"
+msgstr "total_capacity_mb：全部 Token 的總容量合計（MB）"
+
+msgid "total_remaining_mb：全部 Token 的剩余容量合计（MB）—— 即系统当前还能上传的总容量，看这个字段判断是否要补货"
+msgstr "total_remaining_mb：全部 Token 的剩餘容量合計（MB）—— 即系統當前還能上傳的總容量，看這個字段判斷是否要補貨"
+
+msgid "total_used_mb：全部 Token 的已用容量合计（MB）"
+msgstr "total_used_mb：全部 Token 的已用容量合計（MB）"
+
+msgid "true（加密上传）"
+msgstr "true（加密上傳）"
+
+msgid "webp"
+msgstr "webp"
+
+msgid "webp_animated（动图）"
+msgstr "webp_animated（動圖）"
+
+msgid "上传一张图片，返回可直接引用的 CDN 外链。"
+msgstr "上傳一張圖片，返回可直接引用的 CDN 外鏈。"
+
+msgid "上传一张图片，返回可直接引用的外链地址（含 html / markdown 等多种引用格式）。"
+msgstr "上傳一張圖片，返回可直接引用的外鏈地址（含 html / markdown 等多種引用格式）。"
+
+msgid "上传图片返回外链；PicUI 账号 Token 由服务端 Token 池统一持有并记账，容量用尽自动切换，调用方无需提供账号。需项目签名调用。"
+msgstr "上傳圖片返回外鏈；PicUI 賬號 Token 由服務端 Token 池統一持有並記賬，容量用儘自動切換，調用方無需提供賬號。需項目簽名調用。"
+
+msgid "上传图片返回外链；服务端按 SHA-256 秒传，重复图片直接返回已有链接。需项目签名调用。"
+msgstr "上傳圖片返回外鏈；服務端按 SHA-256 秒傳，重複圖片直接返回已有鏈接。需項目簽名調用。"
+
+msgid "不传（PicUI 默认公开）"
+msgstr "不傳（PicUI 默認公開）"
+
+msgid "不传（默认 local）"
+msgstr "不傳（默認 local）"
+
+msgid "临时上传Token"
+msgstr "臨時上傳Token"
+
+msgid "令牌池告警：上传后若池内剩余容量跌破 50MB，系统会自动向管理员邮箱（环境变量 QQ_MAIL_ACCOUNT，未配置则不发送）发送一封补货提醒邮件；该告警只在「跌破」的那一次发送，补货回到 50MB 以上后再次跌破才会重新告警。"
+msgstr "令牌池告警：上傳後若池內剩餘容量跌破 50MB，系統會自動向管理員郵箱（環境變量 QQ_MAIL_ACCOUNT，未配置則不發送）發送一封補貨提醒郵件；該告警只在「跌破」的那一次發送，補貨回到 50MB 以上後再次跌破才會重新告警。"
+
+msgid "储存策略ID"
+msgstr "儲存策略ID"
+
+msgid "单个容量(MB)"
+msgstr "單個容量(MB)"
+
+msgid "单位说明：容量同时提供 MB（保留 2 位小数，便于阅读）与字节（便于计算）两种单位。"
+msgstr "單位說明：容量同時提供 MB（保留 2 位小數，便於閱讀）與字節（便於計算）兩種單位。"
+
+msgid "单次最多导入 1000 个 Token；本服务需项目签名（app_id/timestamp/nonce/sign）。"
+msgstr "單次最多導入 1000 個 Token；本服務需項目簽名（app_id/timestamp/nonce/sign）。"
+
+msgid "可重复传参，或用逗号、换行分隔一次提交多个"
+msgstr "可重複傳參，或用逗號、換行分隔一次提交多個"
+
+msgid "向 Token 池新增一个或多个 Token（支持直接输入，也支持上传按行存放的 Token 文件）。"
+msgstr "向 Token 池新增一個或多個 Token（支持直接輸入，也支持上傳按行存放的 Token 文件）。"
+
+msgid "启用密码"
+msgstr "啟用密碼"
+
+msgid "图床服务"
+msgstr "圖床服務"
+
+msgid "图片外链托管：上传图片（或 ≤10 秒短视频）返回可直链访问的 CDN 地址，支持输出格式、加密与存储位置选择。当前接入 2 条线路。"
+msgstr "圖片外鏈託管：上傳圖片（或 ≤10 秒短視頻）返回可直鏈訪問的 CDN 地址，支持輸出格式、加密與存儲位置選擇。當前接入 2 條線路。"
+
+msgid "图片权限"
+msgstr "圖片權限"
+
+msgid "存储位置"
+msgstr "存儲位置"
+
+msgid "容量用尽（已用 ≥ 容量）的 Token 会被自动删除，因此 items 中出现的 Token 均可继续使用；服务器只做容量记账，不参与图片存储。"
+msgstr "容量用盡（已用 ≥ 容量）的 Token 會被自動刪除，因此 items 中出現的 Token 均可繼續使用；服務器只做容量記賬，不參與圖片存儲。"
+
+msgid "密码模式"
+msgstr "密碼模式"
+
+msgid "导入 Token"
+msgstr "導入 Token"
+
+msgid "服务端按 SHA-256 秒传：命中时 message 为「图片已存在，秒传成功！」，deduped=true。"
+msgstr "服務端按 SHA-256 秒傳：命中時 message 為「圖片已存在，秒傳成功！」，deduped=true。"
+
+msgid "本地图片文件（multipart 字段 image），必需"
+msgstr "本地圖片文件（multipart 字段 image），必需"
+
+msgid "本地图片文件（multipart 字段 image，支持 jpg/png/webp/gif/bmp/tiff）；与 image_url 二选一"
+msgstr "本地圖片文件（multipart 字段 image，支持 jpg/png/webp/gif/bmp/tiff）；與 image_url 二選一"
+
+msgid "本服务需项目签名（app_id/timestamp/nonce/sign）；在线调试由服务端自动代签。"
+msgstr "本服務需項目簽名（app_id/timestamp/nonce/sign）；在線調試由服務端自動代簽。"
+
+msgid "查看 Token 池整体容量与每个 Token 的已用 / 剩余容量（Token 已脱敏）。"
+msgstr "查看 Token 池整體容量與每個 Token 的已用 / 剩餘容量（Token 已脫敏）。"
+
+msgid "查询 Token 池"
+msgstr "查詢 Token 池"
+
+msgid "留空由服务端自动选择"
+msgstr "留空由服務端自動選擇"
+
+msgid "相册ID"
+msgstr "相冊ID"
+
+msgid "访问密码"
+msgstr "訪問密碼"
+
+msgid "请求体为 multipart/form-data（文件字段 image，可直接用下方“选择文件”上传）。"
+msgstr "請求體為 multipart/form-data（文件字段 image，可直接用下方「選擇文件」上傳）。"
+
+msgid "请求体为 multipart/form-data（文件字段 image，可直接用下方“选择文件”上传）；用 image_url 时也可用 application/x-www-form-urlencoded。"
+msgstr "請求體為 multipart/form-data（文件字段 image，可直接用下方「選擇文件」上傳）；用 image_url 時也可用 application/x-www-form-urlencoded。"
+
+msgid "输出格式"
+msgstr "輸出格式"
+
+msgid "过期时间"
+msgstr "過期時間"
+
+msgid "返回 data 含 url / filename / storage_backend / 压缩统计 / deduped（是否秒传） / password_protected。"
+msgstr "返回 data 含 url / filename / storage_backend / 壓縮統計 / deduped（是否秒傳） / password_protected。"
+
+msgid "返回 data 含 url / size_kb / size_bytes / mimetype / extension / md5 / sha1 / links（html、bbcode、markdown、markdown_with_link、thumbnail_url 等）。"
+msgstr "返回 data 含 url / size_kb / size_bytes / mimetype / extension / md5 / sha1 / links（html、bbcode、markdown、markdown_with_link、thumbnail_url 等）。"
+
+msgid "返回 data 字段：submitted 本次提交的 Token 数（已按行/逗号拆分并去重）；created 实际新增数量；duplicated 因已存在而跳过的数量；duplicated_tokens 被跳过的 Token 脱敏列表；capacity_bytes / capacity_mb 每个新 Token 的容量。"
+msgstr "返回 data 字段：submitted 本次提交的 Token 數（已按行/逗號拆分並去重）；created 實際新增數量；duplicated 因已存在而跳過的數量；duplicated_tokens 被跳過的 Token 脫敏列表；capacity_bytes / capacity_mb 每個新 Token 的容量。"
+
+msgid "返回 data 顶层字段："
+msgstr "返回 data 頂層字段："
+
+msgid "远程图片 URL"
+msgstr "遠程圖片 URL"
+
+msgid "远程图片地址（http/https），服务端代理拉取；与 image 二选一"
+msgstr "遠程圖片地址（http/https），服務端代理拉取；與 image 二選一"
+
+msgid "选填：PicUI 临时上传 Token（对应其 token 字段），一般不传"
+msgstr "選填：PicUI 臨時上傳 Token（對應其 token 字段），一般不傳"
+
+msgid "选填：PicUI 储存策略 ID，默认 1（「普通用户」策略）"
+msgstr "選填：PicUI 儲存策略 ID，默認 1（「普通用戶」策略）"
+
+msgid "选填：password_enabled=true 时必填"
+msgstr "選填：password_enabled=true 時必填"
+
+msgid "选填：password_type=qa 时必填"
+msgstr "選填：password_type=qa 時必填"
+
+msgid "选填：加密上传（加密图永不参与秒传）"
+msgstr "選填：加密上傳（加密圖永不參與秒傳）"
+
+msgid "选填：图片权限，留空使用 PicUI 默认值"
+msgstr "選填：圖片權限，留空使用 PicUI 默認值"
+
+msgid "选填：图片过期时间，格式 yyyy-MM-dd HH:mm:ss"
+msgstr "選填：圖片過期時間，格式 yyyy-MM-dd HH:mm:ss"
+
+msgid "选填：存储位置"
+msgstr "選填：存儲位置"
+
+msgid "选填：密码模式，默认 plain"
+msgstr "選填：密碼模式，默認 plain"
+
+msgid "选填：待新增的 Token，可多个（与 token_file 至少传一项）"
+msgstr "選填：待新增的 Token，可多個（與 token_file 至少傳一項）"
+
+msgid "选填：指定外链 CDN 域名（如 img.scdn.io），留空自动选择"
+msgstr "選填：指定外鏈 CDN 域名（如 img.scdn.io），留空自動選擇"
+
+msgid "选填：文本文件，按行存放 Token（一行一个，UTF-8）"
+msgstr "選填：文本文件，按行存放 Token（一行一個，UTF-8）"
+
+msgid "选填：每个 Token 的容量（MB），默认 50"
+msgstr "選填：每個 Token 的容量（MB），默認 50"
+
+msgid "选填：目标相册 ID"
+msgstr "選填：目標相冊 ID"
+
+msgid "选填：输出格式，默认 auto"
+msgstr "選填：輸出格式，默認 auto"
+
+msgid "问题文本"
+msgstr "問題文本"
+
+msgid "默认 1"
+msgstr "默認 1"
 
 # ==================== API 文档内容 · 爬虫验证 ====================
 msgid "4759 蜘蛛 IP 验证"
@@ -2145,8 +2711,20 @@ msgstr "驗證給定 IP 是否為搜索引擎爬蟲，返回識別結論與類�
 msgid "0=否"
 msgstr "0=否"
 
+msgid "1=HTTP"
+msgstr "1=HTTP"
+
 msgid "1=是"
 msgstr "1=是"
+
+msgid "2=HTTPS"
+msgstr "2=HTTPS"
+
+msgid "3=SOCKS5"
+msgstr "3=SOCKS5"
+
+msgid "4=HTTP(S)"
+msgstr "4=HTTP(S)"
 
 msgid "66 免费代理"
 msgstr "66 免費代理"
@@ -2553,6 +3131,9 @@ msgstr "deepseek-v4-flash（快速版）"
 msgid "deepseek-v4-pro（专业版）"
 msgstr "deepseek-v4-pro（專業版）"
 
+msgid "sk-…"
+msgstr "sk-…"
+
 msgid "一个接口覆盖单轮/多轮对话；不传 api_key 时使用平台 .env 配置的 DeepSeek Key。"
 msgstr "一個接口覆蓋單輪/多輪對話；不傳 api_key 時使用平臺 .env 配置的 DeepSeek Key。"
 
@@ -2634,7 +3215,6 @@ msgstr "選填：多輪對話用，格式為 JSON 數組，role 取 user/assista
 msgid "选填：设定 AI 角色；不传=平台默认提示词；空字符串=不使用系统提示词"
 msgstr "選填：設定 AI 角色；不傳=平臺默認提示詞；空字符串=不使用系統提示詞"
 
-
 # ==================== API 文档内容 · 代练通 ====================
 msgid "-99=正在进行（默认），99=已完成"
 msgstr "-99=正在進行（默認），99=已完成"
@@ -2651,11 +3231,20 @@ msgstr "17=註冊（默認）"
 msgid "1=安卓"
 msgstr "1=安卓"
 
+msgid "2=IOS"
+msgstr "2=IOS"
+
 msgid "Password（密码）"
 msgstr "Password（密碼）"
 
+msgid "UID"
+msgstr "UID"
+
 msgid "VerificationCode（验证码，默认）"
 msgstr "VerificationCode（驗證碼，默認）"
+
+msgid "mobile"
+msgstr "mobile"
 
 msgid "qq（默认）"
 msgstr "qq（默認）"
@@ -2888,7 +3477,6 @@ msgstr "默認 107=王者榮耀"
 msgid "默认王者荣耀区服"
 msgstr "默認王者榮耀區服"
 
-
 # ==================== API 文档内容 · 代练丸子 ====================
 msgid "122=安卓QQ"
 msgstr "122=安卓QQ"
@@ -2904,6 +3492,9 @@ msgstr "2=安卓QQ"
 
 msgid "QQ号"
 msgstr "QQ號"
+
+msgid "https://…/avatar.png"
+msgstr "https://…/avatar.png"
 
 msgid "代练丸子平台"
 msgstr "代練丸子平臺"
@@ -3046,10 +3637,12 @@ msgstr "選填：默認平臺圖標"
 msgid "验证码或密码登录；未注册手机号用验证码登录会自动注册。"
 msgstr "驗證碼或密碼登錄；未註冊手機號用驗證碼登錄會自動註冊。"
 
-
 # ==================== API 文档内容 · 用户中心 ====================
 msgid "username/email/phone 按后台可用方式组合；两步注册时 data.need_verify=true。"
 msgstr "username/email/phone 按後臺可用方式組合；兩步註冊時 data.need_verify=true。"
+
+msgid "仅支持已绑定邮箱/手机号的账号；纯用户名账号没有可验证通道，无法自助重置。"
+msgstr "僅支持已綁定郵箱/手機號的賬號；純用戶名賬號沒有可驗證通道，無法自助重置。"
 
 msgid "仅需项目签名参数，无需业务参数。"
 msgstr "僅需項目簽名參數，無需業務參數。"
@@ -3069,6 +3662,9 @@ msgstr "發送註冊短信"
 msgid "发送登录验证码"
 msgstr "發送登錄驗證碼"
 
+msgid "发送重置密码验证码"
+msgstr "發送重置密碼驗證碼"
+
 msgid "可用注册/登录方式"
 msgstr "可用註冊/登錄方式"
 
@@ -3077,6 +3673,12 @@ msgstr "同一項目+憑證+IP 連續失敗 5 次鎖定 15 分鐘（返回 20040
 
 msgid "必填：用户在该项目下持有的登录 Token（login 成功返回）"
 msgstr "必填：用戶在該項目下持有的登錄 Token（login 成功返回）"
+
+msgid "忘记密码第一步：校验邮箱/手机号已注册后发码（60 秒冷却）。"
+msgstr "忘記密碼第一步：校驗郵箱/手機號已註冊後發碼（60 秒冷卻）。"
+
+msgid "忘记密码第二步：校验验证码通过后设置新密码。"
+msgstr "忘記密碼第二步：校驗驗證碼通過後設置新密碼。"
 
 msgid "成功返回 data={valid, user_id, account, username}。"
 msgstr "成功返回 data={valid, user_id, account, username}。"
@@ -3174,11 +3776,17 @@ msgstr "重發兩步註冊驗證郵件（60 秒冷卻）。"
 msgid "重发验证邮件"
 msgstr "重發驗證郵件"
 
+msgid "重置成功会作废该用户全部已签发 Token（所有已登录设备需重新登录）。"
+msgstr "重置成功會作廢該用戶全部已簽發 Token（所有已登錄設備需重新登錄）。"
+
 msgid "链接中的 token（系统生成），正常由用户点邮件链接触发"
 msgstr "鏈接中的 token（系統生成），正常由用戶點郵件鏈接觸發"
 
 msgid "除 methods 与邮箱激活链接(GET) 外均需项目签名。邮箱/手机号两步注册流程：先 register（仅暂存+发验证码），再调 verify/email 或 verify/phone 校验通过后才创建账号。"
 msgstr "除 methods 與郵箱激活鏈接(GET) 外均需項目簽名。郵箱/手機號兩步註冊流程：先 register（僅暫存+發驗證碼），再調 verify/email 或 verify/phone 校驗通過後才創建賬號。"
+
+msgid "除 methods 与邮箱激活链接(GET) 外均需项目签名。邮箱/手机号两步注册流程：先 register（仅暂存+发验证码），再调 verify/email 或 verify/phone 校验通过后才创建账号。忘记密码流程：先调 password/send 发码，再调 password/reset 校验通过后改密（并作废该用户全部 Token）。"
+msgstr "除 methods 與郵箱激活鏈接(GET) 外均需項目簽名。郵箱/手機號兩步註冊流程：先 register（僅暫存+發驗證碼），再調 verify/email 或 verify/phone 校驗通過後才創建賬號。忘記密碼流程：先調 password/send 發碼，再調 password/reset 校驗通過後改密（並作廢該用戶全部 Token）。"
 
 msgid "项目信息"
 msgstr "項目信息"
@@ -3313,6 +3921,9 @@ msgstr "%(n)s 天內共 %(total)s 次"
 msgid "%(r)s 天"
 msgstr "%(r)s 天"
 
+msgid "/api/email/v1/send"
+msgstr "/api/email/v1/send"
+
 msgid "API 调用统计"
 msgstr "API 調用統計"
 
@@ -3327,6 +3938,9 @@ msgstr "今日調用量"
 
 msgid "公开接口，无需项目签名。"
 msgstr "公開接口，無需項目簽名。"
+
+msgid "公开查询 API 调用量：某个接口被调用了多少次、各服务调用量排行。仅公开调用次数，不含项目与耗时。"
+msgstr "公開查詢 API 調用量：某個接口被調用了多少次、各服務調用量排行。僅公開調用次數，不含項目與耗時。"
 
 msgid "区间内产生过调用的接入项目数"
 msgstr "區間內產生過調用的接入項目數"
@@ -3435,7 +4049,6 @@ msgstr "返回各服務的累計與今日調用次數，按累計調用量降序
 
 msgid "返回某个接口的累计调用次数与今日调用次数。"
 msgstr "返回某個接口的累計調用次數與今日調用次數。"
-
 
 # ==================== 计算程序模块（programs/index.html、programs/detail.html） ====================
 msgid "%(n)s 个分类"
