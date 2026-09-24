@@ -122,20 +122,16 @@ def update_friend_link(link_id: int, data: dict) -> tuple:
         return False, f'查询友情链接失败: {e}'
 
     # 逐字段更新（仅更新 data 中存在的字段）
-    updated_fields = []
     for field in ['name', 'url', 'description', 'logo', 'category', 'contact']:
         if field in data:
             setattr(link, field, (data[field] or '').strip() if isinstance(data[field], str) else data[field])
-            updated_fields.append(field)
     if 'sort' in data:
         try:
             link.sort = int(data['sort'])
-            updated_fields.append('sort')
         except (ValueError, TypeError):
             return False, '参数格式错误: sort 必须为整数'
     if 'status' in data:
         link.status = _parse_bool(data['status'], default=link.status)
-        updated_fields.append('status')
 
     try:
         link.full_clean()

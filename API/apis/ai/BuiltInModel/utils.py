@@ -213,12 +213,10 @@ def chat_completion(messages, api_key=None, model=DEFAULT_MODEL, timeout=120,
     if stop:
         payload["stop"] = stop
 
-    try:
-        resp, err = _request_with_retry(
-            'POST', url, json=payload, headers=headers, timeout=timeout
-        )
-    except requests.RequestException as e:
-        return False, f'请求 DeepSeek API 失败: {e}'
+    # _request_with_retry 内部已捕获 requests.RequestException，失败时返回 (None, err)
+    resp, err = _request_with_retry(
+        'POST', url, json=payload, headers=headers, timeout=timeout
+    )
 
     if resp is None:
         return False, f'DeepSeek API 请求失败（重试 {_MAX_RETRIES} 次后放弃）: {err}'
@@ -286,14 +284,12 @@ def stream_chat_completion(messages, api_key=None, model=DEFAULT_MODEL, timeout=
     if stop:
         payload["stop"] = stop
 
-    try:
-        resp, err = _request_with_retry(
-            'POST', url,
-            json=payload, headers=headers,
-            stream=True, timeout=timeout,
-        )
-    except requests.RequestException as e:
-        raise ValueError(f'请求 DeepSeek API 失败: {e}') from e
+    # _request_with_retry 内部已捕获 requests.RequestException，失败时返回 (None, err)
+    resp, err = _request_with_retry(
+        'POST', url,
+        json=payload, headers=headers,
+        stream=True, timeout=timeout,
+    )
 
     if resp is None:
         raise ValueError(f'DeepSeek API 请求失败（重试 {_MAX_RETRIES} 次后放弃）: {err}')

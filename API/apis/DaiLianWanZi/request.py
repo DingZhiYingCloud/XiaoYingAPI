@@ -40,15 +40,6 @@ def _spider_result(result):
         return _json_response(StatusCode.EXTERNAL_API_FAILED, msg=result.get("message", "未知错误"))
 
 
-def _require_authorization(request, source="POST"):
-    """从 request 中提取 authorization 参数"""
-    if source == "POST":
-        auth = request.POST.get("authorization", "").strip()
-    else:
-        auth = request.GET.get("authorization", "").strip()
-    return auth
-
-
 # ==================== 认证模块 ====================
 
 

@@ -426,7 +426,6 @@ def register_user(app, username, email, phone, password, base_url=''):
     password_hash = make_password(password)
     register_batch = str(uuid.uuid4())  # 同一次注册请求（可能同时绑定邮箱+手机号）共享批次
     data = {'username': username} if username else {}
-    need_verify = False
     if email:
         if not _cooldown_ok(METHOD_EMAIL, email):
             return False, f'发送过于频繁，请 {VERIFY_RESEND_COOLDOWN} 秒后再试'
@@ -436,7 +435,6 @@ def register_user(app, username, email, phone, password, base_url=''):
         )
         data['email'] = email
         data['verify_email_sent'] = sent
-        need_verify = True
     if phone:
         if not _cooldown_ok(METHOD_PHONE, phone):
             return False, f'发送过于频繁，请 {VERIFY_RESEND_COOLDOWN} 秒后再试'
@@ -446,9 +444,8 @@ def register_user(app, username, email, phone, password, base_url=''):
         )
         data['phone'] = phone
         data['verify_phone_sent'] = sent
-        need_verify = True
-    if need_verify:
-        data['need_verify'] = True
+    # 走到这里 email/phone 至少有一个非空（纯用户名注册在上面已直接建号返回）
+    data['need_verify'] = True
     return True, data
 
 

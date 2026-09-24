@@ -47,19 +47,6 @@ def _make_recognizer(ocr=True, det=False, **init_kwargs):
         return None
 
 
-def _spider_result(result):
-    """将爬虫的 {code, message, data} 映射为项目统一 JsonResponse"""
-    from django.http import JsonResponse
-    from API.common import StatusCode
-
-    if not isinstance(result, dict):
-        return JsonResponse({"code": StatusCode.UNKNOWN_ERROR, "msg": str(result), "data": None})
-    if result.get("code") == 0:
-        return JsonResponse({"code": StatusCode.SUCCESS, "msg": result.get("message", "成功"), "data": result.get("data")})
-    else:
-        return JsonResponse({"code": StatusCode.EXTERNAL_API_FAILED, "msg": result.get("message", "识别失败"), "data": None})
-
-
 # ---------- 封装函数 ----------
 
 def ocr(image_source, probability=False, png_fix=False, colors=None,
