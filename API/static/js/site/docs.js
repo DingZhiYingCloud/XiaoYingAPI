@@ -270,6 +270,11 @@
     pre.textContent = body;
     wrap.appendChild(pre);
     resBox.appendChild(wrap);
+
+    // 广播响应结果，供扩展模块消费（如在线播放器自动加载响应中的 m3u8 地址）
+    document.dispatchEvent(new CustomEvent('docs:result', {
+      detail: { resKey: resBox.id.replace(/^res-/, ''), parsed: parsed, http: http }
+    }));
   }
 
   /* 发送 / 清空 */

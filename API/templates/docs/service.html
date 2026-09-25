@@ -170,6 +170,27 @@
 
           {# 响应面板 #}
           <div id="res-{{ channel.slug }}-{{ ep.slug }}" class="hidden"></div>
+
+          {# 在线播放器：端点在文档声明中标记 player=True 时渲染（如电影 m3u8 播放地址） #}
+          {% if ep.player %}
+          <div class="mt-3 rounded-box border border-base-300 bg-base-200/40 p-3"
+               data-player data-player-res="{{ channel.slug }}-{{ ep.slug }}"
+               data-hls-src="{% static 'js/vendor/hls.min.js' %}">
+            <div class="mb-2 flex flex-wrap items-center gap-2">
+              <span class="text-sm font-semibold">{% trans "在线播放测试" %}</span>
+              <span class="badge badge-ghost badge-sm">hls.js</span>
+              <span data-player-status class="text-xs text-base-content/60">
+                {% trans "发送上方请求成功后自动加载播放；也可直接粘贴任意 m3u8 地址测试。" %}
+              </span>
+            </div>
+            <video data-player-video class="aspect-video w-full rounded-box bg-black" controls playsinline preload="metadata"></video>
+            <div class="mt-2 flex flex-wrap items-center gap-2">
+              <input data-player-url type="text" class="input input-bordered input-sm w-full flex-1 font-mono text-xs"
+                     placeholder="{% trans '或直接粘贴 m3u8 地址' %}" autocomplete="off" />
+              <button type="button" data-player-load class="btn btn-outline btn-sm">{% trans "加载播放" %}</button>
+            </div>
+          </div>
+          {% endif %}
         </div>
       </article>
       {% endfor %}
@@ -184,7 +205,11 @@
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'js/site/docs.js' %}?v=20260911b"></script>
+<script src="{% static 'js/site/docs.js' %}?v=20260926a"></script>
+{% if has_player %}
+{# 在线播放器（m3u8）：端点在文档声明中标记 player=True 时加载 #}
+<script src="{% static 'js/site/docs_player.js' %}?v=20260926a"></script>
+{% endif %}
 {% if doc.slug == 'captcha_auth' %}
 {# 图形验证：在线调试中模拟“前端真实弹窗”完成验证（仅该服务需要） #}
 <script src="{% static 'js/captcha_auth/aliyun/captcha-client.js' %}?v=20260911b"></script>

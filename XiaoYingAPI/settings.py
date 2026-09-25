@@ -60,7 +60,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware', # 用来处理点击劫持攻击的中间件
     'API.common.middleware.ApiRequestLogMiddleware', # 请求日志（A-05）+ 调用统计（A-03）：必须在认证中间件之前，认证被拒的请求也要记录
     'API.common.middleware.ApiAuthMiddleware', # API 服务认证中间件：按 ApiCategory 分类树配置决定哪些 /api/ 服务需用户中心签名认证
-    'API.common.middleware.ApiJson404Middleware', # /api/ 路径未匹配路由时返回 JSON 404（兜底）
+    'API.common.middleware.ApiJsonErrorMiddleware', # /api/ 路径 404 / 405 统一返回 JSON（兜底）
 ]
 
 
@@ -200,6 +200,31 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # 媒体文件配置
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+
+# ==================== 影视爬虫缓存（按「服务 + 线路」分目录） ====================
+# 缓存根目录：cache/<服务>/<线路>/，各服务与线路的缓存互不干扰。
+# 例如电影服务的 555 线路：cache/movies/movie_555/
+# 后续新增线路（movie_iqiyi / movie_tencent 等）时，在 CACHES 中新增一个同结构项即可。
+XYAPI_CACHE_ROOT = Path(os.getenv('XYAPI_CACHE_ROOT') or BASE_DIR / 'cache')
+
+# 电影 - 555 线路缓存过期时间（分钟），可由 .env 覆盖
+# 数据类（片名 / 详情 / 简介 / 集数等固定信息）：默认 1440 分钟（24 小时）
+MOVIE_555_DATA_CACHE_TTL = int(os.getenv('MOVIE_555_DATA_CACHE_TTL', '1440'))
+# 媒体类（m3u8 播放地址等有时效的资源）：默认 30 分钟
+MOVIE_555_MEDIA_CACHE_TTL = int(os.getenv('MOVIE_555_MEDIA_CACHE_TTL', '30'))
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    },
+    # 电影 - 555 线路缓存
+    'movie_555': {
+        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+        'LOCATION': str(XYAPI_CACHE_ROOT / 'movies' / 'movie_555'),
+        'TIMEOUT': MOVIE_555_MEDIA_CACHE_TTL * 60,
+    },
+}
 
 
 # ==================== SimpleUI 后台主题配置 ====================

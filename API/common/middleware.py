@@ -88,20 +88,33 @@ class ApiCsrfExemptMiddleware(CsrfViewMiddleware):
         return super().process_view(request, callback, callback_args, callback_kwargs)
 
 
-class ApiJson404Middleware:
-    """对 /api/ 前缀未匹配的路由返回 JSON 404"""
+class ApiJsonErrorMiddleware:
+    """对 /api/ 前缀的 404 / 405 统一转为项目 JSON 格式
+
+    - 404：请求的 /api/ 路径未匹配任何路由时，Django 在 DEBUG=True 下会返回 HTML
+      调试页，此中间件统一转 JSON。不受 DEBUG 开关影响，生产环境同样生效。
+    - 405：视图上的 @require_http_methods 返回的是 Django 原生 HTML 405，
+      按统一 JSON 契约解析的对接方会解析失败，这里统一转 JSON（METHOD_NOT_ALLOWED）。
+    """
 
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
         response = self.get_response(request)
-        if response.status_code == 404 and request.path.startswith('/api/'):
-            return JsonResponse({
-                'code': StatusCode.NOT_FOUND,
-                'msg': f'请求的资源不存在: {request.path}',
-                'data': None,
-            }, status=404)
+        if request.path.startswith('/api/'):
+            if response.status_code == 404:
+                return JsonResponse({
+                    'code': StatusCode.NOT_FOUND,
+                    'msg': f'请求的资源不存在: {request.path}',
+                    'data': None,
+                }, status=404)
+            if response.status_code == 405:
+                return JsonResponse({
+                    'code': StatusCode.METHOD_NOT_ALLOWED,
+                    'msg': f'请求方法不允许: {request.method} {request.path}',
+                    'data': None,
+                }, status=405)
         return response
 
 

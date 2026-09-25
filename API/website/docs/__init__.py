@@ -30,6 +30,7 @@ from . import ai as _ai
 from . import dlt as _dlt
 from . import dlwz as _dlwz
 from . import user_center as _user_center
+from . import movie as _movie
 from .schema import (ChannelSpec, EndpointSpec, ParamSpec, ServiceSpec)  # noqa: F401 便于外部引用
 
 # 已接入文档的服务（顺序即 /docs/ 目录展示顺序）
@@ -52,6 +53,7 @@ _SERVICES = [
     _dlt.SERVICE,
     _dlwz.SERVICE,
     _user_center.SERVICE,
+    _movie.SERVICE,
 ]
 
 ALL = {svc.slug: svc for svc in _SERVICES}

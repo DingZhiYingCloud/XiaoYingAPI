@@ -78,7 +78,7 @@ XiaoYingAPI/
 
 - `status_code.py`：统一状态码（10000 成功 / 2xxxx 客户端错误 / 3xxxx 业务错误 / 4xxxx 外部错误 / 5xxxx 系统错误）
 - `views.py`：全局 JSON 兜底（400 / 404 / 500）+ 服务建设中占位视图
-- `middleware.py`：`ApiAuthMiddleware`（分类树签名认证）+ `ApiJson404Middleware`（`/api/` 未匹配路径返回 JSON）+ `ApiRequestLogMiddleware`（请求日志 + 调用统计采集）
+- `middleware.py`：`ApiAuthMiddleware`（分类树签名认证）+ `ApiJsonErrorMiddleware`（`/api/` 的 404 / 405 统一返回 JSON）+ `ApiRequestLogMiddleware`（请求日志 + 调用统计采集）
 - `api_stats.py` / `api_stats_query.py`：调用统计的写入（缓冲 + 批量落库）与查询
 - `base.py`：`BaseModel` 基础模型（含 create_time / updated_time 自动字段）
 - `sqlite_orm.py`：独立的 SQLite3 ORM 工具库（仅标准库，可单独复用）
@@ -110,6 +110,7 @@ XiaoYingAPI/
 | 文件上传    | `/api/upload/`              | 通用文件上传                       |
 | 视频分析    | `/api/video_analysis/`      | 能力已迁移至「抖音」服务，暂时关闭（建设中）       |
 | 抖音      | `/api/douyin/`              | 抖音视频 / 图文解析 + 评论发布（均需签名）     |
+| 电影      | `/api/movies/`              | 影视聚合：分类 / 列表 / 详情 / 选集 / 播放地址（555 电影线路） |
 | AI 服务   | `/api/ai/`                  | 内置模型服务                       |
 | 爬虫验证    | `/api/spider_verification/` | 爬虫验证（sv4759）                  |
 | 代练通     | `/api/dlt/`                 | 代练订单信息查询                     |

@@ -70,6 +70,9 @@ Test/
 # 误判为未修改而跳过更新，部署时请使用：python manage.py collectstatic --noinput --clear
 /static/
 
+# 电影爬虫运行时缓存（cache/movies/<线路>/ 下的 .djcache 由代码生成，随抓取变化，不入库）
+/cache/
+
 # daisyUI 前端编译工具：Tailwind 独立可执行文件(约 107MB，不入库；按官方文档重新下载即可)
 # 下载地址: https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-windows-x64.exe
 # 通配所有目录（源目录 API/static/css 与 collectstatic 产物目录 static/css 各有一份副本）

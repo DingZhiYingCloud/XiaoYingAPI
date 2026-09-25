@@ -50,6 +50,9 @@ class EndpointSpec:
     notes: List[str] = field(default_factory=list)
     # 累计调用次数：运行时由文档视图按统计数据填入（仅展示用，声明处无需设置）
     call_count: int = 0
+    # 标记该端点返回可播放媒体地址（如 m3u8）：文档页会渲染在线播放器，
+    # 发送请求成功后自动取响应中的 m3u8 播放，也支持手动粘贴地址测试
+    player: bool = False
 
 
 @dataclass

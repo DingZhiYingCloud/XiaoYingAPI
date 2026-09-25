@@ -11,5 +11,8 @@ Pillow
 httpx
 whitenoise
 
+# 电影爬虫（movie_555 等线路）：站点有 TLS 指纹防护，需模拟浏览器指纹才能访问
+curl_cffi
+
 # 仅构建期使用：把简体词条转成繁体（scripts/make_zh_hant.py），运行时不依赖
 zhconv

@@ -55,7 +55,10 @@ def service(request, slug: str):
             endpoint.call_count = counts.get(endpoint.path, 0)
     # 服务状态（手动优先）；已接入文档的服务默认开放，非开放态在页面顶部给横幅提示
     status = _annotate_status([{'url_prefix': doc.prefix}], lambda p: True)[0]
-    return render(request, 'docs/service.html', {'doc': doc, 'status': status})
+    # 是否存在需要在线播放器的端点（如 m3u8 播放地址），有则加载播放器脚本
+    has_player = any(ep.player for channel in doc.channels for ep in channel.endpoints)
+    return render(request, 'docs/service.html',
+                  {'doc': doc, 'status': status, 'has_player': has_player})
 
 
 def _read_json_body(request):

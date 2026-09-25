@@ -194,7 +194,7 @@ def _json_response(code, data=None, msg=None):
 ### 4.6 异常与兜底
 
 - 视图层**不写裸 `except` 吞异常**；未捕获异常由 `ApiRequestLogMiddleware` 记录堆栈到 `logs/error.log`（带 `request_id`），并由全局 `handler500` 返回统一 JSON。
-- `/api/` 未匹配路径由 `ApiJson404Middleware` / `handler404` 统一返回 `{"code":20030,...}`，不受 `DEBUG` 影响。
+- `/api/` 未匹配路径由 `ApiJsonErrorMiddleware` / `handler404` 统一返回 `{"code":20030,...}`，不受 `DEBUG` 影响。
 - 业务层预期内的失败（参数非法、资源不存在、外部调用失败）用 `(ok, message)` 元组返回，由视图映射为对应状态码，**不要抛异常做流程控制**。
 
 ---
