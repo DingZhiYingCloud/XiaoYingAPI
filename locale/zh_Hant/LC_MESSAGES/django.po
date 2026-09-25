@@ -882,8 +882,8 @@ msgstr "（未找到與「%(keyword)s」匹配的項目）"
 
 
 # ==================== 后端通用文案 / 服务状态 / 控制台提示 ====================
-msgid "66免费 / 91HTTP / 青雨动态与住宅长效 / 静态代理 / Thordata 动态住宅代理多源聚合，附带可用性验证。"
-msgstr "66免費 / 91HTTP / 青雨動態與住宅長效 / 靜態代理 / Thordata 動態住宅代理多源聚合，附帶可用性驗證。"
+msgid "66免费 / 91HTTP / 青雨动态与住宅长效 / 巨量代理 / 静态代理 / Thordata 动态住宅代理多源聚合，附带可用性验证。"
+msgstr "66免費 / 91HTTP / 青雨動態與住宅長效 / 巨量代理 / 靜態代理 / Thordata 動態住宅代理多源聚合，附帶可用性驗證。"
 
 msgid "AI 服务"
 msgstr "AI 服務"
@@ -2714,17 +2714,32 @@ msgstr "0=否"
 msgid "1=HTTP"
 msgstr "1=HTTP"
 
+msgid "1=回车换行"
+msgstr "1=回車換行"
+
 msgid "1=是"
 msgstr "1=是"
 
 msgid "2=HTTPS"
 msgstr "2=HTTPS"
 
+msgid "2=SOCKS5"
+msgstr "2=SOCKS5"
+
+msgid "2=换行"
+msgstr "2=換行"
+
 msgid "3=SOCKS5"
 msgstr "3=SOCKS5"
 
+msgid "3=空格"
+msgstr "3=空格"
+
 msgid "4=HTTP(S)"
 msgstr "4=HTTP(S)"
+
+msgid "4=竖线"
+msgstr "4=豎線"
 
 msgid "66 免费代理"
 msgstr "66 免費代理"
@@ -2750,11 +2765,23 @@ msgstr "Thordata 動態住宅代理"
 msgid "api.91http.com（国内动态代理）"
 msgstr "api.91http.com（國內動態代理）"
 
+msgid "custom_sign 模式（自算签名）的签名与参数集严格绑定，改动任何参数都必须重算签名，否则上游接口返回 401。"
+msgstr "custom_sign 模式（自算簽名）的簽名與參數集嚴格綁定，改動任何參數都必須重算簽名，否則上遊接口返回 401。"
+
 msgid "data.proxies[0].proxy 即完整代理地址，可直接用作 requests 的 proxies。"
 msgstr "data.proxies[0].proxy 即完整代理地址，可直接用作 requests 的 proxies。"
 
 msgid "host 指向内网 / 回环 / 保留地址会被拒绝（20003，仅 verify=true 时会做该连通性校验）。"
 msgstr "host 指向內網 / 迴環 / 保留地址會被拒絕（20003，僅 verify=true 時會做該連通性校驗）。"
+
+msgid "json"
+msgstr "json"
+
+msgid "juliangip.com（独享代理产品，国内动态 IP）"
+msgstr "juliangip.com（獨享代理產品，國內動態 IP）"
+
+msgid "key 与 custom_sign 只能二选一，同传返回 20003。"
+msgstr "key 與 custom_sign 只能二選一，同傳返回 20003。"
 
 msgid "qydailiip.com（住宅长效节点，提取后可用至到期）"
 msgstr "qydailiip.com（住宅長效節點，提取後可用至到期）"
@@ -2762,14 +2789,26 @@ msgstr "qydailiip.com（住宅長效節點，提取後可用至到期）"
 msgid "qydailiip.com（短期存活 1-3 分钟）"
 msgstr "qydailiip.com（短期存活 1-3 分鐘）"
 
+msgid "text"
+msgstr "text"
+
 msgid "thordata.com（海外住宅网关，出口 IP 按请求轮换）"
 msgstr "thordata.com（海外住宅網關，出口 IP 按請求輪換）"
 
 msgid "username 与 password 必须成对出现（传一个会返回 20001）。"
 msgstr "username 與 password 必須成對出現（傳一個會返回 20001）。"
 
+msgid "username 与 password 必须成对出现（传一个会返回 20001）；成对提供时每条代理附带可直接使用的 proxy 字段。"
+msgstr "username 與 password 必須成對出現（傳一個會返回 20001）；成對提供時每條代理附帶可直接使用的 proxy 字段。"
+
 msgid "verify=true 时每项额外返回 available / speed_ms / external_ip。"
 msgstr "verify=true 時每項額外返回 available / speed_ms / external_ip。"
+
+msgid "不传"
+msgstr "不傳"
+
+msgid "不传（默认 1=HTTP）"
+msgstr "不傳（默認 1=HTTP）"
 
 msgid "不传（默认 1）"
 msgstr "不傳（默認 1）"
@@ -2777,8 +2816,29 @@ msgstr "不傳（默認 1）"
 msgid "不传（默认 HTTP）"
 msgstr "不傳（默認 HTTP）"
 
+msgid "不传（默认 json）"
+msgstr "不傳（默認 json）"
+
+msgid "业务密钥"
+msgstr "業務密鑰"
+
+msgid "业务编号"
+msgstr "業務編號"
+
+msgid "两者都不传时：用平台 .env 的密钥走 key 模式；平台未配置则返回 20011/40001。"
+msgstr "兩者都不傳時：用平臺 .env 的密鑰走 key 模式；平臺未配置則返回 20011/40001。"
+
+msgid "代理协议"
+msgstr "代理協議"
+
+msgid "代理密码"
+msgstr "代理密碼"
+
 msgid "代理源"
 msgstr "代理源"
+
+msgid "代理账号"
+msgstr "代理賬號"
 
 msgid "住宅长效节点由青雨侧提取得到一组固定连接信息（主机/端口/账号/密码），节点带到期时间、到期需重新提取，故返回的是可直接使用的代理地址而非 IP 列表。连接信息可由调用方传入（使用自己购买的节点），不传则用平台 .env 配置；verify=true 会真实经代理发一次请求。"
 msgstr "住宅長效節點由青雨側提取得到一組固定連接信息（主機/端口/賬號/密碼），節點帶到期時間、到期需重新提取，故返回的是可直接使用的代理地址而非 IP 列表。連接信息可由調用方傳入（使用自己購買的節點），不傳則用平臺 .env 配置；verify=true 會真實經代理髮一次請求。"
@@ -2795,11 +2855,17 @@ msgstr "協議類型"
 msgid "向 JSON 文件新增一条静态代理。"
 msgstr "向 JSON 文件新增一條靜態代理。"
 
-msgid "多源代理 IP 聚合：66 免费代理、青雨动态代理与住宅长效、91HTTP 动态代理、静态代理管理与 Thordata 动态住宅代理，支持可用性验证。"
-msgstr "多源代理 IP 聚合：66 免費代理、青雨動態代理與住宅長效、91HTTP 動態代理、靜態代理管理與 Thordata 動態住宅代理，支持可用性驗證。"
+msgid "地区筛选"
+msgstr "地區篩選"
+
+msgid "多源代理 IP 聚合：66 免费代理、青雨动态代理与住宅长效、巨量代理 IP、91HTTP 动态代理、静态代理管理与 Thordata 动态住宅代理，支持可用性验证。"
+msgstr "多源代理 IP 聚合：66 免費代理、青雨動態代理與住宅長效、巨量代理 IP、91HTTP 動態代理、靜態代理管理與 Thordata 動態住宅代理，支持可用性驗證。"
 
 msgid "如 1.2.3.4"
 msgstr "如 1.2.3.4"
+
+msgid "如 1483587531995538"
+msgstr "如 1483587531995538"
 
 msgid "如 183.131.35.91"
 msgstr "如 183.131.35.91"
@@ -2816,14 +2882,32 @@ msgstr "如 8080"
 msgid "如 9999"
 msgstr "如 9999"
 
+msgid "如 北京,上海"
+msgstr "如 北京,上海"
+
+msgid "如 电信"
+msgstr "如 電信"
+
+msgid "巨量代理 IP"
+msgstr "巨量代理 IP"
+
 msgid "按 ip:port 从 JSON 文件删除一条静态代理。"
 msgstr "按 ip:port 從 JSON 文件刪除一條靜態代理。"
+
+msgid "按次提取国内动态代理 IP。官方签名与参数集严格绑定（改任何参数都会验签失败），故提供两种凭据模式（二选一）：key 模式 = 传业务密钥，由服务端按官方规则代算签名，可自由传 num / area / isp 等任意参数；custom_sign 模式 = 传自己算好的签名，参数原样透传、服务端不补任何默认值。业务编号 / 密钥 / 代理账密默认由平台 .env 持有，调用方也可传自己的（使用自己购买的订单）。注：官方文档里的签名参数叫 sign，本接口对外叫 custom_sign——平台自身的鉴权参数已占用 sign，服务端会把 custom_sign 原样传给官方接口的 sign 字段。"
+msgstr "按次提取國內動態代理 IP。官方簽名與參數集嚴格綁定（改任何參數都會驗簽失敗），故提供兩種憑據模式（二選一）：key 模式 = 傳業務密鑰，由服務端按官方規則代算簽名，可自由傳 num / area / isp 等任意參數；custom_sign 模式 = 傳自己算好的簽名，參數原樣透傳、服務端不補任何默認值。業務編號 / 密鑰 / 代理賬密默認由平臺 .env 持有，調用方也可傳自己的（使用自己購買的訂單）。註：官方文檔裡的簽名參數叫 sign，本接口對外叫 custom_sign——平臺自身的鑑權參數已佔用 sign，服務端會把 custom_sign 原樣傳給官方接口的 sign 字段。"
+
+msgid "提取巨量代理动态 IP，返回解析好的 ip:port 列表（默认 JSON 格式）。"
+msgstr "提取巨量代理動態 IP，返回解析好的 ip:port 列表（默認 JSON 格式）。"
 
 msgid "支持白名单或账号密码两种认证方式，二选一即可；修改授权后约 5 分钟生效。"
 msgstr "支持白名單或賬號密碼兩種認證方式，二選一即可；修改授權後約 5 分鐘生效。"
 
 msgid "数量"
 msgstr "數量"
+
+msgid "文本分隔符"
+msgstr "文本分隔符"
 
 msgid "新增静态代理"
 msgstr "新增靜態代理"
@@ -2846,8 +2930,14 @@ msgstr "網關型代理：入口主機 / 端口固定，出口 IP 由 Thordata �
 msgid "网关端口"
 msgstr "網關端口"
 
+msgid "自动加白名单"
+msgstr "自動加白名單"
+
 msgid "自动白名单"
 msgstr "自動白名單"
+
+msgid "自算签名"
+msgstr "自算簽名"
 
 msgid "节点到期后连接会失败，需重新提取并在 .env 更新，或由调用方传入新节点信息。"
 msgstr "節點到期後連接會失敗，需重新提取並在 .env 更新，或由調用方傳入新節點信息。"
@@ -2894,8 +2984,17 @@ msgstr "賬號密碼認證：返回每條代理附帶 proxy 字段（含賬號�
 msgid "账户 apikey"
 msgstr "賬戶 apikey"
 
+msgid "过滤今日已提取"
+msgstr "過濾今日已提取"
+
+msgid "运营商筛选"
+msgstr "運營商篩選"
+
 msgid "返回全部静态代理。"
 msgstr "返回全部靜態代理。"
+
+msgid "返回剩余时长"
+msgstr "返回剩餘時長"
 
 msgid "返回可直接使用的住宅代理入口地址（含账号密码）。"
 msgstr "返回可直接使用的住宅代理入口地址（含賬號密碼）。"
@@ -2903,8 +3002,20 @@ msgstr "返回可直接使用的住宅代理入口地址（含賬號密碼）。
 msgid "返回可直接使用的住宅长效代理地址（含账号密码）。"
 msgstr "返回可直接使用的住宅長效代理地址（含賬號密碼）。"
 
+msgid "返回城市名"
+msgstr "返回城市名"
+
+msgid "返回城市编码"
+msgstr "返回城市編碼"
+
 msgid "返回指定数量、可选验证的可用代理列表。"
 msgstr "返回指定數量、可選驗證的可用代理列表。"
+
+msgid "返回格式"
+msgstr "返回格式"
+
+msgid "返回认证信息"
+msgstr "返回認證信息"
 
 msgid "返回过期时间"
 msgstr "返回過期時間"
@@ -2939,11 +3050,56 @@ msgstr "選填：不傳則用平臺 .env（PROXY_THORDATA_PASSWORD）"
 msgid "选填：不传则用平台 .env（PROXY_THORDATA_USERNAME）"
 msgstr "選填：不傳則用平臺 .env（PROXY_THORDATA_USERNAME）"
 
+msgid "选填：不支持 xml（无法解析出 ip:port）"
+msgstr "選填：不支持 xml（無法解析出 ip:port）"
+
 msgid "选填：与 username 成对出现；使用该模式无需白名单"
 msgstr "選填：與 username 成對出現；使用該模式無需白名單"
 
+msgid "选填：与 username 成对；不传则用平台 .env（PROXY_JULIANG_PASSWORD）"
+msgstr "選填：與 username 成對；不傳則用平臺 .env（PROXY_JULIANG_PASSWORD）"
+
+msgid "选填：仅 result_type=text 时生效"
+msgstr "選填：僅 result_type=text 時生效"
+
 msgid "选填：代理源名称，多个用英文逗号分隔，如 \"66daili,qy\""
 msgstr "選填：代理源名稱，多個用英文逗號分隔，如 \"66daili,qy\""
+
+msgid "选填：代理认证账号，与 password 成对；不传则用平台 .env（PROXY_JULIANG_USERNAME）"
+msgstr "選填：代理認證賬號，與 password 成對；不傳則用平臺 .env（PROXY_JULIANG_USERNAME）"
+
+msgid "选填：单次提取数量，1-100，默认 1"
+msgstr "選填：單次提取數量，1-100，默認 1"
+
+msgid "选填：在附加列返回城市名"
+msgstr "選填：在附加列返回城市名"
+
+msgid "选填：在附加列返回城市编码"
+msgstr "選填：在附加列返回城市編碼"
+
+msgid "选填：在附加列返回该 IP 剩余可用时长"
+msgstr "選填：在附加列返回該 IP 剩餘可用時長"
+
+msgid "选填：在附加列返回账密认证信息"
+msgstr "選填：在附加列返回賬密認證信息"
+
+msgid "选填：巨量代理业务编号；不传则用平台 .env（PROXY_JULIANG_TRADE_NO）"
+msgstr "選填：巨量代理業務編號；不傳則用平臺 .env（PROXY_JULIANG_TRADE_NO）"
+
+msgid "选填：按地区筛选，多个用英文逗号分隔"
+msgstr "選填：按地區篩選，多個用英文逗號分隔"
+
+msgid "选填：按官方规则算好的 32 位小写 MD5（服务端会作为官方的 sign 发送）；与 key 二选一；传 custom_sign 时参数原样透传，服务端不做任何补全"
+msgstr "選填：按官方規則算好的 32 位小寫 MD5（服務端會作為官方的 sign 發送）；與 key 二選一；傳 custom_sign 時參數原樣透傳，服務端不做任何補全"
+
+msgid "选填：按运营商筛选（电信 / 联通 / 移动）"
+msgstr "選填：按運營商篩選（電信 / 聯通 / 移動）"
+
+msgid "选填：提取时自动把调用方 IP 加入白名单"
+msgstr "選填：提取時自動把調用方 IP 加入白名單"
+
+msgid "选填：由服务端代算签名，可自由传其它参数；与 custom_sign 二选一；不传则用平台 .env（PROXY_JULIANG_KEY）"
+msgstr "選填：由服務端代算簽名，可自由傳其它參數；與 custom_sign 二選一；不傳則用平臺 .env（PROXY_JULIANG_KEY）"
 
 msgid "选填：自定义 JSON 文件绝对路径；默认使用平台配置路径。涉及服务器文件读写，非必要请勿传。"
 msgstr "選填：自定義 JSON 文件絕對路徑；默認使用平臺配置路徑。涉及服務器文件讀寫，非必要請勿傳。"
@@ -2953,6 +3109,9 @@ msgstr "選填：賬號密碼認證模式，與 password 成對出現"
 
 msgid "选填：账户 token，与 order 成对出现；不传则用平台 .env（PROXY_QY_APIKEY）"
 msgstr "選填：賬戶 token，與 order 成對出現；不傳則用平臺 .env（PROXY_QY_APIKEY）"
+
+msgid "选填：过滤掉今天已提取过的 IP"
+msgstr "選填：過濾掉今天已提取過的 IP"
 
 msgid "选填：返回条数，>=1，默认 1（需多个请调大）"
 msgstr "選填：返回條數，>=1，默認 1（需多個請調大）"
@@ -2977,6 +3136,9 @@ msgstr "重新從 JSON 文件加載代理列表（配置更新後調用）。"
 
 msgid "重新加载静态代理"
 msgstr "重新加載靜態代理"
+
+msgid "附加列参数（city_name / ip_remain / auth_info 等）开启后，该 IP 的附加内容统一放在 extra 字段，不影响 ip / port 解析。"
+msgstr "附加列參數（city_name / ip_remain / auth_info 等）開啟後，該 IP 的附加內容統一放在 extra 字段，不影響 ip / port 解析。"
 
 msgid "青雨住宅长效代理"
 msgstr "青雨住宅長效代理"

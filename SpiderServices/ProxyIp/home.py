@@ -10,6 +10,7 @@
     ├── ProxyIP_qy/                 # 青雨代理IP 源（国内动态短期，存活 1-3 分钟）
     ├── ProxyIP_qy_res/             # 青雨住宅长效代理源（提取节点，带到期时间）
     ├── ProxyIP_91http/             # 91HTTP 代理IP 源（国内动态）
+    ├── ProxyIP_juliang/            # 巨量代理IP 源（独享产品，国内动态）
     ├── ProxyIP_Static/             # 静态代理IP 源（JSON 文件）
     ├── ProxyIP_thordata/           # Thordata 动态住宅代理源（网关型，出口 IP 轮换）
     └── ...（后续可添加更多代理源）
@@ -31,10 +32,12 @@
     result = service.get_available_proxies(count=1, sources=["qy_res"])
     # 91HTTP 代理
     result = service.get_available_proxies(count=10, sources=["91http"])
+    # 巨量代理（独享产品）
+    result = service.get_available_proxies(count=5, sources=["juliang"])
     # Thordata 动态住宅代理（网关型）
     result = service.get_available_proxies(count=1, sources=["thordata"])
     # 混合源
-    result = service.get_available_proxies(count=5, sources=["66daili", "static", "qy", "qy_res", "91http", "thordata"])
+    result = service.get_available_proxies(count=5, sources=["66daili", "static", "qy", "qy_res", "91http", "juliang", "thordata"])
 """
 
 import sys
@@ -57,7 +60,7 @@ def _ensure_subpackage(parent_name, child_path):
 
 
 _PKG_DIR = os.path.dirname(os.path.abspath(__file__))
-for _sub in ["ProxyIP_66daili", "ProxyVerification", "ProxyIP_Static", "ProxyIP_qy", "ProxyIP_qy_res", "ProxyIP_91http", "ProxyIP_thordata"]:
+for _sub in ["ProxyIP_66daili", "ProxyVerification", "ProxyIP_Static", "ProxyIP_qy", "ProxyIP_qy_res", "ProxyIP_91http", "ProxyIP_juliang", "ProxyIP_thordata"]:
     _ensure_subpackage(
         f"ProxyIP.{_sub}",
         os.path.join(_PKG_DIR, _sub, "__init__.py"),
@@ -71,6 +74,7 @@ from .ProxyIP_Static.home import StaticIPService
 from .ProxyIP_qy.home import ProxyIPQy
 from .ProxyIP_qy_res.home import ProxyIPQyRes
 from .ProxyIP_91http.home import ProxyIP91http
+from .ProxyIP_juliang.home import ProxyIPJuliang
 from .ProxyIP_thordata.home import ProxyIPThordata
 
 
@@ -83,6 +87,7 @@ class ProxyIPService:
         "qy": ProxyIPQy,
         "qy_res": ProxyIPQyRes,
         "91http": ProxyIP91http,
+        "juliang": ProxyIPJuliang,
         "thordata": ProxyIPThordata,
     }
     """代理源映射表：source_name -> CrawlerClass
@@ -289,6 +294,28 @@ if __name__ == "__main__":
     print("===== 模式10: 青雨住宅长效代理（verify=True）=====")
     result = service.get_available_proxies(count=1, sources=["qy_res"], verify=True)
     print(f"状态: {'成功' if result['code'] == 0 else '失败'}")
+    print(f"验证通过: {result['data']['total_available']}")
+    for p in result["data"]["proxies"]:
+        print(f"  {p['proxy']} - {p['speed_ms']}ms | 出口IP: {p.get('external_ip', '?')}")
+
+    print()
+
+    print("===== 模式11: 巨量代理（verify=False，仅提取）=====")
+    result = service.get_available_proxies(count=5, sources=["juliang"], verify=False)
+    print(f"状态: {'成功' if result['code'] == 0 else '失败'}")
+    print(f"返回数量: {len(result['data']['proxies'])}")
+    for p in result["data"]["proxies"]:
+        info = f"{p['ip']}:{p['port']}"
+        if p.get("extra"):
+            info += f" | 附加: {p['extra']}"
+        print(f"  {info}")
+
+    print()
+
+    print("===== 模式12: 巨量代理（verify=True）=====")
+    result = service.get_available_proxies(count=5, sources=["juliang"], verify=True)
+    print(f"状态: {'成功' if result['code'] == 0 else '失败'}")
+    print(f"原始提取: {result['data']['total_fetched']}")
     print(f"验证通过: {result['data']['total_available']}")
     for p in result["data"]["proxies"]:
         print(f"  {p['proxy']} - {p['speed_ms']}ms | 出口IP: {p.get('external_ip', '?')}")

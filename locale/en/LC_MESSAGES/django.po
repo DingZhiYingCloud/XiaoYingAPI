@@ -883,8 +883,8 @@ msgstr "(No projects matched \"%(keyword)s\")"
 
 
 # ==================== 后端通用文案 / 服务状态 / 控制台提示 ====================
-msgid "66免费 / 91HTTP / 青雨动态与住宅长效 / 静态代理 / Thordata 动态住宅代理多源聚合，附带可用性验证。"
-msgstr "Multi-source aggregation of 66Free / 91HTTP / Qingyu dynamic and residential long-lived / Static Proxy / Thordata Dynamic Residential Proxy, with availability checks."
+msgid "66免费 / 91HTTP / 青雨动态与住宅长效 / 巨量代理 / 静态代理 / Thordata 动态住宅代理多源聚合，附带可用性验证。"
+msgstr "Multi-source aggregation of 66Free / 91HTTP / Qingyu dynamic and residential long-lived / Juliang / Static Proxy / Thordata Dynamic Residential Proxy, with availability checks."
 
 msgid "AI 服务"
 msgstr "AI Service"
@@ -2715,17 +2715,32 @@ msgstr "0=No"
 msgid "1=HTTP"
 msgstr "1=HTTP"
 
+msgid "1=回车换行"
+msgstr "1=CRLF"
+
 msgid "1=是"
 msgstr "1=Yes"
 
 msgid "2=HTTPS"
 msgstr "2=HTTPS"
 
+msgid "2=SOCKS5"
+msgstr "2=SOCKS5"
+
+msgid "2=换行"
+msgstr "2=LF"
+
 msgid "3=SOCKS5"
 msgstr "3=SOCKS5"
 
+msgid "3=空格"
+msgstr "3=Space"
+
 msgid "4=HTTP(S)"
 msgstr "4=HTTP(S)"
+
+msgid "4=竖线"
+msgstr "4=Vertical Bar"
 
 msgid "66 免费代理"
 msgstr "66 Free Proxy"
@@ -2751,11 +2766,23 @@ msgstr "Thordata Dynamic Residential Proxy"
 msgid "api.91http.com（国内动态代理）"
 msgstr "api.91http.com (domestic dynamic proxy)"
 
+msgid "custom_sign 模式（自算签名）的签名与参数集严格绑定，改动任何参数都必须重算签名，否则上游接口返回 401。"
+msgstr "In custom_sign mode (self-computed signature) the signature is strictly bound to the parameter set; changing any parameter requires recomputing the signature, otherwise the upstream API returns 401."
+
 msgid "data.proxies[0].proxy 即完整代理地址，可直接用作 requests 的 proxies。"
 msgstr "data.proxies[0].proxy is the full proxy address and can be used directly as the proxies parameter of requests."
 
 msgid "host 指向内网 / 回环 / 保留地址会被拒绝（20003，仅 verify=true 时会做该连通性校验）。"
 msgstr "A host pointing to an intranet / loopback / reserved address is rejected (20003; this connectivity check runs only when verify=true)."
+
+msgid "json"
+msgstr "json"
+
+msgid "juliangip.com（独享代理产品，国内动态 IP）"
+msgstr "juliangip.com (dedicated proxy product, domestic dynamic IP)"
+
+msgid "key 与 custom_sign 只能二选一，同传返回 20003。"
+msgstr "Only one of key or custom_sign may be provided; providing both returns 20003."
 
 msgid "qydailiip.com（住宅长效节点，提取后可用至到期）"
 msgstr "qydailiip.com (residential long-lived node, usable until expiry)"
@@ -2763,14 +2790,26 @@ msgstr "qydailiip.com (residential long-lived node, usable until expiry)"
 msgid "qydailiip.com（短期存活 1-3 分钟）"
 msgstr "qydailiip.com (short-lived, 1-3 minutes)"
 
+msgid "text"
+msgstr "text"
+
 msgid "thordata.com（海外住宅网关，出口 IP 按请求轮换）"
 msgstr "thordata.com (overseas residential gateway; egress IP rotates per request)"
 
 msgid "username 与 password 必须成对出现（传一个会返回 20001）。"
 msgstr "username and password must be provided together (providing only one returns 20001)."
 
+msgid "username 与 password 必须成对出现（传一个会返回 20001）；成对提供时每条代理附带可直接使用的 proxy 字段。"
+msgstr "username and password must be provided together (providing only one returns 20001); when provided together, each proxy entry includes a ready-to-use proxy field."
+
 msgid "verify=true 时每项额外返回 available / speed_ms / external_ip。"
 msgstr "When verify=true, each item additionally returns available / speed_ms / external_ip."
+
+msgid "不传"
+msgstr "Not provided"
+
+msgid "不传（默认 1=HTTP）"
+msgstr "Not provided (Default 1=HTTP)"
 
 msgid "不传（默认 1）"
 msgstr "Not provided (Default 1)"
@@ -2778,8 +2817,29 @@ msgstr "Not provided (Default 1)"
 msgid "不传（默认 HTTP）"
 msgstr "Not provided (Default HTTP)"
 
+msgid "不传（默认 json）"
+msgstr "Not provided (Default json)"
+
+msgid "业务密钥"
+msgstr "Business Key"
+
+msgid "业务编号"
+msgstr "Business ID"
+
+msgid "两者都不传时：用平台 .env 的密钥走 key 模式；平台未配置则返回 20011/40001。"
+msgstr "When neither is provided, the platform .env key is used in key mode; if the platform is not configured, 20011/40001 is returned."
+
+msgid "代理协议"
+msgstr "Proxy Protocol"
+
+msgid "代理密码"
+msgstr "Proxy Password"
+
 msgid "代理源"
 msgstr "Proxy Source"
+
+msgid "代理账号"
+msgstr "Proxy Username"
 
 msgid "住宅长效节点由青雨侧提取得到一组固定连接信息（主机/端口/账号/密码），节点带到期时间、到期需重新提取，故返回的是可直接使用的代理地址而非 IP 列表。连接信息可由调用方传入（使用自己购买的节点），不传则用平台 .env 配置；verify=true 会真实经代理发一次请求。"
 msgstr "Residential long-lived nodes are extracted from Qingyu as a fixed set of connection info (host/port/username/password). A node has an expiry time and must be re-extracted after it expires, so this returns a ready-to-use proxy address instead of an IP list. The connection info can be provided by the caller (using their own purchased node); if omitted, the platform .env configuration is used. verify=true sends one real request through the proxy."
@@ -2796,11 +2856,17 @@ msgstr "Protocol Type"
 msgid "向 JSON 文件新增一条静态代理。"
 msgstr "Add a static proxy to the JSON file."
 
-msgid "多源代理 IP 聚合：66 免费代理、青雨动态代理与住宅长效、91HTTP 动态代理、静态代理管理与 Thordata 动态住宅代理，支持可用性验证。"
-msgstr "Multi-source Proxy IP aggregation: 66 Free Proxy, Qingyu dynamic proxy and residential long-lived proxy, 91HTTP dynamic proxy, Static proxy management, and Thordata dynamic residential proxy, with Availability check support."
+msgid "地区筛选"
+msgstr "Region Filter"
+
+msgid "多源代理 IP 聚合：66 免费代理、青雨动态代理与住宅长效、巨量代理 IP、91HTTP 动态代理、静态代理管理与 Thordata 动态住宅代理，支持可用性验证。"
+msgstr "Multi-source Proxy IP aggregation: 66 Free Proxy, Qingyu dynamic proxy and residential long-lived proxy, Juliang Proxy IP, 91HTTP dynamic proxy, Static proxy management, and Thordata dynamic residential proxy, with Availability check support."
 
 msgid "如 1.2.3.4"
 msgstr "e.g. 1.2.3.4"
+
+msgid "如 1483587531995538"
+msgstr "e.g. 1483587531995538"
 
 msgid "如 183.131.35.91"
 msgstr "e.g. 183.131.35.91"
@@ -2817,14 +2883,32 @@ msgstr "e.g. 8080"
 msgid "如 9999"
 msgstr "e.g. 9999"
 
+msgid "如 北京,上海"
+msgstr "e.g. Beijing,Shanghai"
+
+msgid "如 电信"
+msgstr "e.g. China Telecom"
+
+msgid "巨量代理 IP"
+msgstr "Juliang Proxy IP"
+
 msgid "按 ip:port 从 JSON 文件删除一条静态代理。"
 msgstr "Delete a static proxy from the JSON file by ip:port."
+
+msgid "按次提取国内动态代理 IP。官方签名与参数集严格绑定（改任何参数都会验签失败），故提供两种凭据模式（二选一）：key 模式 = 传业务密钥，由服务端按官方规则代算签名，可自由传 num / area / isp 等任意参数；custom_sign 模式 = 传自己算好的签名，参数原样透传、服务端不补任何默认值。业务编号 / 密钥 / 代理账密默认由平台 .env 持有，调用方也可传自己的（使用自己购买的订单）。注：官方文档里的签名参数叫 sign，本接口对外叫 custom_sign——平台自身的鉴权参数已占用 sign，服务端会把 custom_sign 原样传给官方接口的 sign 字段。"
+msgstr "Extracts domestic dynamic proxy IPs on demand. Because the official signature is strictly bound to the parameter set (changing any parameter fails verification), two credential modes are offered (choose one): key mode = pass your business key and the server computes the signature per the official rules, so num / area / isp and any other parameter can be passed freely; custom_sign mode = pass your own precomputed signature and parameters are forwarded as-is with no server-side defaults. The business ID / key / proxy credentials are held by the platform .env by default, and the caller may also pass their own (using their own purchased order). Note: in the official docs the signature parameter is called sign, while this API exposes it as custom_sign — the platform auth parameter already uses sign, and the server passes custom_sign through to the official sign field."
+
+msgid "提取巨量代理动态 IP，返回解析好的 ip:port 列表（默认 JSON 格式）。"
+msgstr "Extract Juliang dynamic proxy IPs and return a parsed ip:port list (JSON format by default)."
 
 msgid "支持白名单或账号密码两种认证方式，二选一即可；修改授权后约 5 分钟生效。"
 msgstr "Supports either Whitelist or username/password authentication; choose one. Changes to authorization take effect in about 5 minutes."
 
 msgid "数量"
 msgstr "Count"
+
+msgid "文本分隔符"
+msgstr "Text Separator"
 
 msgid "新增静态代理"
 msgstr "Add Static Proxy"
@@ -2847,8 +2931,14 @@ msgstr "Gateway-type proxy: the entry host/port are fixed while the egress IP is
 msgid "网关端口"
 msgstr "Gateway Port"
 
+msgid "自动加白名单"
+msgstr "Auto-add to Whitelist"
+
 msgid "自动白名单"
 msgstr "Auto Whitelist"
+
+msgid "自算签名"
+msgstr "Self-computed Signature"
 
 msgid "节点到期后连接会失败，需重新提取并在 .env 更新，或由调用方传入新节点信息。"
 msgstr "After the node expires the connection fails; re-extract and update the .env value, or pass the new node info from the caller side."
@@ -2895,8 +2985,17 @@ msgstr "Username/password authentication: each proxy is returned with a proxy fi
 msgid "账户 apikey"
 msgstr "Account apikey"
 
+msgid "过滤今日已提取"
+msgstr "Filter IPs Extracted Today"
+
+msgid "运营商筛选"
+msgstr "ISP Filter"
+
 msgid "返回全部静态代理。"
 msgstr "Returns all static proxies."
+
+msgid "返回剩余时长"
+msgstr "Return Remaining Time"
 
 msgid "返回可直接使用的住宅代理入口地址（含账号密码）。"
 msgstr "Returns a ready-to-use residential proxy entry address (including username and password)."
@@ -2904,8 +3003,20 @@ msgstr "Returns a ready-to-use residential proxy entry address (including userna
 msgid "返回可直接使用的住宅长效代理地址（含账号密码）。"
 msgstr "Returns a ready-to-use residential long-lived proxy address (including username and password)."
 
+msgid "返回城市名"
+msgstr "Return City Name"
+
+msgid "返回城市编码"
+msgstr "Return City Code"
+
 msgid "返回指定数量、可选验证的可用代理列表。"
 msgstr "Returns an available proxy list of the specified count with optional verification."
+
+msgid "返回格式"
+msgstr "Response Format"
+
+msgid "返回认证信息"
+msgstr "Return Auth Info"
 
 msgid "返回过期时间"
 msgstr "Return expiry time"
@@ -2940,11 +3051,56 @@ msgstr "Optional: if omitted, the platform .env value (PROXY_THORDATA_PASSWORD) 
 msgid "选填：不传则用平台 .env（PROXY_THORDATA_USERNAME）"
 msgstr "Optional: if omitted, the platform .env value (PROXY_THORDATA_USERNAME) is used"
 
+msgid "选填：不支持 xml（无法解析出 ip:port）"
+msgstr "Optional: xml is not supported (ip:port cannot be parsed)."
+
 msgid "选填：与 username 成对出现；使用该模式无需白名单"
 msgstr "Optional: used together with username; this mode requires no whitelist"
 
+msgid "选填：与 username 成对；不传则用平台 .env（PROXY_JULIANG_PASSWORD）"
+msgstr "Optional: paired with username; if omitted, the platform .env value (PROXY_JULIANG_PASSWORD) is used."
+
+msgid "选填：仅 result_type=text 时生效"
+msgstr "Optional: takes effect only when result_type=text."
+
 msgid "选填：代理源名称，多个用英文逗号分隔，如 \"66daili,qy\""
 msgstr "Optional: proxy source names, separated by English commas, e.g. \"66daili,qy\""
+
+msgid "选填：代理认证账号，与 password 成对；不传则用平台 .env（PROXY_JULIANG_USERNAME）"
+msgstr "Optional: proxy auth username, paired with password; if omitted, the platform .env value (PROXY_JULIANG_USERNAME) is used."
+
+msgid "选填：单次提取数量，1-100，默认 1"
+msgstr "Optional: number of proxies to extract per call, 1-100, default 1."
+
+msgid "选填：在附加列返回城市名"
+msgstr "Optional: return the city name in an extra column."
+
+msgid "选填：在附加列返回城市编码"
+msgstr "Optional: return the city code in an extra column."
+
+msgid "选填：在附加列返回该 IP 剩余可用时长"
+msgstr "Optional: return the remaining lifetime of each IP in an extra column."
+
+msgid "选填：在附加列返回账密认证信息"
+msgstr "Optional: return the username/password auth info in an extra column."
+
+msgid "选填：巨量代理业务编号；不传则用平台 .env（PROXY_JULIANG_TRADE_NO）"
+msgstr "Optional: Juliang business ID; if omitted, the platform .env value (PROXY_JULIANG_TRADE_NO) is used."
+
+msgid "选填：按地区筛选，多个用英文逗号分隔"
+msgstr "Optional: filter by region; separate multiple values with commas."
+
+msgid "选填：按官方规则算好的 32 位小写 MD5（服务端会作为官方的 sign 发送）；与 key 二选一；传 custom_sign 时参数原样透传，服务端不做任何补全"
+msgstr "Optional: the 32-character lowercase MD5 computed per the official rules (the server sends it as the official sign); choose either this or key. When custom_sign is provided, parameters are passed through as-is with no server-side defaults."
+
+msgid "选填：按运营商筛选（电信 / 联通 / 移动）"
+msgstr "Optional: filter by ISP (China Telecom / China Unicom / China Mobile)."
+
+msgid "选填：提取时自动把调用方 IP 加入白名单"
+msgstr "Optional: automatically add the caller IP to the whitelist when extracting."
+
+msgid "选填：由服务端代算签名，可自由传其它参数；与 custom_sign 二选一；不传则用平台 .env（PROXY_JULIANG_KEY）"
+msgstr "Optional: the server computes the signature for you, so any other parameter can be passed freely; choose either this or custom_sign; if omitted, the platform .env value (PROXY_JULIANG_KEY) is used."
 
 msgid "选填：自定义 JSON 文件绝对路径；默认使用平台配置路径。涉及服务器文件读写，非必要请勿传。"
 msgstr "Optional: a custom absolute path to the JSON file; the platform-configured path is used by default. This involves server file read/write, so do not provide it unless necessary."
@@ -2954,6 +3110,9 @@ msgstr "Optional: username/password authentication mode, used together with pass
 
 msgid "选填：账户 token，与 order 成对出现；不传则用平台 .env（PROXY_QY_APIKEY）"
 msgstr "Optional: account token, used together with order; if omitted, the platform .env value (PROXY_QY_APIKEY) is used"
+
+msgid "选填：过滤掉今天已提取过的 IP"
+msgstr "Optional: filter out IPs already extracted today."
 
 msgid "选填：返回条数，>=1，默认 1（需多个请调大）"
 msgstr "Optional: number of items to return, >=1, Default 1 (increase it if you need more)"
@@ -2978,6 +3137,9 @@ msgstr "Reload the proxy list from the JSON file (call after configuration updat
 
 msgid "重新加载静态代理"
 msgstr "Reload Static Proxies"
+
+msgid "附加列参数（city_name / ip_remain / auth_info 等）开启后，该 IP 的附加内容统一放在 extra 字段，不影响 ip / port 解析。"
+msgstr "When extra-column options (city_name / ip_remain / auth_info, etc.) are enabled, the extra information of each IP is placed in the extra field and does not affect ip / port parsing."
 
 msgid "青雨住宅长效代理"
 msgstr "Qingyu Residential Long-Lived Proxy"
