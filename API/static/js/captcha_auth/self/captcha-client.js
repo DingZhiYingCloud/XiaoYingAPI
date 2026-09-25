@@ -240,7 +240,13 @@
     });
     _dialog.submit.addEventListener('click', _submitPopup);
     _dialog.input.addEventListener('keydown', function (event) {
-      if (event.key === 'Enter') { _submitPopup(); }
+      if (event.key === 'Enter') {
+        // 必须阻止默认行为：弹窗会在 _submitPopup 里同步关闭，焦点随即回到外层表单控件，
+        // 若不阻止，这次回车会继续触发外层 <form> 的隐式提交 → 重复提交，
+        // 且此时验证码已交付后端（captchaId 置空），重复提交会重新拉一张验证码并再次弹窗
+        event.preventDefault();
+        _submitPopup();
+      }
     });
     return _dialog;
   }
