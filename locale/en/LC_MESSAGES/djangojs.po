@@ -467,6 +467,15 @@ msgstr "Verification type"
 msgid "验证通过"
 msgstr "Verification passed"
 
+msgid "点击换一张"
+msgstr "Click to refresh"
+
+msgid "加载失败，点击重试"
+msgstr "Failed to load, click to retry"
+
+msgid "%(minutes)s 分钟内有效"
+msgstr "Valid for %(minutes)s minutes"
+
 # ==================== API 调用统计看板（console/stats.html） ====================
 msgid "失败量"
 msgstr "Failed"

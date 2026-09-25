@@ -466,6 +466,15 @@ msgstr "驗證類型"
 msgid "验证通过"
 msgstr "驗證通過"
 
+msgid "点击换一张"
+msgstr "點擊換一張"
+
+msgid "加载失败，点击重试"
+msgstr "加載失敗，點擊重試"
+
+msgid "%(minutes)s 分钟内有效"
+msgstr "%(minutes)s 分鐘內有效"
+
 # ==================== API 调用统计看板（console/stats.html） ====================
 msgid "失败量"
 msgstr "失敗量"
