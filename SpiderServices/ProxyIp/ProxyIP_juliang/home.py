@@ -5,6 +5,8 @@
 
 API 文档:
     URL:      http://v2.api.juliangip.com/unlimited/getips
+              （可用 .env 的 PROXY_JULIANG_API_BASE 覆盖：巨量只向国内 IP 提供提取服务，
+                海外部署需指向国内中转，路径与参数不变，签名不受影响）
     请求方式: GET / POST（本线路用 GET）
     参数说明:
         trade_no  业务编号，必填

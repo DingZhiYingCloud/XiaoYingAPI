@@ -5,6 +5,8 @@
 业务编号 / API Key / 代理账密默认从 .env 读取
 （PROXY_JULIANG_TRADE_NO / PROXY_JULIANG_KEY / PROXY_JULIANG_USERNAME / PROXY_JULIANG_PASSWORD），
 禁止硬编码；调用方传参时以调用方为准。
+提取接口地址也可由 .env 的 PROXY_JULIANG_API_BASE 覆盖（默认直连官方，
+海外部署需指向国内中转，见下方 API_BASE 说明）。
 
 签名规则（官方 https://www.juliangip.com/help/api/sign/）：
     去掉 sign → 参数名按 ASCII 升序 → 拼成 key=value&key=value →
@@ -17,8 +19,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# 提取接口（独享代理产品）。固定地址、不开放给调用方，避免被当作任意请求跳板（SSRF）
-API_URL = "http://v2.api.juliangip.com/unlimited/getips"
+# 提取接口（独享代理产品）。
+# 巨量对「提取」会校验调用方 IP 的地区：海外 IP 会被直接拒绝
+#（"暂不支持向您添加的IP：xxx所属地区提供服务"），此时可用 .env 的
+# PROXY_JULIANG_API_BASE 指向国内中转（如 nginx 反代），路径与参数保持不变。
+# 该地址只允许平台侧配置，不开放给调用方（避免被当作任意请求跳板 / SSRF）。
+API_BASE = ((os.getenv("PROXY_JULIANG_API_BASE", "") or "").strip()
+            or "http://v2.api.juliangip.com").rstrip("/")
+API_PATH = "/unlimited/getips"
+API_URL = f"{API_BASE}{API_PATH}"
 
 # 平台默认凭据（从 .env 读取；调用方传参时以调用方为准）
 DEFAULT_TRADE_NO = (os.getenv("PROXY_JULIANG_TRADE_NO", "") or "").strip()

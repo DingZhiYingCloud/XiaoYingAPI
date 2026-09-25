@@ -429,7 +429,7 @@ admin.site.get_urls = _custom_get_urls
 class ApiCategoryAdmin(SmartModelAdmin):
     """API 服务分类：树形层级展示 + 认证模式醒目显示
 
-    层级与后端 API/apis/ 目录一致（同 Apifox 文件夹）；认证模式三态：
+    层级与后端 API/apis/ 目录一致；认证模式三态：
     inherit=跟随上级 / auth=需要认证 / open=开放。
 
     样式固化在应用内 static（API/admin/apicategory_admin.css），

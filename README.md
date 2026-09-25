@@ -62,14 +62,13 @@ XiaoYingAPI/
 │   └── tests/                    # 单元测试
 ├── SpiderServices/               # 爬虫源码（被 API 层 utils.py 调用，与业务解耦）
 │   └── Douyin/                   # 抖音：Video/（视频解析）、Comment/（评论发布，含 sign/ 与 js/）
-├── scripts/                      # 辅助脚本：回归测试 / 词条编译 / Apifox 文档 / douyin_comment_publish（抖音补环境沙箱）
+├── scripts/                      # 辅助脚本：回归测试 / 词条编译 / douyin_comment_publish（抖音补环境沙箱）
 ├── CalculationProgram/           # 「计算程序」模块的内容目录（前台 /programs/ 的唯一数据源，见第八章第 6 节）
 ├── locale/                       # 多语言词条（en / zh_Hant）+ 多语言开发指南.md
 ├── BugAndRepair/                 # 部署手册 / 事故复盘 / 安全整改报告（索引见其 README.md）
 ├── media/                        # 媒体文件（用户上传 / 站点 logo）
 ├── docs/images/                  # 本文档使用的界面截图
 ├── static/                       # collectstatic 产物（不入库）
-├── .apifox/                      # Apifox 项目配置
 └── .trae/                        # Trae AI 技能配置
 ```
 
@@ -101,7 +100,7 @@ XiaoYingAPI/
 
 ## 三、API 服务清单（API/apis/）
 
-所有服务统一挂在 `/api/` 前缀下，路由注册于 [API/apis/urls.py](API/apis/urls.py)。各服务内部的「三件套」结构不再展开；参数说明与**在线调试**见站内文档中心 `/docs/`（见第八章），Apifox 在线文档见第十二章。
+所有服务统一挂在 `/api/` 前缀下，路由注册于 [API/apis/urls.py](API/apis/urls.py)。各服务内部的「三件套」结构不再展开；参数说明与**在线调试**见站内文档中心 `/docs/`（见第八章）。
 
 | 服务      | URL 前缀                      | 说明                           |
 | ------- | --------------------------- | ---------------------------- |
@@ -473,7 +472,6 @@ proxy_set_header Host $host;
 | `make_zh_hant.py`                      | 由简体词条生成繁体词条（依赖 `zhconv`，仅构建期）                 |
 | `generate_import_test_data.py`         | 生成批量导入测试数据                                   |
 | `douyin_comment_publish/`              | 抖音评论服务的研究 / 排查沙箱（规格说明、门槛探测、端到端发布、补环境签名脚本）    |
-| `apifox/`                              | Apifox 文档脚本与生成的接口文档（JSON / MD）               |
 
 > 测试脚本使用真实数据库，多数在结束时自动清理创建的数据，不会污染线上配置。
 
@@ -486,7 +484,7 @@ proxy_set_header Host $host;
 - **请求体**：业务提交类接口统一使用 `application/x-www-form-urlencoded` 表单，不使用 JSON body
 - **爬虫与 API 分离**：爬虫源码在 `SpiderServices/`，API 层通过 `utils.py` 调用，不直接混写
 - **模型**：业务模型继承 `API/common/base.py` 的 `BaseModel`（自动带创建/更新时间），主键统一 UUID
-- **文档同步**：API 接口文档统一维护在 Apifox，新接口上线后需同步更新（使用表单请求体，先 `cli-schema validate` 再 `endpoint create/update`）；同时按第八章第 2 节在 `API/website/docs/` 补声明式文档，站内 `/docs/` 与在线调试即可自动可用
+- **文档同步**：新增 / 变更接口须按第八章第 2 节在 `API/website/docs/` 补声明式文档，站内 `/docs/` 与在线调试即可自动可用
 - **前端页面**：动手前必须先读 `API/templates/前端开发必看.md`（**强制 daisyUI**，禁止引入其它 UI 框架、禁止手写全局 CSS 覆盖组件）；新页面一律 `{% extends 'template.html' %}`，不单独引 `<link>`；新增类名后必须重编译 `output.css` 并提交
 - **前端交互**：不使用原生 `alert` / `confirm`，统一用 daisyUI `<dialog>`（见 `API/static/js/site/ui.js` 的 `XYConfirm`）
 - **多语言**：用户可见文案一律走 `{% trans %}` / `{% blocktrans %}`（模板）或 `gettext()`（前端 JS / 后端 Python）；声明式数据（`SERVICES`、`docs/*.py`）保持中文原样、由渲染前的 `localize()` 翻译副本。新增文案后需补译文并编译，流程见 `locale/多语言开发指南.md`
@@ -495,10 +493,9 @@ proxy_set_header Host $host;
 
 ## 十二、API 文档
 
-接口参数说明、请求示例与响应示例，有两种获取方式：
+接口参数说明、请求示例与响应示例统一见站内文档中心：
 
 - **站内文档中心**：`/docs/`（随代码维护，支持**在线调试**与真实文件上传；新增服务按第八章第 2 节声明即可）
-- **Apifox 在线文档**：<https://b7hm6mvwv6.apifox.cn/>
 
 ***
 

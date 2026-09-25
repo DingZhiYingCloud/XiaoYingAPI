@@ -276,16 +276,12 @@ python manage.py rebuild_category_tree
 
 ---
 
-## 九、文档接入（两处，缺一不可）
+## 九、文档接入
 
-新增服务上线必须同步两处文档：
+新增服务上线必须同步文档——站内文档中心（声明式，自动生成页面与在线调试）：
 
-1. **站内文档中心**（声明式，自动生成页面与在线调试）：
-   - 新建 `API/website/docs/<服务>.py`，用 `ServiceSpec / ChannelSpec / EndpointSpec / ParamSpec` 描述「服务 → 线路 → 端点 → 参数」，`auth_note` 填 `open` / `auth` / `inherit`；
-   - 在 `API/website/docs/__init__.py` 的 `_SERVICES` 注册一行，左侧导航、文档页、调试白名单自动生效。
-2. **Apifox**（对外接口文档）：
-   - 表单请求体；写入前先 `apifox cli-schema validate <schemaKey> --file <path>`，通过后再 `endpoint create/update`；
-   - 接口下线 / 服务删除时，同步删除对应 endpoint 及空目录。
+- 新建 `API/website/docs/<服务>.py`，用 `ServiceSpec / ChannelSpec / EndpointSpec / ParamSpec` 描述「服务 → 线路 → 端点 → 参数」，`auth_note` 填 `open` / `auth` / `inherit`；
+- 在 `API/website/docs/__init__.py` 的 `_SERVICES` 注册一行，左侧导航、文档页、调试白名单自动生效。
 
 ---
 
@@ -304,7 +300,7 @@ python manage.py rebuild_category_tree
 
 5. **补齐实现** → 视图用 `@require_http_methods` + `StatusCode`；逻辑放 `utils.py` 并返回 `(ok, data)`。
 6. **需要落库？** → 按[数据库模型创建规则.md](../models/数据库模型创建规则.md) 建模型，再补迁移（本地 `makemigrations` → 随代码入库）。
-7. **补文档** → `API/website/docs/<服务>.py` + `__init__.py` 注册；Apifox 先 `validate` 再写入（见第九章）。
+7. **补文档** → `API/website/docs/<服务>.py` + `__init__.py` 注册（见第九章）。
 8. **重建并核对认证** → 执行 `rebuild_category_tree`，到 `/console/categories/` 核对节点认证模式（默认需认证，确需匿名再设 `open`）。
 9. **自测** → 补充 / 运行 `scripts/` 回归脚本，验证成功、参数错误、认证拒绝等分支。
 
