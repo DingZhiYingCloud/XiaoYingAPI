@@ -22,6 +22,9 @@ msgstr "二次校驗通過，data 如下："
 msgid "低保真"
 msgstr "低保真"
 
+msgid "使用浏览器原生 HLS 播放"
+msgstr "使用瀏覽器原生 HLS 播放"
+
 msgid "保存中…"
 msgstr "保存中…"
 
@@ -124,6 +127,9 @@ msgstr "已保存到本機"
 msgid "已关闭，可再次点击「开始图形验证」"
 msgstr "已關閉，可再次點擊「開始圖形驗證」"
 
+msgid "已加载，共 %(n)s 个清晰度"
+msgstr "已加載，共 %(n)s 個清晰度"
+
 msgid "已复制"
 msgstr "已複製"
 
@@ -135,6 +141,9 @@ msgstr "幻想"
 
 msgid "开始图形验证"
 msgstr "開始圖形驗證"
+
+msgid "当前浏览器不支持 HLS 播放，请改用 Chrome / Edge / Safari"
+msgstr "當前瀏覽器不支持 HLS 播放，請改用 Chrome / Edge / Safari"
 
 msgid "当前状态："
 msgstr "當前狀態："
@@ -172,6 +181,9 @@ msgstr "提交中…"
 msgid "搜索主题…"
 msgstr "搜索主題…"
 
+msgid "播放失败"
+msgstr "播放失敗"
+
 msgid "操作失败，请稍后重试"
 msgstr "操作失敗，請稍後重試"
 
@@ -193,6 +205,9 @@ msgstr "未知"
 msgid "未知错误"
 msgstr "未知錯誤"
 
+msgid "未获取到播放地址"
+msgstr "未獲取到播放地址"
+
 msgid "柠檬水"
 msgstr "檸檬水"
 
@@ -201,6 +216,9 @@ msgstr "森林"
 
 msgid "模拟前端完成验证"
 msgstr "模擬前端完成驗證"
+
+msgid "正在加载 hls.js …"
+msgstr "正在加載 hls.js …"
 
 msgid "正在加载验证码资源…"
 msgstr "正在加載驗證碼資源…"
@@ -301,6 +319,9 @@ msgstr "該設置功能暫未實現渲染。"
 msgid "该设置功能渲染失败：%(error)s"
 msgstr "該設置功能渲染失敗：%(error)s"
 
+msgid "请先填写 m3u8 地址"
+msgstr "請先填寫 m3u8 地址"
+
 msgid "请先填写%(type)s"
 msgstr "請先填寫%(type)s"
 
@@ -375,6 +396,9 @@ msgstr "默認"
 
 msgid "默认：%(label)s"
 msgstr "默認：%(label)s"
+
+msgid "（可能是地址已过期或源站不可达）"
+msgstr "（可能是地址已過期或源站不可達）"
 
 # ==================== 登录 / 注册页的图形验证 ====================
 msgid "正在加载图形验证，请稍候…"

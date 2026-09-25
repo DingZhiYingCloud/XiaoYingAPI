@@ -23,6 +23,9 @@ msgstr "Secondary verification passed, data as follows:"
 msgid "低保真"
 msgstr "Lo-Fi"
 
+msgid "使用浏览器原生 HLS 播放"
+msgstr "Playing with the browser's native HLS support"
+
 msgid "保存中…"
 msgstr "Saving…"
 
@@ -125,6 +128,9 @@ msgstr "Saved locally"
 msgid "已关闭，可再次点击「开始图形验证」"
 msgstr "Closed. You can click \"Start captcha\" again"
 
+msgid "已加载，共 %(n)s 个清晰度"
+msgstr "Loaded, %(n)s quality levels"
+
 msgid "已复制"
 msgstr "Copied"
 
@@ -136,6 +142,9 @@ msgstr "Fantasy"
 
 msgid "开始图形验证"
 msgstr "Start captcha"
+
+msgid "当前浏览器不支持 HLS 播放，请改用 Chrome / Edge / Safari"
+msgstr "This browser does not support HLS playback; please use Chrome / Edge / Safari"
 
 msgid "当前状态："
 msgstr "Current status: "
@@ -173,6 +182,9 @@ msgstr "Submitting…"
 msgid "搜索主题…"
 msgstr "Search themes…"
 
+msgid "播放失败"
+msgstr "Playback failed"
+
 msgid "操作失败，请稍后重试"
 msgstr "Operation failed, please try again later"
 
@@ -194,6 +206,9 @@ msgstr "Unknown"
 msgid "未知错误"
 msgstr "Unknown error"
 
+msgid "未获取到播放地址"
+msgstr "No playback URL found"
+
 msgid "柠檬水"
 msgstr "Lemonade"
 
@@ -202,6 +217,9 @@ msgstr "Forest"
 
 msgid "模拟前端完成验证"
 msgstr "Simulate frontend captcha completion"
+
+msgid "正在加载 hls.js …"
+msgstr "Loading hls.js …"
 
 msgid "正在加载验证码资源…"
 msgstr "Loading captcha resources…"
@@ -302,6 +320,9 @@ msgstr "This settings feature is not rendered yet."
 msgid "该设置功能渲染失败：%(error)s"
 msgstr "Failed to render this settings feature: %(error)s"
 
+msgid "请先填写 m3u8 地址"
+msgstr "Please enter an m3u8 URL first"
+
 msgid "请先填写%(type)s"
 msgstr "Please enter %(type)s first"
 
@@ -376,6 +397,9 @@ msgstr "Default"
 
 msgid "默认：%(label)s"
 msgstr "Default: %(label)s"
+
+msgid "（可能是地址已过期或源站不可达）"
+msgstr " (the URL may have expired or the source site is unreachable)"
 
 # ==================== 登录 / 注册页的图形验证 ====================
 msgid "正在加载图形验证，请稍候…"

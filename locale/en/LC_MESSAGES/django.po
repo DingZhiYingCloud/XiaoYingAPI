@@ -4,6 +4,7 @@
 #
 # 二进制文件头（空 msgid 条目）由 scripts/compile_locale.py 自动生成，此处无需手写。
 
+
 # ==================== 全站页头 / 导航 / 用户区（common_html/headers.html） ====================
 msgid "主导航"
 msgstr "Main navigation"
@@ -723,8 +724,17 @@ msgstr "All Services (%(total)s total, %(online)s available for live debug)"
 msgid "关闭"
 msgstr "Close"
 
+msgid "加载播放"
+msgstr "Load & Play"
+
+msgid "发送上方请求成功后自动加载播放；也可直接粘贴任意 m3u8 地址测试。"
+msgstr "Plays automatically after the request above succeeds; you can also paste any m3u8 URL to test."
+
 msgid "发送请求"
 msgstr "Send Request"
+
+msgid "在线播放测试"
+msgstr "Playback Test"
 
 msgid "多值写法：%(hint)s"
 msgstr "Multiple values: %(hint)s"
@@ -749,6 +759,9 @@ msgstr "Available · No Signature"
 
 msgid "当前：超级管理员"
 msgstr "Current: Super Admin"
+
+msgid "或直接粘贴 m3u8 地址"
+msgstr "Or paste an m3u8 URL"
 
 msgid "接入项目管理"
 msgstr "Projects"
@@ -881,7 +894,6 @@ msgstr "Project created! The secret is shown only once — copy and store it saf
 msgid "（未找到与「%(keyword)s」匹配的项目）"
 msgstr "(No projects matched \"%(keyword)s\")"
 
-
 # ==================== 后端通用文案 / 服务状态 / 控制台提示 ====================
 msgid "66免费 / 91HTTP / 青雨动态与住宅长效 / 巨量代理 / 静态代理 / Thordata 动态住宅代理多源聚合，附带可用性验证。"
 msgstr "Multi-source aggregation of 66Free / 91HTTP / Qingyu dynamic and residential long-lived / Juliang / Static Proxy / Thordata Dynamic Residential Proxy, with availability checks."
@@ -946,6 +958,9 @@ msgstr "Built-in Models"
 msgid "内置模型能力，开箱即用的 AI 文本/内容接口。"
 msgstr "Built-in model capabilities; out-of-the-box AI text / content APIs."
 
+msgid "动漫综艺"
+msgstr "Anime & Variety"
+
 msgid "原短视频解析服务；抖音解析能力已迁移至「抖音」服务，本服务暂时关闭。"
 msgstr "Former short-video parsing service; Douyin parsing has moved to the Douyin service, so this service is currently closed."
 
@@ -1006,6 +1021,9 @@ msgstr "Moved"
 msgid "应用名称已存在，请更换"
 msgstr "Application name already exists, please use another one."
 
+msgid "影视聚合：分类、列表、详情、选集与播放地址（m3u8）及搜索，按「列表 → 详情 → 播放」即可搭建完整影视站。"
+msgstr "Movies & TV aggregation: categories, lists, details, episode lists, playback URLs (m3u8), and search — build a complete streaming site with the \"list → detail → play\" flow."
+
 msgid "抖音平台能力聚合：视频/图文解析（无水印提取）与评论自动发布。"
 msgstr "Douyin capabilities in one place: video/image post parsing (watermark-free extraction) and automated comment publishing."
 
@@ -1059,6 +1077,9 @@ msgstr "Spider Verification"
 
 msgid "环境检测"
 msgstr "Environment Detection"
+
+msgid "电视剧"
+msgstr "TV Series"
 
 msgid "短信验证"
 msgstr "SMS Verification"
@@ -2171,6 +2192,7 @@ msgstr "Match the gap position of the slider thumbnail within the background ima
 msgid "颜色过滤(JSON 数组)"
 msgstr "Color Filter (JSON Array)"
 
+
 # ==================== API 文档内容 · 文件上传 ====================
 msgid "multipart/form-data 文件字段 file：直接用下方“选择文件”上传即可。"
 msgstr "multipart/form-data file field file: just use the \"Select File\" button below to upload."
@@ -2231,7 +2253,6 @@ msgstr "Generic file"
 
 msgid "通用文件上传能力：图片/视频/普通文件，白名单校验并存储到本地 /media，返回可访问 URL。"
 msgstr "Generic file upload capability: images/videos/regular files, whitelist-validated and stored to local /media, returning an accessible URL."
-
 
 # ==================== API 文档内容 · SEO 服务 ====================
 msgid "Logo 链接"
@@ -2673,6 +2694,7 @@ msgstr "Issue Text"
 msgid "默认 1"
 msgstr "Default 1"
 
+
 # ==================== API 文档内容 · 爬虫验证 ====================
 msgid "4759 蜘蛛 IP 验证"
 msgstr "4759 Spider IP Verification"
@@ -2706,7 +2728,6 @@ msgstr "Verify Whether an IP Is a Crawler"
 
 msgid "验证给定 IP 是否为搜索引擎爬虫，返回识别结论与类型信息。"
 msgstr "Verify whether a given IP is a search engine crawler and return the recognition conclusion and type information."
-
 
 # ==================== API 文档内容 · 代理 IP ====================
 msgid "0=否"
@@ -3153,6 +3174,7 @@ msgstr "Static proxies are managed via a JSON file: query / add / delete by ip:p
 msgid "验证可用性"
 msgstr "Verify availability"
 
+
 # ==================== API 文档内容 · 问题反馈 ====================
 msgid "closed（已关闭）"
 msgstr "closed (Closed)"
@@ -3264,7 +3286,6 @@ msgstr "Feedback Center"
 
 msgid "问题反馈中心：提交反馈、追加/回复评论、查看项目内反馈与评论树。数据按接入项目隔离。"
 msgstr "Feedback Center: submit feedback, add/reply to comments, and view feedback and comment trees within a project. Data is isolated per integration project."
-
 
 # ==================== API 文档内容 · AI 服务 ====================
 msgid "DeepSeek AI 对话"
@@ -3960,6 +3981,140 @@ msgstr "Query of the Project's Own Configuration"
 msgid "验证 Token"
 msgstr "Verify Token"
 
+
+# ==================== API 文档内容 · 电影服务 ====================
+msgid "555电影"
+msgstr "555 Movies"
+
+msgid "555电影（5dy4.vip）"
+msgstr "555 Movies (5dy4.vip)"
+
+msgid "sid / nid 越界或源站无有效地址时返回 40001。"
+msgstr "Returns 40001 when sid / nid are out of range or the source site has no valid URL."
+
+msgid "一次返回首页全部推荐区块，便于直接渲染站点首页。"
+msgstr "Returns all home recommendation blocks in one call, ready to render the site home page."
+
+msgid "分类 ID"
+msgstr "Category ID"
+
+msgid "分类列表"
+msgstr "Category List"
+
+msgid "可选：按年份筛选，如 2026。"
+msgstr "Optional: filter by year, e.g. 2026."
+
+msgid "可选：排序方式 time/hits/score；与 year 同时传时以 year 为准。"
+msgstr "Optional: sort order time / hits / score; when passed together with year, year takes precedence."
+
+msgid "可选：页码，从 1 开始，默认 1。"
+msgstr "Optional: page number, starting from 1, default 1."
+
+msgid "实时爬取源站并缓存。数据类（片名/详情/集数）缓存较久，播放地址（m3u8）缓存较短以便及时刷新。"
+msgstr "Crawls the source site in real time and caches the results. Data (titles / details / episode counts) is cached longer, while playback URLs (m3u8) are cached briefly so they stay fresh."
+
+msgid "年份"
+msgstr "Year"
+
+msgid "影片 ID"
+msgstr "Movie ID"
+
+msgid "影片不存在时返回 40001。"
+msgstr "Returns 40001 when the movie does not exist."
+
+msgid "影片详情"
+msgstr "Movie Details"
+
+msgid "必填：分类 ID，1=电影 2=连续剧 3=综艺纪录 4=动漫 124=福利 126=擦边短剧（或榜单 ID，见「分类列表」接口）。"
+msgstr "Required: category ID — 1=Movies 2=TV Series 3=Variety & Documentary 4=Anime 124=Premium 126=Short Dramas (or a ranking ID, see the category list endpoint)."
+
+msgid "必填：影片 ID（取自列表/搜索结果中的 id）。"
+msgstr "Required: movie ID (from the id field in list / search results)."
+
+msgid "必填：搜索关键词（片名）。"
+msgstr "Required: search keyword (title)."
+
+msgid "必填：播放源序号，取自详情接口 sources[].sid。"
+msgstr "Required: playback source index, from sources[].sid in the detail response."
+
+msgid "必填：集数序号，取自选集 episodes[].nid（电影通常为 1）。"
+msgstr "Required: episode index, from episodes[].nid (usually 1 for movies)."
+
+msgid "按人气"
+msgstr "By Popularity"
+
+msgid "按关键词搜索影片。"
+msgstr "Search movies by keyword."
+
+msgid "按分类获取影片列表，支持分页、排序与年份筛选。"
+msgstr "Get a movie list by category, with pagination, sorting, and year filtering."
+
+msgid "按时间"
+msgstr "By Time"
+
+msgid "按评分"
+msgstr "By Rating"
+
+msgid "排序方式"
+msgstr "Sort By"
+
+msgid "搜索影片"
+msgstr "Search Movies"
+
+msgid "播放地址"
+msgstr "Playback URL"
+
+msgid "播放源序号"
+msgstr "Source Index"
+
+msgid "源站地址直出，不做代理转发。"
+msgstr "The source URL is returned directly without proxying."
+
+msgid "用于搭建站点导航，返回值中 id 可传给「列表」接口的 type_id。"
+msgstr "Use it to build site navigation; the returned id can be passed to the list endpoint as type_id."
+
+msgid "电影"
+msgstr "Movies"
+
+msgid "电影聚合服务：提供影视的分类、列表、详情、选集与播放地址（m3u8）能力，按「列表 → 详情 → 播放」流程即可搭建完整影视站。"
+msgstr "Movie aggregation service: categories, lists, details, episode lists, and playback URLs (m3u8) for films and TV shows — build a complete streaming site with the \"list → detail → play\" flow."
+
+msgid "获取可用分类（主分类 / 榜单 / 专题）。"
+msgstr "Get available categories (main categories / rankings / specials)."
+
+msgid "获取影片详情：简介、导演/演员等元数据、播放源与选集列表。"
+msgstr "Get movie details: synopsis, director / cast metadata, playback sources, and episode lists."
+
+msgid "获取指定播放源/集数的 m3u8 播放地址。"
+msgstr "Get the m3u8 playback URL for a given playback source and episode."
+
+msgid "获取首页聚合数据：轮播图与各推荐区块（本周/本月最佳、各榜单等）。"
+msgstr "Get home feed data: the carousel and all recommendation blocks (best of the week / month, rankings, and more)."
+
+msgid "返回 data.items（影片列表）与 data.pagination（分页信息）。"
+msgstr "Returns data.items (movie list) and data.pagination (pagination info)."
+
+msgid "返回 data.m3u8 为可播放地址；该地址带时效，已做较短缓存（默认 30 分钟）。"
+msgstr "data.m3u8 is a playable URL; it is time-limited, so it is cached only briefly (30 minutes by default)."
+
+msgid "返回 data.results 影片列表，字段与列表接口一致。"
+msgstr "Returns data.results (movie list) with the same fields as the list endpoint."
+
+msgid "返回 data.sources（播放源），每个源含 episodes（选集），选集里的 sid/nid 用于「播放地址」接口。"
+msgstr "Returns data.sources (playback sources); each source contains episodes, whose sid / nid are used by the playback URL endpoint."
+
+msgid "集数序号"
+msgstr "Episode Index"
+
+msgid "页面下方提供在线播放器：请求成功后自动加载播放，也可粘贴任意 m3u8 地址测试。"
+msgstr "An online player is provided below: it auto-plays after a successful request, and you can also paste any m3u8 URL to test."
+
+msgid "首页聚合"
+msgstr "Home Feed"
+
+msgid "默认"
+msgstr "Default"
+
 # ==================== 超级管理控制台 · API 服务分类（认证模式） ====================
 msgid "API 服务分类"
 msgstr "API Categories"
@@ -4212,6 +4367,7 @@ msgstr "Returns each service's total and today's call count, sorted by total cal
 
 msgid "返回某个接口的累计调用次数与今日调用次数。"
 msgstr "Returns the total and today's call count of an Endpoint."
+
 
 # ==================== 计算程序模块（programs/index.html、programs/detail.html） ====================
 msgid "%(n)s 个分类"
