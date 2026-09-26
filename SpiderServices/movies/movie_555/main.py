@@ -414,18 +414,20 @@ class Movie555Spider:
         # 播放地址带时效，使用较短的媒体缓存 TTL
         return get_or_fetch(key, fetch, MEDIA_TTL)
 
-    def search(self, keyword: str) -> dict:
+    def search(self, keyword: str, page: int = 1) -> dict:
         """
-        搜索影片。
+        搜索影片（分页）。
 
         :param keyword: 搜索关键词
-        :return: {keyword, results: [{id, name, url, cover, note, category}]}
+        :param page: 页码，从 1 开始
+        :return: {keyword, page, results: [{id, name, url, cover, note, category}],
+                  pagination: {current, total}}
         """
         keyword = (keyword or "").strip()
-        key = f"search:{keyword}"
+        key = f"search:{keyword}:{page}"
 
         def fetch():
-            tree = etree.HTML(self._get_html(U.build_search_url(keyword)))
+            tree = etree.HTML(self._get_html(U.build_search_url(keyword, page=page)))
             results = []
             for card in tree.xpath(U.XP_SEARCH_ITEM):
                 a = card.xpath(U.XP_SEARCH_LINK)
@@ -443,6 +445,11 @@ class Movie555Spider:
                     "note": "".join(card.xpath('.//div[contains(@class,"module-item-note")]/text()')).strip(),
                     "category": category,
                 })
-            return {"keyword": keyword, "results": results}
+            return {
+                "keyword": keyword,
+                "page": page,
+                "results": results,
+                "pagination": {"current": page, "total": self._parse_total_page(tree)},
+            }
 
         return get_or_fetch(key, fetch, DATA_TTL)

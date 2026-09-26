@@ -64,6 +64,6 @@ def get_play(vod_id, sid, nid):
     return _run("获取播放地址", lambda s: s.get_play(vod_id, sid, nid))
 
 
-def search(keyword):
-    """搜索影片"""
-    return _run("搜索", lambda s: s.search(keyword))
+def search(keyword, page=1):
+    """搜索影片（分页）"""
+    return _run("搜索", lambda s: s.search(keyword, page=page))

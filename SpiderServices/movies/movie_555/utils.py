@@ -168,9 +168,14 @@ def build_play_url(vod_id, sid, nid) -> str:
     return f"{BASE_URL}/vodplay/{vod_id}-{sid}-{nid}.html"
 
 
-def build_search_url(keyword: str) -> str:
-    """构建搜索页 URL（关键词需 URL 编码，尾部固定 13 个横线）"""
-    return f"{BASE_URL}/vodsearch/{quote(keyword)}-------------.html"
+def build_search_url(keyword: str, page: int = 1) -> str:
+    """构建搜索页 URL（含分页）。
+
+    分页格式与列表页同源：/vodsearch/{kw}----------{page}---.html
+    第 1 页省略页码段，即 /vodsearch/{kw}-------------.html（13 个横线）。
+    """
+    page_part = str(page) if page and page > 1 else ''
+    return f"{BASE_URL}/vodsearch/{quote(keyword)}----------{page_part}---.html"
 
 
 def build_label_url(label: str) -> str:

@@ -200,12 +200,21 @@ def search_view(request):
 
     查询参数:
         keyword (必填): 搜索关键词
+        page    (可选): 页码，从 1 开始，默认 1
     """
     keyword = request.GET.get('keyword', '').strip()
     if not keyword:
         return _json_response(StatusCode.PARAM_MISSING, msg='参数缺失: keyword(搜索关键词)')
 
-    ok, data = utils.search(keyword)
+    page_raw = request.GET.get('page', '').strip()
+    if page_raw:
+        ok, page = _require_int(page_raw, 'page', minimum=1)
+        if not ok:
+            return _fail(page)
+    else:
+        page = 1
+
+    ok, data = utils.search(keyword, page=page)
     if not ok:
         return _json_response(StatusCode.EXTERNAL_API_FAILED, msg=data)
     return _json_response(StatusCode.SUCCESS, data=data)
