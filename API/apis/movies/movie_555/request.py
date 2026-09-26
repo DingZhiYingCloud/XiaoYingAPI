@@ -1,9 +1,10 @@
 """555电影 线路 API 请求处理视图
 
-提供 6 个接口（均为 GET，查询类）:
-    GET /api/movies/movie_555/categories  分类列表
+提供 7 个接口（均为 GET，查询类）:
+    GET /api/movies/movie_555/categories  分类列表（主分类 + 子分类）
+    GET /api/movies/movie_555/filters     筛选条件（子分类 / 地区 / 题材 / 语言 / 年份 / 排序）
     GET /api/movies/movie_555/home        首页聚合
-    GET /api/movies/movie_555/list        分类列表（分页 / 排序 / 年份）
+    GET /api/movies/movie_555/list        分类列表（分页 + 排序 + 年份/地区/题材/语言组合筛选）
     GET /api/movies/movie_555/detail      影片详情
     GET /api/movies/movie_555/play        播放地址（m3u8）
     GET /api/movies/movie_555/search      搜索
@@ -54,8 +55,26 @@ def _fail(fail):
 
 @require_http_methods(['GET'])
 def categories_view(request):
-    """获取分类列表（主分类 + 榜单 + 专题）"""
+    """获取分类列表（主分类 + 子分类 + label 专题）"""
     ok, data = utils.get_categories()
+    if not ok:
+        return _json_response(StatusCode.EXTERNAL_API_FAILED, msg=data)
+    return _json_response(StatusCode.SUCCESS, data=data)
+
+
+@require_http_methods(['GET'])
+def filters_view(request):
+    """
+    获取某分类可用的筛选条件（子分类 / 地区 / 题材 / 语言 / 年份 / 排序）。
+
+    查询参数:
+        type_id (必填): 分类 ID（见「分类列表」接口）
+    """
+    ok, type_id = _require_int(request.GET.get('type_id', '').strip(), 'type_id')
+    if not ok:
+        return _fail(type_id)
+
+    ok, data = utils.get_filters(type_id)
     if not ok:
         return _json_response(StatusCode.EXTERNAL_API_FAILED, msg=data)
     return _json_response(StatusCode.SUCCESS, data=data)
@@ -76,10 +95,15 @@ def list_view(request):
     获取分类列表。
 
     查询参数:
-        type_id (必填): 分类 ID，1=电影 2=连续剧 3=综艺纪录 4=动漫（或榜单 ID）
+        type_id (必填): 分类 ID，1=电影 2=连续剧 3=综艺纪录 4=动漫 124=福利 126=擦边短剧（或子分类 ID）
         page    (可选): 页码，从 1 开始，默认 1
         order   (可选): 排序方式 time(时间) / hits(人气) / score(评分)
-        year    (可选): 年份筛选，如 2026（与 order 同时传时以 year 为准）
+        year    (可选): 年份，如 2026
+        area    (可选): 地区，如 大陆（取值见「筛选条件」接口）
+        genre   (可选): 题材，如 动作（取值见「筛选条件」接口）
+        lang    (可选): 语言，如 国语（取值见「筛选条件」接口）
+
+    年份 / 地区 / 题材 / 语言 / 排序可任意组合，源站按交集返回。
     """
     ok, type_id = _require_int(request.GET.get('type_id', '').strip(), 'type_id')
     if not ok:
@@ -106,7 +130,13 @@ def list_view(request):
     else:
         year = None
 
-    ok, data = utils.get_list(type_id, page=page, order=order, year=year)
+    # 地区 / 题材 / 语言：取值由「筛选条件」接口下发，这里原样透传给源站
+    area = request.GET.get('area', '').strip() or None
+    genre = request.GET.get('genre', '').strip() or None
+    lang = request.GET.get('lang', '').strip() or None
+
+    ok, data = utils.get_list(type_id, page=page, order=order, year=year,
+                              area=area, genre=genre, lang=lang)
     if not ok:
         return _json_response(StatusCode.EXTERNAL_API_FAILED, msg=data)
     return _json_response(StatusCode.SUCCESS, data=data)

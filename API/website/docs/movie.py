@@ -3,7 +3,7 @@
 数据与 API/apis/movies/ 实际实现对齐（分类树 /api/movies/ 为需签名）：
 - movie_555  555电影线路（苹果CMS 站，实时爬取 + 文件缓存）
 
-接入方拿到授权后，可按「分类列表 → 列表 → 详情 → 播放地址」跑通完整影视站流程。
+接入方拿到授权后，可按「分类列表 → 筛选条件 → 列表 → 详情 → 播放地址」跑通完整影视站流程。
 后续接入更多线路（如爱奇艺 / 腾讯等）时在 channels 追加即可。
 """
 from .schema import ChannelSpec, EndpointSpec, ParamSpec, ServiceSpec
@@ -25,19 +25,32 @@ SERVICE = ServiceSpec(
             endpoints=[
                 EndpointSpec('categories', '分类列表', 'GET',
                              '/api/movies/movie_555/categories',
-                             summary='获取可用分类（主分类 / 榜单 / 专题）。',
-                             notes=['用于搭建站点导航，返回值中 id 可传给「列表」接口的 type_id。']),
+                             summary='获取可用分类（主分类 / 子分类 / 专题）。',
+                             notes=['用于搭建站点导航：main 为主分类，sub 为连续剧的子分类，'
+                                    '返回的 id 都可直接传给「列表」接口的 type_id。']),
+                EndpointSpec('filters', '筛选条件', 'GET',
+                             '/api/movies/movie_555/filters',
+                             summary='获取某分类可用的筛选条件：子分类、地区、题材、语言、年份、排序。',
+                             params=[
+                                 ParamSpec('type_id', '分类 ID', kind='number', required=True,
+                                           placeholder='1',
+                                           desc='必填：分类 ID（见「分类列表」接口），如 1=电影 2=连续剧。'),
+                             ],
+                             notes=['返回 data.sub_types（子分类，value 回传给 type_id）与 data.groups。',
+                                    'data.groups 含地区 / 题材 / 语言 / 年份 / 排序五组，value 回传给「列表」接口的同名参数。',
+                                    '各分类的可用值不同（例如动漫有「日本 / 欧美」，综艺有「真人秀 / 脱口秀」），'
+                                    '年份还会随站点上新自动增加，建议由本接口动态渲染筛选栏，不要在客户端写死。']),
                 EndpointSpec('home', '首页聚合', 'GET',
                              '/api/movies/movie_555/home',
                              summary='获取首页聚合数据：轮播图与各推荐区块（本周/本月最佳、各榜单等）。',
                              notes=['一次返回首页全部推荐区块，便于直接渲染站点首页。']),
                 EndpointSpec('list', '分类列表', 'GET',
                              '/api/movies/movie_555/list',
-                             summary='按分类获取影片列表，支持分页、排序与年份筛选。',
+                             summary='按分类获取影片列表，支持分页、排序与年份 / 地区 / 题材 / 语言组合筛选。',
                              params=[
                                  ParamSpec('type_id', '分类 ID', kind='number', required=True,
                                            placeholder='1',
-                                           desc='必填：分类 ID，1=电影 2=连续剧 3=综艺纪录 4=动漫 124=福利 126=擦边短剧（或榜单 ID，见「分类列表」接口）。'),
+                                           desc='必填：分类 ID，1=电影 2=连续剧 3=综艺纪录 4=动漫 124=福利 126=擦边短剧（子分类见「分类列表」接口的 sub）。'),
                                  ParamSpec('page', '页码', kind='number', default='1',
                                            placeholder='1',
                                            desc='可选：页码，从 1 开始，默认 1。'),
@@ -48,12 +61,20 @@ SERVICE = ServiceSpec(
                                                {'value': 'hits', 'label': '按人气'},
                                                {'value': 'score', 'label': '按评分'},
                                            ],
-                                           desc='可选：排序方式 time/hits/score；与 year 同时传时以 year 为准。'),
+                                           desc='可选：排序方式 time/hits/score。'),
                                  ParamSpec('year', '年份', kind='number',
                                            placeholder='2026',
-                                           desc='可选：按年份筛选，如 2026。'),
+                                           desc='可选：按年份筛选，如 2026（取值见「筛选条件」接口的 year 组）。'),
+                                 ParamSpec('area', '地区', placeholder='大陆',
+                                           desc='可选：按地区筛选，如 大陆（取值见「筛选条件」接口的 area 组）。'),
+                                 ParamSpec('genre', '题材', placeholder='动作',
+                                           desc='可选：按题材筛选，如 动作（取值见「筛选条件」接口的 genre 组）。'),
+                                 ParamSpec('lang', '语言', placeholder='国语',
+                                           desc='可选：按语言筛选，如 国语（取值见「筛选条件」接口的 lang 组）。'),
                              ],
-                             notes=['返回 data.items（影片列表）与 data.pagination（分页信息）。']),
+                             notes=['返回 data.items（影片列表）与 data.pagination（分页信息）。',
+                                    '地区 / 题材 / 语言 / 年份 / 排序可任意组合，源站按交集返回；'
+                                    '组合后没有匹配影片时 data.items 为空数组，不会报错。']),
                 EndpointSpec('detail', '影片详情', 'GET',
                              '/api/movies/movie_555/detail',
                              summary='获取影片详情：简介、导演/演员等元数据、播放源与选集列表。',

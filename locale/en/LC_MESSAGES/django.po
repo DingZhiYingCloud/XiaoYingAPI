@@ -3989,6 +3989,9 @@ msgstr "555 Movies"
 msgid "555电影（5dy4.vip）"
 msgstr "555 Movies (5dy4.vip)"
 
+msgid "data.groups 含地区 / 题材 / 语言 / 年份 / 排序五组，value 回传给「列表」接口的同名参数。"
+msgstr "data.groups holds five groups — region, genre, language, year and sort order; pass value back to the list endpoint as the same-named parameter."
+
 msgid "sid / nid 越界或源站无有效地址时返回 40001。"
 msgstr "Returns 40001 when sid / nid are out of range or the source site has no valid URL."
 
@@ -4001,14 +4004,32 @@ msgstr "Category ID"
 msgid "分类列表"
 msgstr "Category List"
 
-msgid "可选：按年份筛选，如 2026。"
-msgstr "Optional: filter by year, e.g. 2026."
+msgid "可选：按地区筛选，如 大陆（取值见「筛选条件」接口的 area 组）。"
+msgstr "Optional: filter by region, e.g. 大陆 (values come from the area group of the filters endpoint)."
 
-msgid "可选：排序方式 time/hits/score；与 year 同时传时以 year 为准。"
-msgstr "Optional: sort order time / hits / score; when passed together with year, year takes precedence."
+msgid "可选：按年份筛选，如 2026（取值见「筛选条件」接口的 year 组）。"
+msgstr "Optional: filter by year, e.g. 2026 (values come from the year group of the filters endpoint)."
+
+msgid "可选：按语言筛选，如 国语（取值见「筛选条件」接口的 lang 组）。"
+msgstr "Optional: filter by language, e.g. 国语 (values come from the lang group of the filters endpoint)."
+
+msgid "可选：按题材筛选，如 动作（取值见「筛选条件」接口的 genre 组）。"
+msgstr "Optional: filter by genre, e.g. 动作 (values come from the genre group of the filters endpoint)."
+
+msgid "可选：排序方式 time/hits/score。"
+msgstr "Optional: sort order time / hits / score."
 
 msgid "可选：页码，从 1 开始，默认 1。"
 msgstr "Optional: page number, starting from 1, default 1."
+
+msgid "各分类的可用值不同（例如动漫有「日本 / 欧美」，综艺有「真人秀 / 脱口秀」），年份还会随站点上新自动增加，建议由本接口动态渲染筛选栏，不要在客户端写死。"
+msgstr "Available values differ per category (anime offers Japan / Europe & America, variety offers Reality Show / Talk Show, and so on), and the year list grows as the site adds titles. Render the filter bar from this endpoint instead of hard-coding values in the client."
+
+msgid "地区"
+msgstr "Region"
+
+msgid "地区 / 题材 / 语言 / 年份 / 排序可任意组合，源站按交集返回；组合后没有匹配影片时 data.items 为空数组，不会报错。"
+msgstr "Region / genre / language / year / sort can be combined freely and the source site returns the intersection. When a combination matches nothing, data.items is an empty array rather than an error."
 
 msgid "实时爬取源站并缓存。数据类（片名/详情/集数）缓存较久，播放地址（m3u8）缓存较短以便及时刷新。"
 msgstr "Crawls the source site in real time and caches the results. Data (titles / details / episode counts) is cached longer, while playback URLs (m3u8) are cached briefly so they stay fresh."
@@ -4025,8 +4046,11 @@ msgstr "Returns 40001 when the movie does not exist."
 msgid "影片详情"
 msgstr "Movie Details"
 
-msgid "必填：分类 ID，1=电影 2=连续剧 3=综艺纪录 4=动漫 124=福利 126=擦边短剧（或榜单 ID，见「分类列表」接口）。"
-msgstr "Required: category ID — 1=Movies 2=TV Series 3=Variety & Documentary 4=Anime 124=Premium 126=Short Dramas (or a ranking ID, see the category list endpoint)."
+msgid "必填：分类 ID（见「分类列表」接口），如 1=电影 2=连续剧。"
+msgstr "Required: category ID (see the category list endpoint), e.g. 1=Movies 2=TV Series."
+
+msgid "必填：分类 ID，1=电影 2=连续剧 3=综艺纪录 4=动漫 124=福利 126=擦边短剧（子分类见「分类列表」接口的 sub）。"
+msgstr "Required: category ID — 1=Movies 2=TV Series 3=Variety & Documentary 4=Anime 124=Premium 126=Short Dramas (sub-categories come from sub in the category list endpoint)."
 
 msgid "必填：影片 ID（取自列表/搜索结果中的 id）。"
 msgstr "Required: movie ID (from the id field in list / search results)."
@@ -4046,8 +4070,8 @@ msgstr "By Popularity"
 msgid "按关键词搜索影片。"
 msgstr "Search movies by keyword."
 
-msgid "按分类获取影片列表，支持分页、排序与年份筛选。"
-msgstr "Get a movie list by category, with pagination, sorting, and year filtering."
+msgid "按分类获取影片列表，支持分页、排序与年份 / 地区 / 题材 / 语言组合筛选。"
+msgstr "Get a movie list by category, with pagination, sorting, and combined year / region / genre / language filters."
 
 msgid "按时间"
 msgstr "By Time"
@@ -4070,8 +4094,8 @@ msgstr "Source Index"
 msgid "源站地址直出，不做代理转发。"
 msgstr "The source URL is returned directly without proxying."
 
-msgid "用于搭建站点导航，返回值中 id 可传给「列表」接口的 type_id。"
-msgstr "Use it to build site navigation; the returned id can be passed to the list endpoint as type_id."
+msgid "用于搭建站点导航：main 为主分类，sub 为连续剧的子分类，返回的 id 都可直接传给「列表」接口的 type_id。"
+msgstr "Use it to build site navigation: main holds the primary categories and sub holds the TV-series sub-categories; every returned id can be passed to the list endpoint as type_id."
 
 msgid "电影"
 msgstr "Movies"
@@ -4079,8 +4103,11 @@ msgstr "Movies"
 msgid "电影聚合服务：提供影视的分类、列表、详情、选集与播放地址（m3u8）能力，按「列表 → 详情 → 播放」流程即可搭建完整影视站。"
 msgstr "Movie aggregation service: categories, lists, details, episode lists, and playback URLs (m3u8) for films and TV shows — build a complete streaming site with the \"list → detail → play\" flow."
 
-msgid "获取可用分类（主分类 / 榜单 / 专题）。"
-msgstr "Get available categories (main categories / rankings / specials)."
+msgid "筛选条件"
+msgstr "Filters"
+
+msgid "获取可用分类（主分类 / 子分类 / 专题）。"
+msgstr "Get available categories (main categories / sub-categories / specials)."
 
 msgid "获取影片详情：简介、导演/演员等元数据、播放源与选集列表。"
 msgstr "Get movie details: synopsis, director / cast metadata, playback sources, and episode lists."
@@ -4088,8 +4115,14 @@ msgstr "Get movie details: synopsis, director / cast metadata, playback sources,
 msgid "获取指定播放源/集数的 m3u8 播放地址。"
 msgstr "Get the m3u8 playback URL for a given playback source and episode."
 
+msgid "获取某分类可用的筛选条件：子分类、地区、题材、语言、年份、排序。"
+msgstr "Get the filters available for a category: sub-categories, region, genre, language, year, and sort order."
+
 msgid "获取首页聚合数据：轮播图与各推荐区块（本周/本月最佳、各榜单等）。"
 msgstr "Get home feed data: the carousel and all recommendation blocks (best of the week / month, rankings, and more)."
+
+msgid "语言"
+msgstr "Language"
 
 msgid "返回 data.items（影片列表）与 data.pagination（分页信息）。"
 msgstr "Returns data.items (movie list) and data.pagination (pagination info)."
@@ -4103,11 +4136,17 @@ msgstr "Returns data.results (movie list) with the same fields as the list endpo
 msgid "返回 data.sources（播放源），每个源含 episodes（选集），选集里的 sid/nid 用于「播放地址」接口。"
 msgstr "Returns data.sources (playback sources); each source contains episodes, whose sid / nid are used by the playback URL endpoint."
 
+msgid "返回 data.sub_types（子分类，value 回传给 type_id）与 data.groups。"
+msgstr "Returns data.sub_types (sub-categories; pass value back as type_id) and data.groups."
+
 msgid "集数序号"
 msgstr "Episode Index"
 
 msgid "页面下方提供在线播放器：请求成功后自动加载播放，也可粘贴任意 m3u8 地址测试。"
 msgstr "An online player is provided below: it auto-plays after a successful request, and you can also paste any m3u8 URL to test."
+
+msgid "题材"
+msgstr "Genre"
 
 msgid "首页聚合"
 msgstr "Home Feed"

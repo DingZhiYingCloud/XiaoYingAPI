@@ -6,6 +6,7 @@ from . import request
 # 域名前缀: /api/movies/movie_555/
 urlpatterns = [
     path('categories', request.categories_view, name='movies_555_categories'),  # 分类列表
+    path('filters', request.filters_view, name='movies_555_filters'),           # 筛选条件
     path('home', request.home_view, name='movies_555_home'),                    # 首页聚合
     path('list', request.list_view, name='movies_555_list'),                    # 分类列表
     path('detail', request.detail_view, name='movies_555_detail'),              # 影片详情
