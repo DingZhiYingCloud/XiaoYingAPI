@@ -84,6 +84,7 @@ def localize(spec: ServiceSpec) -> ServiceSpec:
     """
     doc = copy.deepcopy(spec)
     doc.name, doc.summary = _(doc.name), _(doc.summary)
+    doc.keywords = _(doc.keywords)
     for channel in doc.channels:
         channel.name = _(channel.name)
         channel.provider = _(channel.provider)

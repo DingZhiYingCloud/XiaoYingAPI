@@ -1677,6 +1677,9 @@ msgstr "Music Name"
 msgid "音乐名称（必填）"
 msgstr "Music name (Required)"
 
+msgid "音乐源接口"
+msgstr "Music Source API"
+
 msgid "音乐聚合能力：爱听音乐网抓取（首页/歌手/歌曲/搜索）与小影音乐自有曲库的增删改查。当前接入 2 条线路。"
 msgstr "Music aggregation: scraping Aiting Music (home/singer/song/search) plus CRUD for the XiaoYing Music library. 2 channels are currently integrated."
 

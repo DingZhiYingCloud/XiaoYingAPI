@@ -2,7 +2,7 @@
 {% load static i18n %}
 
 {% block title %}{% blocktrans with name=doc.name %}{{ name }} - 接口文档 - 小影API{% endblocktrans %}{% endblock %}
-{% block keywords %}{% blocktrans with name=doc.name %}{{ name }},接口文档,小影API{% endblocktrans %}{% endblock %}
+{% block keywords %}{% blocktrans with name=doc.name %}{{ name }},接口文档,小影API{% endblocktrans %}{% if doc.keywords %},{{ doc.keywords }}{% endif %}{% endblock %}
 {% block description %}{{ doc.name }}：{{ doc.summary }}{% endblock %}
 
 {% block content %}

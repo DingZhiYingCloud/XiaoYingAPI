@@ -14,6 +14,7 @@ SERVICE = ServiceSpec(
     name='音乐服务',
     prefix='/api/music/',
     summary='音乐聚合能力：爱听音乐网抓取（首页/歌手/歌曲/搜索）与小影音乐自有曲库的增删改查。当前接入 2 条线路。',
+    keywords='音乐源接口',
     channels=[
         ChannelSpec(
             slug='2t58',

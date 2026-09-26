@@ -77,4 +77,8 @@ class ServiceSpec:
     name: str
     prefix: str              # 如 /api/email/
     summary: str = ''
+    # 额外的 SEO 关键词（可选，逗号分隔的短语，如 '音乐源接口'）：
+    # 文档页的 <meta keywords> 默认是「服务名,接口文档,小影API」，配了本项会追加在后面，
+    # 用于补充服务名本身覆盖不到的长尾词。留空则行为与从前完全一致。
+    keywords: str = ''
     channels: List[ChannelSpec] = field(default_factory=list)
