@@ -264,6 +264,10 @@
      "params": {"vod_id": "${MovieVodId}", "nid": "1"}, "expect": [20001]},
     {"name": "电影-搜索", "method": "GET", "path": "/api/movies/movie_555/search",
      "params": {"keyword": "${MovieKeyword}"}, "expect": [10000, 40001]},
+    {"name": "电影-搜索-分页(第2页)", "method": "GET", "path": "/api/movies/movie_555/search",
+     "params": {"keyword": "${MovieKeyword}", "page": "2"}, "expect": [10000, 40001]},
+    {"name": "电影-搜索-页码非法", "method": "GET", "path": "/api/movies/movie_555/search",
+     "params": {"keyword": "${MovieKeyword}", "page": "0"}, "expect": [20003]},
     {"name": "电影-搜索-缺keyword", "method": "GET", "path": "/api/movies/movie_555/search",
      "expect": [20001]},
 
