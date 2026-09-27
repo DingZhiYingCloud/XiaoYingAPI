@@ -49,8 +49,8 @@ django.setup()
 import requests
 
 from API.apis.user_center.sign import build_sign
+from API.common.api_stats import purge_app
 from API.models import UserApp
-from API.models.Statistics.api_call_stat import ApiCallStat, ApiCallStatHour
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_CONFIG = os.path.join(_HERE, 'api_smoke_config.json')
@@ -211,26 +211,13 @@ def resolve_app(cfg):
     return app, app
 
 
-def purge_stats(app_id, wait_seconds=6):
-    """删掉临时项目在调用统计里留下的行，返回清理行数
+def purge_stats(app_id):
+    """删完临时项目后清掉它在调用统计里留下的行（统计表按 APPID 只追加，不清会变成「已删除项目」）
 
-    统计表（ApiCallStat / ApiCallStatHour）是按 app_id 聚合的**追加型**事实表：
-    项目删除后这些行不会消失，而统计页显示项目名是「查项目表，查不到就回退成 app_id」，
-    于是每次冒烟都会在线上留下几行没有名字的「已删除项目」。这里删项目时一并清掉。
-
-    统计写入是「服务端进程内缓冲 + 每 FLUSH_INTERVAL_SECONDS(5) 秒批量落库」，
-    脚本删项目时服务端可能还有一批没落库，所以清一轮、等一个刷新窗口再清一轮。
-
-    注意：只有脚本能访问到写入统计的那个库时才有效。跨环境跑（本机脚本打远端接口、
-    统计落在远端库）时清不到，请改用目标环境的固定 app_id/app_secret。
+    服务端统计是「进程内缓冲 + 每 5 秒批量落库」，脚本删项目时可能还有一批没落库，
+    所以交给 purge_app 清两轮、中间等一个刷新窗口。
     """
-    total = 0
-    for round_no in range(2):
-        if round_no:
-            time.sleep(wait_seconds)
-        total += ApiCallStat.objects.filter(app_id=app_id).delete()[0]
-        total += ApiCallStatHour.objects.filter(app_id=app_id).delete()[0]
-    return total
+    return purge_app(app_id, retries=2, wait_seconds=6)
 
 
 def _build_files(case, ctx):

@@ -20,7 +20,7 @@ from django.utils.translation import gettext as _
 
 from API.common import StatusCode
 from API.common import api_stats_query as stats_query
-from API.common.api_stats import UNMATCHED_PATH, service_of
+from API.common.api_stats import UNMATCHED_PATH, purge_app, service_of
 from API.common.middleware import resolve_service_policy, requires_auth
 from API.models import ApiServicePolicy, User, UserApp
 from API.models.Statistics.api_call_stat import NO_APP
@@ -84,8 +84,14 @@ def _handle_project_action(request):
             messages.error(request, _('项目不存在'))
             return redirect('website:console_projects')
         if action == 'delete':
+            deleted_app_id = app.app_id
             app.delete()
+            # 统计表按 APPID 聚合且只追加：项目删掉后历史行不会消失，会在看板上变成「已删除项目」，
+            # 因此删除项目时一并清理（服务端缓冲可能残留极少量未落库的行，由看板的标签兜底）
+            purged = purge_app(deleted_app_id)
             messages.success(request, _('项目「%(name)s」已删除，其全部 Token 已同步失效') % {'name': app.name})
+            if purged:
+                messages.info(request, _('同时清理该项目的调用统计 %(n)s 行') % {'n': purged})
             return redirect('website:console_projects')
         # edit
         name = (request.POST.get('name') or '').strip()

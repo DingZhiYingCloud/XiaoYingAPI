@@ -235,16 +235,22 @@ PUBLIC_GET_PATHS = (
 )
 
 
+# 会直接拦截请求的策略状态 -> 返回的业务码（命中即拦，不做签名校验）
+# 其余状态（normal / dev）只作前台展示标记、不拦截：开发中的服务仍需联调，放行更合理。
+_STATUS_BLOCK_CODES = {
+    'maintenance': StatusCode.SERVICE_MAINTENANCE,
+    'offline': StatusCode.SERVICE_OFFLINE,
+}
+
+
 class ApiAuthMiddleware:
     """API 服务认证中间件
 
     根据服务策略表（ApiServicePolicy，服务 / 线路 / 端点三级逐级继承）决定 /api/ 请求是否放行：
 
-    1. **维护态（最优先）**：生效 status=maintenance 时直接返回「服务维护中」（30004），
-       且**不做签名校验**（匿名请求同样收到维护码）。
-       取舍：offline（已下线）/ dev（开发中）**只做前台展示标记、不拦截请求** ——
-       下线的服务若仍拦截会让排障困难，开发中的服务需要能实际调用测试；
-       两个状态在官网首页 / 文档中心的徽标与横幅上体现，鉴权层不额外加码。
+    1. **状态拦截（最优先）**：生效 status 为 maintenance（30004 服务维护中）或 offline
+       （30005 服务已下线）时直接返回对应业务码，且**不做签名校验**（匿名请求同样收到）；
+       normal / dev 只作前台展示标记，不拦截（开发中的服务需要能实际联调）。
     2. **认证判定**：由 requires_auth() 统一给出（基于 resolve_service_policy()）。
        · 需要签名：校验签名（app_id/timestamp/nonce/sign），通过后把项目对象挂到
          request.auth_app 供视图直接使用；失败返回统一 20011
@@ -262,11 +268,12 @@ class ApiAuthMiddleware:
     def __call__(self, request):
         if request.path.startswith('/api/'):
             effective = resolve_service_policy(request.path)
-            # 1) 维护态最优先：生效状态为维护中即返回维护码（匿名也不做签名校验）
-            if effective['status'] == 'maintenance':
+            # 1) 状态拦截最优先：维护中 / 已下线直接返回对应业务码（匿名也不做签名校验）
+            block_code = _STATUS_BLOCK_CODES.get(effective['status'])
+            if block_code is not None:
                 return JsonResponse({
-                    'code': StatusCode.SERVICE_MAINTENANCE,
-                    'msg': StatusCode.get_message(StatusCode.SERVICE_MAINTENANCE),
+                    'code': block_code,
+                    'msg': StatusCode.get_message(block_code),
                     'data': None,
                 })
             # 公开 GET 路径（如邮件内激活链接、注册/登录方式配置）免签名

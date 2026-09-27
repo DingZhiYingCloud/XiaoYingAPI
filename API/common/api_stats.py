@@ -18,7 +18,9 @@
 对外接口：
     record(path, cost_ms, status_code, app_id)  - 记录一次调用（缓冲区累加，必要时触发落库）
     flush()                                     - 立即把缓冲写入数据库
+    purge_app(app_id)                           - 清掉某项目在统计表里的行（删除项目时调用）
     service_of(path)                            - 由路径解析服务前缀
+    request_path(request) / canonical_path(p)   - 由请求 / 历史路径解析规范统计路径
     business_code(response)                     - 由响应解析业务状态码
 """
 import atexit
@@ -96,7 +98,22 @@ def request_path(request):
     route = getattr(match, 'route', '') if match else ''
     if route and _ROUTE_SAFE_RE.match(route):
         return normalize_path('/' + route)
-    resolved = _resolved_route(normalize_path(request.path))
+    return canonical_path(normalize_path(request.path))
+
+
+def canonical_path(path):
+    """把路径折算成**当前口径**下的规范统计路径
+
+    - 已是归一后的模板（含 <param>）→ 原样返回（按 ID 拆行的历史行不会在这里被再动一次）
+    - 能解析到真实路由 → 用路由模板（未签名的带参接口也不按 ID 拆行）
+    - 解析不到 → 归并为 UNMATCHED_PATH
+
+    request_path() 的兜底分支与「清理历史统计」命令共用本函数，
+    保证历史数据清理后的结果与今后新记录的完全一致。
+    """
+    if PARAM_PLACEHOLDER in path:
+        return path
+    resolved = _resolved_route(path)
     return UNMATCHED_PATH if resolved is None else normalize_path('/' + resolved)
 
 
@@ -186,6 +203,29 @@ def flush():
         _last_flush = time.monotonic()
     _flush_one(ApiCallStat, _DAY_KEY_FIELDS, day_batch, '按天')
     _flush_one(ApiCallStatHour, _HOUR_KEY_FIELDS, hour_batch, '按小时')
+
+
+def purge_app(app_id, retries=1, wait_seconds=0):
+    """清掉某个接入项目在统计表里的行，返回清理行数
+
+    统计表按 APPID 聚合且**只追加**：项目删除后这些行不会消失，而看板显示项目名是
+    「查接入项目表，查不到就回退成 APPID」，于是会留下一批「已删除项目」。
+    所以**删除接入项目时必须一并调用本函数**。
+
+    写入是「进程内缓冲 + 每 FLUSH_INTERVAL_SECONDS 秒批量落库」：若清理紧跟删项目执行，
+    服务端缓冲里可能还有一批没落库，需要 `retries > 1` 且 `wait_seconds` 给足一个刷新窗口，
+    才能清干净（冒烟脚本就是这么调的）。Web 请求里不适合等待，控制台删除只清一轮，
+    残余的极少数行由看板的「已删除项目」标签兜底。
+    """
+    if not app_id or app_id == NO_APP:
+        return 0
+    total = 0
+    for round_no in range(max(1, retries)):
+        if round_no and wait_seconds:
+            time.sleep(wait_seconds)
+        total += ApiCallStat.objects.filter(app_id=app_id).delete()[0]
+        total += ApiCallStatHour.objects.filter(app_id=app_id).delete()[0]
+    return total
 
 
 def _flush_one(model, key_fields, batch, label):

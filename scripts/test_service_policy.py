@@ -219,6 +219,24 @@ def round4_status_inherit():
     check('该端点不再返回维护码（落到 20011）',
           _code(resp) == StatusCode.AUTH_FAILED, f'code={_code(resp)}')
 
+    # 已下线（offline）同样硬拦截，且用独立业务码 30005，便于调用方与「维护中」区分
+    _mk_policy(name=f'SvcOffline {MARK}', level='service', path_prefix=f'{BASE}offline/',
+               status='offline', auth_mode='inherit', app_scope='inherit')
+    check('服务级已下线生效',
+          resolve_service_policy(f'{BASE}offline/x')['status'] == 'offline')
+    resp = anon.get(f'{BASE}offline/x')
+    check('已下线服务返回 30005（不是 30004）',
+          _code(resp) == StatusCode.SERVICE_OFFLINE, f'code={_code(resp)}')
+    resp = anon.get(f'{BASE}offline/x', _signed(_mk_app('O')))
+    check('已下线：携带合法签名仍返回 30005（未做签名校验）',
+          _code(resp) == StatusCode.SERVICE_OFFLINE, f'code={_code(resp)}')
+    _mk_policy(name=f'EpNormalOffline {MARK}', level='endpoint',
+               path_prefix=f'{BASE}offline/ok',
+               status='normal', auth_mode='inherit', app_scope='inherit')
+    resp = anon.get(f'{BASE}offline/ok')
+    check('端点级 normal 覆盖服务级已下线（落到 20011）',
+          _code(resp) == StatusCode.AUTH_FAILED, f'code={_code(resp)}')
+
 
 # ───────────────────────── 第 5 轮：白名单继承 ─────────────────────────
 

@@ -59,10 +59,13 @@ class StatusCode:
     BUSINESS_RULE_RESTRICTED = 30001
     STATUS_NOT_ALLOWED = 30002
     DATA_CONFLICT = 30003
-    # 服务维护中：单条 API 服务被「服务策略」置为维护态（ApiServicePolicy.enabled=False）时，
+    # 服务维护中：单条 API 服务被「服务策略」置为维护态（ApiServicePolicy.status='maintenance'）时，
     # 命中路径的 /api/ 请求统一返回此码（不做签名校验）。
     # 注：需求原指定 30002，但 30002 已被 STATUS_NOT_ALLOWED 占用，为不破坏既有语义改用 30004。
     SERVICE_MAINTENANCE = 30004
+    # 服务已下线：策略状态为 offline 时命中路径的 /api/ 请求统一返回此码（同样不做签名校验）。
+    # 与「维护中」区分开，便于调用方分辨「临时维护」与「已下线」。
+    SERVICE_OFFLINE = 30005
 
     # 资源不足 30010-30019
     INSUFFICIENT_BALANCE = 30010
@@ -125,6 +128,7 @@ class StatusCode:
         STATUS_NOT_ALLOWED: '当前状态不允许此操作',
         DATA_CONFLICT: '数据冲突',
         SERVICE_MAINTENANCE: '服务维护中',
+        SERVICE_OFFLINE: '服务已下线',
 
         INSUFFICIENT_BALANCE: '余额不足',
         INSUFFICIENT_STOCK: '库存不足',

@@ -434,8 +434,12 @@ def round9_labels():
     section('第 9 轮 统计口径标签（已删除项目 / 未匹配路径归并）')
     from types import SimpleNamespace
 
-    from API.common.api_stats import UNMATCHED_PATH, request_path, service_of
-    from API.models.Statistics.api_call_stat import NO_APP
+    from django.utils import timezone
+
+    from API.common.api_stats import (UNMATCHED_PATH, canonical_path, purge_app,
+                                      request_path, service_of)
+    from API.models.Statistics.api_call_stat import (NO_APP, ApiCallStat,
+                                                    ApiCallStatHour)
     from API.website import console
 
     class _Req:
@@ -475,6 +479,36 @@ def round9_labels():
           console._app_label('app_ok', {'app_ok': '某项目'}) == '某项目')
     check('未认证请求仍显示「开放接口 / 未认证」',
           console._app_label(NO_APP, {}) == '开放接口 / 未认证')
+
+    # canonical_path：把历史路径折算到当前口径（清理历史数据与实时记录共用同一函数）
+    check('canonical_path：已是模板的原样保留',
+          canonical_path('/api/music/xiaoying/musics/<param>')
+          == '/api/music/xiaoying/musics/<param>')
+    check('canonical_path：历史原始路径折算为路由模板',
+          canonical_path('/api/music/xiaoying/musics/12345678-1234-1234-1234-123456789012')
+          == '/api/music/xiaoying/musics/<param>')
+    check('canonical_path：不存在的路径折算为未匹配',
+          canonical_path('/api/phpinfo.php') == UNMATCHED_PATH)
+    check('canonical_path 幂等（对结果再折算不变）',
+          canonical_path(canonical_path('/api/phpinfo.php')) == UNMATCHED_PATH
+          and canonical_path(canonical_path('/api/movies/movie_555/list'))
+          == '/api/movies/movie_555/list')
+
+    # purge_app：删除接入项目时清掉它在两张统计表里的行
+    doomed = 'app_purge_test_0001'
+    today = timezone.localdate()
+    ApiCallStat.objects.create(stat_date=today, service=service_of(PATH_A), path=PATH_A,
+                               app_id=doomed, status_code=10000, call_count=1,
+                               cost_sum_ms=10, cost_max_ms=10)
+    ApiCallStatHour.objects.create(stat_date=today, stat_hour=1, service=service_of(PATH_A),
+                                   path=PATH_A, app_id=doomed, status_code=10000,
+                                   call_count=1, cost_sum_ms=10, cost_max_ms=10)
+    purged = purge_app(doomed)
+    check('purge_app 清掉两张表里该项目的行',
+          purged == 2 and not ApiCallStat.objects.filter(app_id=doomed).exists()
+          and not ApiCallStatHour.objects.filter(app_id=doomed).exists(), f'purged={purged}')
+    check('purge_app 不误删「开放接口 / 未认证」桶', purge_app(NO_APP) == 0
+          and ApiCallStat.objects.filter(app_id=TEST_APP).exists())
 
     # 页面端到端：测试数据用的 TEST_APP 不在接入项目表里，统计页应显示「已删除项目」
     client, admin, created_admin = _superadmin()

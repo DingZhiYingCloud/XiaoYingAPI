@@ -4906,6 +4906,9 @@ msgstr "Data conflict"
 msgid "服务维护中"
 msgstr "Service under maintenance"
 
+msgid "服务已下线"
+msgstr "Service taken offline"
+
 msgid "余额不足"
 msgstr "Insufficient balance"
 
@@ -5476,5 +5479,9 @@ msgstr "Deleted project"
 # 调用统计：不存在任何真实路由的请求（扫描器探测）被归并成一条
 msgid "未匹配路径（疑似扫描）"
 msgstr "Unmatched path (likely a scan)"
+
+# 控制台删除接入项目时，一并清理它在调用统计里的行
+msgid "同时清理该项目的调用统计 %(n)s 行"
+msgstr "Also purged %(n)s call-statistics rows for this project"
 
 
