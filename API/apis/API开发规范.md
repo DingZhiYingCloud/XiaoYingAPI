@@ -14,10 +14,10 @@
 |------|------|------|
 | 文件夹 | 代表一个**API 服务**，对应 `/api/` 下的一个前缀 | `uploads/`、`musics/`、`user_center/` |
 | 文件 | 一个服务固定拆为**三件套**：路由 / 视图 / 逻辑 | `urls.py` + `request.py` + `utils.py` |
-| 汇总 | 根 `API/apis/urls.py` **每行**注册一个服务前缀，行尾注释即分类树节点名 | `path('upload/', include('API.apis.uploads.urls')), # 文件上传` |
+| 汇总 | 根 `API/apis/urls.py` **每行**注册一个服务前缀，行尾注释即服务名 | `path('upload/', include('API.apis.uploads.urls')), # 文件上传` |
 | 层级 | **最多两层**：服务文件夹 → 线路（子服务）文件夹 → 三件套 | `API/apis/musics/xiaoying/request.py` |
 | 契约 | 所有接口统一返回 `{"code", "msg", "data"}`，状态码取自 `API.common.StatusCode` | `{'code': 10000, 'msg': '成功', 'data': {...}}` |
-| 认证 | `/api/` 请求由中间件按**分类树**统一判定，视图不自行校验签名 | `request.auth_app` |
+| 认证 | `/api/` 请求由中间件按**服务策略**（服务/线路/端点三级继承）统一判定，视图不自行校验签名 | `request.auth_app` |
 
 ---
 
@@ -83,7 +83,7 @@ urlpatterns = [
 ```
 
 > 占位响应：`{"code": 50002, "msg": "服务建设中，暂不可用", "data": null}`。
-> 确无对接方使用的服务可直接删除整个文件夹 + 根 urls.py 注册行 + 分类树节点。
+> 确无对接方使用的服务可直接删除整个文件夹 + 根 urls.py 注册行（服务策略按路径前缀匹配，删除后对应策略可到 `/console/services/` 一并清理）。
 
 ---
 
@@ -199,40 +199,34 @@ def _json_response(code, data=None, msg=None):
 
 ---
 
-## 五、认证与分类树
+## 五、认证与服务策略
 
 ### 5.1 统一由中间件判定（fail-closed）
 
-- `/api/` 请求由 `ApiAuthMiddleware` 按 `ApiCategory` 分类树判定：请求路径按**最长前缀**命中节点，再沿父链向上取第一个非 `inherit` 的模式（`auth` 需认证 / `open` 开放）。
-- **A-01 起 fail-closed**：未命中分类 / 全链 inherit / 分类停用 → 一律要求签名；新增服务**默认不可匿名访问**，需显式配置为 `open` 才免签。
+- `/api/` 请求由 `ApiAuthMiddleware` 按「服务策略」（`ApiServicePolicy`，服务 / 线路 / 端点三级）判定：请求路径命中**全部**前缀匹配的策略，按 `path_prefix` 长度降序（最具体在前），逐字段取第一个非 `inherit` 的值。
+- **fail-closed**：未命中任何策略 → 一律要求签名；新增服务**默认不可匿名访问**，需在 `/console/services/` 显式配置为 `open` 才免签。
 - 需要认证的接口：通过后把项目对象挂到 `request.auth_app`，视图据此做数据隔离（租户维度）。
 
-### 5.2 分类节点名 = 根 urls.py 的注释
+### 5.2 服务 / 线路 / 端点的命名来源
 
-分类树由管理命令**扫描 `API/apis/urls.py` 的 include 行**生成，行尾注释即节点名称：
+「服务策略」的下拉枚举由 `API/website/service_tree.py` 在运行期按**真实 Django 路由**（`django.urls.get_resolver()`）生成，并用 `API/website/docs` 注册表补中文名：
+
+- 根 `API/apis/urls.py` 的 include 行注释即服务中文名（文档注册表另有一份更完整的服务名）。
+- 含参数的路由（如 `<uuid:music_id>`）从参数段起截断，保证枚举出的前缀能真实命中请求路径。
 
 ```python
 path('upload/', include('API.apis.uploads.urls')),  # 文件上传
 ```
 
-- include 语句必须**写成一行**，且注释与 include 同行，否则节点名会退化为模块末段（如 `uploads`）。
-- 子服务 / 线路的层级同样由被 include 的 `urls.py` 递归解析得到。
-
 ### 5.3 匿名访问
 
-- 仅两类可免签名：分类树中**显式 `open`** 的节点；`ApiAuthMiddleware.PUBLIC_GET_PATHS` 列出的公开 GET 路径（如邮箱激活链接）。
-- 新增服务需要匿名时，走后台 `/console/categories/` 将对应节点设为 `open`（会同时展示真实生效结果），**不要**在视图里绕过中间件。
+- 仅两类可免签名：服务策略中**显式 `open`** 的节点；`ApiAuthMiddleware.PUBLIC_GET_PATHS` 列出的公开 GET 路径（如邮箱激活链接）。
+- 新增服务需要匿名时，走 `/console/services/` 把对应服务/线路/端点设为「开放」（页面同时展示真实生效结果），**不要**在视图里绕过中间件。
 
-### 5.4 重建时机
+### 5.4 维护态与对外状态
 
-- 新增 / 删除服务文件夹或调整根 `urls.py` 后，执行：
-
-```bash
-python manage.py rebuild_category_tree
-```
-
-- 命令**幂等**：已存在的分类只同步名称与父子层级，**不覆盖**后台手动配置的 `auth_mode` / `status`。
-- 新部署必执行一次，否则分类树为空、所有接口匿名被拒（`20011`）。
+- 生效状态为「维护中」时，命中路径的 `/api/` 请求统一返回 `30004`（服务维护中），不做签名校验；「开发中 / 已下线」只作前台展示标记，不拦截请求。
+- 服务对外状态与认证模式同表管理（`status` / `auth_mode`），三级可继承；**无需任何重建命令**。
 
 ---
 
@@ -247,7 +241,7 @@ python manage.py rebuild_category_tree
 | 路由 name | `服务_动作` 或 `线路_动作`，全局唯一 | `upload_image`、`feedback_create`、`xiaoying_musics` |
 | 路由 path | 不带尾斜杠；如需兼容客户端带斜杠，再补 `<name>/` 变体 | `path('create', ...)` + `path('create/', ...)` |
 | 私有辅助函数 | 模块内以 `_` 前缀 | `_json_response`、`_parse_body`、`_require_app` |
-| include 注释 | 中文服务 / 线路名（= 分类树节点名） | `# 文件上传` |
+| include 注释 | 中文服务 / 线路名（= 服务策略下拉里的服务名） | `# 文件上传` |
 
 > 命名约束**只针对新建与后续调整**；存量服务的文件夹名、视图名不强制迁移（见第十一章）。
 
@@ -301,7 +295,7 @@ python manage.py rebuild_category_tree
 5. **补齐实现** → 视图用 `@require_http_methods` + `StatusCode`；逻辑放 `utils.py` 并返回 `(ok, data)`。
 6. **需要落库？** → 按[数据库模型创建规则.md](../models/数据库模型创建规则.md) 建模型，再补迁移（本地 `makemigrations` → 随代码入库）。
 7. **补文档** → `API/website/docs/<服务>.py` + `__init__.py` 注册（见第九章）。
-8. **重建并核对认证** → 执行 `rebuild_category_tree`，到 `/console/categories/` 核对节点认证模式（默认需认证，确需匿名再设 `open`）。
+8. **核对认证** → 到 `/console/services/` 的「服务策略」核对服务 / 线路 / 端点的认证模式与状态（默认需签名，确需匿名再设「开放」；无额外命令）。
 9. **自测** → 补充 / 运行 `scripts/` 回归脚本，验证成功、参数错误、认证拒绝等分支。
 
 ---
@@ -310,5 +304,5 @@ python manage.py rebuild_category_tree
 
 - **约束范围**：本规则约束**新建**与**后续调整**的服务组织与实现方式。
 - **存量现状**：服务文件夹命名新旧混用（snake_case 与 PascalCase 并存）；单体 / 聚合两种形态并存；服务内部私有辅助函数各自实现。存量保稳，不强制迁移。
-- **调整存量服务**时：只改组织方式与导入路径，**不改**URL 前缀、响应契约、状态码语义与认证模式；确需破坏性变更（改路径 / 改契约）须评估对接方影响并同步文档与分类树。
+- **调整存量服务**时：只改组织方式与导入路径，**不改**URL 前缀、响应契约、状态码语义与认证模式；确需破坏性变更（改路径 / 改契约）须评估对接方影响并同步文档与服务策略。
 - 新增服务一律按本规则组织；新增模型一律按《数据库模型创建规则.md》组织。

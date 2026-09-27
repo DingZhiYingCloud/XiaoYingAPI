@@ -7,7 +7,7 @@
 **核心特性**
 
 - **统一的 API 契约**：所有服务共用 `{code, msg, data}` 响应结构与 `API/common/status_code.py` 状态码体系
-- **分类树认证（fail-closed）**：按服务路径配置「需要认证 / 开放 / 跟随上级」；未显式配置的服务默认拒绝匿名访问
+- **服务策略认证（fail-closed）**：按「服务 → 线路 → 端点」三级配置「需要签名 / 开放 / 跟随上级」，逐级继承；未命中任何策略的服务默认拒绝匿名访问
 - **开箱即用的接口文档中心**：声明式描述「服务 → 线路 → 端点 → 参数」，自动生成文档页、侧栏导航与在线调试（服务端代签，浏览器不接触密钥）
 - **自带官网前台**：首页、接入向导、统一登录注册、计算程序、超级管理员控制台，无需额外后台
 - **计算程序库**：目录即数据源，往 `CalculationProgram/` 丢一个带 `README.md` 的目录即自动生成列表页、说明文档与文件下载（见第八章第 6 节）
@@ -55,7 +55,7 @@ XiaoYingAPI/
 │   │   ├── docs/                 # 文档中心的「服务 × 线路 × 端点」声明式数据
 │   │   └── programs.py           # 「计算程序」模块：扫描内容目录、渲染说明文档（见第八章第 6 节）
 │   ├── middlewares/              # 独立中间件组件（cloak_guard 斗篷守卫，见其目录内 README.md）
-│   ├── management/commands/      # 自定义管理命令（rebuild_category_tree / security_backfill）
+│   ├── management/commands/      # 自定义管理命令（security_backfill / prune_api_call_hour）
 │   ├── migrations/               # 数据库迁移（随代码入库，详见第六章）
 │   ├── templates/                # 全站模板，前端规范见其目录内 前端开发必看.md
 │   ├── static/                   # 应用内静态文件（前端 CSS/JS 源码与编译产物）
@@ -78,7 +78,7 @@ XiaoYingAPI/
 
 - `status_code.py`：统一状态码（10000 成功 / 2xxxx 客户端错误 / 3xxxx 业务错误 / 4xxxx 外部错误 / 5xxxx 系统错误）
 - `views.py`：全局 JSON 兜底（400 / 404 / 500）+ 服务建设中占位视图
-- `middleware.py`：`ApiAuthMiddleware`（分类树签名认证）+ `ApiJsonErrorMiddleware`（`/api/` 的 404 / 405 统一返回 JSON）+ `ApiRequestLogMiddleware`（请求日志 + 调用统计采集）
+- `middleware.py`：`ApiAuthMiddleware`（服务策略签名认证，服务/线路/端点三级继承）+ `ApiJsonErrorMiddleware`（`/api/` 的 404 / 405 统一返回 JSON）+ `ApiRequestLogMiddleware`（请求日志 + 调用统计采集）
 - `api_stats.py` / `api_stats_query.py`：调用统计的写入（缓冲 + 批量落库）与查询
 - `base.py`：`BaseModel` 基础模型（含 create_time / updated_time 自动字段）
 - `sqlite_orm.py`：独立的 SQLite3 ORM 工具库（仅标准库，可单独复用）
@@ -88,13 +88,13 @@ XiaoYingAPI/
 
 **`API/models/` 数据模型**（按业务域分目录）：
 
-- `Auth/category.py`：API 服务分类树（`ApiCategory`，自关联树形结构，三级认证模式）
+- `Auth/policy.py`：API 服务策略（`ApiServicePolicy`，服务 / 线路 / 端点三级，状态 + 认证模式 + 项目白名单逐级继承）
 - `Projects/app.py`：接入项目管理（`UserApp`，自动生成 APPID / APPSECRET）
-- `Users/`：用户中心（`User` 主表 + `UserToken` 登录凭证 + `UserVerifyRecord` 验证记录；`AuthMethod` 认证方式开关）
+- `Users/`：用户中心（`User` 主表 + `UserToken` 登录凭证 + `UserVerifyRecord` 验证记录 + `UserLoginLog` 登录日志；`AuthMethod` 认证方式开关）
 - `Email/email_template.py`：邮件模板（可自定义验证邮件内容）
 - `Feedback/feedback.py`：问题反馈（`Feedback` + `FeedbackReply` 追加评论树）
 - `Music/music.py`：音乐数据模型（`Music` 元数据 + `MusicSource` 播放源）
-- `Websites/service_status.py`：服务对外状态的手动覆盖（`ServiceStatus`，5 态）
+- 服务对外状态不再单独建表：已并入「服务策略」表的 `status` 字段（见第七章第 3 节）
 
 ***
 
@@ -148,18 +148,16 @@ pip install -r requirements.txt
 #    至少填写 SECRET_KEY；本地开发可保持 ALLOWED_HOSTS=127.0.0.1,localhost
 
 # 3. 数据库迁移（migrations 随代码入库，见第六章；本地改模型后先 makemigrations 再 migrate）
+#    迁移会自动把图形验证码 / 调用统计等公开节点写成「服务策略」的开放策略，无需额外命令
 python manage.py migrate
 
-# 4. 重建 API 服务分类树（首次部署 / 新增服务目录后必执行，见第六章）
-python manage.py rebuild_category_tree
-
-# 5. 收集静态文件（前端样式与站点资源依赖，简单场景可跳过）
+# 4. 收集静态文件（前端样式与站点资源依赖，简单场景可跳过）
 python manage.py collectstatic --noinput
 
-# 6. 创建超级管理员（首次运行；登录入口是官网 /login/，不是 /admin/）
+# 5. 创建超级管理员（首次运行；登录入口是官网 /login/，不是 /admin/）
 python manage.py createsuperuser
 
-# 7. 启动服务
+# 6. 启动服务
 python manage.py runserver 0.0.0.0:10000
 ```
 
@@ -222,15 +220,21 @@ python manage.py runserver 0.0.0.0:10000
 - **线上**：只执行 `python manage.py migrate`，**严禁**在线上 `makemigrations`（会与代码库迁移集不一致，造成迁移漂移）
 - 存量数据回填 / 数据类操作不要写进迁移文件，使用一次性管理命令（如 `security_backfill`）
 
-### 分类树重建（⚠️ 新部署必执行）
+### 服务策略（无需额外命令）
 
-「API 服务分类」数据由管理命令扫描 `API/apis/` 目录生成，**不依赖迁移**——线上 `migrate` 只建空表，且 A-01 后新增服务默认需认证，因此部署完成后必须执行一次：
+服务策略数据（`ApiServicePolicy`）随迁移 `0028_service_policy_v2` 建表，迁移内会幂等地把**公开节点**（图形验证码 `/api/captcha_self/`、`/api/captcha_auth/aliyun/` 与调用统计 `/api/statistics/`）写成 `auth_mode='open'` 的服务级策略，并把历史分类树里显式开放的节点与旧「服务状态」手动数据一并搬过来。
+
+> **注意**：原「重建分类树」命令 `rebuild_category_tree` 与「API 服务分类」分类树已随本次改造整体移除。认证 / 状态改由 `/console/services/` 的「服务策略」（服务 / 线路 / 端点三级逐级继承）管理，**不需要任何额外运维命令**；未命中任何策略的 `/api/` 路径按 fail-closed 处理（需要签名）。
+
+### 小时统计清理（建议配每日计划任务）
+
+调用统计的小时粒度数据（`api_call_stat_hour`）只保留最近 90 天，超期行需定期删除，否则表会无限增长（按天表是全历史真值表，不受影响）：
 
 ```bash
-python manage.py rebuild_category_tree
+python manage.py prune_api_call_hour              # 按默认 90 天保留期清理
+python manage.py prune_api_call_hour --days 30    # 临时指定保留天数
+python manage.py prune_api_call_hour --dry-run    # 只统计将删除的行数
 ```
-
-命令幂等、可重复执行：按当前目录实时生成 / 同步分类树，**不覆盖**后台手工配置的认证模式与启用状态；同时会清理「已停用且代码中已不存在」的分类节点。新增服务目录后重新执行即可同步（执行后自动使认证缓存失效）。
 
 ***
 
@@ -251,27 +255,77 @@ python manage.py rebuild_category_tree
 
 > 备注：`API/admin.py` 是后台下线前的遗留文件，已无入口引用（死代码），保留仅作参考。
 
-### 2. API 服务分类认证（分类树）
+### 2. 用户管理（超管控制台 `/console/users/`）
 
-各服务的认证策略由「API 服务分类」分类树（`ApiCategory`）管理，层级与 `API/apis/` 目录一致：
+超管可对用户中心（UAC 全局用户池）的用户做完整管理：
 
-| 认证模式            | 含义             |
-| --------------- | -------------- |
-| `跟随上级`（inherit） | 继承父级分类的认证配置    |
-| `需要认证`（auth）    | 该分类下所有接口必须携带签名 |
-| `开放`（open）      | 无需签名，直接访问      |
+- **列表**：搜索（账号 / 用户名 / 邮箱 / 手机号）+ 筛选（状态 / 注册方式 / 登录过的项目）+ 分页（20 / 50 / 100）；每行显示登录项目数、累计登录次数、最后登录时间
+- **详情**（`/console/users/<用户ID>/`）：基本资料、注册信息（注册方式与来源项目）、**按项目登录明细**（登录次数 / 密码登录 / 验证码登录 / 首次与最后登录 / 最后活跃 / 当前有效登录 / 登录态剩余天数）、最近登录记录（含 IP 与客户端）、Token 明细（签发 / 过期 / 剩余 / 状态）、验证记录时间线
+- **写操作**：新建用户（邮箱或手机号 + 密码，凭证直接标记为已验证）、编辑资料（用户名 / 邮箱 / 手机号，换绑后重置为「未验证」）、封禁 / 解封、重置密码（按既有业务规则作废该用户全部项目 Token）、删除（需手工输入账号二次确认，级联删除 Token / 验证记录 / 登录日志）
 
-**生效规则**：路径按「最长前缀」命中分类节点，再沿父链向上取第一个非 `跟随上级` 的配置；整条链全为继承 / 未命中任何节点时按全局默认——**默认需要认证（fail-closed，A-01）**。新增服务在显式配置前不可匿名访问，公开接口需显式设为「开放」。
+**口径与边界**（页面上也有说明）：
 
-**覆盖能力**：父级设为「需要认证」后，可单独把某个子级设为「开放」，实现「父级认证、子级开放」。
+- 用户是**全局用户池**，不属于任何项目；「在哪个项目」只由登录记录得出
+- **累计登录次数 = 登录日志（`user_login_log`）条数**：每次登录成功写一条，退出登录与重置密码都**不会**减少；「当前有效登录」才是未过期 Token（登录态）数量
+- 登录日志与「验证记录的项目来源」字段**自本次升级起开始记录**，升级之前的历史登录/注册无法回填
+- 「在哪个项目注册的」由 `UserVerifyRecord.app` 提供；历史注册记录该字段为空，页面会标注「含历史记录」
+- 用户在项目维度的信息以**登录**为准：注册后从未登录过任何项目的用户，项目维度是空白
 
-**可视化配置**：超管进入 `/console/categories/` 逐条调整认证模式，页面同时显示每条分类的**真实生效结果**（复用中间件判定），保存后立即生效、无需重启。入口有两处：文档中心左侧导航的「API 服务分类」，或超管控制台右上角同名按钮。
+> 说明：本页只操作**用户中心的用户**（`API/models/Users/user.py` 的 `User`）与控制台超管账号（Django `auth.User`）是两套表，页面上**不提供**把 UAC 用户提升为超管的能力（超管仍由 `createsuperuser` 创建）。
 
-### 3. 服务对外状态（超管）
+### 3. API 服务策略（服务 / 线路 / 端点三级继承）
 
-超管可在**文档中心左侧导航**每个服务行的齿轮图标里打开「服务设置」，自定义对外状态：`开放` / `测试中` / `维护中` / `建设中` / `已下线`，会同步体现在官网首页服务卡片、文档中心目录与左侧导航。未手动设置时按「已接入文档 → 开放，未接入 → 建设中」自动派生。状态数据存于 `ServiceStatus`（唯一口径，见 `API/website/service_status.py`）。
+服务的认证模式、对外状态与项目白名单统一由「服务策略」（`ApiServicePolicy`，入口 `/console/services/`）管理。策略按**真实 Django 路由**划分为三级粒度：
 
-### 4. 签名认证契约（需要认证的接口）
+| 层级            | `path_prefix` 形如             | 说明             |
+| ------------- | --------------------------- | -------------- |
+| `服务`（service） | `/api/movies/`              | 覆盖整个服务         |
+| `线路`（channel） | `/api/movies/movie_555/`    | 覆盖服务下的一条线路     |
+| `端点`（endpoint）| `/api/movies/movie_555/list` | 精确到单个接口路径      |
+
+每级的三个配置项都可单独设「跟随上级」（inherit），未设置则向上一级取；最终兜底为 **正常 + 需要签名 + 不限项目**：
+
+| 配置项        | 取值                                                | 兜底        |
+| ---------- | ------------------------------------------------- | --------- |
+| `status`   | `跟随上级` / `正常` / `开发中` / `维护中` / `已下线`（normal/dev/maintenance/offline） | `正常`（normal） |
+| `auth_mode`| `跟随上级` / `需要签名` / `开放`（inherit/auth/open）          | `需要签名`（auth，fail-closed） |
+| `app_scope`| `跟随上级` / `不限项目` / `仅白名单项目`（inherit/all/whitelist）| `不限项目`（all） |
+
+**生效顺序**（认证判定的唯一口径是 `API/common/middleware.py` 的 `resolve_service_policy()` / `requires_auth()`）：请求路径命中**全部**策略 → 按 `path_prefix` 长度降序（最具体在前）→ 逐字段取第一个非 `inherit` 的值 → 都没命中就用全局兜底。**未命中任何策略的 `/api/` 路径一律需要签名**。
+
+**维护态与白名单**：
+- 生效状态为「维护中」（maintenance）时，命中路径的所有 `/api/` 请求统一返回 `30004`（服务维护中），且**不做签名校验**（匿名同样收到）。
+- `开发中` / `已下线` 只作前台展示标记，**不拦截请求**（便于排障与联调）。
+- 生效 `app_scope=whitelist` 时，签名通过后若调用项目不在该策略自己的白名单内，返回 `20020`（无权限）；`开放` 模式不校验签名、拿不到调用项目，白名单对其无意义。
+
+**可视化配置**：超管进入 `/console/services/`，用「服务 → 线路 → 端点」三级联动下拉自动推导层级与 URL 前缀（数据源为真实 Django 路由，无需手输），同时展示每条策略的**真实生效结果**（复用中间件判定），保存后立即生效、无需重启。
+
+**缓存**：策略表查询走进程内 TTL 缓存（`settings.API_SERVICE_POLICY_CACHE_TTL`，默认 60s），后台保存 / 删除策略或改动白名单后由信号立即失效，改动即时生效、无需等 TTL、无需重启。
+
+**可直接运行的 curl 示例**（维护态 / 白名单被拒的返回）：
+
+```bash
+# 1) 未命中任何策略的服务（fail-closed）：缺少签名 → 20011
+curl -s "https://<你的域名>/api/feedback/list?page=1"
+# {"code": 20011, "msg": "签名参数缺失: app_id / timestamp / nonce / sign 必须同时提供", "data": null}
+
+# 2) 命中「维护中」的服务：无论是否带签名都返回 30004（不做签名校验）
+curl -s -X POST "https://<你的域名>/api/movies/movie_555/search" -d "keyword=测试"
+# {"code": 30004, "msg": "服务维护中", "data": null}
+
+# 3) 签名正确但调用项目不在白名单：返回 20020
+curl -s -X POST "https://<你的域名>/api/ai/BuiltInModel/deepseek" \
+  -d "content=你好&app_id=app_xxx&timestamp=1700000000&nonce=abc123&sign=<HMAC-SHA256>"
+# {"code": 20020, "msg": "该项目未获授权调用此服务: app_xxx", "data": null}
+```
+
+> 签名算法见本章第 5 节；上面第 3 条的 `sign` 需要用你的 `app_secret` 按同一算法算出。
+
+### 4. 服务对外状态（超管）
+
+服务对外状态（`正常` / `开发中` / `维护中` / `已下线`）即上文「服务策略」的 `status` 字段，在 `/console/services/` 中按服务 / 线路 / 端点三级设置、逐级继承。它会同步体现在官网首页服务卡片、文档中心目录与左侧导航。未显式设置时按「已接入文档 → 正常，未接入 → 开发中」自动派生（唯一口径见 `API/website/service_status.py`）。
+
+### 5. 签名认证契约（需要认证的接口）
 
 调用「需要认证」的接口必须携带 4 个参数：
 
@@ -282,13 +336,20 @@ python manage.py rebuild_category_tree
 
 签名算法：除 `sign` 外所有参数按键名 ASCII 升序拼为 `k=v&k=v...`，以 `app_secret` 为密钥做 HMAC-SHA256，输出小写 hex。参考实现见 [API/apis/user_center/sign.py](API/apis/user_center/sign.py) 的 `build_sign` / `verify_sign`。
 
-### 5. API 调用统计
+### 6. API 调用统计
 
-调用量由请求日志中间件顺带采集（`API/common/api_stats.py`），**按天预聚合**入库（`ApiCallStat`），一个聚合键 = 日期 + 端点 + 项目 + 状态码：
+调用量由请求日志中间件顺带采集（`API/common/api_stats.py`），**两级预聚合**入库（都不保存调用明细）：
 
-- **写入**：进程内缓冲聚合，满 200 个聚合键或每 5 秒批量落库（多进程各自缓冲，靠累加更新汇合）；统计失败只记日志、不影响业务请求
+| 表（模型） | 粒度 | 聚合键 | 保留期 |
+| --- | --- | --- | --- |
+| `api_call_stat`（`ApiCallStat`） | 按天 | 日期 + 端点 + 项目 + 状态码 | **全历史**（真值表） |
+| `api_call_stat_hour`（`ApiCallStatHour`） | 按天 + 小时 | 上述 + 小时 | 近 **90 天**（`HOUR_RETENTION_DAYS`） |
+
+- **写入**：进程内缓冲同时累加两个粒度，满 200 个聚合键或每 5 秒批量落库（多进程各自缓冲，靠累加更新汇合）；统计失败只记日志、不影响业务请求。两者同一批落库、口径一致，因此保留期内「按小时汇总」恒等于「按天合计」
 - **口径**：仅 `/api/` 请求；**认证被拒（20011）与未匹配路由也会计入**（排障有价值）；统计服务自身不计入；路径取「路由模板」并归一参数（`<uuid>` → `<param>`），避免带 ID 的接口拆成大量行
-- **超管看板**：`/console/stats/`（7 / 30 天可切），含调用量趋势、服务 / 接口 / 项目排行、状态码分布、平均与最大耗时；图表用本地托管的 Chart.js
+- **超管看板**：`/console/stats/`（7 / 30 / 90 天可切，可按服务 / 项目筛选），含调用量趋势（成功/失败堆叠）、指标卡与环比、**时段分布（0-23）与峰值时点**、**星期×小时热力图**、**服务×时段矩阵**、服务 / 接口 / 项目排行（带成功率与失败率）、失败最多接口榜、状态码分布、调用量最高的日期；失败率 ≥5% 标黄、≥20% 标红（样本满 20 次才判定，仅页面提示不告警）；图表用本地托管的 Chart.js
+- **详情页**：`/console/stats/service/<服务前缀>/`（单服务的接口排行 + 调用它的项目）、`/console/stats/app/<APPID>/`（单项目的服务 / 接口排行）
+- **小时数据保留**：小时表只为时段类分析服务，超过 90 天必须清理（按天真值表不受影响）：`python manage.py prune_api_call_hour`（幂等；`--days N` 临时改保留期、`--dry-run` 只统计不删）；建议配每日计划任务
 - **公开展示**：文档中心每个接口卡片显示「累计调用 N 次」（未登录可见）；亦可调开放接口 `/api/statistics/api_calls?path=<接口路径>` 与 `/api/statistics/services`。公开口径**只含调用次数**，不含项目、失败率与耗时
 
 ***
@@ -311,7 +372,7 @@ python manage.py rebuild_category_tree
 | ------------------------------------------- | ---------- | --------------------------------------------------- |
 | `/`                                         | 官网首页       | 服务能力卡片（带对外状态徽标）、接入指南、常见问题                           |
 | `/guide/`                                   | 接入向导       | 5 步互动向导 + 签名示例代码                                    |
-| `/login/`、`/register/`                      | 统一登录 / 注册  | 支持账号 / 邮箱 / 手机号；**超管走同一入口**                         |
+| `/login/`、`/register/`                      | 统一登录 / 注册  | 登录支持账号 / 邮箱 / 手机号+密码；注册仅支持邮箱 / 手机号；**超管走同一入口** |
 | `/register/verify/`、`/register/resend/`     | 注册第二步校验 / 重发 | 邮箱、手机号验证码校验                                         |
 | `/reset-password/`、`/reset-password/submit/` | 忘记密码 / 重置密码 | 验证码校验通过后设置新密码；重置成功会作废该用户全部 Token                     |
 | `/docs/`                                    | 接口文档中心     | 左侧「服务 → 线路」导航 + 服务卡片目录                              |
@@ -322,8 +383,12 @@ python manage.py rebuild_category_tree
 | `/programs/download/`                       | 程序文件下载     | `?path=` 单个文件、`?pack=` 整包 zip；仅允许内容目录内的相对路径            |
 | `/programs/content/`                        | 程序文件预览     | `?path=` 返回文本正文（供详情页弹窗）；超 1 MB 或非文本文件返回提示         |
 | `/console/projects/`                        | 超级管理员控制台   | 接入项目增删改查（超管专属）                                      |
-| `/console/categories/`                      | API 服务分类   | 配置分类认证模式并显示真实生效结果（超管专属）                             |
-| `/console/stats/`                           | API 调用统计   | 调用量趋势、服务/接口/项目排行、状态码分布与耗时（超管专属）                     |
+| `/console/services/`                        | 服务策略     | 按服务 / 线路 / 端点三级配置认证模式、对外状态与项目白名单，逐级继承（超管专属）                        |
+| `/console/stats/`                           | API 调用统计   | 调用量趋势、时段分布 / 热力图 / 峰值、服务/接口/项目排行（含成功率与失败率），可按服务与项目筛选（超管专属） |
+| `/console/stats/service/<服务前缀>/`            | 服务调用统计详情   | 单个服务的指标、时段分布与接口 / 项目排行（超管专属）                          |
+| `/console/stats/app/<APPID>/`               | 项目调用统计详情   | 单个接入项目的指标、时段分布与服务 / 接口排行（超管专属）                         |
+| `/console/users/`                           | 用户管理       | 用户搜索 / 筛选 / 分页，行内封禁解封；建号、编辑、重置密码、删除（超管专属）              |
+| `/console/users/<用户ID>/`                     | 用户详情       | 资料、注册信息、按项目登录明细（次数 / 最后登录 / 登录态剩余天数）、Token 明细、验证记录（超管专属）  |
 | `/lang/`、`/jsi18n/`                         | 语言切换 / JS 词条 | 见第 3 节                                              |
 
 > **鉴权口径**：`/api/**` 走项目签名（`app_id` / `timestamp` / `nonce` / `sign`）；官网页面走 Django 会话；超管页额外做服务端 `is_superuser` 二次鉴权。
@@ -423,7 +488,7 @@ proxy_set_header Host $host;
 
 ### 3. 数据库迁移
 
-按第六章操作：迁移文件随代码入库，线上**只执行** `migrate`（禁止线上 `makemigrations`）；部署完成后执行 `rebuild_category_tree` 重建分类树（A-01 起新增服务默认需认证，漏建会导致接口匿名被拒）。
+按第六章操作：迁移文件随代码入库，线上**只执行** `migrate`（禁止线上 `makemigrations`）。本次改造已把公开节点（图形验证码 / 调用统计）的开放策略写进迁移 `0028_service_policy_v2`，**无需再执行任何分类树重建命令**；未命中任何策略的接口按 fail-closed 需要签名。
 
 ### 4. 静态文件与前端产物
 
@@ -463,8 +528,10 @@ proxy_set_header Host $host;
 | -------------------------------------- | -------------------------------------------- |
 | `test_user_center.py`                  | 用户中心回归测试（注册/登录/token/签名安全/封禁/并发，结束清理测试数据）     |
 | `test_sms_verify.py`                   | 短信验证码测试（含真实端到端发送）                            |
-| `test_api_auth_policy.py`              | 分类树认证策略测试（继承/覆盖/并发/停用，结束自动恢复分类配置）            |
-| `test_auth_methods.py`                 | 认证方式开关测试（邮箱 / 手机号 / 用户名可用性）                   |
+| `test_auth_methods.py`                 | 认证方式开关测试（邮箱 / 手机号注册与多标识密码登录；用户名注册已停用）          |
+| `test_api_stats.py`                    | 调用统计回归测试（两级预聚合口径一致性、筛选/环比/热力图/峰值、保留期清理命令、页面三语渲染、公开接口不回归） |
+| `test_console_users.py`                | 超管用户管理回归测试（建号/改资料/重置密码校验、登录日志写入、注册来源项目、列表筛选分页、详情聚合口径、增删改查视图、权限与三语、对话框入口守卫） |
+| `test_service_policy.py`               | 服务策略回归测试（fail-closed、开放节点、服务/线路/端点三级继承、状态与白名单继承、前缀边界、缓存即时失效、控制台三级联动增删改与三语、服务树枚举自证） |
 | `test_email_register.py`               | 邮箱两步注册流程测试                                   |
 | `test_feedback.py`                     | 问题反馈与追加评论测试                                  |
 | `test_captcha_auth.py`                 | 图形验证集成测试                                     |

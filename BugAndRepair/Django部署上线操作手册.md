@@ -39,7 +39,7 @@
 | 5 | 收集静态文件 | `collectstatic --noinput` | ☐ |
 | 6 | 校验迁移文件已入库（A-05） | 线上只 `migrate`，禁止 `makemigrations` | ☐ |
 | 7 | 执行数据库迁移 | `migrate` | ☐ |
-| 8 | **重建 API 服务分类树** | `rebuild_category_tree`；漏做会导致接口匿名被拒 | ☐ |
+| 8 | ~~重建 API 服务分类树~~ | **已废弃（分类树已移除）**：改用「服务策略」（服务/线路/端点三级继承），随迁移 `0028` 自动写入公开节点，无需命令 | ☐ |
 | 9 | 创建超级管理员 | `createsuperuser`；**登录入口是 `/login/`** | ☐ |
 | 10 | 配置 uwsgi.ini | 仅监听回环地址 | ☐ |
 | 11 | 启动 uwsgi 并验证 | 看日志 `ready` + curl 首页 | ☐ |
@@ -224,6 +224,8 @@ $PY manage.py showmigrations    # 所有迁移应为 [X]（已应用）
 ---
 
 ### 步骤 8：重建 API 服务分类树（⚠️ 本项目必做）
+
+> **已废弃（分类树已移除）**：以下步骤针对已移除的「API 服务分类」分类树与 `rebuild_category_tree` 命令，现已不再需要。认证与对外状态改由「服务策略」（`ApiServicePolicy`，服务/线路/端点三级逐级继承）管理，公开节点（图形验证码 / 调用统计）的开放策略由迁移 `0028` 自动写入；未命中任何策略的 `/api/` 路径按 fail-closed 需要签名。
 
 「API 服务分类」数据由管理命令（扫描 `API/apis/` 目录）生成，**不依赖迁移**。所以线上 `migrate` 只建空表、**没有分类数据**；而 A-01 之后新增服务默认「需要认证」，分类树为空会导致接口匿名请求被直接拒绝（返回 20011）。
 
@@ -431,7 +433,7 @@ proxy_set_header Host $host;
 | **页面样式全乱 / 新加的类名不生效** | `output.css` 未重编译或线上未 collectstatic | 本机重编译 `output.css` → 提交 → 线上 `collectstatic` → 重启 uwsgi |
 | **语言切不动 / 英文或繁体页面还是中文** | ① `locale` 子目录名写成了 `zh-hant`（必须是 `zh_Hant`，否则 Django 静默找不到 `.mo`）② 改了 `.po` 没跑 `scripts/compile_locale.py` ③ 没重启 uwsgi | 逐条排查：核对目录名 → 本机编译并提交 `.mo` → 线上 collectstatic / 重启 |
 | 爬虫/外网请求失败 | 继承了 IDE 代理 | uwsgi.ini 加 `unset-env=http_proxy,...` |
-| 接口匿名调用返回 20011 | 分类树未重建 / 该服务为「需要认证」 | 执行 `rebuild_category_tree`；确需匿名则在分类树里把该节点设为 `open` |
+| 接口匿名调用返回 20011 | 该服务为「需要签名」（fail-closed 默认） | 到 `/console/services/` 的「服务策略」把对应服务/线路/端点设为「开放」或检查签名参数（原分类树与 `rebuild_category_tree` **已废弃**） |
 | 登录成功但立即跳回登录页 | 生产 Cookie 强制 Secure，但 Nginx 没透传 `X-Forwarded-Proto https`，浏览器拒写 Cookie | 按步骤 13 补协议头 + 确认 HTTPS 证书生效 |
 | uwsgi 进程在但请求 500 | 应用没加载成功（no app） | 重启 uwsgi；看日志是否 `ready` |
 
@@ -441,7 +443,7 @@ proxy_set_header Host $host;
 
 1. **依赖要装全**：`requirements.txt` 常常漏写（如 loguru、pycryptodome）。装完跑 `$PY manage.py check` 验证。
 2. **locale 是隐形杀手**：系统声称 `zh_CN.UTF-8` 却没生成，Python 退回 ascii。只要 `.env` 有中文（键或值），`load_dotenv` 就炸。**每个项目 uwsgi.ini 都加 `env=LANG=C.UTF-8`**，或一次性 `locale-gen zh_CN.UTF-8`。
-3. **数据库必须迁移 + 分类树必须重建**：迁移文件随代码入库（A-05），线上直接 `$PY manage.py migrate`，**禁止线上 `makemigrations`**；本项目还要额外跑 `rebuild_category_tree`，否则接口全被拒。
+3. **数据库必须迁移**：迁移文件随代码入库（A-05），线上直接 `$PY manage.py migrate`，**禁止线上 `makemigrations`**。（原额外步骤 `rebuild_category_tree` **已废弃**——分类树已移除，认证改由「服务策略」管理，公开节点的开放策略由迁移 `0028` 自动写入。）
 4. **static-map 语法**：`static-map=/static=绝对路径`，挂载点 `/static` 不能漏。
 5. **代理变量继承**：IDE 终端启动 uwsgi 会继承 localhost:8888 代理，爬虫全废。加 `unset-env`。
 6. **DEBUG=False 隐藏错误**：上线 500 时日志没 Traceback，临时开 DEBUG 排查，改完关掉。
