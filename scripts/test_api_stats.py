@@ -453,6 +453,10 @@ def round9_labels():
           request_path(_Req('/api/.git-credentials/')) == UNMATCHED_PATH)
     check('真实接口被拒时仍按真实路径记录（便于排查）',
           request_path(_Req('/api/movies/movie_555/list')) == '/api/movies/movie_555/list')
+    check('未签名但真实存在的带参接口用路由模板（不按 ID 拆行）',
+          request_path(_Req('/api/music/xiaoying/musics/12345678-1234-1234-1234-123456789012'))
+          == '/api/music/xiaoying/musics/<param>',
+          request_path(_Req('/api/music/xiaoying/musics/12345678-1234-1234-1234-123456789012')))
     check('命中路由模板时用模板（路径参数归一）',
           request_path(_Req('/api/movies/movie_555/detail/123',
                              route='api/movies/movie_555/detail/<str:vod_id>'))

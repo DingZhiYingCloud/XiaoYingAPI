@@ -88,28 +88,30 @@ def request_path(request):
 
     拿不到路由模板时（认证被拒的请求在中间件里就返回了，Django 还没做 URL 解析；
     或路径落到 ^api/.*$ 的 404 兜底正则），再补一次解析：
-    - 解析到真实路由 → 说明是真实接口被拒，按真实路径记录（便于排查）；
+    - 解析到真实路由 → 同样用**路由模板**（未签名的带参接口也不会按 ID 拆行），
+      因此「被拒的真实接口」仍然可辨认，排障价值不减；
     - 解析不到 → 路径根本不存在（扫描器探测），统一归并为 UNMATCHED_PATH。
     """
     match = getattr(request, 'resolver_match', None)
     route = getattr(match, 'route', '') if match else ''
     if route and _ROUTE_SAFE_RE.match(route):
         return normalize_path('/' + route)
-    path = normalize_path(request.path)
-    return path if _matches_real_route(path) else UNMATCHED_PATH
+    resolved = _resolved_route(normalize_path(request.path))
+    return UNMATCHED_PATH if resolved is None else normalize_path('/' + resolved)
 
 
-def _matches_real_route(path):
-    """路径是否命中真实路由（排除 ^api/.*$ 这类 404 兜底正则）
+def _resolved_route(path):
+    """补解析路径，返回可用于统计的路由模板；解析不到或落到 404 兜底正则时返回 None
 
-    _ROUTE_SAFE_RE 只认「路径片段 + 转换器」形式的路由模板，兜底正则含 ^ $ * 会被排除，
-    因此这里用它来判定「解析结果是不是一条真实接口」。
+    _ROUTE_SAFE_RE 只认「路径片段 + 转换器」形式的路由模板，^api/.*$ 这类兜底正则含
+    ^ $ * 会被排除，因此用它判定「解析结果是不是一条真实接口」。
     """
     try:
         match = resolve(path)
     except Resolver404:
-        return False
-    return bool(_ROUTE_SAFE_RE.match(getattr(match, 'route', '')))
+        return None
+    route = getattr(match, 'route', '')
+    return route if _ROUTE_SAFE_RE.match(route) else None
 
 
 def service_of(path):
