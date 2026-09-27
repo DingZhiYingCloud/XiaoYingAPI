@@ -5469,4 +5469,12 @@ msgstr "Service policy \"%(name)s\" disabled; the service is now under maintenan
 msgid "服务策略「%(name)s」已删除"
 msgstr "Service policy \"%(name)s\" deleted"
 
+# 调用统计：统计表按 app_id 聚合且只追加，项目删除后历史行仍在但已查不到名字
+msgid "已删除项目"
+msgstr "Deleted project"
+
+# 调用统计：不存在任何真实路由的请求（扫描器探测）被归并成一条
+msgid "未匹配路径（疑似扫描）"
+msgstr "Unmatched path (likely a scan)"
+
 

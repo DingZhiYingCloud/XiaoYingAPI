@@ -428,6 +428,63 @@ def round8_public_api():
           f'payload={payload}')
 
 
+# ───────────────────────── 第 9 轮：统计口径标签 ─────────────────────────
+
+def round9_labels():
+    section('第 9 轮 统计口径标签（已删除项目 / 未匹配路径归并）')
+    from types import SimpleNamespace
+
+    from API.common.api_stats import UNMATCHED_PATH, request_path, service_of
+    from API.models.Statistics.api_call_stat import NO_APP
+    from API.website import console
+
+    class _Req:
+        """最小请求替身：只需 path（无 resolver_match）与可选的路由模板"""
+
+        def __init__(self, path, route=None):
+            self.path = path
+            if route:
+                self.resolver_match = SimpleNamespace(route=route)
+
+    check('扫描器探测路径被归并（/api/phpinfo.php/）',
+          request_path(_Req('/api/phpinfo.php/')) == UNMATCHED_PATH,
+          request_path(_Req('/api/phpinfo.php/')))
+    check('扫描器探测路径被归并（/api/.git-credentials/）',
+          request_path(_Req('/api/.git-credentials/')) == UNMATCHED_PATH)
+    check('真实接口被拒时仍按真实路径记录（便于排查）',
+          request_path(_Req('/api/movies/movie_555/list')) == '/api/movies/movie_555/list')
+    check('命中路由模板时用模板（路径参数归一）',
+          request_path(_Req('/api/movies/movie_555/detail/123',
+                             route='api/movies/movie_555/detail/<str:vod_id>'))
+          == '/api/movies/movie_555/detail/<param>')
+    check('未匹配路径归属独立服务前缀',
+          service_of(UNMATCHED_PATH) == '/api/_unmatched_/',
+          service_of(UNMATCHED_PATH))
+
+    missing = 'app_deleted_project_for_test'
+    check('已删除项目：表格只显示类别（app_id 另有副行）',
+          console._app_label(missing, {}) == '已删除项目',
+          console._app_label(missing, {}))
+    check('已删除项目：筛选下拉补 app_id 以免同名重复',
+          console._app_label(missing, {}, for_option=True) == f'已删除项目 · {missing}')
+    check('未删除项目显示项目名',
+          console._app_label('app_ok', {'app_ok': '某项目'}) == '某项目')
+    check('未认证请求仍显示「开放接口 / 未认证」',
+          console._app_label(NO_APP, {}) == '开放接口 / 未认证')
+
+    # 页面端到端：测试数据用的 TEST_APP 不在接入项目表里，统计页应显示「已删除项目」
+    client, admin, created_admin = _superadmin()
+    try:
+        body = client.get('/console/stats/').content.decode()
+        check('统计页把查不到名字的项目标为「已删除项目」', '已删除项目' in body)
+        check('筛选下拉仍保留 app_id（便于对照排查）', TEST_APP in body)
+    finally:
+        if created_admin:
+            created_admin.delete()
+
+
+# ───────────────────────── 主流程 ─────────────────────────
+
 def main():
     print('\nAPI 调用统计回归测试开始（两级预聚合）')
     cleanup()
@@ -441,6 +498,7 @@ def main():
         round6_prune()
         round7_pages()
         round8_public_api()
+        round9_labels()
     finally:
         cleanup()
         print('\n测试数据已清理')

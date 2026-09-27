@@ -12,7 +12,8 @@
    进程正常退出时由 atexit 尽力刷一次。
 4. **状态码口径**：优先取响应 JSON 里的业务 code（本项目 /api/ 统一返回 {code,msg,data}）；
    响应非 JSON 或异常时回退为 HTTP 状态码。业务 code 读取见 business_code()。
-5. **统计范围**：仅 /api/ 请求；统计服务自身不计入（避免查询统计把统计刷高）。
+5. **统计范围**：仅 /api/ 请求；统计服务自身不计入（避免查询统计把统计刷高）；
+   不存在的路径（扫描器探测）统一归并为 UNMATCHED_PATH，不打散服务榜与接口榜。
 
 对外接口：
     record(path, cost_ms, status_code, app_id)  - 记录一次调用（缓冲区累加，必要时触发落库）
@@ -31,6 +32,7 @@ from collections import defaultdict
 from django.db import IntegrityError
 from django.db.models import F, Value
 from django.db.models.functions import Greatest
+from django.urls import Resolver404, resolve
 from django.utils import timezone
 
 from API.models.Statistics.api_call_stat import NO_APP, ApiCallStat, ApiCallStatHour
@@ -43,6 +45,12 @@ FLUSH_INTERVAL_SECONDS = 5
 
 # 不计入统计的路径前缀（统计服务自身）
 EXCLUDED_PREFIXES = ('/api/statistics/',)
+
+# 未匹配任何真实路由的请求统一归并到这一条。
+# 线上每天都在被扫描：/api/phpinfo.php、/api/.git-credentials/、/api/appsettings.json 之类，
+# 每条垃圾路径若各自成行，服务榜与接口榜会被几十条无意义记录打散，真正要看的口径被淹没。
+# 归并后仍能从 nginx 访问日志 / logs/app.log 查到具体被探测的路径。
+UNMATCHED_PATH = '/api/_unmatched_/'
 
 # 解析响应体取业务 code 的大小上限（字节）：更大的响应体不再解析
 # （大响应体基本都是成功响应，不值得为取 code 付出解析成本）
@@ -77,13 +85,31 @@ def request_path(request):
     优先用「匹配到的路由模板」而非真实请求路径：带路径参数的接口
     （如 /api/music/xiaoying/musics/<uuid>）若按真实 UUID 记录，会为每个 ID 生成一行，
     行数爆炸且排行被打散；改用路由模板后可正确归并到同一行。
-    未匹配到路由（认证被拒 / 404 兜底）或正则路由时，退回真实请求路径。
+
+    拿不到路由模板时（认证被拒的请求在中间件里就返回了，Django 还没做 URL 解析；
+    或路径落到 ^api/.*$ 的 404 兜底正则），再补一次解析：
+    - 解析到真实路由 → 说明是真实接口被拒，按真实路径记录（便于排查）；
+    - 解析不到 → 路径根本不存在（扫描器探测），统一归并为 UNMATCHED_PATH。
     """
     match = getattr(request, 'resolver_match', None)
     route = getattr(match, 'route', '') if match else ''
     if route and _ROUTE_SAFE_RE.match(route):
         return normalize_path('/' + route)
-    return normalize_path(request.path)
+    path = normalize_path(request.path)
+    return path if _matches_real_route(path) else UNMATCHED_PATH
+
+
+def _matches_real_route(path):
+    """路径是否命中真实路由（排除 ^api/.*$ 这类 404 兜底正则）
+
+    _ROUTE_SAFE_RE 只认「路径片段 + 转换器」形式的路由模板，兜底正则含 ^ $ * 会被排除，
+    因此这里用它来判定「解析结果是不是一条真实接口」。
+    """
+    try:
+        match = resolve(path)
+    except Resolver404:
+        return False
+    return bool(_ROUTE_SAFE_RE.match(getattr(match, 'route', '')))
 
 
 def service_of(path):

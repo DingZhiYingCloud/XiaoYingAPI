@@ -20,7 +20,7 @@ from django.utils.translation import gettext as _
 
 from API.common import StatusCode
 from API.common import api_stats_query as stats_query
-from API.common.api_stats import service_of
+from API.common.api_stats import UNMATCHED_PATH, service_of
 from API.common.middleware import resolve_service_policy, requires_auth
 from API.models import ApiServicePolicy, User, UserApp
 from API.models.Statistics.api_call_stat import NO_APP
@@ -410,8 +410,14 @@ def _service_names():
     return {svc['url_prefix']: _(svc['name']) for svc in SERVICES}
 
 
+# 扫描器探测路径被统计归并后落到的服务前缀（见 api_stats.UNMATCHED_PATH）
+_UNMATCHED_SERVICE = service_of(UNMATCHED_PATH)
+
+
 def _service_label(prefix, names):
     """服务展示名：清单里没有的前缀（如 /api/）原样展示"""
+    if prefix == _UNMATCHED_SERVICE:
+        return _('未匹配路径（疑似扫描）')
     return names.get(prefix, prefix)
 
 
@@ -426,10 +432,20 @@ def _app_names(app_ids):
     return dict(UserApp.objects.filter(app_id__in=ids).values_list('app_id', 'name'))
 
 
-def _app_label(app_id, app_names):
+def _app_label(app_id, app_names, for_option=False):
+    """接入项目显示标签
+
+    统计表是按 app_id 聚合的追加型事实表：项目删掉后历史行仍在，但已经查不到名字。
+    这类「已删除项目」在表格里只显示类别（下方另有 app_id 副行，无需重复），
+    在筛选下拉里则补上 app_id —— 否则多个已删除项会挤成一批同名选项，无法区分。
+    """
     if app_id == NO_APP:
         return _('开放接口 / 未认证')
-    return app_names.get(app_id) or app_id
+    name = app_names.get(app_id)
+    if name:
+        return name
+    deleted = _('已删除项目')
+    return f'{deleted} · {app_id}' if for_option else deleted
 
 
 def _rate_level(row):
@@ -570,7 +586,7 @@ def stats_view(request):
             ({'value': key, 'label': _service_label(key, names)} for key in service_keys),
             key=lambda item: item['label']),
         'app_options': sorted(
-            ({'value': key, 'label': _app_label(key, app_names)} for key in app_keys),
+            ({'value': key, 'label': _app_label(key, app_names, for_option=True)} for key in app_keys),
             key=lambda item: item['label']),
         'services': _mark_rates(_with_share(_service_rows(
             stats_query.service_ranking(days, service=service or None,
