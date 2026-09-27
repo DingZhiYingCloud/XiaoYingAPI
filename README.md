@@ -55,7 +55,7 @@ XiaoYingAPI/
 │   │   ├── docs/                 # 文档中心的「服务 × 线路 × 端点」声明式数据
 │   │   └── programs.py           # 「计算程序」模块：扫描内容目录、渲染说明文档（见第八章第 6 节）
 │   ├── middlewares/              # 独立中间件组件（cloak_guard 斗篷守卫，见其目录内 README.md）
-│   ├── management/commands/      # 自定义管理命令（security_backfill / prune_api_call_hour）
+│   ├── management/commands/      # 自定义管理命令（security_backfill / prune_api_call_hour / cleanup_api_stats）
 │   ├── migrations/               # 数据库迁移（随代码入库，详见第六章）
 │   ├── templates/                # 全站模板，前端规范见其目录内 前端开发必看.md
 │   ├── static/                   # 应用内静态文件（前端 CSS/JS 源码与编译产物）
@@ -236,6 +236,16 @@ python manage.py prune_api_call_hour --days 30    # 临时指定保留天数
 python manage.py prune_api_call_hour --dry-run    # 只统计将删除的行数
 ```
 
+### 调用统计历史残留清理（一次性 / 按需）
+
+统计口径升级后（路径统一取路由模板、删项目同步清统计），历史上按原始 URL 记录的行、以及已删除项目的残影行需要单独清理，见第 6 节：
+
+```bash
+python manage.py cleanup_api_stats                  # 归并路径 + 清项目残影（幂等）
+python manage.py cleanup_api_stats --dry-run        # 只统计将影响的行数
+python manage.py cleanup_api_stats --no-drop-orphan-apps  # 只归并路径，不动项目残影
+```
+
 ***
 
 ## 七、管理入口与认证
@@ -293,9 +303,10 @@ python manage.py prune_api_call_hour --dry-run    # 只统计将删除的行数
 
 **生效顺序**（认证判定的唯一口径是 `API/common/middleware.py` 的 `resolve_service_policy()` / `requires_auth()`）：请求路径命中**全部**策略 → 按 `path_prefix` 长度降序（最具体在前）→ 逐字段取第一个非 `inherit` 的值 → 都没命中就用全局兜底。**未命中任何策略的 `/api/` 路径一律需要签名**。
 
-**维护态与白名单**：
+**维护态 / 下线态与白名单**（状态拦截最优先，先于签名校验）：
 - 生效状态为「维护中」（maintenance）时，命中路径的所有 `/api/` 请求统一返回 `30004`（服务维护中），且**不做签名校验**（匿名同样收到）。
-- `开发中` / `已下线` 只作前台展示标记，**不拦截请求**（便于排障与联调）。
+- 生效状态为「已下线」（offline）时，命中路径的所有 `/api/` 请求统一返回 `30005`（服务已下线），同样**不做签名校验**。
+- `正常` / `开发中` 只作前台展示标记，**不拦截请求**（便于排障与联调）。
 - 生效 `app_scope=whitelist` 时，签名通过后若调用项目不在该策略自己的白名单内，返回 `20020`（无权限）；`开放` 模式不校验签名、拿不到调用项目，白名单对其无意义。
 
 **可视化配置**：超管进入 `/console/services/`，用「服务 → 线路 → 端点」三级联动下拉自动推导层级与 URL 前缀（数据源为真实 Django 路由，无需手输），同时展示每条策略的**真实生效结果**（复用中间件判定），保存后立即生效、无需重启。
@@ -313,13 +324,17 @@ curl -s "https://<你的域名>/api/feedback/list?page=1"
 curl -s -X POST "https://<你的域名>/api/movies/movie_555/search" -d "keyword=测试"
 # {"code": 30004, "msg": "服务维护中", "data": null}
 
-# 3) 签名正确但调用项目不在白名单：返回 20020
+# 3) 命中「已下线」的服务（如 /api/email/VMEmail/）：同样不做签名校验，返回 30005
+curl -s "https://<你的域名>/api/email/VMEmail/domains"
+# {"code": 30005, "msg": "服务已下线", "data": null}
+
+# 4) 签名正确但调用项目不在白名单：返回 20020
 curl -s -X POST "https://<你的域名>/api/ai/BuiltInModel/deepseek" \
   -d "content=你好&app_id=app_xxx&timestamp=1700000000&nonce=abc123&sign=<HMAC-SHA256>"
 # {"code": 20020, "msg": "该项目未获授权调用此服务: app_xxx", "data": null}
 ```
 
-> 签名算法见本章第 5 节；上面第 3 条的 `sign` 需要用你的 `app_secret` 按同一算法算出。
+> 签名算法见本章第 5 节；上面第 4 条的 `sign` 需要用你的 `app_secret` 按同一算法算出。
 
 ### 4. 服务对外状态（超管）
 
@@ -348,7 +363,8 @@ curl -s -X POST "https://<你的域名>/api/ai/BuiltInModel/deepseek" \
 - **写入**：进程内缓冲同时累加两个粒度，满 200 个聚合键或每 5 秒批量落库（多进程各自缓冲，靠累加更新汇合）；统计失败只记日志、不影响业务请求。两者同一批落库、口径一致，因此保留期内「按小时汇总」恒等于「按天合计」
 - **口径**：仅 `/api/` 请求；**认证被拒（20011）也会计入**（排障有价值）；统计服务自身不计入；路径取「路由模板」并归一参数（`<uuid>` → `<param>`），避免带 ID 的接口拆成大量行
 - **不存在的路径归并**：解析不到真实路由的请求（扫描器探测 `/api/phpinfo.php`、`/api/.git-credentials` 之类）统一归并成 **`/api/_unmatched_/`** 一条，服务榜 / 接口榜显示为「未匹配路径（疑似扫描）」；否则每天的扫描流量会把两个排行榜打散成几十条无意义行（具体被探测的路径仍可在 nginx 访问日志与 `logs/app.log` 查到）
-- **项目标签**：统计表按 APPID 聚合且**只追加**，接入项目被删除后历史行仍在。查不到项目名的 APPID 在看板里显示为「**已删除项目**」（筛选下拉会补上 APPID 以免多个已删除项同名），不再显示成裸 APPID
+- **项目标签**：统计表按 APPID 聚合且**只追加**。在 `/console/projects/` 删除接入项目时会**同步清掉该项目的统计行**（`purge_app()`）；若仍有查不到项目名的历史 APPID，看板里显示为「**已删除项目**」（筛选下拉会补上 APPID 以免多个已删除项同名），不再显示成裸 APPID
+- **历史残留清理**：`python manage.py cleanup_api_stats`（幂等）把历史上按原始 URL 记录的行折算归并到「路由模板」或 `/api/_unmatched_/`，并清掉 APPID 已不存在的统计残影（`--dry-run` 只统计影响面、`--no-drop-orphan-apps` 跳过残影清理）
 - **超管看板**：`/console/stats/`（7 / 30 / 90 天可切，可按服务 / 项目筛选），含调用量趋势（成功/失败堆叠）、指标卡与环比、**时段分布（0-23）与峰值时点**、**星期×小时热力图**、**服务×时段矩阵**、服务 / 接口 / 项目排行（带成功率与失败率）、失败最多接口榜、状态码分布、调用量最高的日期；失败率 ≥5% 标黄、≥20% 标红（样本满 20 次才判定，仅页面提示不告警）；图表用本地托管的 Chart.js
 - **详情页**：`/console/stats/service/<服务前缀>/`（单服务的接口排行 + 调用它的项目）、`/console/stats/app/<APPID>/`（单项目的服务 / 接口排行）
 - **小时数据保留**：小时表只为时段类分析服务，超过 90 天必须清理（按天真值表不受影响）：`python manage.py prune_api_call_hour`（幂等；`--days N` 临时改保留期、`--dry-run` 只统计不删）；建议配每日计划任务
@@ -531,9 +547,9 @@ proxy_set_header Host $host;
 | `test_user_center.py`                  | 用户中心回归测试（注册/登录/token/签名安全/封禁/并发，结束清理测试数据）     |
 | `test_sms_verify.py`                   | 短信验证码测试（含真实端到端发送）                            |
 | `test_auth_methods.py`                 | 认证方式开关测试（邮箱 / 手机号注册与多标识密码登录；用户名注册已停用）          |
-| `test_api_stats.py`                    | 调用统计回归测试（两级预聚合口径一致性、筛选/环比/热力图/峰值、保留期清理命令、页面三语渲染、公开接口不回归、统计口径标签：已删除项目 / 未匹配路径归并） |
+| `test_api_stats.py`                    | 调用统计回归测试（两级预聚合口径一致性、筛选/环比/热力图/峰值、保留期清理命令、页面三语渲染、公开接口不回归、统计口径标签：已删除项目 / 未匹配路径归并、`canonical_path` 折算与 `purge_app` 清理） |
 | `test_console_users.py`                | 超管用户管理回归测试（建号/改资料/重置密码校验、登录日志写入、注册来源项目、列表筛选分页、详情聚合口径、增删改查视图、权限与三语、对话框入口守卫） |
-| `test_service_policy.py`               | 服务策略回归测试（fail-closed、开放节点、服务/线路/端点三级继承、状态与白名单继承、前缀边界、缓存即时失效、控制台三级联动增删改与三语、服务树枚举自证） |
+| `test_service_policy.py`               | 服务策略回归测试（fail-closed、开放节点、服务/线路/端点三级继承、状态与白名单继承、维护 30004 / 下线 30005 拦截、前缀边界、缓存即时失效、控制台三级联动增删改与三语、服务树枚举自证） |
 | `test_email_register.py`               | 邮箱两步注册流程测试                                   |
 | `test_feedback.py`                     | 问题反馈与追加评论测试                                  |
 | `test_captcha_auth.py`                 | 图形验证集成测试                                     |
