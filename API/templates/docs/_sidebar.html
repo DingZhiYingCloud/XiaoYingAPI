@@ -17,13 +17,20 @@
     </li>
     {% for node in docs_menu %}
     <li>
+      {# 服务名前置「服务对外状态」图标（正常/开发中/维护中/已下线）；文案、图标名与配色均取自 service_status，勿在此写死 #}
       {% if node.disabled %}
-      <span class="flex items-center gap-1 opacity-70" aria-disabled="true">
-        <span class="min-w-0 flex-1 truncate">{{ node.name }}</span>
+      <span class="flex items-center gap-2" aria-disabled="true">
+        <span class="shrink-0 {{ node.status_fg }}" role="img" title="{{ node.status_label }}" aria-label="{{ node.status_label }}">
+          <i data-lucide="{{ node.status_icon }}" class="h-4 w-4"></i>
+        </span>
+        <span class="min-w-0 flex-1 truncate opacity-60">{{ node.name }}</span>
       </span>
       {% elif node.children %}
       <details data-docs-group data-active-url="{{ node.url }}">
         <summary>
+          <span class="shrink-0 {{ node.status_fg }}" role="img" title="{{ node.status_label }}" aria-label="{{ node.status_label }}">
+            <i data-lucide="{{ node.status_icon }}" class="h-4 w-4"></i>
+          </span>
           <span class="flex-1">{{ node.name }}</span>
         </summary>
         <ul>
@@ -35,7 +42,12 @@
         </ul>
       </details>
       {% else %}
-      <a href="{{ node.url }}">{{ node.name }}</a>
+      <a href="{{ node.url }}">
+        <span class="shrink-0 {{ node.status_fg }}" role="img" title="{{ node.status_label }}" aria-label="{{ node.status_label }}">
+          <i data-lucide="{{ node.status_icon }}" class="h-4 w-4"></i>
+        </span>
+        <span class="flex-1">{{ node.name }}</span>
+      </a>
       {% endif %}
     </li>
     {% endfor %}

@@ -68,7 +68,9 @@
   {# ===== 非正常状态横幅（状态由超级管理员在「服务策略」页维护） ===== #}
   {% if status.status != 'normal' %}
   <div class="alert alert-soft mt-4 border border-base-300 {% if status.status == 'maintenance' %}alert-warning{% elif status.status == 'offline' %}alert-error{% elif status.status == 'dev' %}alert-info{% else %}alert-ghost{% endif %}">
-    <span class="badge {{ status.status_badge }} badge-sm">{{ status.status_label }}</span>
+    <span class="badge {{ status.status_badge }} badge-sm gap-1">
+      <i data-lucide="{{ status.status_icon }}" class="h-3.5 w-3.5" aria-hidden="true"></i>{{ status.status_label }}
+    </span>
     <span class="text-sm">
       {% blocktrans with label=status.status_label %}该服务当前处于「{{ label }}」状态{% endblocktrans %}{% if status.status == 'maintenance' %}{% trans "，接口可能临时不可用" %}{% elif status.status == 'offline' %}{% trans "，暂不可使用" %}{% elif status.status == 'dev' %}{% trans "，功能可能不稳定" %}{% endif %}{% trans "。以下文档与调试仅供了解。" %}
     </span>

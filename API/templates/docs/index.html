@@ -27,10 +27,12 @@
         <div class="mt-4 flex flex-wrap gap-2 text-sm">
           <span class="badge badge-soft badge-primary">{% trans "在线调试" %}</span>
           <span class="badge badge-soft badge-secondary">{% trans "服务/线路展开" %}</span>
-          <span class="badge badge-soft badge-success">{% trans "正常" %}</span>
-          <span class="badge badge-soft badge-info">{% trans "开发中" %}</span>
-          <span class="badge badge-soft badge-warning">{% trans "维护中" %}</span>
-          <span class="badge badge-soft badge-error">{% trans "已下线" %}</span>
+          {# 服务状态图例：图标与文案均取自 service_status（单一数据源），与左侧导航/服务卡片一致 #}
+          {% for st in status_legend %}
+          <span class="badge {{ st.badge }} gap-1">
+            <i data-lucide="{{ st.icon }}" class="h-3.5 w-3.5" aria-hidden="true"></i>{{ st.label }}
+          </span>
+          {% endfor %}
         </div>
       </div>
 
@@ -48,7 +50,9 @@
             <div class="card-body gap-1 p-4">
               <div class="flex items-center justify-between gap-2">
                 <h3 class="card-title text-base">{{ svc.name }}</h3>
-                <span class="badge {{ svc.status_badge }} badge-sm">{{ svc.status_label }}</span>
+                <span class="badge {{ svc.status_badge }} badge-sm gap-1">
+                  <i data-lucide="{{ svc.status_icon }}" class="h-3.5 w-3.5" aria-hidden="true"></i>{{ svc.status_label }}
+                </span>
               </div>
               <p class="line-clamp-2 text-xs text-base-content/70">{{ svc.desc }}</p>
               <div class="mt-1 flex items-center justify-between text-xs">

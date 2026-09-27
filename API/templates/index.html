@@ -100,7 +100,9 @@
       <div class="card-body gap-2 p-5">
         <div class="flex items-center justify-between gap-2">
           <h3 class="card-title">{{ svc.name }}</h3>
-          <span class="badge {{ svc.status_badge }} badge-sm">{{ svc.status_label }}</span>
+          <span class="badge {{ svc.status_badge }} badge-sm gap-1">
+            <i data-lucide="{{ svc.status_icon }}" class="h-3.5 w-3.5" aria-hidden="true"></i>{{ svc.status_label }}
+          </span>
         </div>
         <code class="font-mono text-xs opacity-60">{{ svc.url_prefix }}</code>
         <p class="text-sm text-base-content/70">{{ svc.desc }}</p>

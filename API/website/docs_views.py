@@ -26,7 +26,7 @@ from .services import SERVICES, localize as localize_services
 def index(request):
     """/docs/ 文档目录：左侧为全量服务导航（见中间件注入 docs_menu），
     右侧按“服务对外状态”展示全量服务卡（可进入的 = 已接入文档且非 开发中/已下线）。"""
-    from .service_status import annotate as _annotate_status
+    from .service_status import STATUS_KEYS, annotate as _annotate_status, status_def
     by_prefix = {d.prefix: d for d in all_docs()}
     services = []
     for svc in _annotate_status(localize_services(SERVICES), lambda p: p in by_prefix):
@@ -37,6 +37,8 @@ def index(request):
     return render(request, 'docs/index.html', {
         'services': services,
         'online_count': sum(1 for s in services if s['status'] in ('normal', 'dev', 'maintenance')),
+        # 状态图例（含图标）取自 service_status，避免模板重复维护状态文案与配色
+        'status_legend': [status_def(key) for key in STATUS_KEYS],
     })
 
 

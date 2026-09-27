@@ -10,7 +10,8 @@
    开发中 / 已下线 → 禁用态（不可展开、不可点击）；其余状态 → 正常展示。
 
 结构：docs_menu = [ {name, url, slug, url_prefix, disabled, status, status_label,
-                    status_badge, children: [{name, url, channel}]}, ... ]
+                    status_badge, status_icon, status_fg,
+                    children: [{name, url, channel}]}, ... ]
 """
 from ..service_status import annotate as _annotate
 from ..services import SERVICES as _MARKET
@@ -28,6 +29,14 @@ def build_docs_menu():
         prefix = item['url_prefix']
         doc = ready.get(prefix)
         unavailable = item['status'] in ('dev', 'offline')
+        # 状态展示字段（文案 / 徽标 / 图标 / 图标配色）统一取自 service_status，模板不得自行拼接
+        status_fields = {
+            'status': item['status'],
+            'status_label': item['status_label'],
+            'status_badge': item['status_badge'],
+            'status_icon': item['status_icon'],
+            'status_fg': item['status_fg'],
+        }
         if doc is not None and not unavailable:
             children = [
                 {
@@ -44,22 +53,18 @@ def build_docs_menu():
                 'slug': doc.slug,
                 'url_prefix': prefix,
                 'disabled': False,
-                'status': item['status'],
-                'status_label': item['status_label'],
-                'status_badge': item['status_badge'],
+                **status_fields,
                 'children': children,
             })
         else:
-            # 未录入文档 or 标记开发中/已下线：导航占位展示（带状态徽标）
+            # 未录入文档 or 标记开发中/已下线：导航占位展示（带状态图标）
             menu.append({
                 'name': item['name'],
                 'url': '',
                 'slug': '',
                 'url_prefix': prefix,
                 'disabled': True,
-                'status': item['status'],
-                'status_label': item['status_label'],
-                'status_badge': item['status_badge'],
+                **status_fields,
                 'children': [],
             })
     return menu

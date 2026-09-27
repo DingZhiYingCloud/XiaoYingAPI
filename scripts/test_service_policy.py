@@ -10,6 +10,8 @@
     第 7 轮 缓存失效：改 status / auth_mode / 白名单后立即生效，不必等 TTL
     第 8 轮 控制台页面：未登录跳转、超管可访问、含三级联动数据、增删改各自生效
     第 9 轮 三语（zh-hans / zh-hant / en）页面正常渲染且关键词已翻译
+    第 10 轮 服务树枚举自证（真实路由 vs 文档注册表）
+    第 11 轮 前台状态图标：四态图标唯一、导航项字段齐备、渲染无空图标名、图例含四态图标
 
 隔离策略：全部测试数据用 MARK（xysvcpolicy<RUN>）标记，策略路径前缀一律包含 MARK，
 测试结束统一删除，绝不触碰真实策略配置。
@@ -43,6 +45,8 @@ from API.common.middleware import (
     resolve_service_policy,
 )
 from API.models import ApiServicePolicy, UserApp
+from API.website.docs.menu import build_docs_menu
+from API.website.service_status import STATUS_DEFS
 from API.website.service_tree import service_tree
 
 RUN = str(int(time.time()))
@@ -453,6 +457,45 @@ def _resolve_ok(path):
         return False
 
 
+# ───────────────────── 第 11 轮：前台状态图标（左侧导航 / 图例） ─────────────────────
+
+def round11_status_icons():
+    """状态图标是「静默失效」型功能：字段缺失时 lucide 只会跳过空图标名，页面照常渲染。
+    因此这里既查菜单数据源，也查渲染结果里没有空的 data-lucide。"""
+    section('第 11 轮 前台服务状态图标（左侧导航 / 图例）')
+
+    # 状态定义表自带图标与配色，且四态互不相同
+    defs = {k: STATUS_DEFS[k] for k in ('normal', 'dev', 'maintenance', 'offline')}
+    missing = [k for k, v in defs.items() if not v.get('icon') or not v.get('fg')]
+    check('每个状态都有图标名与图标配色', not missing, f'missing={missing}')
+    icons = [v['icon'] for v in defs.values()]
+    check('四态图标互不相同', len(set(icons)) == 4, f'icons={icons}')
+
+    client = Client()
+    resp = client.get(reverse('website:docs_index'))
+    body = resp.content.decode()
+    check('/docs/ 正常渲染（200）', resp.status_code == 200, f'status={resp.status_code}')
+
+    # 左侧导航渲染的数据源（非 TestCase 环境下 resp.context 恒为 None，故直接查构建结果）
+    menu = build_docs_menu()
+    check('导航菜单非空', bool(menu), f'menu={len(menu)}')
+    bad = [n['name'] for n in menu if not n.get('status_icon') or not n.get('status_fg')]
+    check('导航每个服务项都带状态图标与配色', not bad, f'bad={bad[:5]}')
+    mismatch = [n['name'] for n in menu
+                if n.get('status') in defs
+                and (n['status_icon'] != defs[n['status']]['icon']
+                     or n['status_fg'] != defs[n['status']]['fg'])]
+    check('导航图标与状态一一对应', not mismatch, f'mismatch={mismatch[:5]}')
+
+    check('渲染结果无空图标名（data-lucide=""）', 'data-lucide=""' not in body)
+    used = {n['status'] for n in menu} & set(defs)
+    check('渲染结果含导航各状态图标（%s）' % '/'.join(sorted(used)),
+          all(f'data-lucide="{defs[k]["icon"]}"' in body for k in used))
+    for key, d in defs.items():
+        check(f'图例含「{d["label"]}」图标（{d["icon"]}）',
+              f'data-lucide="{d["icon"]}"' in body)
+
+
 def main():
     print('\nAPI 服务策略回归测试开始')
     print(f'标记：{MARK}（策略前缀统一含该标记，测试后自动清理）')
@@ -470,6 +513,7 @@ def main():
         round8_console(client, app_a)
         round9_i18n(client, admin)
         round10_service_tree()
+        round11_status_icons()
     finally:
         cleanup()
         if created_admin:
