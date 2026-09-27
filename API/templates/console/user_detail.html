@@ -1,0 +1,442 @@
+{% extends 'console/base.html' %}
+{% load i18n %}
+
+{% block title %}{% blocktrans with account=target.account %}用户 {{ account }} - 超级管理员 - 小影API{% endblocktrans %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,用户详情,登录记录" %}{% endblock %}
+{% block description %}{% blocktrans with account=target.account %}小影API 超级管理员：用户 {{ account }} 的资料、登录过的项目与次数、Token 剩余有效天数。{% endblocktrans %}{% endblock %}
+
+{% block console_content %}
+{% include 'console/_messages.html' %}
+
+{# ===== 头部 ===== #}
+<div class="flex min-w-0 flex-wrap items-start justify-between gap-3">
+  <div class="flex min-w-0 items-start gap-3">
+    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-box bg-primary/10 text-primary">
+      <i data-lucide="user" class="h-5 w-5"></i>
+    </span>
+    <div class="min-w-0">
+      <h1 class="flex flex-wrap items-center gap-2 text-xl font-bold sm:text-2xl">
+        <span class="font-mono">{{ target.account }}</span>
+        {% if target.status %}
+        <span class="badge badge-success badge-sm">{% trans "正常" %}</span>
+        {% else %}
+        <span class="badge badge-error badge-sm">{% trans "已封禁" %}</span>
+        {% endif %}
+      </h1>
+      <p class="mt-0.5 text-sm text-base-content/70">{{ target.username|default:'—' }}</p>
+    </div>
+  </div>
+  <a href="{% url 'website:console_users' %}" class="btn btn-sm btn-ghost">← {% trans "返回用户列表" %}</a>
+</div>
+
+{# ===== 汇总 ===== #}
+<div class="stats stats-vertical mt-4 w-full border border-base-300 sm:stats-horizontal">
+  <div class="stat">
+    <div class="stat-title">{% trans "累计登录次数" %}</div>
+    <div class="stat-value font-mono text-2xl">{{ summary.login_total }}</div>
+    <div class="stat-desc">{% trans "登录日志条数，退出登录不会减少" %}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-title">{% trans "登录过的项目" %}</div>
+    <div class="stat-value font-mono text-2xl">{{ summary.login_projects }}</div>
+    <div class="stat-desc">{% trans "该用户登录过的接入项目数" %}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-title">{% trans "当前有效登录" %}</div>
+    <div class="stat-value font-mono text-2xl">{{ summary.active_tokens }}</div>
+    <div class="stat-desc">{% trans "未过期的 Token（登录态）数量" %}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-title">{% trans "最后登录" %}</div>
+    <div class="stat-value text-lg">{{ summary.last_login|date:'Y-m-d H:i'|default:'—' }}</div>
+    <div class="stat-desc">{% trans "最后一次登录成功的时间" %}</div>
+  </div>
+</div>
+
+<div class="mt-5 grid gap-5 lg:grid-cols-3">
+  <div class="space-y-5 lg:col-span-2">
+    {# ===== 基本资料 ===== #}
+    <div class="card border border-base-300 bg-base-100">
+      <div class="card-body gap-3">
+        <h2 class="card-title text-base">{% trans "基本资料" %}</h2>
+        <dl class="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+          <div>
+            <dt class="text-xs text-base-content/60">{% trans "账号" %}</dt>
+            <dd class="font-mono">{{ target.account }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-base-content/60">{% trans "用户名" %}</dt>
+            <dd>{{ target.username|default:'—' }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-base-content/60">{% trans "邮箱" %}</dt>
+            <dd>
+              {% if target.email %}
+              {{ target.email }}
+              {% if target.email_verified %}
+              <span class="badge badge-success badge-xs">{% trans "已验证" %}</span>
+              {% else %}
+              <span class="badge badge-warning badge-xs">{% trans "未验证" %}</span>
+              {% endif %}
+              {% else %}—{% endif %}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs text-base-content/60">{% trans "手机号" %}</dt>
+            <dd class="font-mono">
+              {% if target.phone %}
+              {{ target.phone }}
+              {% if target.phone_verified %}
+              <span class="badge badge-success badge-xs">{% trans "已验证" %}</span>
+              {% else %}
+              <span class="badge badge-warning badge-xs">{% trans "未验证" %}</span>
+              {% endif %}
+              {% else %}—{% endif %}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs text-base-content/60">{% trans "状态" %}</dt>
+            <dd>
+              {% if target.status %}
+              <span class="badge badge-success badge-sm">{% trans "正常" %}</span>
+              {% else %}
+              <span class="badge badge-error badge-sm">{% trans "已封禁" %}</span>
+              {% endif %}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs text-base-content/60">{% trans "用户ID" %}</dt>
+            <dd class="font-mono text-xs text-base-content/70">{{ target.pk }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-base-content/60">{% trans "注册时间" %}</dt>
+            <dd>{{ target.create_time|date:'Y-m-d H:i:s' }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-base-content/60">{% trans "最后更新" %}</dt>
+            <dd>{{ target.updated_time|date:'Y-m-d H:i:s' }}</dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+
+    {# ===== 注册信息 ===== #}
+    <div class="card border border-base-300 bg-base-100">
+      <div class="card-body gap-3">
+        <h2 class="card-title text-base">{% trans "注册信息" %}</h2>
+        <dl class="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+          <div>
+            <dt class="text-xs text-base-content/60">{% trans "注册方式" %}</dt>
+            <dd>{% if register.methods %}{{ register.methods|join:" / " }}{% else %}—{% endif %}</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-base-content/60">{% trans "来源项目" %}</dt>
+            <dd>
+              {% if register.apps %}{{ register.apps|join:" / " }}{% else %}—{% endif %}
+              {% if register.has_unknown_app %}<span class="badge badge-ghost badge-xs">{% trans "含历史记录（未记录来源项目）" %}</span>{% endif %}
+            </dd>
+          </div>
+        </dl>
+        <p class="text-xs text-base-content/60">{% trans "来源项目由本次升级后新增的验证记录字段提供，升级之前的注册记录没有该信息。" %}</p>
+      </div>
+    </div>
+  </div>
+
+  {# ===== 账号操作 ===== #}
+  <div class="card h-fit border border-base-300 bg-base-100">
+    <div class="card-body gap-3">
+      <h2 class="card-title text-base">{% trans "账号操作" %}</h2>
+      <button type="button" class="btn btn-sm justify-start" onclick="user_edit_modal.showModal()">
+        <i data-lucide="pencil" class="h-4 w-4"></i>{% trans "编辑资料" %}
+      </button>
+      <button type="button" class="btn btn-sm justify-start" onclick="user_password_modal.showModal()">
+        <i data-lucide="key-round" class="h-4 w-4"></i>{% trans "重置密码" %}
+      </button>
+      <form method="post" action="{% url 'website:console_users' %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="{% if target.status %}ban{% else %}unban{% endif %}" />
+        <input type="hidden" name="user_id" value="{{ target.pk }}" />
+        <button type="submit" class="btn btn-sm w-full justify-start {% if target.status %}text-error{% endif %}">
+          <i data-lucide="{% if target.status %}ban{% else %}circle-check{% endif %}" class="h-4 w-4"></i>
+          {% if target.status %}{% trans "封禁账号" %}{% else %}{% trans "解除封禁" %}{% endif %}
+        </button>
+      </form>
+      <div class="divider my-1"></div>
+      <button type="button" class="btn btn-sm btn-error btn-outline justify-start" onclick="user_delete_modal.showModal()">
+        <i data-lucide="trash-2" class="h-4 w-4"></i>{% trans "删除用户" %}
+      </button>
+      <p class="text-xs text-base-content/60">{% trans "删除会级联清除该用户的 Token、验证记录与登录日志，且不可恢复。" %}</p>
+    </div>
+  </div>
+</div>
+
+{# ===== 按项目登录明细 ===== #}
+<div class="card mt-5 border border-base-300 bg-base-100">
+  <div class="card-body gap-3">
+    <h2 class="card-title text-base">{% trans "按项目登录明细" %}</h2>
+    {% if logs_by_app %}
+    <div class="overflow-x-auto">
+      <table class="table table-sm min-w-[64rem]">
+        <thead>
+          <tr>
+            <th class="whitespace-nowrap">{% trans "接入项目" %}</th>
+            <th class="whitespace-nowrap text-right">{% trans "登录次数" %}</th>
+            <th class="whitespace-nowrap">{% trans "登录方式" %}</th>
+            <th class="whitespace-nowrap">{% trans "首次登录" %}</th>
+            <th class="whitespace-nowrap">{% trans "最后登录" %}</th>
+            <th class="whitespace-nowrap">{% trans "最后活跃" %}</th>
+            <th class="whitespace-nowrap text-right">{% trans "有效登录" %}</th>
+            <th class="whitespace-nowrap">{% trans "登录态剩余" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in logs_by_app %}
+          <tr>
+            <td>
+              <div class="text-sm">{{ row.app_name }}</div>
+              <code class="font-mono text-xs text-base-content/60">{{ row.app_id }}</code>
+              {% if not row.app_enabled %}<span class="badge badge-warning badge-xs">{% trans "项目已停用" %}</span>{% endif %}
+            </td>
+            <td class="text-right font-mono">{{ row.total }}</td>
+            <td class="whitespace-nowrap text-xs text-base-content/70">
+              {% blocktrans with pw=row.password_total code=row.code_total %}密码 %(pw)s · 验证码 %(code)s{% endblocktrans %}
+            </td>
+            <td class="whitespace-nowrap text-xs">{{ row.first_login|date:'Y-m-d H:i' }}</td>
+            <td class="whitespace-nowrap text-xs">{{ row.last_login|date:'Y-m-d H:i' }}</td>
+            <td class="whitespace-nowrap text-xs">{{ row.last_active|date:'Y-m-d H:i'|default:'—' }}</td>
+            <td class="text-right font-mono">{{ row.valid_total }}</td>
+            <td class="whitespace-nowrap text-xs">
+              {% if not row.expire_time %}—
+              {% elif row.expired %}<span class="badge badge-error badge-xs">{% trans "已过期" %}</span>
+              {% elif row.days_left == 0 %}<span class="badge badge-warning badge-xs">{% trans "不足 1 天" %}</span>
+              {% else %}{% blocktrans with n=row.days_left %}剩余 {{ n }} 天{% endblocktrans %}{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="text-xs text-base-content/60">{% trans "「登录态剩余」按该项目最近一次签发的 Token 计算；同一项目多次登录会签发多条 Token，各自独立过期。" %}</p>
+    {% else %}
+    <p class="py-6 text-center text-sm text-base-content/60">{% trans "该用户还没有登录过任何接入项目" %}</p>
+    {% endif %}
+  </div>
+</div>
+
+{# ===== 最近登录记录 ===== #}
+<div class="card mt-5 border border-base-300 bg-base-100">
+  <div class="card-body gap-3">
+    <h2 class="card-title text-base">{% trans "最近登录记录" %}</h2>
+    {% if recent_logs %}
+    <div class="overflow-x-auto">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th>{% trans "时间" %}</th>
+            <th>{% trans "接入项目" %}</th>
+            <th>{% trans "登录方式" %}</th>
+            <th>{% trans "IP" %}</th>
+            <th>{% trans "客户端" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in recent_logs %}
+          <tr>
+            <td class="whitespace-nowrap text-xs">{{ row.created|date:'Y-m-d H:i:s' }}</td>
+            <td class="text-sm">{{ row.app_name }}</td>
+            <td class="whitespace-nowrap text-sm">{{ row.method }}</td>
+            <td class="font-mono text-xs">{{ row.ip|default:'—' }}</td>
+            <td class="max-w-md truncate text-xs text-base-content/70" title="{{ row.user_agent }}">{{ row.user_agent|default:'—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="py-6 text-center text-sm text-base-content/60">{% trans "暂无登录记录（登录日志自本次升级起开始记录）" %}</p>
+    {% endif %}
+  </div>
+</div>
+
+{# ===== Token 明细 ===== #}
+<div class="card mt-5 border border-base-300 bg-base-100">
+  <div class="card-body gap-3">
+    <h2 class="card-title text-base">{% trans "登录凭证（Token）明细" %}</h2>
+    {% if tokens %}
+    <div class="overflow-x-auto">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th>{% trans "接入项目" %}</th>
+            <th>{% trans "签发时间" %}</th>
+            <th>{% trans "过期时间" %}</th>
+            <th>{% trans "剩余" %}</th>
+            <th>{% trans "最后活跃" %}</th>
+            <th>{% trans "状态" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in tokens %}
+          <tr>
+            <td>
+              <div class="text-sm">{{ row.app_name }}</div>
+              <code class="font-mono text-xs text-base-content/60">{{ row.app_id }}</code>
+            </td>
+            <td class="whitespace-nowrap text-xs">{{ row.create_time|date:'Y-m-d H:i' }}</td>
+            <td class="whitespace-nowrap text-xs">{{ row.expire_time|date:'Y-m-d H:i' }}</td>
+            <td class="whitespace-nowrap text-xs">
+              {% if row.expired %}—{% elif row.days_left == 0 %}{% trans "不足 1 天" %}{% else %}{% blocktrans with n=row.days_left %}{{ n }} 天{% endblocktrans %}{% endif %}
+            </td>
+            <td class="whitespace-nowrap text-xs">{{ row.last_active|date:'Y-m-d H:i'|default:'—' }}</td>
+            <td class="whitespace-nowrap">
+              {% if row.state_level == 'valid' %}
+              <span class="badge badge-success badge-sm">{{ row.state_label }}</span>
+              {% elif row.state_level == 'expired' %}
+              <span class="badge badge-error badge-sm">{{ row.state_label }}</span>
+              {% else %}
+              <span class="badge badge-warning badge-sm">{{ row.state_label }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="text-xs text-base-content/60">{% trans "退出登录或重置密码会删除对应 Token（本表随之为空），但登录记录与登录次数不受影响。" %}</p>
+    {% else %}
+    <p class="py-6 text-center text-sm text-base-content/60">{% trans "当前没有登录态（可能从未登录，或已退出登录 / 密码被重置）" %}</p>
+    {% endif %}
+  </div>
+</div>
+
+{# ===== 验证记录时间线 ===== #}
+<div class="card mt-5 border border-base-300 bg-base-100">
+  <div class="card-body gap-3">
+    <div class="flex flex-wrap items-baseline justify-between gap-2">
+      <h2 class="card-title text-base">{% trans "验证记录" %}</h2>
+      <span class="text-xs text-base-content/60">{% blocktrans with n=verify_limit %}最多展示最近 {{ n }} 条{% endblocktrans %}</span>
+    </div>
+    {% if verify_rows %}
+    <div class="overflow-x-auto">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th>{% trans "时间" %}</th>
+            <th>{% trans "场景" %}</th>
+            <th>{% trans "方式" %}</th>
+            <th>{% trans "凭证" %}</th>
+            <th>{% trans "来源项目" %}</th>
+            <th>{% trans "是否已使用" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in verify_rows %}
+          <tr>
+            <td class="whitespace-nowrap text-xs">{{ row.created|date:'Y-m-d H:i:s' }}</td>
+            <td class="text-sm">{{ row.scene }}</td>
+            <td class="text-sm">{{ row.method }}</td>
+            <td class="text-sm">{{ row.credential }}</td>
+            <td class="text-sm">{{ row.app_name|default:'—' }}</td>
+            <td class="whitespace-nowrap text-sm">
+              {% if row.is_used %}<span class="badge badge-success badge-xs">{% trans "已使用" %}</span>
+              {% else %}<span class="badge badge-ghost badge-xs">{% trans "未使用" %}</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="py-6 text-center text-sm text-base-content/60">{% trans "暂无验证记录" %}</p>
+    {% endif %}
+  </div>
+</div>
+
+{# ===== 编辑资料 ===== #}
+<dialog id="user_edit_modal" class="modal">
+  <div class="modal-box max-w-lg">
+    <h3 class="text-lg font-bold">{% trans "编辑资料" %}</h3>
+    <p class="mt-1 text-xs text-base-content/60">{% trans "留空的字段表示不修改。修改邮箱或手机号后会被标记为「未验证」，需用户重新验证后才能用于登录（账号/密码登录不受影响）。" %}</p>
+    <form method="post" action="{% url 'website:console_users' %}" class="mt-3 grid gap-3">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="edit" />
+      <input type="hidden" name="user_id" value="{{ target.pk }}" />
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/60">{% trans "用户名（仅展示用，可重复）" %}</span>
+        <input type="text" name="username" class="input input-sm" value="{{ target.username }}" autocomplete="off" />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/60">{% trans "邮箱" %}</span>
+        <input type="text" name="email" class="input input-sm" value="{{ target.email|default:'' }}" autocomplete="off" />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/60">{% trans "手机号" %}</span>
+        <input type="text" name="phone" class="input input-sm font-mono" value="{{ target.phone|default:'' }}" autocomplete="off" />
+      </label>
+      <div class="modal-action">
+        <button type="submit" class="btn btn-sm btn-primary">{% trans "保存" %}</button>
+        <button type="button" class="btn btn-sm btn-ghost" onclick="user_edit_modal.close()">{% trans "取消" %}</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+{# ===== 重置密码 ===== #}
+<dialog id="user_password_modal" class="modal">
+  <div class="modal-box max-w-lg">
+    <h3 class="text-lg font-bold">{% trans "重置密码" %}</h3>
+    <p class="mt-1 text-xs text-base-content/60">{% trans "重置后该用户在所有接入项目的登录态会立即作废（强制重新登录），请自行把新密码告知用户。" %}</p>
+    <form method="post" action="{% url 'website:console_users' %}" class="mt-3 grid gap-3">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="reset_password" />
+      <input type="hidden" name="user_id" value="{{ target.pk }}" />
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/60">{% trans "新密码（8-64 位，含字母与数字）" %}</span>
+        <input type="text" name="password" class="input input-sm font-mono" autocomplete="new-password" required />
+      </label>
+      <div class="modal-action">
+        <button type="submit" class="btn btn-sm btn-primary">{% trans "确认重置" %}</button>
+        <button type="button" class="btn btn-sm btn-ghost" onclick="user_password_modal.close()">{% trans "取消" %}</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+{# ===== 删除用户（需输入账号确认） ===== #}
+<dialog id="user_delete_modal" class="modal">
+  <div class="modal-box max-w-lg">
+    <h3 class="text-lg font-bold text-error">{% trans "删除用户" %}</h3>
+    <p class="mt-1 text-sm">{% trans "删除后不可恢复：该用户的登录凭证、验证记录与登录日志会一并删除。" %}</p>
+    <p class="mt-2 text-sm">{% blocktrans with account=target.account %}请输入账号 {{ account }} 以确认删除：{% endblocktrans %}</p>
+    <form method="post" action="{% url 'website:console_users' %}" id="user-delete-form" class="mt-3 grid gap-3">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="delete" />
+      <input type="hidden" name="user_id" value="{{ target.pk }}" />
+      <input type="text" name="confirm_account" class="input input-sm font-mono" autocomplete="off"
+             placeholder="{{ target.account }}" data-expect="{{ target.account }}" required />
+      <div class="modal-action">
+        <button type="submit" class="btn btn-sm btn-error" disabled>{% trans "确认删除" %}</button>
+        <button type="button" class="btn btn-sm btn-ghost" onclick="user_delete_modal.close()">{% trans "取消" %}</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+{% endblock %}
+
+{% block js %}
+<script>
+(function () {
+  'use strict';
+  // 删除确认：输入的账号与目标一致时才允许提交（服务端同样会再校验一次）
+  var input = document.querySelector('#user-delete-form input[name=confirm_account]');
+  var submit = document.querySelector('#user-delete-form button[type=submit]');
+  if (!input || !submit) return;
+  function sync() { submit.disabled = input.value.trim() !== input.dataset.expect; }
+  input.addEventListener('input', sync);
+  sync();
+})();
+</script>
+{% endblock %}

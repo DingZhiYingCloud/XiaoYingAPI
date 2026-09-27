@@ -6,5 +6,6 @@
   服务端代理调用用户中心业务逻辑（API.apis.user_center.users.utils），
   登录态存 Django 会话（Session），不向前端暴露 APPID/APPSECRET。
 
-注意：本目录不放在 API/apis/ 下，不会被 rebuild_category_tree 扫描成 API 分类。
+注意：本目录不放在 API/apis/ 下，其路由也不在 /api/ 前缀下，因此不会被「服务策略」
+的服务树枚举（API/website/service_tree.py 只扫 /api/ 下的真实路由）当成一条 API 服务。
 """

@@ -8,6 +8,7 @@
   'use strict';
 
   var KEY = 'xyapi_theme';
+  var KEY_BG = 'xyapi_theme_bg';
   var DEFAULT_THEME = 'light';
 
   // [主题标识, 展示名]（daisyUI 全部 35 个内置主题）
@@ -39,6 +40,19 @@
     try { return localStorage.getItem(KEY) || DEFAULT_THEME; } catch (e) { return DEFAULT_THEME; }
   }
 
+  /* 同步当前主题的页面底色（--color-base-100）：既写进 <html> 的行内样式，也存进 localStorage。
+   * 主题变量定义在 output.css 里，浏览器在它下载完之前不绘制任何内容 —— 用户若选了暗色主题，
+   * 每次切换页面都会先闪一下白底。母版 <head> 的内联脚本会用这里存下的颜色先行铺底；
+   * 这里同时改行内样式，是因为内联样式优先级高于 CSS，换主题后必须一起更新，否则底色会留在上一套主题。 */
+  function syncBaseColor() {
+    try {
+      var bg = getComputedStyle(document.documentElement).getPropertyValue('--color-base-100').trim();
+      if (!bg) return;
+      document.documentElement.style.backgroundColor = bg;
+      localStorage.setItem(KEY_BG, bg);
+    } catch (e) { /* 忽略隐私模式等异常 */ }
+  }
+
   function applyTheme(name, persist) {
     if (!name) return;
     document.documentElement.setAttribute('data-theme', name);
@@ -47,6 +61,7 @@
     }
     markActive();
     updateCurrentText();
+    syncBaseColor();
   }
 
   /* 当前主题名（供高亮与标题） */
@@ -159,9 +174,11 @@
   renderMenus();
   markActive();
   updateCurrentText();
+  syncBaseColor();
   document.addEventListener('DOMContentLoaded', function () {
     renderMenus();
     markActive();
     updateCurrentText();
+    syncBaseColor();
   });
 })();

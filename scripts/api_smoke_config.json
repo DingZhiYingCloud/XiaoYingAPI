@@ -102,8 +102,10 @@
   "cases": [
     {"name": "用户中心-可用登录方式(公开GET)", "method": "GET", "path": "/api/user_center/users/methods"},
     {"name": "用户中心-项目信息", "method": "GET", "path": "/api/user_center/projects/info"},
-    {"name": "用户中心-注册(用户名+密码)", "method": "POST", "path": "/api/user_center/users/register",
-     "params": {"username": "${RegUsername}", "password": "${RegPassword}"}, "expect": [10000, 20031]},
+    {"name": "用户中心-注册(用户名+密码已停用)", "method": "POST", "path": "/api/user_center/users/register",
+     "params": {"username": "smoke_deprecated", "password": "Smoke123456"}, "expect": [30001]},
+    {"name": "用户中心-登录(邮箱+密码,未注册)", "method": "POST", "path": "/api/user_center/users/login",
+     "params": {"email": "smoke-${RunId}@example.com", "password": "Smoke123456"}, "expect": [20011]},
     {"name": "用户中心-登录(账号+密码)", "method": "POST", "path": "/api/user_center/users/login",
      "params": {"account": "${RegUsername}", "password": "${RegPassword}"}, "save": {"UserToken": "data.token"}},
     {"name": "用户中心-登录验证码发送", "method": "POST", "path": "/api/user_center/users/login/send",

@@ -4,7 +4,7 @@
     GET  /api/captcha_self/generate  生成验证码（返回 captcha_id + base64 图片）
     POST /api/captcha_self/verify    校验验证码（一次性，校验后立即失效）
 
-鉴权: 分类树将该服务配置为开放（open），无需项目签名——与阿里云图形认证一致，
+鉴权: 服务策略将 /api/captcha_self/ 配置为开放（open），无需项目签名——与阿里云图形认证一致，
       便于任意接入方在登录/注册/提交等表单前直接调用。
 """
 import uuid

@@ -1,0 +1,35 @@
+{% load i18n %}
+{% comment %}调用统计：状态码分布（环形图 + 明细表）{% endcomment %}
+<div class="card border border-base-300 bg-base-100">
+  <div class="card-body gap-3">
+    <h2 class="card-title text-base">{% trans "状态码分布" %}</h2>
+    {% if status_codes %}
+    <div class="relative h-48"><canvas id="stats-status"></canvas></div>
+    <div class="overflow-x-auto">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th>{% trans "状态码" %}</th>
+            <th>{% trans "说明" %}</th>
+            <th class="text-right">{% trans "调用量" %}</th>
+            <th class="text-right">{% trans "占比" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in status_codes %}
+          <tr>
+            <td class="font-mono">{{ row.key }}</td>
+            <td class="text-sm">{{ row.label }}</td>
+            <td class="text-right font-mono">{{ row.calls }}</td>
+            <td class="text-right font-mono text-base-content/70">{{ row.share }}%</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="py-6 text-center text-sm text-base-content/60">{% trans "该时间范围内暂无调用数据" %}</p>
+    {% endif %}
+  </div>
+</div>
+{{ status_codes|json_script:'stats-status-data' }}

@@ -60,7 +60,8 @@ class ChannelSpec:
     """一条线路/平台（同一服务下的不同来源，如 v1 / VMEmail，或未来的其他平台）
 
     auth_note 仅用于展示提示（open=开放无需签名 / auth=需签名 / inherit=跟随上级），
-    实际鉴权仍由后端 ApiCategory 分类树决定，调试器以真实请求结果为准。
+    实际鉴权由后端「服务策略」（ApiServicePolicy，服务→线路→端点逐级继承）决定，
+    调试器以真实请求结果为准。
     """
     slug: str
     name: str
@@ -81,4 +82,8 @@ class ServiceSpec:
     # 文档页的 <meta keywords> 默认是「服务名,接口文档,小影API」，配了本项会追加在后面，
     # 用于补充服务名本身覆盖不到的长尾词。留空则行为与从前完全一致。
     keywords: str = ''
+    # 服务正文说明（SEO 用）：段落列表，渲染在文档页「服务说明」区块。
+    # 目的是给每个服务页提供一段独有的正文，避免整页只有参数表这类模板化内容而
+    # 被搜索引擎判为薄内容。中文为源语言，渲染前由 docs.localize() 逐段翻译。
+    intro: List[str] = field(default_factory=list)
     channels: List[ChannelSpec] = field(default_factory=list)

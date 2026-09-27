@@ -1,0 +1,23 @@
+{% load i18n %}
+{% comment %}分页条（daisyUI join）。用法：{% include 'console/_pagination.html' %}
+上下文：page_obj（必需）、paginator、page_prefix（当前筛选参数 + 结尾 &，见 console_users._page_prefix）{% endcomment %}
+{% if page_obj.paginator.num_pages > 1 %}
+<div class="mt-3 flex flex-wrap items-center justify-between gap-3">
+  <span class="text-xs text-base-content/60">
+    {% blocktrans with start=page_obj.start_index end=page_obj.end_index total=paginator.count %}第 {{ start }}-{{ end }} 条，共 {{ total }} 条{% endblocktrans %}
+  </span>
+  <div class="join">
+    {% if page_obj.has_previous %}
+    <a href="?{{ page_prefix }}page={{ page_obj.previous_page_number }}" class="btn btn-sm join-item">{% trans "上一页" %}</a>
+    {% else %}
+    <button type="button" class="btn btn-sm join-item" disabled>{% trans "上一页" %}</button>
+    {% endif %}
+    <span class="btn btn-sm join-item btn-active font-mono">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+    <a href="?{{ page_prefix }}page={{ page_obj.next_page_number }}" class="btn btn-sm join-item">{% trans "下一页" %}</a>
+    {% else %}
+    <button type="button" class="btn btn-sm join-item" disabled>{% trans "下一页" %}</button>
+    {% endif %}
+  </div>
+</div>
+{% endif %}

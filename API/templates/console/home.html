@@ -1,0 +1,96 @@
+{% extends 'console/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "控制台首页 - 超级管理员 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,控制台" %}{% endblock %}
+{% block description %}{% trans "小影API 超级管理员控制台：关键指标概览与各模块入口。" %}{% endblock %}
+
+{% block console_content %}
+{% trans "关键指标概览与各模块入口；模块入口取自左侧菜单声明，新模块上线后自动出现。" as ph_desc %}
+{% include 'console/_page_header.html' with icon='layout-dashboard' title='控制台首页' desc=ph_desc %}
+
+{# ===== 近 N 天调用概览（复用调用统计口径） ===== #}
+<div class="stats stats-vertical mt-5 w-full border border-base-300 bg-base-100 sm:stats-horizontal">
+  <div class="stat">
+    <div class="stat-figure text-primary"><i data-lucide="activity" class="h-6 w-6"></i></div>
+    <div class="stat-title">{% blocktrans with n=overview_days %}近 {{ n }} 天调用量{% endblocktrans %}</div>
+    <div class="stat-value text-2xl">{{ stats.calls }}</div>
+    <div class="stat-desc">{% trans "成功" %} {{ stats.success }} · {% trans "失败" %} {{ stats.failed }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-figure text-success"><i data-lucide="circle-check" class="h-6 w-6"></i></div>
+    <div class="stat-title">{% trans "成功率" %}</div>
+    <div class="stat-value text-2xl">{{ stats.success_rate }}%</div>
+    <div class="stat-desc">{% trans "区间内产生过调用的接入项目" %} {{ stats.active_apps }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-figure text-info"><i data-lucide="timer" class="h-6 w-6"></i></div>
+    <div class="stat-title">{% trans "平均耗时" %}</div>
+    <div class="stat-value text-2xl">{{ stats.avg_ms }}<span class="text-base font-normal"> ms</span></div>
+    <div class="stat-desc">{% trans "最大" %} {{ stats.max_ms }} ms</div>
+  </div>
+</div>
+
+{# ===== 资源计数 ===== #}
+<div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+  <div class="card border border-base-300 bg-base-100 transition hover:border-primary/40">
+    <div class="card-body flex-row items-center gap-3 p-4">
+      <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-box bg-info/10 text-info">
+        <i data-lucide="boxes" class="h-5 w-5"></i>
+      </span>
+      <div class="min-w-0">
+        <p class="text-sm text-base-content/70">{% trans "接入项目" %}</p>
+        <p class="text-2xl font-bold leading-tight">{{ counts.apps }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="card border border-base-300 bg-base-100 transition hover:border-primary/40">
+    <div class="card-body flex-row items-center gap-3 p-4">
+      <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-box bg-secondary/10 text-secondary">
+        <i data-lucide="users" class="h-5 w-5"></i>
+      </span>
+      <div class="min-w-0">
+        <p class="text-sm text-base-content/70">{% trans "用户总数" %}</p>
+        <p class="text-2xl font-bold leading-tight">{{ counts.users }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="card border border-base-300 bg-base-100 transition hover:border-primary/40">
+    <div class="card-body flex-row items-center gap-3 p-4">
+      <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-box {% if counts.banned_users %}bg-error/10 text-error{% else %}bg-base-200 text-base-content/60{% endif %}">
+        <i data-lucide="user-x" class="h-5 w-5"></i>
+      </span>
+      <div class="min-w-0">
+        <p class="text-sm text-base-content/70">{% trans "已封禁用户" %}</p>
+        <p class="text-2xl font-bold leading-tight">{{ counts.banned_users }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ===== 模块入口（遍历菜单声明，未实现模块不在菜单里自然也不会出现） ===== #}
+<h2 class="mt-6 flex items-center gap-2 text-base font-bold">
+  <i data-lucide="layout-grid" class="h-4 w-4 text-primary"></i>{% trans "模块入口" %}
+</h2>
+<div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+  {% for group in console_menu %}
+  {% for item in group.items %}
+  {% if item.key != 'console_home' %}
+  <a href="{% url item.url %}"
+     class="group card border border-base-300 bg-base-100 transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+    <div class="card-body gap-2 p-4">
+      <div class="flex items-center gap-2">
+        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-field bg-primary/10 text-primary">
+          <i data-lucide="{{ item.icon }}" class="h-4 w-4"></i>
+        </span>
+        <span class="font-medium">{% trans item.name %}</span>
+        <i data-lucide="arrow-right" class="ml-auto h-4 w-4 -translate-x-1 opacity-0 transition group-hover:translate-x-0 group-hover:opacity-60"></i>
+      </div>
+      <p class="text-sm text-base-content/70">{% trans item.desc %}</p>
+    </div>
+  </a>
+  {% endif %}
+  {% endfor %}
+  {% endfor %}
+</div>
+{% endblock %}

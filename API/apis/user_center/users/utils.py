@@ -25,6 +25,7 @@
 
 所有函数返回 (success, data_or_msg) 二元组，异常内部捕获，调用方无需 try/except。
 """
+import logging
 import secrets
 import uuid
 from datetime import timedelta
@@ -41,7 +42,10 @@ from API.apis.emails.v1.utils import send_email
 from API.apis.sms_verify.aliyun.utils import send_verify_code as aliyun_send_verify_code
 from API.common.credential_crypto import hash_token
 from API.common.security_guard import code_fail_exhausted
-from API.models import AuthMethod, EmailTemplate, User, UserApp, UserToken, UserVerifyRecord
+from API.models import (AuthMethod, EmailTemplate, User, UserApp, UserLoginLog,
+                       UserToken, UserVerifyRecord)
+
+logger = logging.getLogger(__name__)
 
 # 系统分配账号长度范围
 ACCOUNT_MIN_LEN = 6
@@ -148,13 +152,14 @@ def is_method_enabled(method):
 def get_available_methods():
     """公开配置：当前可用的注册/登录方式（客户端据此渲染入口）
 
-    :return: {'methods': ['email', 'phone'], 'username': True}
-        methods  - 后台启用的验证方式列表（空列表 = 仅用户名+密码）
-        username - 用户名+密码是否可用（永远为 True，作为兜底登录方式）
+    :return: {'methods': ['email', 'phone'], 'username': False}
+        methods  - 后台启用的验证方式列表（邮箱/手机号，即注册与验证码登录的可用方式）
+        username - 用户名+密码注册是否可用：**已停用，恒为 False**（字段保留以免接入方
+                   读取时拿到 undefined；客户端应据此隐藏"用户名注册"入口）
     """
     return {
         'methods': get_enabled_methods(),
-        'username': True,
+        'username': False,
     }
 
 
@@ -240,7 +245,8 @@ def _render_email_template(template_type, context):
 # ==================== 验证码生成与发送 ====================
 
 def _issue_verify_record(user, method, credential, base_url='', scene=SCENE_REGISTER,
-                         username='', password_hash='', with_link=True, register_batch=None):
+                         username='', password_hash='', with_link=True, register_batch=None,
+                         app=None):
     """生成验证记录并发送验证内容（邮箱发验证邮件 / 手机号发短信验证码）
 
     手机号验证码由阿里云 SendSmsVerifyCode 生成，服务端以 return_verify_code=true
@@ -253,6 +259,7 @@ def _issue_verify_record(user, method, credential, base_url='', scene=SCENE_REGI
     :param register_batch: 两步注册批次（同一次注册请求共享，完成注册时合并为同一账号）
     :param base_url: 站点基础地址（scheme://host，由视图层从当前请求自动获取，
                      不依赖配置，避免更换域名时手动修改），仅用于拼接邮箱激活链接
+    :param app: 发起该次验证的接入项目（UserApp），落库留痕，供超管追溯注册来源项目
 
     :return: (True, None) 或 (False, err_msg)
     """
@@ -264,7 +271,7 @@ def _issue_verify_record(user, method, credential, base_url='', scene=SCENE_REGI
         token = secrets.token_hex(16)  # 链接明文令牌（仅邮件中一次性携带）
         try:
             UserVerifyRecord.objects.create(
-                user=user, scene=scene, register_batch=register_batch,
+                user=user, app=app, scene=scene, register_batch=register_batch,
                 username=username, password_hash=password_hash,
                 type=method, credential=credential,
                 code=code, token=hash_token(token), expire_time=expire_time, is_used=False,
@@ -296,7 +303,7 @@ def _issue_verify_record(user, method, credential, base_url='', scene=SCENE_REGI
         code = generate_email_code()
         try:
             record = UserVerifyRecord.objects.create(
-                user=user, scene=scene, register_batch=register_batch,
+                user=user, app=app, scene=scene, register_batch=register_batch,
                 username=username, password_hash=password_hash,
                 type=method, credential=credential,
                 code=code, token=None, expire_time=expire_time, is_used=False,
@@ -347,18 +354,18 @@ def _has_pending_register(method, credential) -> bool:
 # ==================== 注册 ====================
 
 def register_user(app, username, email, phone, password, base_url=''):
-    """注册
+    """注册（只支持邮箱 / 手机号两步注册）
 
     - 提供 email / phone → 两步注册第一步：校验通过后**发送验证码并暂存注册意向（不建号）**，
       客户端随后调用 verify/email 或 verify/phone 校验验证码，**通过后才创建账号、发放账号**
-    - 仅提供 username → 用户名 + 密码直接注册（无验证码场景，立即建号）
+    - **只提供 username 的「用户名+密码注册」已停用**，直接返回业务规则限制错误（30001）。
+      username 仍可作为选填项随邮箱/手机号一起提交，只用于展示，不作为注册凭证
     邮箱/手机号方式启用与否由 AuthMethod 配置控制（后台开关）。
     base_url：站点基础地址（scheme://host），由视图层从当前请求自动获取，
     用于拼接邮箱验证激活链接。
 
     :return: (True, data) 或 (False, err_msg)
         - 两步注册：{username?, email?/phone?, need_verify: True, verify_email_sent?/verify_phone_sent?}
-        - 纯用户名注册：{user_id, account, username}
     """
     username = (username or '').strip()
     raw_email = (email or '').strip().lower()
@@ -367,8 +374,12 @@ def register_user(app, username, email, phone, password, base_url=''):
     phone = _validate_phone(phone)
     password = (password or '').strip()
 
-    if not username and not email and not phone:
-        return False, '参数缺失: username(用户名) / email(邮箱) / phone(手机号) 至少提供一个'
+    # 注册凭证只认邮箱 / 手机号，username 只是可选展示名（判断一律用原始入参，
+    # 否则邮箱格式非法时会被当成"没填"而给出误导性的错误）
+    if not username and not raw_email and not raw_phone:
+        return False, '参数缺失: email(邮箱) / phone(手机号) 至少提供一个'
+    if not raw_email and not raw_phone:
+        return False, '业务规则限制: 已不再支持用户名+密码注册，请使用邮箱或手机号注册'
     if raw_email and not email:
         # 显式提供了邮箱但格式非法：拒绝而非静默降级，避免用户误以为已绑定邮箱
         return False, '参数格式错误: email 邮箱格式不正确'
@@ -393,35 +404,6 @@ def register_user(app, username, email, phone, password, base_url=''):
     if phone and _has_pending_register(METHOD_PHONE, phone):
         return False, '该手机号已发起注册，请先完成验证'
 
-    # ── 纯用户名 + 密码：无验证码场景，直接创建账号（保持现状） ──
-    if not email and not phone:
-        for _ in range(3):
-            account = generate_account()
-            if not account:
-                return False, '系统繁忙: 账号生成失败，请重试'
-            try:
-                user = User.objects.create(
-                    account=account,
-                    username=username,
-                    password=make_password(password),
-                    email=None,
-                    email_verified=False,
-                    phone=None,
-                    phone_verified=False,
-                    status=True,
-                )
-            except IntegrityError:
-                # 并发下唯一冲突重试（纯用户名场景仅可能账号冲突）
-                continue
-            except Exception as e:
-                return False, f'注册失败: {e}'
-            return True, {
-                'user_id': str(user.id),
-                'account': user.account,
-                'username': user.username,
-            }
-        return False, '注册失败: 账号唯一冲突，请重试'
-
     # ── 两步注册第一步：发送验证码，暂存注册意向（不建号，账号待校验通过后发放） ──
     password_hash = make_password(password)
     register_batch = str(uuid.uuid4())  # 同一次注册请求（可能同时绑定邮箱+手机号）共享批次
@@ -432,6 +414,7 @@ def register_user(app, username, email, phone, password, base_url=''):
         sent, _ = _issue_verify_record(
             None, METHOD_EMAIL, email, base_url, scene=SCENE_REGISTER,
             username=username, password_hash=password_hash, register_batch=register_batch,
+            app=app,
         )
         data['email'] = email
         data['verify_email_sent'] = sent
@@ -441,43 +424,53 @@ def register_user(app, username, email, phone, password, base_url=''):
         sent, _ = _issue_verify_record(
             None, METHOD_PHONE, phone, base_url, scene=SCENE_REGISTER,
             username=username, password_hash=password_hash, register_batch=register_batch,
+            app=app,
         )
         data['phone'] = phone
         data['verify_phone_sent'] = sent
-    # 走到这里 email/phone 至少有一个非空（纯用户名注册在上面已直接建号返回）
+    # 走到这里 email/phone 至少有一个非空（只给用户名的请求上面已按业务规则限制拒绝）
     data['need_verify'] = True
     return True, data
 
 
 # ==================== 登录 ====================
 
-def login_user(app, account, email, phone, password, code=''):
+def login_user(app, account, email, phone, password, code='', ip='', user_agent=''):
     """登录
 
-    - email / phone → 验证码登录（免密码）：先经 send_login_code 下发验证码，
-      校验通过后签发绑定该项目的 Token（凭证未验证的存量用户同时完成验证）
-    - account → 账号 + 密码登录（永远可用）
+    两种方式，按是否携带 code 区分：
+
+    - **密码登录**（不带 code）：account / email / phone 任一标识 + password，
+      邮箱与手机号需已注册（标识解析见 _find_user_by_identifier）
+    - **验证码登录**（带 code，免密码）：email 或 phone + code，
+      先经 send_login_code 下发验证码，校验通过后签发绑定该项目的 Token
+      （凭证未验证的存量用户同时完成验证）
+
+    :param ip: 客户端 IP，写入登录日志（超管用户管理页可见）
+    :param user_agent: 客户端 User-Agent，写入登录日志
 
     :return: (True, {user_id, account, username, email?, phone?, token, expire_time})
              或 (False, err_msg)
     """
     account = (account or '').strip()
+    raw_email = (email or '').strip().lower()
     email = _validate_email(email)
+    raw_phone = (phone or '').strip()
     phone = _validate_phone(phone)
     password = (password or '').strip()
     code = (code or '').strip()
 
-    if not account and not email and not phone:
+    if not account and not raw_email and not raw_phone:
         return False, '参数缺失: account(账号) / email(邮箱) / phone(手机号) 至少提供一个'
 
     # ── 验证码登录（邮箱 / 手机号，免密码） ──
-    if email or phone:
+    if code:
         method = METHOD_EMAIL if email else METHOD_PHONE
         credential = email or phone
+        if not credential:
+            return False, '参数缺失: 验证码登录需提供 email(邮箱) 或 phone(手机号)'
         if not is_method_enabled(method):
             return False, f'{METHOD_NAMES[method]}登录方式未启用'
-        if not code:
-            return False, f'参数缺失: code(验证码)，请先通过登录发码接口获取'
 
         try:
             if method == METHOD_EMAIL:
@@ -523,29 +516,30 @@ def login_user(app, account, email, phone, password, code=''):
         except Exception as e:
             return False, f'登录失败: {e}'
 
-        return _issue_login_token(app, user)
+        return _issue_login_token(app, user, UserLoginLog.METHOD_CODE, ip, user_agent)
 
-    # ── 账号 + 密码登录 ──
+    # ── 密码登录：账号 / 邮箱 / 手机号 + 密码 ──
     if not password:
-        return False, '参数缺失: password(密码)'
+        return False, '参数缺失: password(密码)，或提供 code(验证码) 走验证码登录'
     try:
-        user = User.objects.get(account=account)
-    except User.DoesNotExist:
-        # 不暴露凭证是否存在，统一提示
-        return False, '账号或密码错误'
+        user = _find_user_by_identifier(account, email, phone)
     except Exception as e:
         return False, f'登录失败: {e}'
+
+    if user is None:
+        # 不暴露凭证是否存在，统一提示
+        return False, '账号或密码错误'
 
     if not user.status:
         return False, '账号已被封禁'
     # 先校验密码再校验凭证状态：错误密码时统一提示，不向攻击者泄露凭证是否已注册
     if not check_password(password, user.password):
         return False, '账号或密码错误'
-    return _issue_login_token(app, user)
+    return _issue_login_token(app, user, UserLoginLog.METHOD_PASSWORD, ip, user_agent)
 
 
-def _issue_login_token(app, user):
-    """签发绑定指定项目的 Token，返回登录成功数据"""
+def _issue_login_token(app, user, method, ip='', user_agent=''):
+    """签发绑定指定项目的 Token，写入登录日志，返回登录成功数据"""
     # 签发绑定项目的 Token：客户端仅在此处拿到一次明文，落库存 SHA-256 哈希（S-06）
     raw_token = secrets.token_hex(32)
     token_hash = hash_token(raw_token)
@@ -560,6 +554,16 @@ def _issue_login_token(app, user):
     except Exception as e:
         return False, f'登录失败: {e}'
 
+    # 登录日志：只增不删的「登录事实」（退出登录 / 重置密码不会清除它）。
+    # 属辅助审计数据，写入失败不影响本次登录成功。
+    try:
+        UserLoginLog.objects.create(
+            user=user, app=app, method=method,
+            ip=(ip or '')[:45], user_agent=(user_agent or '')[:255],
+        )
+    except Exception:
+        logger.exception('写入登录日志失败: user=%s app=%s', user.pk, app.app_id)
+
     data = {
         'user_id': str(user.id),
         'account': user.account,
@@ -572,6 +576,28 @@ def _issue_login_token(app, user):
     if user.phone:
         data['phone'] = user.phone
     return True, data
+
+
+def _find_user_by_identifier(account, email, phone):
+    """密码登录的标识解析：账号 → 邮箱 → 手机号 依次匹配，找不到返回 None
+
+    三种标识都可以配密码登录（见 login_user）。前端的账号输入框只有一个，用户填的
+    可能是邮箱或手机号，所以传成 account 时也会再按邮箱/手机号各试一次；昵称
+    （username）刻意不参与匹配 —— 注册成功后发放的是系统账号，昵称只用于展示。
+    邮箱统一按小写匹配（注册时已归一化为小写）。
+    """
+    candidates = []
+    if account:
+        candidates += [('account', account), ('email', account.lower()), ('phone', account)]
+    if email:
+        candidates.append(('email', email))
+    if phone:
+        candidates.append(('phone', phone))
+    for field, value in candidates:
+        user = User.objects.filter(**{field: value}).first()
+        if user:
+            return user
+    return None
 
 
 # ==================== 验证码发送与核验 ====================
@@ -620,7 +646,7 @@ def send_verify_code(app, method, credential, base_url=''):
     ok, msg = _issue_verify_record(
         None, method, credential, base_url, scene=SCENE_REGISTER,
         username=verify.username, password_hash=verify.password_hash,
-        register_batch=verify.register_batch,
+        register_batch=verify.register_batch, app=app,
     )
     if not ok:
         return False, msg
@@ -853,7 +879,8 @@ def send_login_code(app, method, credential):
     if not _cooldown_ok(method, credential):
         return False, f'发送过于频繁，请 {VERIFY_RESEND_COOLDOWN} 秒后再试'
 
-    ok, msg = _issue_verify_record(user, method, credential, scene=SCENE_LOGIN, with_link=False)
+    ok, msg = _issue_verify_record(user, method, credential, scene=SCENE_LOGIN,
+                                   with_link=False, app=app)
     if not ok:
         return False, msg
     return True, None
@@ -905,7 +932,8 @@ def send_reset_code(app, method, credential, base_url=''):
     if not _cooldown_ok(method, credential):
         return False, f'发送过于频繁，请 {VERIFY_RESEND_COOLDOWN} 秒后再试'
 
-    ok, msg = _issue_verify_record(user, method, credential, scene=SCENE_RESET, with_link=False)
+    ok, msg = _issue_verify_record(user, method, credential, scene=SCENE_RESET,
+                                   with_link=False, app=app)
     if not ok:
         return False, msg
     return True, None
@@ -1059,6 +1087,134 @@ def get_user_info(app, token):
         data['phone'] = record.user.phone
         data['phone_verified'] = record.user.phone_verified
     return True, data
+
+
+# ==================== 超管控制台：用户管理（建号 / 改资料 / 重置密码） ====================
+# 以下三个函数供超管控制台（/console/users/）调用：校验口径与前台注册/重置完全一致
+# （复用同一批 _validate_* / _check_password_policy），仅「把凭证直接标记为已验证」
+# 这一点是后台特有的——后台无法走发验证码/点激活链接的两步流程。
+
+def admin_create_user(email, phone, password, username=''):
+    """超管后台建号（邮箱或手机号 + 密码）
+
+    凭证直接标记为已验证，建号后即可用「账号 / 邮箱 / 手机号 + 密码」登录；
+    账号仍由系统随机分配（与前台注册一致，不可自定义）。
+
+    :return: (True, User) 或 (False, err_msg)
+    """
+    username = (username or '').strip()
+    raw_email = (email or '').strip()
+    raw_phone = (phone or '').strip()
+    email = _validate_email(raw_email)
+    phone = _validate_phone(raw_phone)
+    password = (password or '').strip()
+
+    if not raw_email and not raw_phone:
+        return False, '参数缺失: email(邮箱) / phone(手机号) 至少提供一个'
+    if raw_email and not email:
+        return False, '参数格式错误: email 邮箱格式不正确'
+    if raw_phone and not phone:
+        return False, '参数格式错误: phone 必须为 11 位手机号'
+    if username and len(username) > USERNAME_MAX_LEN:
+        return False, f'参数格式错误: username 长度不能超过 {USERNAME_MAX_LEN} 字符'
+    pwd_err = _check_password_policy(password)
+    if pwd_err:
+        return False, pwd_err
+    if email and User.objects.filter(email=email).exists():
+        return False, '该邮箱已被注册'
+    if phone and User.objects.filter(phone=phone).exists():
+        return False, '该手机号已被注册'
+
+    account = generate_account()
+    if not account:
+        return False, '系统繁忙: 账号生成失败，请重试'
+    try:
+        user = User.objects.create(
+            account=account,
+            username=username,
+            password=make_password(password),
+            email=email or None,
+            email_verified=bool(email),
+            phone=phone or None,
+            phone_verified=bool(phone),
+            status=True,
+        )
+    except IntegrityError:
+        return False, '创建失败: 凭证唯一冲突，请重试'
+    return True, user
+
+
+def admin_update_user(user, username=None, email=None, phone=None):
+    """超管后台改资料：用户名 / 邮箱 / 手机号
+
+    约定：**空值表示不修改该字段**（避免误清空唯一登录凭证把用户锁在门外）。
+    邮箱/手机号变更后，对应的「已验证」会被重置为 False——新凭证需用户重新验证
+    才能用于登录（账号/密码登录不受影响）。
+
+    :return: (True, changed_fields) 或 (False, err_msg)
+    """
+    username = (username or '').strip()
+    raw_email = (email or '').strip()
+    raw_phone = (phone or '').strip()
+    changed = []
+
+    if username and username != user.username:
+        if len(username) > USERNAME_MAX_LEN:
+            return False, f'参数格式错误: username 长度不能超过 {USERNAME_MAX_LEN} 字符'
+        user.username = username
+        changed.append('username')
+
+    if raw_email:
+        email = _validate_email(raw_email)
+        if not email:
+            return False, '参数格式错误: email 邮箱格式不正确'
+        if email != user.email:
+            if User.objects.filter(email=email).exclude(pk=user.pk).exists():
+                return False, '该邮箱已被其他用户绑定'
+            user.email = email
+            user.email_verified = False
+            changed += ['email', 'email_verified']
+
+    if raw_phone:
+        phone = _validate_phone(raw_phone)
+        if not phone:
+            return False, '参数格式错误: phone 必须为 11 位手机号'
+        if phone != user.phone:
+            if User.objects.filter(phone=phone).exclude(pk=user.pk).exists():
+                return False, '该手机号已被其他用户绑定'
+            user.phone = phone
+            user.phone_verified = False
+            changed += ['phone', 'phone_verified']
+
+    if not changed:
+        return True, []
+    try:
+        user.save(update_fields=changed + ['updated_time'])
+    except IntegrityError:
+        return False, '保存失败: 凭证唯一冲突，请重试'
+    return True, changed
+
+
+def admin_reset_password(user, new_password):
+    """超管后台重置密码（不发验证码）
+
+    与「忘记密码」流程同一业务规则：重置成功后作废该用户**全部项目**的 Token，
+    强制所有已登录设备重新登录（登录日志不受影响，历史登录次数仍可查）。
+
+    :return: (True, None) 或 (False, err_msg)
+    """
+    new_password = (new_password or '').strip()
+    pwd_err = _check_password_policy(new_password)
+    if pwd_err:
+        return False, pwd_err
+    try:
+        with transaction.atomic():
+            user.password = make_password(new_password)
+            user.save(update_fields=['password', 'updated_time'])
+            UserToken.objects.filter(user=user).delete()
+    except Exception as e:
+        return False, f'重置失败: {e}'
+    return True, None
 
 
 def verify_token(app, token):

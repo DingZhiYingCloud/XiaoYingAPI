@@ -1,9 +1,9 @@
 """用户中心 - 用户 API 视图
 
 接口清单（业务接口 POST + form-urlencoded，需项目签名；标注「公开」的除外）：
-    POST /api/user_center/users/register              注册（两步注册第一步 / 纯用户名直接建号）
+    POST /api/user_center/users/register              注册（邮箱/手机号两步注册第一步）
     POST /api/user_center/users/login/send            发送登录验证码（邮箱/手机号验证码登录第一步）
-    POST /api/user_center/users/login                 登录（邮箱/手机号验证码登录 / 账号+密码）
+    POST /api/user_center/users/login                 登录（账号/邮箱/手机号+密码，或邮箱/手机号+验证码）
     POST /api/user_center/users/password/send          发送重置密码验证码（忘记密码第一步）
     POST /api/user_center/users/password/reset         重置密码（校验验证码后改密，并作废该用户全部 Token）
     POST /api/user_center/users/logout                退出（删除 Token）
@@ -82,12 +82,13 @@ def _base_url(request):
 
 @require_http_methods(['POST'])
 def register_view(request):
-    """用户注册
+    """用户注册（只支持邮箱 / 手机号）
 
     表单参数：username(选填), email(选填), phone(选填), password + 签名参数(app_id/timestamp/nonce/sign)
     - 提供 email / phone → 两步注册第一步：校验通过后仅**发送验证码并暂存注册意向（不建号）**，
       客户端随后调用 verify/email 或 verify/phone 校验验证码，**通过后才创建账号、发放账号**
-    - 仅提供 username → 用户名 + 密码直接注册（立即建号）
+    - 只提供 username（即"用户名+密码注册"）**已停用** → 返回 30001 业务规则限制；
+      username 仍可作为选填项随邮箱/手机号一起提交，只用于展示，不作为注册凭证
     邮箱/手机号方式是否可用由后台 AuthMethod 配置控制。
     """
     params = _parse_params(request)
@@ -191,10 +192,12 @@ def reset_password_view(request):
 def login_view(request):
     """用户登录
 
-    表单参数：
-    - 邮箱/手机号登录：email 或 phone, code(验证码) + 签名参数(app_id/timestamp/nonce/sign)，
-      验证码免密码，校验通过后才签发 Token（需先调用 login/send 获取验证码）
-    - 账号登录：account, password + 签名参数(app_id/timestamp/nonce/sign)
+    表单参数（两种方式按是否携带 code 区分）：
+    - 密码登录（不带 code）：account / email / phone 任一标识 + password
+      + 签名参数(app_id/timestamp/nonce/sign)；邮箱与手机号需已注册
+    - 验证码登录（带 code，免密码）：email 或 phone, code(验证码)
+      + 签名参数(app_id/timestamp/nonce/sign)，校验通过后才签发 Token
+      （需先调用 login/send 获取验证码）
     成功返回绑定该项目的 Token。
 
     防爆破（S-03 整改）：同一「项目+凭证+IP」连续失败 5 次锁定 15 分钟，
@@ -224,6 +227,8 @@ def login_view(request):
         params.get('phone'),
         params.get('password'),
         params.get('code', ''),
+        ip=_client_ip(request),
+        user_agent=request.META.get('HTTP_USER_AGENT', ''),
     )
     if not ok:
         # 参数问题返回参数码；认证失败（账号/密码错误、封禁、验证码错误等）统一 20011，不暴露细节
@@ -297,9 +302,9 @@ def verify_view(request):
 def methods_view(request):
     """获取当前可用的注册/登录方式（公开接口，免签名）
 
-    返回 data: {methods: ['email', 'phone'], username: true}
-        methods  - 后台启用的验证方式列表（空列表 = 仅用户名+密码）
-        username - 用户名+密码是否可用（永远为 true，作为兜底登录方式）
+    返回 data: {methods: ['email', 'phone'], username: false}
+        methods  - 后台启用的验证方式列表（邮箱/手机号，即注册与验证码登录的可用方式）
+        username - 用户名+密码注册是否可用：已停用，恒为 false；客户端据此隐藏该入口
     """
     return _json_response(StatusCode.SUCCESS, data=utils.get_available_methods(), msg='查询成功')
 

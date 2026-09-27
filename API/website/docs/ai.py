@@ -1,6 +1,6 @@
 """AI 服务 - 接口文档与在线调试数据
 
-数据与 API/apis/ai/ 实际实现对齐（分类树 /api/ai/ 为需签名）：
+数据与 API/apis/ai/ 实际实现对齐（服务策略 /api/ai/ 默认需签名）：
 - BuiltInModel：内置模型能力，当前为 DeepSeek 对话（支持多轮/系统提示词/流式/前缀续写）。
 后续接入更多模型厂商时在 channels 追加即可。
 """
@@ -26,6 +26,15 @@ SERVICE = ServiceSpec(
     name='AI 服务',
     prefix='/api/ai/',
     summary='内置模型能力，开箱即用的 AI 对话接口。当前接入 DeepSeek 内置模型（含多轮对话、流式、前缀续写）。',
+    keywords='AI API,免费AI接口,大模型API,AI对话接口,DeepSeek API',
+    intro=[
+        'AI 服务提供开箱即用的对话能力，当前接入 DeepSeek 内置模型，无需自行申请和配置模型 API Key '
+        '即可直接调用，适合做内容生成、摘要、问答等功能的快速验证。',
+        '同一个接口覆盖单轮与多轮对话：传 content 发起简单单轮问答，传 messages（JSON 数组，含 role 与 content）'
+        '则进行多轮对话；同时支持系统提示词、流式输出与前缀续写，不传 api_key 时使用平台内置的模型密钥。',
+        '本服务需项目签名。开启流式（stream=true）后返回的是逐段内容，与普通 JSON 响应的呈现方式不同，'
+        '在文档页在线调试时可直接看到。',
+    ],
     channels=[
         ChannelSpec(
             slug='builtin_model',

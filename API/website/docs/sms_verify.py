@@ -1,6 +1,6 @@
 """短信验证服务 - 接口文档与在线调试数据
 
-数据与 API/apis/sms_verify/ 实际实现对齐（分类树 /api/sms_verify/ 为需签名）：
+数据与 API/apis/sms_verify/ 实际实现对齐（服务策略 /api/sms_verify/ 默认需签名）：
 - 阿里云 aliyun：阿里云号码认证（Dypnsapi）发送/核验短信验证码，两个 POST 接口。
 后续接入更多短信渠道（如三网、国际短信等）时在 channels 追加即可。
 """
@@ -38,6 +38,14 @@ SERVICE = ServiceSpec(
     name='短信验证',
     prefix='/api/sms_verify/',
     summary='短信验证码能力：阿里云号码认证发送与核验，服务端生成/校验验证码，防短信轰炸。当前接入阿里云线路。',
+    keywords='短信验证码API,短信接口,手机验证码,短信认证',
+    intro=[
+        '短信验证服务基于阿里云号码认证能力，由服务端完成验证码的生成、下发与核验：'
+        '先调发送接口向手机号下发验证码，用户输入后再调核验接口判断是否正确或已过期。',
+        '接入方可自定义验证码长度、有效时长、重复发送策略与频控间隔（默认 60 秒），用于防止短信被刷；'
+        '核验在阿里云侧完成，调用方无需自己存储和比对验证码。',
+        '全部接口需项目签名，且请求体为 application/x-www-form-urlencoded 表单，不使用 JSON body。',
+    ],
     channels=[
         ChannelSpec(
             slug='aliyun',

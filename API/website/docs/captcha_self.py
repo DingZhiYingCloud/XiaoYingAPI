@@ -1,6 +1,6 @@
 """自研图形验证码 - 接口文档与在线调试数据
 
-数据与 API/apis/captcha_self/ 实际实现对齐（分类树 /api/captcha_self/ 为开放，无需签名）：
+数据与 API/apis/captcha_self/ 实际实现对齐（服务策略 /api/captcha_self/ 为开放，无需签名）：
 - self：自研生成引擎（Pillow 绘制），支持字符图片 / 算术两类，服务端生成 + 一次性校验。
 后续新增验证码类型（如滑块）时在 channels / endpoints 追加即可。
 """
@@ -11,6 +11,14 @@ SERVICE = ServiceSpec(
     name='自研图形验证码',
     prefix='/api/captcha_self/',
     summary='自研图形验证码（字符图片 / 算术），Pillow 本地绘制、无第三方依赖，答案一次性校验。',
+    keywords='图形验证码API,字符验证码,算术验证码',
+    intro=[
+        '自研图形验证码不依赖任何第三方服务，由平台用 Pillow 在本地绘制字符图片或算术题，'
+        '适合对数据外发敏感、或希望零成本自建验证码的场景。',
+        '接入为两步：先调用生成接口拿到 captcha_id 与 base64 图片（带有效期），用户作答后调用校验接口提交答案。'
+        '答案是「一次性」的——无论校验成功还是失败都会立即失效，失败后需重新生成再试。',
+        '该线路为开放接口，无需项目签名；生产环境建议同时限制单 IP、单账号的校验频率。',
+    ],
     channels=[
         ChannelSpec(
             slug='self',

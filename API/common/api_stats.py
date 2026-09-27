@@ -1,8 +1,11 @@
-"""API 调用统计：进程内缓冲 + 批量写入（按天预聚合）
+"""API 调用统计：进程内缓冲 + 批量写入（按天 / 按小时双粒度预聚合）
 
 设计要点：
-1. **不落明细**：每次调用只在进程内按「日期 + 端点 + 项目 + 状态码」累加，满
-   FLUSH_THRESHOLD 条或每 FLUSH_INTERVAL_SECONDS 秒批量写库，避免每个请求都写 SQLite。
+1. **不落明细**：每次调用只在进程内累加，满 FLUSH_THRESHOLD 条或每 FLUSH_INTERVAL_SECONDS 秒
+   批量写库，避免每个请求都写 SQLite。同时累加两个粒度：
+   - 按天（ApiCallStat，全历史）：键 = 日期 + 端点 + 项目 + 状态码
+   - 按小时（ApiCallStatHour，保留近 HOUR_RETENTION_DAYS 天）：键 = 上述 + 小时
+   两者同一批落库、口径一致，因此保留期内「按小时汇总」与「按天合计」必然相等。
 2. **多进程安全**：线上 uWSGI 多 worker 各自持有缓冲，落库用「先累加更新、无则插入」，
    并发插入冲突时退化为累加更新，因此各进程的数据最终都累加到同一行。
 3. **重启最多少量数据**：缓冲未刷完时进程退出，最多丢失一个刷新窗口内的调用（已确认可接受）；
@@ -30,11 +33,11 @@ from django.db.models import F, Value
 from django.db.models.functions import Greatest
 from django.utils import timezone
 
-from API.models.Statistics.api_call_stat import NO_APP, ApiCallStat
+from API.models.Statistics.api_call_stat import NO_APP, ApiCallStat, ApiCallStatHour
 
 logger = logging.getLogger('api.stats')
 
-# 缓冲落库策略：满 200 个聚合键 或 每 5 秒 触发一次
+# 缓冲落库策略：满 200 个聚合键 或 每 5 秒 触发一次（任一粒度达到即落库）
 FLUSH_THRESHOLD = 200
 FLUSH_INTERVAL_SECONDS = 5
 
@@ -45,8 +48,13 @@ EXCLUDED_PREFIXES = ('/api/statistics/',)
 # （大响应体基本都是成功响应，不值得为取 code 付出解析成本）
 MAX_PARSE_BYTES = 64 * 1024
 
-# key = (stat_date, path, app_id, status_code) -> [调用次数, 总耗时, 最大耗时]
+# 两个粒度的聚合键字段顺序（与缓冲区 key 一一对应）
+_DAY_KEY_FIELDS = ('stat_date', 'path', 'app_id', 'status_code')
+_HOUR_KEY_FIELDS = ('stat_date', 'stat_hour', 'path', 'app_id', 'status_code')
+
+# key = 聚合键元组 -> [调用次数, 总耗时, 最大耗时]
 _buffer = defaultdict(lambda: [0, 0, 0])
+_hour_buffer = defaultdict(lambda: [0, 0, 0])
 _lock = threading.Lock()
 _last_flush = time.monotonic()
 _flush_thread = None
@@ -102,7 +110,9 @@ def business_code(response):
 
 
 def record(path, cost_ms, status_code, app_id=NO_APP):
-    """记录一次 API 调用（进程内聚合，按需批量落库）
+    """记录一次调用（进程内聚合，按需批量落库）
+
+    同时累加按天与按小时两个粒度；任一缓冲达到阈值即触发落库。
 
     :param path: 请求路径
     :param cost_ms: 本次请求耗时（毫秒）
@@ -113,42 +123,61 @@ def record(path, cost_ms, status_code, app_id=NO_APP):
         return
 
     cost = max(0, int(cost_ms))
-    key = (timezone.localdate(), path, app_id or NO_APP, int(status_code))
+    now = timezone.localtime()          # 本地时间（TIME_ZONE=Asia/Shanghai）
+    stat_date = now.date()
+    app_id = app_id or NO_APP
+    code = int(status_code)
 
     _ensure_flush_thread()
     with _lock:
-        item = _buffer[key]
-        item[0] += 1
-        item[1] += cost
-        if cost > item[2]:
-            item[2] = cost
+        _bump(_buffer[(stat_date, path, app_id, code)], cost)
+        _bump(_hour_buffer[(stat_date, now.hour, path, app_id, code)], cost)
         due = (len(_buffer) >= FLUSH_THRESHOLD
+               or len(_hour_buffer) >= FLUSH_THRESHOLD
                or (time.monotonic() - _last_flush) >= FLUSH_INTERVAL_SECONDS)
     if due:
         flush()
 
 
+def _bump(item, cost):
+    """把一次调用的次数与耗时累加进缓冲项（调用方需持有 _lock）"""
+    item[0] += 1
+    item[1] += cost
+    if cost > item[2]:
+        item[2] = cost
+
+
 def flush():
-    """把当前缓冲批量写入数据库（空缓冲直接返回）"""
+    """把两个粒度的缓冲都写入数据库（各自独立处理，互不影响）"""
     global _last_flush
     with _lock:
-        batch = list(_buffer.items())
+        day_batch = list(_buffer.items())
         _buffer.clear()
+        hour_batch = list(_hour_buffer.items())
+        _hour_buffer.clear()
         _last_flush = time.monotonic()
+    _flush_one(ApiCallStat, _DAY_KEY_FIELDS, day_batch, '按天')
+    _flush_one(ApiCallStatHour, _HOUR_KEY_FIELDS, hour_batch, '按小时')
+
+
+def _flush_one(model, key_fields, batch, label):
+    """写一批聚合数据；失败只记日志丢弃（统计失败绝不冒泡到业务请求）"""
     if not batch:
         return
     try:
-        _write_batch(batch)
+        _write_batch(model, key_fields, batch)
     except Exception:
-        # 统计失败绝不能影响业务请求：记录日志后丢弃本批
-        logger.exception('API 调用统计写入失败，本批 %d 个聚合键被丢弃', len(batch))
+        logger.exception('API 调用统计（%s）写入失败，本批 %d 个聚合键被丢弃', label, len(batch))
 
 
-def _accumulate(stat_date, path, app_id, status_code, count, cost_sum, cost_max, now):
+def _lookup(key_fields, key):
+    """聚合键元组 -> ORM 查询/创建用的字段字典"""
+    return dict(zip(key_fields, key))
+
+
+def _accumulate(model, lookup, count, cost_sum, cost_max, now):
     """按聚合维度累加更新一行，返回受影响行数（0 表示该行还不存在）"""
-    return ApiCallStat.objects.filter(
-        stat_date=stat_date, path=path, app_id=app_id, status_code=status_code,
-    ).update(
+    return model.objects.filter(**lookup).update(
         call_count=F('call_count') + count,
         cost_sum_ms=F('cost_sum_ms') + cost_sum,
         cost_max_ms=Greatest(F('cost_max_ms'), Value(cost_max)),
@@ -156,22 +185,21 @@ def _accumulate(stat_date, path, app_id, status_code, count, cost_sum, cost_max,
     )
 
 
-def _write_batch(batch):
+def _write_batch(model, key_fields, batch):
     """逐键写库：已存在则累加，不存在则新建"""
     now = timezone.now()
-    for (stat_date, path, app_id, status_code), (count, cost_sum, cost_max) in batch:
-        args = (stat_date, path, app_id, status_code, count, cost_sum, cost_max, now)
-        if _accumulate(*args):
+    for key, (count, cost_sum, cost_max) in batch:
+        lookup = _lookup(key_fields, key)
+        if _accumulate(model, lookup, count, cost_sum, cost_max, now):
             continue
         try:
-            ApiCallStat.objects.create(
-                stat_date=stat_date, path=path, app_id=app_id, status_code=status_code,
-                service=service_of(path), call_count=count,
-                cost_sum_ms=cost_sum, cost_max_ms=cost_max,
+            model.objects.create(
+                **lookup, service=service_of(lookup['path']),
+                call_count=count, cost_sum_ms=cost_sum, cost_max_ms=cost_max,
             )
         except IntegrityError:
             # 并发下已由其它进程插入同一聚合键：退化为累加更新
-            _accumulate(*args)
+            _accumulate(model, lookup, count, cost_sum, cost_max, now)
 
 
 def _flush_loop():

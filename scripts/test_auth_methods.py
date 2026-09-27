@@ -273,9 +273,9 @@ def round1():
     r = _verify_phone(app, phone, code)
     _check('验证码一次性-重复校验失败', not _is_success(r), f'code={r.get("code")} msg={r.get("msg")}')
 
-    # 7. 未获取登录码直接登录 → 参数缺失
-    r = _login(app, phone=phone)
-    _check('未获取登录码直接登录被拒', r.get('code') == 20001, f'code={r.get("code")}')
+    # 7. 既未提供密码、也未提供验证码 → 参数缺失（密码登录与验证码登录都不能成立）
+    r = _login(app, phone=phone, password=None)
+    _check('未提供密码与验证码-登录被拒(20001)', r.get('code') == 20001, f'code={r.get("code")}')
 
     # 8. 登录发码 → 校验 → 签发 Token
     _expire_cooldown('phone', phone)  # 注册发码在 60 秒冷却内，先重置冷却
@@ -301,6 +301,11 @@ def round1():
     _check('info 返回 phone_verified=True', (r.get('data') or {}).get('phone_verified') is True)
     r = _verify_token(app, token)
     _check('verify 返回 phone_verified=True', (r.get('data') or {}).get('phone_verified') is True)
+
+    # 11. 手机号 + 密码登录（密码登录的标识也可以是手机号）
+    r = _login(app, phone=phone, password=PASS)
+    _check('手机号+密码登录成功', _is_success(r), f'code={r.get("code")} msg={r.get("msg")}')
+    _check('手机号+密码登录返回同一 user_id', (r.get('data') or {}).get('user_id') == uid)
 
 
 # ───────────────────────── 第二轮：邮箱两步注册闭环 ─────────────────────────
@@ -335,9 +340,14 @@ def round2():
         # 自行生成已知明文并落库对应哈希，再以明文走公开 GET 激活链路
         raw_link = secrets.token_hex(16)
         UserVerifyRecord.objects.filter(pk=link.pk).update(token=hash_token(raw_link))
-        r = _response(Client().get(f'{BASE}/users/verify/email', {'token': raw_link}))
-        _check('激活链接校验后建号成功', _is_success(r), f'code={r.get("code")} msg={r.get("msg")}')
-        _check('链接建号返回 account', bool((r.get('data') or {}).get('account')))
+        # 激活链接由浏览器直接访问，接口渲染友好 HTML 结果页（非 JSON），
+        # 因此这里断言页面内容与落库结果，而不是业务 code。
+        resp = Client().get(f'{BASE}/users/verify/email', {'token': raw_link})
+        html = resp.content.decode('utf-8')
+        _check('激活链接校验后建号成功',
+               resp.status_code == 200 and '邮箱验证成功' in html,
+               f'status={resp.status_code}')
+        _check('链接建号返回 account', bool(User.objects.filter(email=email2).exists()))
         _check('DB 已建号且邮箱已验证',
                User.objects.filter(email=email2, email_verified=True).exists())
         _created_users.append(str(User.objects.get(email=email2).id))
@@ -358,6 +368,19 @@ def round2():
     r = _login(app, email=email, code=_record_code('email', email, scene='login'))
     _check('邮箱验证码登录成功', _is_success(r), f'code={r.get("code")} msg={r.get("msg")}')
     _check('邮箱登录返回 user_id 与注册一致', (r.get('data') or {}).get('user_id') == uid)
+
+    # 5. 密码登录：标识可以是 账号 / 邮箱（手机号侧见第一轮）
+    r = _login(app, email=email, password=PASS)
+    _check('邮箱+密码登录成功', _is_success(r), f'code={r.get("code")} msg={r.get("msg")}')
+    _check('邮箱+密码登录返回同一 user_id', (r.get('data') or {}).get('user_id') == uid)
+    account = (r.get('data') or {}).get('account')
+    r = _login(app, account=account, password=PASS)
+    _check('账号+密码登录成功', _is_success(r), f'code={r.get("code")} msg={r.get("msg")}')
+    _check('账号+密码登录返回同一 user_id', (r.get('data') or {}).get('user_id') == uid)
+    r = _login(app, email=email, password='wrong-pass-1')
+    _check('邮箱+错误密码被拒', not _is_success(r), f'code={r.get("code")} msg={r.get("msg")}')
+    r = _login(app, email=_random_email('nobody'), password=PASS)
+    _check('未注册邮箱+密码被拒', not _is_success(r), f'code={r.get("code")} msg={r.get("msg")}')
 
 
 # ───────────────────────── 第三轮：双凭证注册（批次合并） ─────────────────────────
@@ -498,23 +521,21 @@ def round4():
         _check('关闭手机号时邮箱可完成注册', _is_success(r), f'code={r.get("code")} msg={r.get("msg")}')
         _created_users.append((r.get('data') or {}).get('user_id'))
 
-    # 3. 全部关闭 → 降级用户名+密码
+    # 3. 全部关闭 → 注册通道全部不可用（用户名+密码注册已停用，没有兜底方式）
     _set_method('email', False)
     _set_method('phone', False)
     r = _methods()
     _check('全部关闭后 methods=[]', (r.get('data') or {}).get('methods') == [],
            f'methods={(r.get("data") or {}).get("methods")}')
-    _check('methods 返回 username=True', (r.get('data') or {}).get('username') is True)
+    _check('methods 返回 username=False（用户名注册已停用）',
+           (r.get('data') or {}).get('username') is False)
     r = _register(app, email=_random_email('z'), username='c')
     _check('全部关闭时邮箱注册被拒', not _is_success(r))
     r = _register(app, phone=_random_phone(), username='d')
     _check('全部关闭时手机号注册被拒', not _is_success(r))
     r = _register(app, username='纯用户名注册', password=PASS)
-    _check('全部关闭时用户名注册可用', _is_success(r), f'code={r.get("code")} msg={r.get("msg")}')
-    if _is_success(r):
-        _created_users.append((r.get('data') or {}).get('user_id'))
-        r = _login(app, account=(r.get('data') or {}).get('account'), password=PASS)
-        _check('全部关闭时账号登录可用', _is_success(r), f'code={r.get("code")} msg={r.get("msg")}')
+    _check('用户名+密码注册已停用(30001)', r.get('code') == 30001,
+           f'code={r.get("code")} msg={r.get("msg")}')
 
     # 4. 恢复全部开启 → 一切恢复
     _set_method('email', True)
@@ -540,7 +561,7 @@ def round5():
 
     # 1. 手机号格式边界（两步注册第一步同样校验）
     phone_cases = [
-        ('phone 缺失(纯用户名注册)', {'username': 'x', 'password': PASS}, 10000),
+        ('仅用户名(注册已停用)', {'username': 'x', 'password': PASS}, 30001),
         ('phone 10位', {'username': 'x', 'phone': '1380013800', 'password': PASS}, 20002),
         ('phone 12位', {'username': 'x', 'phone': '138001380000', 'password': PASS}, 20002),
         ('phone 含字母', {'username': 'x', 'phone': '1380013800a', 'password': PASS}, 20002),
@@ -752,7 +773,7 @@ def round7():
     _check('methods 免签名可访问', _is_success(r), f'code={r.get("code")} msg={r.get("msg")}')
     data = r.get('data') or {}
     _check('methods 返回列表', isinstance(data.get('methods'), list))
-    _check('methods 返回 username=True', data.get('username') is True)
+    _check('methods 返回 username=False（用户名注册已停用）', data.get('username') is False)
     _check('methods 与后台一致',
            sorted(data.get('methods')) == sorted(user_utils.get_enabled_methods()),
            f'api={data.get("methods")} db={user_utils.get_enabled_methods()}')

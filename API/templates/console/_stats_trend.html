@@ -1,0 +1,9 @@
+{% load i18n %}
+{% comment %}调用统计：每日趋势（成功 / 失败堆叠柱状）{% endcomment %}
+<div class="card mt-5 border border-base-300 bg-base-100">
+  <div class="card-body gap-3">
+    <h2 class="card-title text-base">{% trans "每日调用量趋势" %}</h2>
+    <div class="relative h-64"><canvas id="stats-trend"></canvas></div>
+  </div>
+</div>
+{{ trend|json_script:'stats-trend-data' }}

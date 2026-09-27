@@ -1,6 +1,6 @@
 """问题反馈服务 - 接口文档与在线调试数据
 
-数据与 API/apis/feedback/ 实际实现对齐（分类树 /api/feedback/ 为需签名）：
+数据与 API/apis/feedback/ 实际实现对齐（服务策略 /api/feedback/ 默认需签名）：
 - 反馈中心：按接入项目隔离的反馈 + 评论树（类似项目 Issues）。
 """
 from .schema import ChannelSpec, EndpointSpec, ParamSpec, ServiceSpec
@@ -29,6 +29,14 @@ SERVICE = ServiceSpec(
     name='问题反馈',
     prefix='/api/feedback/',
     summary='问题反馈中心：提交反馈、追加/回复评论、查看项目内反馈与评论树。数据按接入项目隔离。',
+    keywords='反馈API,工单接口,用户反馈系统',
+    intro=[
+        '问题反馈服务提供一套类似 Issue 的反馈中心：用户提交反馈，服务方与用户围绕该反馈追加评论或回复，'
+        '评论支持嵌套（可回复某条具体评论），并可按状态筛选查看处理进度。',
+        '数据按接入项目隔离——每个项目只能看到自己的反馈与评论；提交反馈与评论时会额外校验用户的登录 Token，'
+        '因此反馈人身份真实可信，子项目无法伪造。',
+        '全部接口需项目签名。评论列表分页返回，避免海量评论一次性撑爆响应。',
+    ],
     channels=[
         ChannelSpec(
             slug='center',

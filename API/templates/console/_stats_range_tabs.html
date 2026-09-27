@@ -1,0 +1,9 @@
+{% load i18n %}
+{% comment %}调用统计：时间范围切换 tab（总览页带筛选参数，详情页只带 days）{% endcomment %}
+<div role="tablist" class="tabs tabs-box mt-5 w-fit">
+  {% for r in range_choices %}
+  <a role="tab" href="?days={{ r }}" class="tab {% if r == days %}tab-active{% endif %}">
+    {% blocktrans %}{{ r }} 天{% endblocktrans %}
+  </a>
+  {% endfor %}
+</div>

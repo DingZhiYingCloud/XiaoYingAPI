@@ -16,61 +16,120 @@ from API.common import StatusCode
 from API.common import api_stats
 
 
-# ==================== 分类树查询缓存（A-02 整改） ====================
-# ApiAuthMiddleware 每个 /api/ 请求都会查一次 ApiCategory 全表做前缀匹配。
-# 节点数量少（数十级）、变更不频繁，引入进程内 TTL 缓存避免请求级 DB 查询：
-#   - 默认 60s，可用 settings.API_CATEGORY_CACHE_TTL 调整（秒）
-#   - 后台保存/删除 ApiCategory（apps.ready 信号）与 rebuild_category_tree 命令
-#     执行后主动失效，保证后台改认证模式后即时生效，无需等 TTL
-_CATEGORY_CACHE = {'ts': 0.0, 'nodes': []}
+# ==================== 服务策略查询缓存 ====================
+# ApiAuthMiddleware 每个 /api/ 请求都会做一次策略前缀匹配。
+# 策略数量少、变更不频繁，引入进程内 TTL 缓存避免请求级 DB 查询：
+#   - 默认 60s，可用 settings.API_SERVICE_POLICY_CACHE_TTL 调整（秒）
+#   - 后台保存 / 删除策略、改动白名单（apps）后由 API/apps.py 的信号主动失效；
+#     显式调用 invalidate_api_service_policy_cache() 亦可立即失效（测试 / 管理命令用）
+# 同时缓存「白名单策略 -> 授权项目 app_id 集合」，让白名单校验也走缓存、不逐请求查 M2M。
+_POLICY_CACHE = {'ts': 0.0, 'policies': [], 'apps': {}}
 
 
-def invalidate_api_category_cache():
-    """A-02：立即使分类树缓存失效（后台改动分类 / 重建命令后调用）"""
-    _CATEGORY_CACHE['nodes'] = []
-    _CATEGORY_CACHE['ts'] = 0.0
+def invalidate_api_service_policy_cache():
+    """立即使服务策略缓存失效（后台改动策略 / 白名单后调用）"""
+    _POLICY_CACHE['policies'] = []
+    _POLICY_CACHE['apps'] = {}
+    _POLICY_CACHE['ts'] = 0.0
 
 
-def _category_nodes():
-    """读取启用分类节点列表（进程内 TTL 缓存，TTL 内只查一次库）"""
-    ttl = getattr(settings, 'API_CATEGORY_CACHE_TTL', 60)
+def _policy_nodes():
+    """读取全部服务策略（进程内 TTL 缓存）
+
+    策略本身不分启用 / 停用：状态由 status 字段表达（normal/dev/maintenance/offline），
+    故全部策略都参与匹配。
+    """
+    ttl = getattr(settings, 'API_SERVICE_POLICY_CACHE_TTL', 60)
     now = time.monotonic()
-    if _CATEGORY_CACHE['nodes'] and now - _CATEGORY_CACHE['ts'] < ttl:
-        return _CATEGORY_CACHE['nodes']
-    from API.models.Auth.category import ApiCategory
-    nodes = list(ApiCategory.objects.filter(status=True)
-                 .values('id', 'path_prefix', 'parent_id', 'auth_mode'))
-    _CATEGORY_CACHE['nodes'] = nodes
-    _CATEGORY_CACHE['ts'] = now
-    return nodes
+    if _POLICY_CACHE['policies'] and now - _POLICY_CACHE['ts'] < ttl:
+        return _POLICY_CACHE['policies']
+    from API.models.Auth.policy import ApiServicePolicy
+    policies = list(ApiServicePolicy.objects
+                    .values('id', 'path_prefix', 'status', 'auth_mode', 'app_scope'))
+    apps = {}
+    for policy_id, app_id in (ApiServicePolicy.objects.filter(app_scope='whitelist')
+                              .values_list('id', 'apps__app_id')):
+        if app_id:
+            apps.setdefault(policy_id, set()).add(app_id)
+    _POLICY_CACHE['policies'] = policies
+    _POLICY_CACHE['apps'] = apps
+    _POLICY_CACHE['ts'] = now
+    return policies
+
+
+def _prefix_match(path, prefix):
+    """前缀命中判定（带段边界，避免 /api/foo 误命中 /api/foobar）
+
+    - path == prefix：精确命中；
+    - prefix 以 '/' 结尾：目录式前缀，path 以其为前缀即命中；
+    - 否则为叶子前缀：仅 path 等于它或以 ``prefix + '/'`` 开头才命中。
+    """
+    if path == prefix:
+        return True
+    if prefix.endswith('/'):
+        return path.startswith(prefix)
+    return path.startswith(prefix + '/')
+
+
+def _policy_chain(path):
+    """命中该路径的全部策略，按 path_prefix 长度降序（最具体在前）"""
+    matched = [p for p in _policy_nodes() if _prefix_match(path, p['path_prefix'])]
+    matched.sort(key=lambda p: len(p['path_prefix']), reverse=True)
+    return matched
+
+
+def policy_allows_app(policy_id, app_id):
+    """该策略自己的白名单是否包含该调用项目"""
+    return app_id in _POLICY_CACHE['apps'].get(policy_id, set())
+
+
+# resolve_service_policy() 在各字段都没命中时的全局兜底（fail-closed）
+DEFAULT_STATUS = 'normal'
+DEFAULT_AUTH_MODE = 'auth'
+DEFAULT_APP_SCOPE = 'all'
+
+
+def resolve_service_policy(path):
+    """逐字段逐级继承，返回某路径的生效策略
+
+    在该路径命中的策略链上（最具体在前），每个字段取第一个非 inherit 的值；
+    都没命中时用全局兜底：status=normal / auth_mode=auth（fail-closed）/ app_scope=all。
+
+    返回：{'status', 'auth_mode', 'app_scope', 'whitelist_policy_id', 'chain'}
+    - whitelist_policy_id：生效值为 whitelist 时，那条策略的 id（白名单只认它自己的名单）
+    """
+    status = auth_mode = app_scope = None
+    whitelist_policy_id = None
+    chain = _policy_chain(path)
+    for policy in chain:
+        if status is None and policy['status'] != 'inherit':
+            status = policy['status']
+        if auth_mode is None and policy['auth_mode'] != 'inherit':
+            auth_mode = policy['auth_mode']
+        if app_scope is None and policy['app_scope'] != 'inherit':
+            app_scope = policy['app_scope']
+            if app_scope == 'whitelist':
+                whitelist_policy_id = policy['id']
+        if status is not None and auth_mode is not None and app_scope is not None:
+            break
+    return {
+        'status': status or DEFAULT_STATUS,
+        'auth_mode': auth_mode or DEFAULT_AUTH_MODE,
+        'app_scope': app_scope or DEFAULT_APP_SCOPE,
+        'whitelist_policy_id': whitelist_policy_id,
+        'chain': chain,
+    }
 
 
 def requires_auth(path):
-    """分类树继承判定（A-01 fail-closed）—— 认证判定的唯一口径
+    """认证判定的唯一口径：生效 auth_mode == open 时放行，其余一律需要签名
 
-    最长前缀命中节点后，沿父链取第一个非 inherit 的模式：
-    - 命中 auth → 需要认证；命中 open → 开放
-    - 未命中任何节点 / 全链均为 inherit / 命中节点已停用 → 需要认证（安全默认）
-    分类节点经 _category_nodes() 进程内 TTL 缓存读取（A-02），后台改动即时失效。
-
-    除认证中间件外，超管「API 服务分类」页也调用本函数展示每条分类的「生效结果」，
-    保证页面展示与真实鉴权永远一致（**不要在别处复制这段判定逻辑**）。
+    基于 resolve_service_policy() 的逐级继承结果判定，保证「页面展示的生效结果」
+    与中间件真实鉴权永远一致（**不要在别处复制这段判定逻辑**）。
+    服务级 / 线路级 / 端点级策略及各字段 inherit 的继承都在 resolve 内统一处理，
+    未命中任何策略时 fail-closed 落回 auth（需要签名）。
     """
-    nodes = _category_nodes()
-    best, best_len = None, -1
-    for node in nodes:
-        if path.startswith(node['path_prefix']) and len(node['path_prefix']) > best_len:
-            best, best_len = node, len(node['path_prefix'])
-    if best is None:
-        return True  # 未命中分类节点：fail-closed，默认需要认证
-    by_id = {node['id']: node for node in nodes}
-    seen = set()
-    while best is not None and best['id'] not in seen:
-        seen.add(best['id'])
-        if best['auth_mode'] != 'inherit':
-            return best['auth_mode'] == 'auth'
-        best = by_id.get(best['parent_id'])
-    return True  # 全为 inherit / 父链成环：fail-closed，默认需要认证
+    return resolve_service_policy(path)['auth_mode'] != 'open'
 
 
 class ApiCsrfExemptMiddleware(CsrfViewMiddleware):
@@ -168,9 +227,8 @@ class ApiRequestLogMiddleware:
 
 # 公开 GET 路径（免签名）：邮箱激活链接位于验证邮件内，点击链接本身即一次性凭证，
 # 浏览器访问不带签名参数；注册/登录方式配置为客户端公开信息，均无需项目签名。
-# 注意：A-01 后全局默认 fail-closed（分类树未匹配/全 inherit 一律要求签名），
-# 仅此处列出的 GET 路径与分类树中显式 open 的节点可匿名访问。
-# （captcha_auth/aliyun 整体为显式 open——开放集成设计，config/verify 均免签，见分类树）
+# 注意：全局默认 fail-closed（未命中策略一律要求签名），
+# 仅此处列出的 GET 路径与显式 open 的策略节点可匿名访问。
 PUBLIC_GET_PATHS = (
     '/api/user_center/users/verify/email',
     '/api/user_center/users/methods',
@@ -180,15 +238,20 @@ PUBLIC_GET_PATHS = (
 class ApiAuthMiddleware:
     """API 服务认证中间件
 
-    根据 ApiCategory 分类树配置，决定 /api/ 请求是否需要用户中心认证（A-01 fail-closed）：
-    - 匹配规则：请求路径按「最长前缀」命中一个分类节点，再沿父链向上找第一个
-      非 inherit 的认证模式生效（auth=需认证 / open=开放）
-    - 覆盖能力：父级设 auth 后，可单独把某个子级设 open，实现「父级认证、子级开放」
-    - A-01 安全默认（fail-closed）：未命中任何分类节点 / 整条链全为 inherit /
-      命中分类已停用，一律按「需要认证」处理——新增服务在未显式配置前默认不可匿名访问
-    - 要求认证：校验签名（app_id/timestamp/nonce/sign），通过后把项目对象挂到
-      request.auth_app 供视图直接使用；失败返回统一 20011
-    - 开放：仅分类树显式 open 的节点，以及 PUBLIC_GET_PATHS 列出的公开 GET 路径
+    根据服务策略表（ApiServicePolicy，服务 / 线路 / 端点三级逐级继承）决定 /api/ 请求是否放行：
+
+    1. **维护态（最优先）**：生效 status=maintenance 时直接返回「服务维护中」（30004），
+       且**不做签名校验**（匿名请求同样收到维护码）。
+       取舍：offline（已下线）/ dev（开发中）**只做前台展示标记、不拦截请求** ——
+       下线的服务若仍拦截会让排障困难，开发中的服务需要能实际调用测试；
+       两个状态在官网首页 / 文档中心的徽标与横幅上体现，鉴权层不额外加码。
+    2. **认证判定**：由 requires_auth() 统一给出（基于 resolve_service_policy()）。
+       · 需要签名：校验签名（app_id/timestamp/nonce/sign），通过后把项目对象挂到
+         request.auth_app 供视图直接使用；失败返回统一 20011
+       · 开放：仅显式 open 的策略节点，以及 PUBLIC_GET_PATHS 列出的公开 GET 路径
+    3. **项目白名单（签名通过后）**：生效 app_scope=whitelist 且当前项目不在
+       这条策略的名单内 → 返回 20020（FORBIDDEN）。open 模式不校验签名、拿不到调用项目，
+       白名单对其无意义。
 
     对外签名契约与原先视图内校验完全一致，对接方无感知。
     """
@@ -198,7 +261,15 @@ class ApiAuthMiddleware:
 
     def __call__(self, request):
         if request.path.startswith('/api/'):
-            # 公开 GET 路径（如邮件内激活链接、图形认证初始化）免签名
+            effective = resolve_service_policy(request.path)
+            # 1) 维护态最优先：生效状态为维护中即返回维护码（匿名也不做签名校验）
+            if effective['status'] == 'maintenance':
+                return JsonResponse({
+                    'code': StatusCode.SERVICE_MAINTENANCE,
+                    'msg': StatusCode.get_message(StatusCode.SERVICE_MAINTENANCE),
+                    'data': None,
+                })
+            # 公开 GET 路径（如邮件内激活链接、注册/登录方式配置）免签名
             is_public_get = request.method == 'GET' and request.path in PUBLIC_GET_PATHS
             if not is_public_get and requires_auth(request.path):
                 params = request.POST.dict()
@@ -212,4 +283,13 @@ class ApiAuthMiddleware:
                         'data': None,
                     })
                 request.auth_app = result
+                # 2) 白名单：签名通过（已拿到调用项目）后再判；open 模式无签名，白名单不生效
+                if (effective['app_scope'] == 'whitelist'
+                        and not policy_allows_app(effective['whitelist_policy_id'],
+                                                  result.app_id)):
+                    return JsonResponse({
+                        'code': StatusCode.FORBIDDEN,
+                        'msg': f'该项目未获授权调用此服务: {result.app_id}',
+                        'data': None,
+                    })
         return self.get_response(request)

@@ -1,8 +1,8 @@
 """邮箱服务 - 接口文档与在线调试数据（首个接入服务）
 
 数据与 API/apis/emails/ 实际实现对齐：
-- 邮箱v1（发送邮件）：POST /api/email/v1/send（分类树中为 inherit→需签名）
-- VMEmail（minmail.app 临时邮箱）：POST generate / GET emails（分类树显式 open，免签名）
+- 邮箱v1（发送邮件）：POST /api/email/v1/send（默认需签名）
+- VMEmail（minmail.app 临时邮箱）：POST generate / GET emails（默认需签名）
 - VMEmail(mail.cx)（mail.cx 临时邮箱）：GET domains/emails/email_detail、POST generate（需签名）
 """
 from .schema import ChannelSpec, EndpointSpec, ParamSpec, ServiceSpec
@@ -12,6 +12,16 @@ SERVICE = ServiceSpec(
     name='邮箱服务',
     prefix='/api/email/',
     summary='邮件发送与虚拟邮箱收发能力。当前接入 3 条线路，后续可继续扩展更多平台/线路。',
+    keywords='临时邮箱API,虚拟邮箱接口,邮箱验证码API,邮件发送接口',
+    intro=[
+        '邮箱服务把「发信」和「收信」拆成三条线路：邮箱 v1 用平台邮箱发送业务邮件，适合验证码、通知、'
+        '告警等场景；VMEmail 与 VMEmail(mail.cx) 提供临时邮箱（虚拟邮箱）能力，可随机生成一个邮箱地址'
+        '并接收来信，常用于注册验证、接口联调、自动化测试等需要一次性邮箱的场合。',
+        '三条线路的认证口径不同：VMEmail 线路为开放接口，可不带签名直接调试；'
+        '邮箱 v1 与 mail.cx 线路需要项目签名。',
+        '临时邮箱的收件是长轮询：没有新邮件时请求会挂起约 25 秒后返回空列表，属正常行为，'
+        '请不要按短超时判定为失败；邮件有留存期限，重要内容请及时取回。',
+    ],
     channels=[
         ChannelSpec(
             slug='v1',

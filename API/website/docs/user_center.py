@@ -1,6 +1,6 @@
 """用户中心服务 - 接口文档与在线调试数据
 
-数据与 API/apis/user_center/ 实际实现对齐（分类树 /api/user_center/ 需项目签名）：
+数据与 API/apis/user_center/ 实际实现对齐（服务策略 /api/user_center/ 默认需签名）：
 - users：账号体系（注册/登录/Token/两步注册验证）；
 - projects：接入项目自身信息。
 说明：本文档面向「接入项目开发者」；管理后台能力不在此暴露。
@@ -20,6 +20,16 @@ SERVICE = ServiceSpec(
     name='用户中心',
     prefix='/api/user_center/',
     summary='统一账号中心（UAC）：全局用户池，多方式注册/登录、Token 签发与验证、两步注册邮箱/手机号校验。',
+    keywords='用户中心API,统一认证,注册登录接口,Token验证',
+    intro=[
+        '用户中心是一套统一账号系统（UAC）：所有接入项目共用一个全局用户池，'
+        '用户在一个项目下注册的账号，在其它项目下同样可以登录，不必每个项目各建一套账号体系。',
+        '登录态用 Token 承载，Token 绑定签发它的接入项目。注册仅支持邮箱或手机号，且为两步流程——'
+        '先提交凭证发验证码，校验通过后才真正创建账号，可有效防止恶意批量注册；'
+        '忘记密码同样走「先发码、再校验改密」，重置成功后会作废该用户的全部 Token。',
+        '除「可用注册/登录方式」与邮箱激活链接（公开 GET）外，其余接口均需项目签名。'
+        '客户端建议先查注册/登录方式接口，再按返回结果渲染表单，不要在前端写死支持方式。',
+    ],
     channels=[
         ChannelSpec(
             slug='users',
@@ -33,19 +43,23 @@ SERVICE = ServiceSpec(
                 EndpointSpec('methods', '可用注册/登录方式', 'GET', '/api/user_center/users/methods',
                              summary='返回后台启用的注册/登录方式（公开，免签名）。',
                              params=[],
-                             notes=['返回 data={methods:[email,phone], username:true}；客户端先查此接口再渲染表单。']),
+                             notes=['返回 data={methods:[email,phone], username:false}；客户端先查此接口再渲染表单，'
+                                    'username=false 表示"用户名+密码注册"已停用。']),
                 EndpointSpec('register', '注册', 'POST', '/api/user_center/users/register',
-                             summary='注册：username+password 直接建号；email 或 phone+password 走两步注册（先发验证码）。',
+                             summary='注册（只支持邮箱 / 手机号）：提交邮箱或手机号 + 密码走两步注册，先发验证码。',
                              params=[
                                  ParamSpec('username', '用户名', kind='text',
-                                           desc='提供 username+password → 直接注册成功'),
+                                           desc='选填：仅用于展示，不作为注册凭证'),
                                  ParamSpec('email', '邮箱', kind='email',
                                            desc='提供 email → 两步注册第一步，需再验证邮箱'),
                                  ParamSpec('phone', '手机号', kind='text', placeholder='13800138000',
                                            desc='提供 phone → 两步注册第一步，需再验证手机号'),
                                  ParamSpec('password', '密码', kind='password', required=True),
                              ],
-                             notes=['username/email/phone 按后台可用方式组合；两步注册时 data.need_verify=true。']),
+                             notes=['email / phone 至少提供一个；两步注册时 data.need_verify=true，'
+                                    '需再调 verify/email 或 verify/phone 校验通过后才创建账号。',
+                                    '只提供 username（即"用户名+密码注册"）已停用，'
+                                    '返回 30001 业务规则限制。']),
                 EndpointSpec('send_login_code', '发送登录验证码', 'POST', '/api/user_center/users/login/send',
                              summary='邮箱/手机号验证码登录第一步：校验已注册后发码（60 秒冷却）。',
                              params=[
@@ -53,16 +67,21 @@ SERVICE = ServiceSpec(
                                  ParamSpec('phone', '手机号', kind='text'),
                              ]),
                 EndpointSpec('login', '登录', 'POST', '/api/user_center/users/login',
-                             summary='登录：账号+密码，或邮箱/手机号+验证码；成功返回绑定项目的 Token。',
+                             summary='登录：账号/邮箱/手机号+密码；或邮箱/手机号+验证码。成功返回绑定项目的 Token。',
                              params=[
                                  ParamSpec('account', '账号', kind='text',
-                                           desc='账号+密码登录时使用（username）'),
-                                 ParamSpec('email', '邮箱', kind='email'),
-                                 ParamSpec('phone', '手机号', kind='text'),
-                                 ParamSpec('password', '密码', kind='password'),
-                                 ParamSpec('code', '验证码', kind='text', desc='邮箱/手机号登录时用'),
+                                           desc='账号+密码登录：系统发放的账号'),
+                                 ParamSpec('email', '邮箱', kind='email',
+                                           desc='邮箱+密码登录，或邮箱+code 验证码登录'),
+                                 ParamSpec('phone', '手机号', kind='text',
+                                           desc='手机号+密码登录，或手机号+code 验证码登录'),
+                                 ParamSpec('password', '密码', kind='password',
+                                           desc='不带 code 时必填：account/email/phone 任一标识 + 密码'),
+                                 ParamSpec('code', '验证码', kind='text',
+                                           desc='带 code 即走邮箱/手机号验证码登录（免密码）'),
                              ],
-                             notes=['同一项目+凭证+IP 连续失败 5 次锁定 15 分钟（返回 20040）。']),
+                             notes=['密码登录的标识三选一：account / email / phone（邮箱与手机号需已注册）。',
+                                    '同一项目+凭证+IP 连续失败 5 次锁定 15 分钟（返回 20040）。']),
                 EndpointSpec('send_reset_code', '发送重置密码验证码', 'POST', '/api/user_center/users/password/send',
                              summary='忘记密码第一步：校验邮箱/手机号已注册后发码（60 秒冷却）。',
                              params=[

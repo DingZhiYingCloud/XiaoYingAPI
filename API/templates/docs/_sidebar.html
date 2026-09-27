@@ -20,13 +20,11 @@
       {% if node.disabled %}
       <span class="flex items-center gap-1 opacity-70" aria-disabled="true">
         <span class="min-w-0 flex-1 truncate">{{ node.name }}</span>
-        {% include 'docs/_gear_button.html' %}
       </span>
       {% elif node.children %}
       <details data-docs-group data-active-url="{{ node.url }}">
         <summary>
           <span class="flex-1">{{ node.name }}</span>
-          {% include 'docs/_gear_button.html' %}
         </summary>
         <ul>
           {% for child in node.children %}
@@ -52,19 +50,6 @@
           <path d="M7 11V7a5 5 0 0 1 10 0v4" />
         </svg>
         {% trans "接入项目管理" %}
-      </a>
-    </li>
-    <li>
-      <a href="/console/categories/" {% if request.path == '/console/categories/' %}class="active"{% endif %}>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-             stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 opacity-70">
-          <rect x="16" y="16" width="6" height="6" rx="1" />
-          <rect x="2" y="16" width="6" height="6" rx="1" />
-          <rect x="9" y="2" width="6" height="6" rx="1" />
-          <path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3" />
-          <path d="M12 12V8" />
-        </svg>
-        {% trans "API 服务分类" %}
       </a>
     </li>
     {% endif %}

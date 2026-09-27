@@ -59,9 +59,16 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware', # 消息中间件,用来处理消息相关的请求和响应
     'django.middleware.clickjacking.XFrameOptionsMiddleware', # 用来处理点击劫持攻击的中间件
     'API.common.middleware.ApiRequestLogMiddleware', # 请求日志（A-05）+ 调用统计（A-03）：必须在认证中间件之前，认证被拒的请求也要记录
-    'API.common.middleware.ApiAuthMiddleware', # API 服务认证中间件：按 ApiCategory 分类树配置决定哪些 /api/ 服务需用户中心签名认证
+    'API.common.middleware.ApiAuthMiddleware', # API 服务认证中间件：按服务策略（服务→线路→端点，逐级继承）决定哪些 /api/ 服务需用户中心签名认证
     'API.common.middleware.ApiJsonErrorMiddleware', # /api/ 路径 404 / 405 统一返回 JSON（兜底）
 ]
+
+
+# ==================== API 服务策略缓存（认证判定） ====================
+# ApiAuthMiddleware 每个 /api/ 请求都要做一次服务策略前缀匹配，故用进程内 TTL 缓存
+# 避免请求级 DB 查询（默认 60s）。后台保存/删除策略、改动白名单后由 API/apps.py 的信号
+# 立即失效，改动对鉴权即时生效，无需等 TTL。设为 0 可关闭缓存（不推荐，会逐请求查库）。
+API_SERVICE_POLICY_CACHE_TTL = 60
 
 
 # ==================== 环境模式与安全 Cookie 配置（单一开关） ====================
@@ -134,6 +141,8 @@ TEMPLATES = [
                 'API.website.context.friend_links',
                 # 文档中心左侧服务菜单（仅 /docs/* 由中间件注入）
                 'API.website.docs_menu.docs_menu_context',
+                # 控制台左侧导航（仅 /console/* 注入，菜单在 console_menu.py 一处声明）
+                'API.website.console_menu.console_menu_context',
             ],
         },
     },
@@ -190,6 +199,21 @@ USE_TZ = True # 开启时区支持
 
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+
+# ==================== 静态文件交付（性能优化） ====================
+# Django 默认的 StaticFilesStorage 既不压缩也不加内容哈希：
+#   - output.css 以 660KB 原样下发（gzip 后仅 68KB，压缩比 10.3%）；
+#   - 文件名无哈希时 WhiteNoise 只给 max-age=60s，浏览器几乎每次切页都要回源校验。
+# 换成 CompressedManifestStaticFilesStorage 后：
+#   - 预压缩并优先下发 .gz（本机未装 brotli，故只有 gzip；装了 brotli 会自动多出 .br）；
+#   - 文件名带内容哈希 → 可安全长期缓存（immutable），改文件即换 URL，无需再手工改 ?v=。
+# 注意：**部署必须执行 python manage.py collectstatic --noinput --clear**，
+#       否则线上找不到哈希清单会直接报错（清册见 .gitignore 第 66-70 行的说明）。
+# DEBUG=True 时 Django 会跳过哈希（{% static %} 仍返回原文件名），本地开发不受影响。
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+}
 
 
 # 默认主键字段类型配置

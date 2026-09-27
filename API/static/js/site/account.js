@@ -55,10 +55,16 @@
     });
   }
 
+  /* 结果提示着色（语义化）：成功=绿 / 警告=黄 / 错误=红；纯提示（info / 未指定）用中性灰。
+     保证动态填充的 #login-alert / #register-alert / #reset-alert 一定有颜色，不会无色或一律蓝。 */
   function setAlert(alertEl, type, text) {
     if (!alertEl) return;
-    alertEl.classList.remove('hidden', 'alert-success', 'alert-error', 'alert-info');
-    if (type) alertEl.classList.add(type === 'success' ? 'alert-success' : (type === 'info' ? 'alert-info' : 'alert-error'));
+    alertEl.classList.remove('hidden', 'alert-success', 'alert-warning', 'alert-error',
+      'alert-info', 'alert-soft', 'bg-base-200');
+    if (type === 'success') alertEl.classList.add('alert-success');
+    else if (type === 'warning') alertEl.classList.add('alert-warning');
+    else if (type === 'error') alertEl.classList.add('alert-error');
+    else alertEl.classList.add('alert-soft', 'bg-base-200');
     alertEl.textContent = text || '';
   }
 
@@ -293,33 +299,7 @@
   function bindRegister() {
     var alertEl = document.getElementById('register-alert');
 
-    // 纯用户名注册（直接建号）
-    var usernameForm = document.getElementById('register-username-form');
-    if (usernameForm) {
-      usernameForm.addEventListener('submit', function (e) {
-        e.preventDefault();
-        var btn = usernameForm.querySelector('[type="submit"]');
-        var username = document.getElementById('reg-username-name').value.trim();
-        var password = document.getElementById('reg-username-password').value;
-        if (!username) return setAlert(alertEl, 'error', gettext('请输入用户名'));
-        if (password.length < 8) return setAlert(alertEl, 'error', gettext('密码长度至少 8 位'));
-        submitWithCaptcha({ username: username, password: password }, function (payload) {
-          setBusy(btn, true, gettext('注册中…'));
-          return apiPost('/register/', payload)
-            .then(function (res) {
-              if (res.code === SUCCESS) {
-                showRegisterDone(alertEl, usernameForm, res.data);
-              } else {
-                setBusy(btn, false);
-                setAlert(alertEl, 'error', res.msg || gettext('注册失败，请稍后重试'));
-              }
-            })
-            .catch(function () { setBusy(btn, false); setAlert(alertEl, 'error', gettext('网络异常，请稍后重试')); });
-        }, alertEl);
-      });
-    }
-
-    // 邮箱 / 手机号两步注册
+    // 邮箱 / 手机号两步注册（注册只支持这两种方式，用户名+密码注册已停用）
     ['email', 'phone'].forEach(function (method) {
       var form = document.getElementById('register-' + method + '-form');
       if (!form) return;
@@ -360,11 +340,7 @@
                 startCountdown(resendBtn, 60);
               } else {
                 setBusy(btn, false);
-                if (res.code === SUCCESS && res.data) {
-                  showRegisterDone(alertEl, form, res.data); // 纯用户名兜底
-                } else {
-                  setAlert(alertEl, 'error', res.msg || gettext('注册失败，请稍后重试'));
-                }
+                setAlert(alertEl, 'error', res.msg || gettext('注册失败，请稍后重试'));
               }
             }).catch(function () { setBusy(btn, false); setAlert(alertEl, 'error', gettext('网络异常，请稍后重试')); });
           }, alertEl);

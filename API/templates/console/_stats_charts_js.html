@@ -1,0 +1,107 @@
+{% load static i18n %}
+{% comment %}调用统计：三张图表（趋势 / 时段分布 / 状态码）。
+用法：在 {% block js %} 里 {% include 'console/_stats_charts_js.html' %}；
+数据由对应卡片 partial 的 json_script 提供，元素不存在则自动跳过。
+Chart.js 用 defer 加载（200KB，原先同步加载会阻塞本页解析）；
+defer 脚本在 DOMContentLoaded 之前执行完，故初始化统一放进 DOMContentLoaded 里，顺序仍可保证。{% endcomment %}
+<script defer src="{% static 'js/vendor/chart.umd.min.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  'use strict';
+  if (!window.Chart) return;
+
+  // 用主题变量取前景色，保证明/暗主题下坐标轴可读
+  function themeColor(name, fallback) {
+    var value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return value || fallback;
+  }
+
+  function readData(id) {
+    var el = document.getElementById(id);
+    return el ? JSON.parse(el.textContent) : null;
+  }
+
+  var fg = themeColor('--color-base-content', '#555');
+
+  // ===== 每日趋势：成功 / 失败堆叠柱状 =====
+  var trend = readData('stats-trend-data');
+  if (trend && trend.length) {
+    new Chart(document.getElementById('stats-trend'), {
+      type: 'bar',
+      data: {
+        labels: trend.map(function (d) { return d.date; }),
+        datasets: [
+          {
+            label: gettext('成功'),
+            data: trend.map(function (d) { return d.success; }),
+            backgroundColor: '#3b82f6',
+            stack: 'calls',
+          },
+          {
+            label: gettext('失败'),
+            data: trend.map(function (d) { return d.failed; }),
+            backgroundColor: '#ef4444',
+            stack: 'calls',
+          },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { labels: { color: fg } } },
+        scales: {
+          x: { stacked: true, ticks: { color: fg }, grid: { display: false } },
+          y: { stacked: true, beginAtZero: true, ticks: { color: fg, precision: 0 } },
+        },
+      },
+    });
+  }
+
+  // ===== 时段分布：0-23 柱状，峰值时段高亮 =====
+  var profile = readData('stats-hours-data');
+  if (profile && profile.length) {
+    var maxCalls = Math.max.apply(null, profile.map(function (p) { return p.calls; }));
+    new Chart(document.getElementById('stats-hours'), {
+      type: 'bar',
+      data: {
+        labels: profile.map(function (p) { return ('0' + p.hour).slice(-2); }),
+        datasets: [{
+          label: gettext('调用量'),
+          data: profile.map(function (p) { return p.calls; }),
+          backgroundColor: profile.map(function (p) {
+            return (maxCalls > 0 && p.calls === maxCalls) ? '#f59e0b' : '#3b82f6';
+          }),
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: fg }, grid: { display: false } },
+          y: { beginAtZero: true, ticks: { color: fg, precision: 0 } },
+        },
+      },
+    });
+  }
+
+  // ===== 状态码分布：环形图 =====
+  var rows = readData('stats-status-data');
+  if (rows && rows.length) {
+    new Chart(document.getElementById('stats-status'), {
+      type: 'doughnut',
+      data: {
+        labels: rows.map(function (r) { return r.label + ' (' + r.key + ')'; }),
+        datasets: [{
+          data: rows.map(function (r) { return r.calls; }),
+          backgroundColor: ['#3b82f6', '#f59e0b', '#ef4444', '#10b981', '#8b5cf6',
+                             '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16'],
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '55%',
+        plugins: { legend: { position: 'right', labels: { color: fg, boxWidth: 12 } } },
+      },
+    });
+  }
+});
+</script>

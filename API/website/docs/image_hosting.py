@@ -1,6 +1,6 @@
 """图床服务 - 接口文档与在线调试数据
 
-数据与 API/apis/ImageHosting/ 实际实现对齐（分类树 /api/ImageHosting/ 为需签名）：
+数据与 API/apis/ImageHosting/ 实际实现对齐（服务策略 /api/ImageHosting/ 默认需签名）：
 - scdn： scdn.io 图床（上传图片，返回 CDN 直链）
 - picui：PicUI 图床（上传图片 + 服务端 Token 池管理）
 """
@@ -11,6 +11,15 @@ SERVICE = ServiceSpec(
     name='图床服务',
     prefix='/api/ImageHosting/',
     summary='图片外链托管：上传图片（或 ≤10 秒短视频）返回可直链访问的 CDN 地址，支持输出格式、加密与存储位置选择。当前接入 2 条线路。',
+    keywords='图床API,免费图床,图片外链,图片CDN',
+    intro=[
+        '图床服务把图片上传到第三方托管平台并返回可直接引用的 CDN 外链，适合做站点配图、Markdown 图床、'
+        '用户头像托管等场景，省去自建存储与带宽。',
+        'scdn 线路支持上传本地图片或传入远程图片 URL，服务端按内容 SHA-256 秒传——同一张图片重复上传'
+        '会直接返回已有链接，不会额外占用容量；picui 线路附带服务端 Token 池管理，'
+        '可查看各 Token 的已用与剩余容量，并支持批量补充 Token。',
+        '两条线路均需项目签名。第三方图床的链接可用性由对方平台决定，重要图片建议自行留存原图。',
+    ],
     channels=[
         ChannelSpec(
             slug='scdn',

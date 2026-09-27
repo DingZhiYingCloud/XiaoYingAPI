@@ -13,3 +13,13 @@
 @plugin "./daisyui-theme.mjs"{
   /* 在此处编写自定义主题 */
 }
+
+/* 图标占位：模板里的 <i data-lucide="…" class="h-4 w-4"> 是 lucide 渲染前的占位元素。
+   <i> 默认是行内元素，行内元素上的宽高类不生效 → 占位时宽度为 0，
+   等 JS 把它换成 <svg> 才占位，于是每次打开页面图标都会"突然出现"并把相邻文字推一下（闪屏）。
+   放在 base 层（低于 utilities 层）让占位元素与最终 SVG 的盒模型一致；放 utilities 会反过来压掉 .hidden 等工具类。 */
+@layer base {
+  [data-lucide]:not(svg) {
+    display: block;
+  }
+}

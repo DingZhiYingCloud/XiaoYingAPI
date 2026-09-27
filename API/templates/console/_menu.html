@@ -1,0 +1,16 @@
+{% load i18n %}
+{% comment %}控制台菜单列表：被 _sidebar.html 在「小屏折叠条」与「宽屏常驻栏」两处复用，
+菜单数据来自 api/website/console_menu.py（一处声明，新增模块只改那里）。{% endcomment %}
+<ul class="menu w-full gap-0.5 p-0 text-sm">
+  {% for group in console_menu %}
+  <li class="menu-title mt-1 first:mt-0"><span class="text-xs tracking-wide opacity-60">{% trans group.title %}</span></li>
+  {% for item in group.items %}
+  <li>
+    <a href="{% url item.url %}"
+       class="gap-2 rounded-field{% if console_active_key == item.key %} menu-active{% endif %}">
+      <i data-lucide="{{ item.icon }}" class="h-4 w-4 opacity-70"></i>{% trans item.name %}
+    </a>
+  </li>
+  {% endfor %}
+  {% endfor %}
+</ul>

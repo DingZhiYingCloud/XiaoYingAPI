@@ -26,21 +26,6 @@ msgstr "Lo-Fi"
 msgid "使用浏览器原生 HLS 播放"
 msgstr "Playing with the browser's native HLS support"
 
-msgid "保存中…"
-msgstr "Saving…"
-
-msgid "保存失败，请稍后重试"
-msgstr "Failed to save, please try again later"
-
-msgid "保存成功后页面自动刷新生效。"
-msgstr "The page will refresh automatically after saving."
-
-msgid "保存状态"
-msgstr "Save Status"
-
-msgid "全部设置"
-msgstr "All Settings"
-
 msgid "关闭"
 msgstr "Close"
 
@@ -55,9 +40,6 @@ msgstr "Loading…"
 
 msgid "加载失败，请稍后重试"
 msgstr "Load failed, please try again later"
-
-msgid "加载设置中…"
-msgstr "Loading settings…"
 
 msgid "北极"
 msgstr "Nord"
@@ -119,9 +101,6 @@ msgstr "Password must be at least 8 characters"
 msgid "尚未开始"
 msgstr "Not started"
 
-msgid "已保存"
-msgstr "Saved"
-
 msgid "已保存到本机"
 msgstr "Saved locally"
 
@@ -134,9 +113,6 @@ msgstr "Loaded, %(n)s quality levels"
 msgid "已复制"
 msgstr "Copied"
 
-msgid "已恢复默认"
-msgstr "Reset to default"
-
 msgid "幻想"
 msgstr "Fantasy"
 
@@ -146,32 +122,14 @@ msgstr "Start captcha"
 msgid "当前浏览器不支持 HLS 播放，请改用 Chrome / Edge / Safari"
 msgstr "This browser does not support HLS playback; please use Chrome / Edge / Safari"
 
-msgid "当前状态："
-msgstr "Current status: "
-
 msgid "微光"
 msgstr "Dim"
 
 msgid "德古拉"
 msgstr "Dracula"
 
-msgid "恢复中…"
-msgstr "Resetting…"
-
-msgid "恢复默认"
-msgstr "Reset to Default"
-
-msgid "恢复默认后，将按“已接入文档=开放 / 未接入文档=建设中”自动派生。"
-msgstr "After resetting to default, the status will be derived automatically (\"documented = Open / undocumented = Under Construction\")."
-
-msgid "恢复默认状态"
-msgstr "Reset to Default Status"
-
 msgid "情人节"
 msgstr "Valentine"
-
-msgid "手动指定"
-msgstr "Manual"
 
 msgid "手机号"
 msgstr "Phone Number"
@@ -185,9 +143,6 @@ msgstr "Search themes…"
 msgid "播放失败"
 msgstr "Playback failed"
 
-msgid "操作失败，请稍后重试"
-msgstr "Operation failed, please try again later"
-
 msgid "日落"
 msgstr "Sunset"
 
@@ -196,9 +151,6 @@ msgstr "Light"
 
 msgid "暗黑"
 msgstr "Dark"
-
-msgid "服务状态数据缺失"
-msgstr "Service status data is missing"
 
 msgid "未知"
 msgstr "Unknown"
@@ -266,12 +218,6 @@ msgstr "Logged in successfully, redirecting…"
 msgid "确认"
 msgstr "Confirm"
 
-msgid "确认恢复「%(name)s」为默认状态？"
-msgstr "Reset \"%(name)s\" to the default status?"
-
-msgid "确认操作"
-msgstr "Confirm Action"
-
 msgid "秋日"
 msgstr "Autumn"
 
@@ -311,15 +257,6 @@ msgstr "Get code"
 msgid "该服务"
 msgstr "this service"
 
-msgid "该服务暂无可用设置项。"
-msgstr "This service has no available settings."
-
-msgid "该设置功能暂未实现渲染。"
-msgstr "This settings feature is not rendered yet."
-
-msgid "该设置功能渲染失败：%(error)s"
-msgstr "Failed to render this settings feature: %(error)s"
-
 msgid "请先填写 m3u8 地址"
 msgstr "Please enter an m3u8 URL first"
 
@@ -341,9 +278,6 @@ msgstr "Request failed (HTTP %(status)s), please try again later"
 msgid "请稍候…"
 msgstr "Please wait…"
 
-msgid "请输入用户名"
-msgstr "Please enter a username"
-
 msgid "请输入账号和密码"
 msgstr "Please enter your account and password"
 
@@ -355,9 +289,6 @@ msgstr "Cyberpunk"
 
 msgid "选择主题"
 msgstr "Select theme"
-
-msgid "选择要设置的功能："
-msgstr "Choose a feature to configure: "
 
 msgid "邮箱"
 msgstr "Email"
@@ -394,9 +325,6 @@ msgstr "Verification passed, parameters filled in automatically, running seconda
 
 msgid "默认"
 msgstr "Default"
-
-msgid "默认：%(label)s"
-msgstr "Default: %(label)s"
 
 msgid "（可能是地址已过期或源站不可达）"
 msgstr " (the URL may have expired or the source site is unreachable)"
@@ -477,9 +405,22 @@ msgid "%(minutes)s 分钟内有效"
 msgstr "Valid for %(minutes)s minutes"
 
 # ==================== API 调用统计看板（console/stats.html） ====================
-msgid "失败量"
+msgid "成功"
+msgstr "Succeeded"
+
+msgid "失败"
 msgstr "Failed"
 
 msgid "调用量"
 msgstr "Call Volume"
+
+# ==================== 控制台 · 服务策略三级联动（console/services.html 内联 JS） ====================
+msgid "未登记"
+msgstr "not registered"
+
+msgid "（留空=服务级）"
+msgstr "(empty = service level)"
+
+msgid "（留空=线路级）"
+msgstr "(empty = channel level)"
 

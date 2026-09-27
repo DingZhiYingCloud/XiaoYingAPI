@@ -1,6 +1,6 @@
 """SEO 服务 - 接口文档与在线调试数据
 
-数据与 API/apis/seo/ 实际实现对齐（分类树 /api/seo/ 为需签名）：
+数据与 API/apis/seo/ 实际实现对齐（服务策略 /api/seo/ 默认需签名）：
 - 友情链接 friend_links：站点友情链接集合的 RESTful 增删改查。
 后续接入更多 SEO 能力（robots/sitemap/外链检测等）时在 channels 追加即可。
 """
@@ -39,6 +39,14 @@ SERVICE = ServiceSpec(
     name='SEO 服务',
     prefix='/api/seo/',
     summary='SEO 周边能力：友情链接集合的统一管理（列表/详情/新增/更新/删除），便于站点外链建设。当前接入友情链接线路。',
+    keywords='友情链接API,友链管理,SEO接口',
+    intro=[
+        'SEO 服务当前提供友情链接的统一管理：列表查询、单条详情、新增、更新与删除，'
+        '可用于自有站点的友链库维护，也是本站在做外链交换时使用的同一套数据。',
+        '接口为 RESTful 风格：GET / POST 作用于集合，GET / PATCH / DELETE 按数字主键 id 操作单条；'
+        '链接地址全局唯一，重复提交同一 URL 会被拒绝。',
+        '本服务需项目签名。',
+    ],
     channels=[
         ChannelSpec(
             slug='friend_links',

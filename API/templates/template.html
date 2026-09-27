@@ -8,28 +8,31 @@
     <meta name="renderer" content="webkit" />
     <meta name="force-rendering" content="webkit" />
     <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1" />
-    <meta name="baidu-site-verification" content="codeva-D86XF7EVRs" />
     <meta name="viewport"
         content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <title>{% block title %}{% endblock %}</title>
     <meta name="keywords" content="{% block keywords %}{% endblock %}" />
     <meta name="description" content="{% block description %}{% endblock %}" />
-    <meta name="robots" content="index, follow" />
+    <meta name="robots" content="{% block robots %}index, follow{% endblock %}" />
     <link rel="canonical" href="{% block canonical %}{{ request.build_absolute_uri }}{% endblock %}" />
     <meta name="theme-color" content="#1677ff" />
     <link rel="shortcut icon" href="/media/favicon.ico">
     <link rel="bookmark" href="/media/favicon.ico">
     <!-- daisyUI 样式（编译产物）：改类名/样式后需重新编译，见 API/static/css/input.css 与《前端开发必看》 -->
     <script>
-      /* 主题防闪烁：在样式渲染前恢复上次选择的主题 */
+      /* 主题防闪烁：在样式渲染前恢复上次选择的主题与页面底色。
+         output.css 到达前浏览器不会绘制，若用户选的是暗色主题就会先闪一下白底；
+         这里用上次记录的主题底色（theme.js 写入）先行铺底，彻底消掉那下白闪。 */
       (function () {
         try {
           var t = localStorage.getItem('xyapi_theme');
           if (t) document.documentElement.setAttribute('data-theme', t);
+          var bg = localStorage.getItem('xyapi_theme_bg');
+          if (bg) document.documentElement.style.backgroundColor = bg;
         } catch (e) { /* 忽略隐私模式等异常 */ }
       })();
     </script>
-    <link href="{% static 'css/output.css' %}?v=20260911b" rel="stylesheet" type="text/css" />
+    <link href="{% static 'css/output.css' %}?v=20260927f" rel="stylesheet" type="text/css" />
     <!-- 结构化数据（schema.org）：声明站点信息与站内搜索，助力搜索引擎理解网站 -->
 
     {% block head %}{% endblock %}
@@ -41,14 +44,16 @@
     {% block content %}{% endblock %}
     {% include 'common_html/footer.html' %}
 
-    {# 服务设置弹窗 + 图标库 + 全局交互（地基：后续新设置只需在后端 sections 与 JS 注册表各加一项） #}
-    {% include 'common_html/service_settings_modal.html' %}
+    {# 图标库 + 全局交互 #}
     {# JS 多语言目录（window.gettext 等），必须早于所有站点脚本加载 #}
     <script src="{% url 'website:javascript-catalog' %}"></script>
     <script src="{% static 'js/site/ui.js' %}?v=20260909a"></script>
-    <script src="{% static 'js/site/theme.js' %}?v=20260909d"></script>
-    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    <script src="{% static 'js/site/service_settings.js' %}?v=20260909c"></script>
+    <script src="{% static 'js/site/theme.js' %}?v=20260927a"></script>
+    {% comment %}图标库自托管并锁定版本，不再走 CDN：外网脚本会阻塞 HTML 解析（实测 113~371ms，国内可能更慢甚至超时），
+    每次切换页面都要等它，是"闪屏"的主要来源之一。
+    defer 让下载与解析并行、不阻塞首屏；onload 在脚本就绪的那一刻立刻渲染图标，
+    避免图标晚于正文出现造成的元素跳动。{% endcomment %}
+    <script defer src="{% static 'js/vendor/lucide.min.js' %}?v=1.48.0" onload="lucide.createIcons()"></script>
 
     {% block js %}{% endblock %}
     

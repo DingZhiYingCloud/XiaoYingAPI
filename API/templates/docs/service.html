@@ -53,12 +53,24 @@
     </div>
   </div>
 
-  {# ===== 非开放状态横幅（状态由超级管理员维护） ===== #}
-  {% if status.status != 'open' %}
-  <div class="alert alert-soft mt-4 border border-base-300 {% if status.status == 'maintenance' or status.status == 'offline' %}alert-warning{% elif status.status == 'testing' %}alert-info{% else %}alert-ghost{% endif %}">
+  {# ===== 服务说明（正文，SEO 用；内容由各服务文档模块的 intro 声明） ===== #}
+  {% if doc.intro %}
+  <section class="mt-6 rounded-box border border-base-300 bg-base-100 p-4 sm:p-5">
+    <h2 class="text-lg font-semibold">{% trans "服务说明" %}</h2>
+    <div class="mt-2 space-y-2 text-sm leading-relaxed text-base-content/80">
+      {% for para in doc.intro %}
+      <p>{{ para }}</p>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# ===== 非正常状态横幅（状态由超级管理员在「服务策略」页维护） ===== #}
+  {% if status.status != 'normal' %}
+  <div class="alert alert-soft mt-4 border border-base-300 {% if status.status == 'maintenance' %}alert-warning{% elif status.status == 'offline' %}alert-error{% elif status.status == 'dev' %}alert-info{% else %}alert-ghost{% endif %}">
     <span class="badge {{ status.status_badge }} badge-sm">{{ status.status_label }}</span>
     <span class="text-sm">
-      {% blocktrans with label=status.status_label %}该服务当前处于「{{ label }}」状态{% endblocktrans %}{% if status.status == 'maintenance' %}{% trans "，接口可能临时不可用" %}{% elif status.status == 'offline' %}{% trans "，暂不可使用" %}{% elif status.status == 'testing' %}{% trans "，功能可能不稳定" %}{% endif %}{% trans "。以下文档与调试仅供了解。" %}
+      {% blocktrans with label=status.status_label %}该服务当前处于「{{ label }}」状态{% endblocktrans %}{% if status.status == 'maintenance' %}{% trans "，接口可能临时不可用" %}{% elif status.status == 'offline' %}{% trans "，暂不可使用" %}{% elif status.status == 'dev' %}{% trans "，功能可能不稳定" %}{% endif %}{% trans "。以下文档与调试仅供了解。" %}
     </span>
   </div>
   {% endif %}

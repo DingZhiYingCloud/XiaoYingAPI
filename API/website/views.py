@@ -9,12 +9,13 @@
 """
 import logging
 from urllib.parse import parse_qsl, urlencode, urlsplit
+from xml.sax.saxutils import escape
 
 from django.conf import settings
 from django.contrib.auth import authenticate
 from django.contrib.auth import login as django_login
 from django.db import IntegrityError
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext as _
@@ -124,6 +125,8 @@ def _web_app():
 
 def _error_code(msg):
     """根据业务错误消息映射状态码（与用户中心接口语义一致，前端主要读 msg）"""
+    if msg.startswith('业务规则限制'):
+        return StatusCode.BUSINESS_RULE_RESTRICTED
     if msg.startswith('参数缺失'):
         return StatusCode.PARAM_MISSING
     if msg.startswith('参数格式错误'):
@@ -153,12 +156,15 @@ def _current_user(request):
 
 
 def _auth_page_context():
-    """渲染登录/注册页所需的可用认证方式（由后台 AuthMethod 开关动态决定）"""
+    """渲染登录/注册页所需的可用认证方式（由后台 AuthMethod 开关动态决定）
+
+    注册只支持邮箱/手机号（「用户名+密码注册」已停用），故不再提供 username_enabled 开关；
+    两个方式都未启用时，注册页会显示"注册通道暂未开放"的提示。
+    """
     methods = uc_utils.get_available_methods().get('methods', [])
     return {
         'email_enabled': 'email' in methods,
         'phone_enabled': 'phone' in methods,
-        'username_enabled': True,  # 用户名+密码兜底方式，永远可用
         # 图形验证是否启用（密钥齐备即启用）；前端据此决定是否弹验证，与后端校验口径一致
         'captcha_enabled': captcha.enabled(),
     }
@@ -241,7 +247,8 @@ def login_view(request):
             return _json(StatusCode.RATE_LIMITED,
                          f'登录失败次数过多，已临时锁定，请约 {minutes_left} 分钟后再试')
         ok, result = uc_utils.login_user(
-            app, account=account, email=None, phone=None, password=password)
+            app, account=account, email=None, phone=None, password=password,
+            ip=_client_ip(request), user_agent=request.META.get('HTTP_USER_AGENT', ''))
         if not ok:
             login_fail(guard_key)
             return _json(_error_code(result) if result.startswith('参数') else StatusCode.AUTH_FAILED,
@@ -260,7 +267,8 @@ def login_view(request):
 
     ok, result = uc_utils.login_user(
         app, account=None, email=email or None, phone=phone or None,
-        password='', code=code)
+        password='', code=code,
+        ip=_client_ip(request), user_agent=request.META.get('HTTP_USER_AGENT', ''))
     if not ok:
         login_fail(guard_key)
         return _json(_error_code(result) if result.startswith('参数') else StatusCode.AUTH_FAILED,
@@ -274,9 +282,9 @@ def register_view(request):
     """注册页 / 注册动作
 
     GET：渲染注册页（已登录则回首页）。
-    POST：两步注册第一步 / 纯用户名直接建号。
+    POST：两步注册第一步（只支持邮箱 / 手机号）。
         - 提供 email/phone → 校验后发验证码并暂存注册意向（不建号），返回 step=verify
-        - 仅提供 username → 直接建号，返回 step=done（含 user_id/account/username）
+        - 只提供 username（用户名+密码注册）已停用 → 返回 30001 业务规则限制
     """
     if request.method == 'GET':
         if _current_user(request):
@@ -424,3 +432,46 @@ def reset_password_submit_view(request):
     if not ok:
         return _json(_error_code(result), result)
     return _json(StatusCode.SUCCESS, _('密码已重置，请用新密码登录'), {'account': result.get('account')})
+
+
+# ==================== SEO：站点地图 ====================
+
+# 固定收录的静态页面（登录 / 注册 / 控制台等无检索价值或需鉴权的页面不收录）
+_SITEMAP_STATIC_PATHS = ('/', '/guide/', '/docs/', '/programs/')
+# 不登记进站点地图的服务状态：提交不可用页面只会浪费抓取额度
+_SITEMAP_SKIP_STATUS = ('offline', 'dev')
+
+
+def sitemap_view(request):
+    """站点地图 /sitemap.xml（SEO）
+
+    收录：首页 / 接入向导 / 文档中心 / 各服务文档页 / 计算程序列表与程序详情页。
+    路径取自文档注册表（docs.all_docs）与内容目录（programs.all_programs），
+    新增服务或程序后自动纳入，无需改本函数；对外状态为「已下线 / 开发中」的
+    服务不收录。robots.txt 已声明本地址。
+    """
+    from .docs import all_docs
+    from .programs import all_programs
+    from .service_status import annotate as _annotate_status
+
+    paths = list(_SITEMAP_STATIC_PATHS)
+
+    # 各服务文档页：按服务前缀取对外状态（唯一口径见 service_status）
+    docs = all_docs()
+    statuses = _annotate_status([{'url_prefix': d.prefix} for d in docs], lambda prefix: True)
+    for doc, status in zip(docs, statuses):
+        if status['status'] not in _SITEMAP_SKIP_STATUS:
+            paths.append(f'/docs/{doc.slug}/')
+
+    # 计算程序详情页（目录即数据源，按磁盘现状实时生成）
+    paths += [f'/programs/{program.rel}/' for program in all_programs()]
+
+    # loc 先经 build_absolute_uri 归一（非 ASCII 路径会被百分号编码），再转义为 XML 文本
+    urls = ''.join(
+        f'  <url><loc>{escape(request.build_absolute_uri(path))}</loc></url>\n'
+        for path in paths)
+    xml = ('<?xml version="1.0" encoding="UTF-8"?>\n'
+           '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+           f'{urls}</urlset>\n')
+    return HttpResponse(xml, content_type='application/xml')
+

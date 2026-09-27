@@ -25,7 +25,7 @@ from .services import SERVICES, localize as localize_services
 
 def index(request):
     """/docs/ 文档目录：左侧为全量服务导航（见中间件注入 docs_menu），
-    右侧按“服务对外状态”展示全量服务卡（可进入的 = 已接入文档且非 建设中/已下线）。"""
+    右侧按“服务对外状态”展示全量服务卡（可进入的 = 已接入文档且非 开发中/已下线）。"""
     from .service_status import annotate as _annotate_status
     by_prefix = {d.prefix: d for d in all_docs()}
     services = []
@@ -36,7 +36,7 @@ def index(request):
         services.append(svc)
     return render(request, 'docs/index.html', {
         'services': services,
-        'online_count': sum(1 for s in services if s['status'] in ('open', 'testing', 'maintenance')),
+        'online_count': sum(1 for s in services if s['status'] in ('normal', 'dev', 'maintenance')),
     })
 
 
@@ -53,7 +53,7 @@ def service(request, slug: str):
     for channel in doc.channels:
         for endpoint in channel.endpoints:
             endpoint.call_count = counts.get(endpoint.path, 0)
-    # 服务状态（手动优先）；已接入文档的服务默认开放，非开放态在页面顶部给横幅提示
+    # 服务状态（服务策略优先）；已接入文档的服务默认正常，非正常态在页面顶部给横幅提示
     status = _annotate_status([{'url_prefix': doc.prefix}], lambda p: True)[0]
     # 是否存在需要在线播放器的端点（如 m3u8 播放地址），有则加载播放器脚本
     has_player = any(ep.player for channel in doc.channels for ep in channel.endpoints)

@@ -1,43 +1,16 @@
-{% extends 'template.html' %}
+{% extends 'console/base.html' %}
 {% load i18n %}
 
 {% block title %}{% trans "接入项目管理 - 超级管理员 - 小影API" %}{% endblock %}
 {% block keywords %}{% trans "超级管理员,接入项目" %}{% endblock %}
 {% block description %}{% trans "小影API 超级管理员：接入项目（APPID/APPSECRET）增删改查管理。" %}{% endblock %}
 
-{% block content %}
+{% block console_content %}
 {% trans "启用,停用" as v_status_text %}
-<section class="mx-auto w-full max-w-5xl px-4 py-6 sm:py-8">
-  <nav class="breadcrumbs text-sm">
-    <ul>
-      <li><a href="/docs/">{% trans "接口文档" %}</a></li>
-      <li><a href="/console/projects/">{% trans "超级管理员" %}</a></li>
-    </ul>
-  </nav>
+{% trans "创建 / 编辑 / 启停 / 删除接入项目；APPID、APPSECRET 由系统自动生成。" as ph_desc %}
+{% include 'console/_page_header.html' with icon='boxes' title='接入项目管理' desc=ph_desc %}
 
-  <div class="mt-2 flex flex-wrap items-center justify-between gap-3">
-    <div>
-      <h1 class="text-2xl font-bold sm:text-3xl">{% trans "接入项目管理" %}</h1>
-      <p class="mt-1 text-sm text-base-content/70">{% trans "创建 / 编辑 / 启停 / 删除接入项目；APPID、APPSECRET 由系统自动生成。" %}</p>
-    </div>
-    <div class="flex items-center gap-2">
-      <a href="{% url 'website:console_stats' %}" class="btn btn-outline btn-sm">{% trans "调用统计" %}</a>
-      <a href="{% url 'website:console_categories' %}" class="btn btn-outline btn-sm">{% trans "API 服务分类" %}</a>
-      <form method="post" action="{% url 'website:logout' %}">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-ghost btn-sm">{% trans "退出管理员" %}</button>
-      </form>
-    </div>
-  </div>
-
-  {# 消息提示 #}
-  {% if messages %}
-  <div class="mt-3 space-y-2">
-    {% for message in messages %}
-    <div role="alert" class="alert py-2 text-sm {% if message.level_tag == 'success' %}alert-success{% elif message.level_tag == 'warning' %}alert-warning{% else %}alert-error{% endif %}">{{ message }}</div>
-    {% endfor %}
-  </div>
-  {% endif %}
+  {% include 'console/_messages.html' %}
 
   {# 新建成功 → 一次性展示密钥 #}
   {% if created %}
@@ -149,7 +122,6 @@
     </article>
     {% endfor %}
   </div>
-</section>
 {% endblock %}
 
 {% block js %}

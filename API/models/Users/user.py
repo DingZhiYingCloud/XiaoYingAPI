@@ -9,6 +9,8 @@
     UserToken         - 登录凭证表（Token 绑定「用户 + 项目」，不同项目的 Token 互不通用）
     UserVerifyRecord  - 验证记录表（统一表：邮箱/手机号等所有验证方式共用，
                         验证码或激活链接二选一激活，type 区分验证方式，后续新增方式零建表）
+    UserLoginLog      - 登录日志表（每次登录成功写一条，用于「登录了多少次 / 最后何时登录 /
+                        在哪个项目用什么方式登录」等用户行为追溯）
 
 字段说明:
     User:
@@ -23,8 +25,9 @@
         status         - 启用状态（True=正常，False=封禁）
         create_time / updated_time - 继承 BaseModel
 
-    说明：邮箱/手机号等验证方式的启用与否由 AuthMethod 配置表控制（后台可开关），
-    全部关闭时降级为「用户名 + 密码」注册/登录（永远可用）。
+    说明：邮箱/手机号等验证方式的启用与否由 AuthMethod 配置表控制（后台可开关）。
+    注册只支持邮箱或手机号（「用户名 + 密码」注册已停用，返回 30001）；
+    登录支持「账号 / 邮箱 / 手机号 + 密码」，或「邮箱 / 手机号 + 验证码」。
 
     UserToken:
         id              - Token 唯一ID（UUID 主键）
@@ -41,6 +44,8 @@
     UserVerifyRecord:
         id            - 验证ID（UUID 主键）
         user          - 关联 User（外键，可空：两步注册的意向记录在完成注册建号前无用户，建号后回填）
+        app           - 发起该次验证的接入项目（外键，可空：历史数据无此信息；项目删除后置空，
+                        仅作审计留痕，不影响验证记录本身）
         scene         - 验证场景（register=两步注册意向 / login=登录验证码），区分验证码用途
         username      - 两步注册暂存的用户名（建号时使用）
         password_hash - 两步注册暂存的密码哈希（建号时使用）
@@ -49,6 +54,18 @@
         code          - 验证码（本地生成并校验；手机号由阿里云生成后服务端接收落库）
         token         - 激活链接标识（仅邮箱 link/both 模式使用，手机号方式为空）
         expire_time / is_used - 过期时间 / 是否已使用（校验成功后置 True，一次性有效）
+
+    UserLoginLog:
+        id            - 日志ID（UUID 主键）
+        user          - 关联 User（外键，随用户删除级联清理）
+        app           - 登录所在接入项目（外键，随项目删除级联清理）
+        method        - 登录方式（password=账号/邮箱/手机号 + 密码；code=邮箱/手机号 + 验证码）
+        ip            - 登录来源 IP（客户端 IP，取不到为空串）
+        user_agent    - 客户端 User-Agent（截断到 255 字符，便于识别设备/浏览器）
+
+    说明：登录成功即写一条，**退出登录与重置密码都不会删除**，因此
+    「登录了多少次 / 最后何时登录 / 在哪个项目登录」不受登录态清理影响；
+    该表是从「登录日志」改造时起开始记录，之前的登录无法回填。
 """
 import uuid
 
@@ -154,6 +171,15 @@ class UserVerifyRecord(BaseModel):
         verbose_name='关联用户',
         help_text='可空：两步注册意向在完成注册建号前无用户，建号后回填',
     )
+    app = models.ForeignKey(
+        UserApp,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='verify_records',
+        verbose_name='发起项目',
+        help_text='发起该次验证/注册请求的接入项目；历史数据为空，项目删除后置空（仅审计留痕）',
+    )
     scene = models.CharField('验证场景', max_length=20, db_index=True, default='verify',
                              help_text='register=两步注册意向 / login=登录验证码，区分验证码用途')
     register_batch = models.CharField('注册批次', max_length=36, null=True, blank=True, db_index=True,
@@ -196,3 +222,59 @@ class UserVerifyRecord(BaseModel):
         if self.expire_time and timezone.now() >= self.expire_time:
             return False
         return True
+
+
+class UserLoginLog(BaseModel):
+    """用户登录日志（每次登录成功写一条）
+
+    与 UserToken 的区别：Token 是「登录态」，退出登录 / 重置密码会被删除；
+    本表是「登录事实」，只增不删（用户/项目删除时随外键级联清理），
+    用于回答「登录了多少次 / 最后何时登录 / 在哪个项目用什么方式登录」。
+
+    写入点：user_center 登录成功签发 Token 时（utils._issue_login_token）。
+    覆盖范围：**从本次改造起开始记录**，改造前的登录无法回填。
+    """
+    METHOD_PASSWORD = 'password'
+    METHOD_CODE = 'code'
+    METHOD_CHOICES = (
+        (METHOD_PASSWORD, '账号/邮箱/手机号 + 密码'),
+        (METHOD_CODE, '邮箱/手机号 + 验证码'),
+    )
+
+    id = models.UUIDField('日志ID', primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='login_logs',
+        verbose_name='关联用户',
+    )
+    app = models.ForeignKey(
+        UserApp,
+        on_delete=models.CASCADE,
+        related_name='login_logs',
+        verbose_name='登录项目',
+        help_text='本次登录签发的 Token 所属项目',
+    )
+    method = models.CharField('登录方式', max_length=20, default=METHOD_PASSWORD,
+                              choices=METHOD_CHOICES,
+                              help_text='password=密码登录；code=验证码登录（免密码）')
+    ip = models.CharField('登录IP', max_length=45, blank=True, default='',
+                          help_text='客户端 IP；取不到时为空串')
+    user_agent = models.CharField('客户端', max_length=255, blank=True, default='',
+                                  help_text='User-Agent，截断到 255 字符')
+
+    class Meta:
+        db_table = 'user_login_log'
+        verbose_name = '用户登录日志'
+        verbose_name_plural = '用户登录日志'
+        ordering = ['-create_time']
+        indexes = [
+            # 用户管理页的两类查询：某用户在某项目的登录明细、某用户最近登录
+            models.Index(fields=['user', 'app'], name='idx_login_log_user_app'),
+            models.Index(fields=['user', '-create_time'], name='idx_login_log_user_time'),
+            # 列表页按项目筛选「谁登录过这个项目」
+            models.Index(fields=['app', '-create_time'], name='idx_login_log_app_time'),
+        ]
+
+    def __str__(self):
+        return f'{self.user} -> {self.app} ({self.method})'

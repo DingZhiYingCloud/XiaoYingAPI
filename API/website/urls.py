@@ -1,8 +1,9 @@
 """官网前台路由（挂载在站点根路径下）"""
 from django.urls import path
+from django.views.generic import TemplateView
 from django.views.i18n import JavaScriptCatalog
 
-from . import console, docs_views, programs_views, views
+from . import console, console_users, docs_views, programs_views, views
 
 app_name = 'website'
 
@@ -22,6 +23,11 @@ urlpatterns = [
     # （仅下发前端 JS 用到的词条，不把整份服务端词条目录发给浏览器）
     path('jsi18n/', JavaScriptCatalog.as_view(), name='javascript-catalog'),
 
+    # SEO：robots.txt 与站点地图（robots.txt 内声明的 Sitemap 地址即 /sitemap.xml）
+    path('robots.txt', TemplateView.as_view(template_name='robots.txt', content_type='text/plain'),
+         name='robots_txt'),
+    path('sitemap.xml', views.sitemap_view, name='sitemap'),
+
     # API 文档中心
     path('docs/', docs_views.index, name='docs_index'),        # 文档目录
     path('docs/_call/', docs_views.call, name='docs_call'),    # 在线调试代调（白名单）
@@ -35,8 +41,17 @@ urlpatterns = [
     path('programs/<path:rel>/', programs_views.detail, name='programs_detail'),    # 程序详情
 
     # 超级管理员控制台（服务端 is_superuser 二次鉴权；超管在 /login/ 登录后即可访问）
+    path('console/', console.home_view, name='console_home'),                    # 控制台首页（侧栏导航 + 概览）
     path('console/projects/', console.projects_view, name='console_projects'),   # 接入项目管理
-    path('console/categories/', console.categories_view, name='console_categories'),  # API 服务分类认证模式
+    path('console/services/', console.services_view, name='console_services'),   # API 服务策略（服务/线路/端点三级继承）
     path('console/stats/', console.stats_view, name='console_stats'),           # API 调用统计看板
-    path('console/services/api/', console.services_api, name='console_services_api'),  # 侧栏“服务设置”弹窗 API
+    # 用户管理（超管专属）
+    path('console/users/', console_users.users_view, name='console_users'),     # 用户列表（搜索/筛选/分页/写操作）
+    path('console/users/<uuid:user_id>/', console_users.user_detail_view,
+         name='console_user_detail'),                                           # 用户详情（登录明细）
+    # 调用统计详情页（服务前缀 / APPID 作为路径参数，必须排在 console/stats/ 之后）
+    path('console/stats/service/<path:service>/', console.stats_service_view,
+         name='console_stats_service'),                                          # 单服务统计详情
+    path('console/stats/app/<str:app_id>/', console.stats_app_view,
+         name='console_stats_app'),                                              # 单项目统计详情
 ]

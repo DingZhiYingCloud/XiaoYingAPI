@@ -1,0 +1,180 @@
+{% extends 'console/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "用户管理 - 超级管理员 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,用户管理,登录记录" %}{% endblock %}
+{% block description %}{% trans "小影API 超级管理员：用户中心用户管理（资料、登录过的项目与次数、最后登录、Token 剩余有效天数；支持建号、编辑、封禁、重置密码、删除）。" %}{% endblock %}
+
+{% block console_content %}
+{% trans "查看用户中心全部用户：资料、登录过的项目与次数、最后登录时间。支持建号、编辑、封禁/解封、重置密码与删除。" as ph_desc %}
+{% include 'console/_page_header.html' with icon='users' title='用户管理' desc=ph_desc %}
+
+{% include 'console/_messages.html' %}
+
+{# ===== 搜索 / 筛选 / 新建 ===== #}
+<div class="mt-5 flex flex-wrap items-end justify-between gap-3">
+  <form method="get" class="flex flex-wrap items-end gap-2">
+    <label class="flex flex-col gap-1">
+      <span class="text-xs text-base-content/60">{% trans "关键词" %}</span>
+      <input type="search" name="q" value="{{ keyword }}" autocomplete="off"
+             placeholder="{% trans '账号 / 用户名 / 邮箱 / 手机号' %}"
+             class="input input-sm w-full sm:w-56" />
+    </label>
+    <label class="flex flex-col gap-1">
+      <span class="text-xs text-base-content/60">{% trans "状态" %}</span>
+      <select name="status" class="select select-sm w-full sm:w-28">
+        <option value="">{% trans "全部" %}</option>
+        <option value="normal"{% if status_filter == 'normal' %} selected{% endif %}>{% trans "正常" %}</option>
+        <option value="banned"{% if status_filter == 'banned' %} selected{% endif %}>{% trans "已封禁" %}</option>
+      </select>
+    </label>
+    <label class="flex flex-col gap-1">
+      <span class="text-xs text-base-content/60">{% trans "注册方式" %}</span>
+      <select name="register_type" class="select select-sm w-full sm:w-32">
+        <option value="">{% trans "全部" %}</option>
+        {% for value, label in register_type_options %}
+        <option value="{{ value }}"{% if register_type == value %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="flex flex-col gap-1">
+      <span class="text-xs text-base-content/60">{% trans "登录过项目" %}</span>
+      <select name="app_id" class="select select-sm w-full sm:w-44">
+        <option value="">{% trans "全部" %}</option>
+        {% for app in apps %}
+        <option value="{{ app.app_id }}"{% if app_filter == app.app_id %} selected{% endif %}>{{ app.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="flex flex-col gap-1">
+      <span class="text-xs text-base-content/60">{% trans "每页" %}</span>
+      <select name="size" class="select select-sm w-full sm:w-20">
+        {% for size in size_choices %}
+        <option value="{{ size }}"{% if size == page_size %} selected{% endif %}>{{ size }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit" class="btn btn-sm btn-primary">{% trans "搜索" %}</button>
+    {% if keyword or status_filter or register_type or app_filter %}
+    <a href="{% url 'website:console_users' %}" class="btn btn-sm btn-ghost">{% trans "重置" %}</a>
+    {% endif %}
+  </form>
+
+  <button type="button" class="btn btn-sm btn-primary" onclick="user_create_modal.showModal()">
+    <i data-lucide="user-plus" class="h-4 w-4"></i>{% trans "新建用户" %}
+  </button>
+</div>
+
+{# ===== 用户列表 ===== #}
+<div class="card mt-3 border border-base-300 bg-base-100">
+  <div class="card-body gap-3">
+    {% if page_obj.object_list %}
+    <div class="overflow-x-auto">
+      <table class="table table-sm min-w-[64rem]">
+        <thead>
+          <tr>
+            <th class="whitespace-nowrap">{% trans "用户" %}</th>
+            <th class="whitespace-nowrap">{% trans "联系方式" %}</th>
+            <th class="whitespace-nowrap">{% trans "状态" %}</th>
+            <th class="whitespace-nowrap">{% trans "注册时间" %}</th>
+            <th class="whitespace-nowrap">{% trans "登录概况" %}</th>
+            <th class="whitespace-nowrap text-right">{% trans "操作" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in page_obj.object_list %}
+          <tr>
+            <td>
+              <a href="{% url 'website:console_user_detail' row.pk %}" class="link link-hover font-mono text-sm">{{ row.account }}</a>
+              <div class="max-w-[12rem] truncate text-xs text-base-content/60">{{ row.username|default:'—' }}</div>
+            </td>
+            <td class="text-sm">
+              <div class="whitespace-nowrap">
+                {% if row.email %}{{ row.email }}{% if not row.email_verified %}<span class="badge badge-warning badge-xs">{% trans "未验证" %}</span>{% endif %}{% else %}<span class="text-base-content/40">—</span>{% endif %}
+              </div>
+              <div class="whitespace-nowrap font-mono text-xs text-base-content/70">
+                {% if row.phone %}{{ row.phone }}{% if not row.phone_verified %}<span class="badge badge-warning badge-xs">{% trans "未验证" %}</span>{% endif %}{% else %}<span class="text-base-content/40">—</span>{% endif %}
+              </div>
+            </td>
+            <td class="whitespace-nowrap">
+              {% if row.status %}
+              <span class="badge badge-success badge-sm">{% trans "正常" %}</span>
+              {% else %}
+              <span class="badge badge-error badge-sm">{% trans "已封禁" %}</span>
+              {% endif %}
+            </td>
+            <td class="whitespace-nowrap text-xs text-base-content/70">{{ row.create_time|date:'Y-m-d H:i' }}</td>
+            <td class="whitespace-nowrap">
+              {% if row.login_total %}
+              <div class="text-sm">{% blocktrans with p=row.login_projects n=row.login_total %}{{ p }} 个项目 · 共 {{ n }} 次{% endblocktrans %}</div>
+              <div class="text-xs text-base-content/60">{% trans "最后登录" %} {{ row.last_login|date:'Y-m-d H:i' }}</div>
+              {% else %}
+              <span class="text-xs text-base-content/40">{% trans "从未登录" %}</span>
+              {% endif %}
+            </td>
+            <td class="whitespace-nowrap text-right">
+              <div class="flex items-center justify-end gap-1">
+                <a href="{% url 'website:console_user_detail' row.pk %}" class="btn btn-xs btn-ghost">{% trans "详情" %}</a>
+                <form method="post" action="{% url 'website:console_users' %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="{% if row.status %}ban{% else %}unban{% endif %}" />
+                  <input type="hidden" name="user_id" value="{{ row.pk }}" />
+                  <input type="hidden" name="next" value="{{ request.get_full_path }}" />
+                  <button type="submit" class="btn btn-xs {% if row.status %}btn-ghost text-error{% else %}btn-ghost{% endif %}">
+                    {% if row.status %}{% trans "封禁" %}{% else %}{% trans "解封" %}{% endif %}
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include 'console/_pagination.html' %}
+    {% else %}
+    <p class="py-6 text-center text-sm text-base-content/60">{% trans "没有匹配的用户" %}</p>
+    {% endif %}
+  </div>
+</div>
+
+<p class="mt-3 text-xs leading-relaxed text-base-content/60">
+  {% blocktrans %}口径：登录次数 = 登录日志条数（每次登录成功记一条，退出登录与重置密码不会减少）；登录项目 = 该用户登录过的接入项目数。用户是全局用户池，不属于任何项目。{% endblocktrans %}
+  {% blocktrans %}登录日志自本次升级起开始记录，升级之前的登录无法回填。{% endblocktrans %}
+</p>
+
+{# ===== 新建用户 ===== #}
+<dialog id="user_create_modal" class="modal">
+  <div class="modal-box max-w-lg">
+    <h3 class="text-lg font-bold">{% trans "新建用户" %}</h3>
+    <p class="mt-1 text-xs text-base-content/60">
+      {% trans "邮箱与手机号至少填一个。账号由系统随机分配（6-12 位数字）；后台创建的凭证会直接标记为已验证，用户可用「账号 / 邮箱 / 手机号 + 密码」登录。" %}
+    </p>
+    <form method="post" action="{% url 'website:console_users' %}" class="mt-3 grid gap-3 sm:grid-cols-2">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create" />
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/60">{% trans "邮箱" %}</span>
+        <input type="email" name="email" class="input input-sm" placeholder="user@example.com" autocomplete="off" />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/60">{% trans "手机号" %}</span>
+        <input type="text" name="phone" class="input input-sm font-mono" placeholder="13800000000" autocomplete="off" />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/60">{% trans "用户名（可选，仅展示用）" %}</span>
+        <input type="text" name="username" class="input input-sm" autocomplete="off" />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/60">{% trans "初始密码（8-64 位，含字母与数字）" %}</span>
+        <input type="text" name="password" class="input input-sm font-mono" autocomplete="new-password" required />
+      </label>
+      <div class="modal-action sm:col-span-2">
+        <button type="submit" class="btn btn-sm btn-primary">{% trans "创建" %}</button>
+        <button type="button" class="btn btn-sm btn-ghost" onclick="user_create_modal.close()">{% trans "取消" %}</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+{% endblock %}

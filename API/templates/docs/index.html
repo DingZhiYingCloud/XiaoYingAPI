@@ -27,20 +27,19 @@
         <div class="mt-4 flex flex-wrap gap-2 text-sm">
           <span class="badge badge-soft badge-primary">{% trans "在线调试" %}</span>
           <span class="badge badge-soft badge-secondary">{% trans "服务/线路展开" %}</span>
-          <span class="badge badge-soft badge-success">{% trans "开放" %}</span>
-          <span class="badge badge-soft badge-info">{% trans "测试中" %}</span>
+          <span class="badge badge-soft badge-success">{% trans "正常" %}</span>
+          <span class="badge badge-soft badge-info">{% trans "开发中" %}</span>
           <span class="badge badge-soft badge-warning">{% trans "维护中" %}</span>
-          <span class="badge badge-ghost">{% trans "建设中" %}</span>
           <span class="badge badge-soft badge-error">{% trans "已下线" %}</span>
         </div>
       </div>
 
-      {# 全量服务速览（状态由超级管理员在文档侧栏的“服务设置”齿轮弹窗中调整） #}
+      {# 全量服务速览（状态由超级管理员在「服务策略」页 /console/services/ 维护） #}
       <div class="mt-6">
         <h2 class="text-lg font-semibold">{% blocktrans with total=services|length online=online_count %}全部服务（共 {{ total }} 个，可在线调试 {{ online }} 个）{% endblocktrans %}</h2>
         <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {% for svc in services %}
-          {% if svc.registered and svc.status != 'building' and svc.status != 'offline' %}
+          {% if svc.registered and svc.status != 'dev' and svc.status != 'offline' %}
           <a href="/docs/{{ svc.slug }}/"
              class="card card-border bg-base-100 transition hover:-translate-y-0.5 hover:shadow-md">
           {% else %}
@@ -61,7 +60,7 @@
                 {% endif %}
               </div>
             </div>
-          {% if svc.registered and svc.status != 'building' and svc.status != 'offline' %}
+          {% if svc.registered and svc.status != 'dev' and svc.status != 'offline' %}
           </a>
           {% else %}
           </div>

@@ -96,7 +96,7 @@
 
   <div class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
     {% for svc in services %}
-    <article class="card card-border bg-base-100 transition hover:-translate-y-0.5 hover:shadow-md{% if svc.status == 'offline' or svc.status == 'building' %} opacity-70 hover:translate-y-0{% endif %}">
+    <article class="card card-border bg-base-100 transition hover:-translate-y-0.5 hover:shadow-md{% if svc.status == 'offline' or svc.status == 'dev' %} opacity-70 hover:translate-y-0{% endif %}">
       <div class="card-body gap-2 p-5">
         <div class="flex items-center justify-between gap-2">
           <h3 class="card-title">{{ svc.name }}</h3>
@@ -193,7 +193,8 @@
   </div>
 </section>
 
-{# ==================== 底部 CTA ==================== #}
+{# ==================== 底部 CTA（已登录不再显示；超管走 Django 会话，故一并判断 is_superadmin） ==================== #}
+{% if not website_user and not is_superadmin %}
 <section class="bg-primary px-4 py-14">
   <div class="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-6 text-center sm:flex-row sm:text-left">
     <div>
@@ -206,5 +207,6 @@
     </div>
   </div>
 </section>
+{% endif %}
 
 {% endblock %}

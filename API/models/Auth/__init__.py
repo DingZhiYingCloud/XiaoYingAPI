@@ -1,3 +1,3 @@
-from API.models.Auth.category import ApiCategory
+from API.models.Auth.policy import ApiServicePolicy
 
-__all__ = ['ApiCategory']
+__all__ = ['ApiServicePolicy']

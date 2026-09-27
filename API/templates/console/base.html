@@ -1,0 +1,18 @@
+{% extends 'template.html' %}
+{% load i18n %}
+
+{# 控制台页面不参与搜索引擎收录（最高权限入口，且正文对匿名访客不可见） #}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% comment %}控制台母版：左栏导航 + 右内容两栏；具体页面实现 console_content 块（不要再套外层容器）。
+容器用 90rem（比站内其他页的 72/80rem 更宽）：控制台以表格/看板为主，需要横向空间。{% endcomment %}
+{% block content %}
+<section class="mx-auto w-full max-w-[90rem] px-4 py-6 sm:px-6 sm:py-8">
+  <div class="flex flex-col gap-4 lg:flex-row lg:gap-6">
+    {% include 'console/_sidebar.html' %}
+    <div class="min-w-0 flex-1">
+      {% block console_content %}{% endblock %}
+    </div>
+  </div>
+</section>
+{% endblock %}

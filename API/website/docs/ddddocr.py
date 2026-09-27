@@ -1,6 +1,6 @@
 """验证码识别服务 - 接口文档与在线调试数据
 
-数据与 API/apis/DdddocrRecognizer/ 实际实现对齐（分类树 /api/ddddocr/ 为需签名）：
+数据与 API/apis/DdddocrRecognizer/ 实际实现对齐（服务策略 /api/ddddocr/ 默认需签名）：
 - ddddocr：本地 Python ddddocr 模型，OCR 识别 / 目标检测 / 滑块缺口匹配。
 后续接入更多识别引擎时在 channels 追加即可。
 """
@@ -37,6 +37,14 @@ SERVICE = ServiceSpec(
     name='验证码识别',
     prefix='/api/ddddocr/',
     summary='基于 ddddocr 的通用验证码识别：OCR 文字识别、目标检测、滑块验证码缺口匹配。当前接入 ddddocr 单线路。',
+    keywords='验证码识别API,ddddocr,OCR识别接口,滑块验证码识别',
+    intro=[
+        '验证码识别服务基于 ddddocr 提供通用 OCR 能力：识别图片中的文字、检测图片内的目标位置，'
+        '以及匹配滑块验证码的缺口位置（提供两种算法），常用于自动化测试与验证码相关的兼容性处理。',
+        '识别实例的字符范围可配置（预定义编号或自定义字符集），在识别特定站点的验证码前先设置字符集，'
+        '通常能明显提升准确率。',
+        '本服务需项目签名。识别准确率受图片质量与干扰强度影响，建议对失败结果做重试或人工兜底。',
+    ],
     channels=[
         ChannelSpec(
             slug='ddddocr',

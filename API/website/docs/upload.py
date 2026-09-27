@@ -1,6 +1,6 @@
 """文件上传服务 - 接口文档与在线调试数据
 
-数据与 API/apis/uploads/ 实际实现对齐（分类树 /api/upload/ 为需签名）：
+数据与 API/apis/uploads/ 实际实现对齐（服务策略 /api/upload/ 默认需签名）：
 - 本地上传：图片 / 视频 / 通用文件三类，白名单 + 校验文件头，落盘 /media/uploads/...。
 后续新增存储后端（OSS 等）时在 channels 追加即可。
 """
@@ -24,6 +24,15 @@ SERVICE = ServiceSpec(
     name='文件上传',
     prefix='/api/upload/',
     summary='通用文件上传能力：图片/视频/普通文件，白名单校验并存储到本地 /media，返回可访问 URL。',
+    keywords='文件上传API,图片上传接口',
+    intro=[
+        '文件上传服务提供图片、视频与通用文件三类上传入口，文件落盘到站点 /media 目录并返回可直接引用的 URL，'
+        '适合作为业务系统的统一附件通道。',
+        '全部接口使用 multipart/form-data，文件字段名固定为 file。服务端按白名单校验扩展名并校验文件头'
+        '（magic bytes），可内联渲染或执行的文件类型（如 svg、html、脚本）一律拒绝，'
+        '避免上传文件被当作存储型 XSS 利用。',
+        '体积限制：图片最大 20MB，视频与通用文件最大 100MB。本服务需项目签名。',
+    ],
     channels=[
         ChannelSpec(
             slug='local',

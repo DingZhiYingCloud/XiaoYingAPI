@@ -1,0 +1,32 @@
+{% load i18n %}
+{% comment %}调用统计总览：时间范围 + 服务/项目筛选（筛选后所有卡片同步生效）{% endcomment %}
+<div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+  <div role="tablist" class="tabs tabs-box w-fit">
+    {% for r in range_choices %}
+    <a role="tab" href="?days={{ r }}{% if service_choice %}&amp;service={{ service_choice|urlencode }}{% endif %}{% if app_choice %}&amp;app_id={{ app_choice|urlencode }}{% endif %}"
+       class="tab {% if r == days %}tab-active{% endif %}">
+      {% blocktrans %}{{ r }} 天{% endblocktrans %}
+    </a>
+    {% endfor %}
+  </div>
+
+  <form method="get" class="flex flex-wrap items-center gap-2">
+    <input type="hidden" name="days" value="{{ days }}" />
+    <select name="service" class="select select-sm w-full sm:w-44">
+      <option value="">{% trans "全部服务" %}</option>
+      {% for opt in service_options %}
+      <option value="{{ opt.value }}"{% if opt.value == service_choice %} selected{% endif %}>{{ opt.label }}</option>
+      {% endfor %}
+    </select>
+    <select name="app_id" class="select select-sm w-full sm:w-44">
+      <option value="">{% trans "全部项目" %}</option>
+      {% for opt in app_options %}
+      <option value="{{ opt.value }}"{% if opt.value == app_choice %} selected{% endif %}>{{ opt.label }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-sm btn-primary">{% trans "筛选" %}</button>
+    {% if service_choice or app_choice %}
+    <a href="?days={{ days }}" class="btn btn-sm btn-ghost">{% trans "重置" %}</a>
+    {% endif %}
+  </form>
+</div>

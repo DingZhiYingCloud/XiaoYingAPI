@@ -1,0 +1,323 @@
+{% extends 'console/base.html' %}
+{% load i18n static %}
+
+{% block title %}{% trans "服务策略 - 超级管理员 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,服务策略,状态,认证模式,项目白名单,三级继承" %}{% endblock %}
+{% block description %}{% trans "小影API 超级管理员：按服务 / 线路 / 端点三级配置认证模式与对外状态，逐级继承。" %}{% endblock %}
+
+{% block console_content %}
+{% blocktrans with total=policies|length asvar ph_desc %}共 {{ total }} 条策略；服务 / 线路 / 端点三级逐级继承，改动后立即对接口鉴权生效，无需重启。{% endblocktrans %}
+{% include 'console/_page_header.html' with icon='shield-check' title='服务策略' desc=ph_desc %}
+
+  {% include 'console/_messages.html' %}
+
+  {# 规则说明（纯提示，中性灰） #}
+  <div role="alert" class="alert alert-soft bg-base-200 mt-4 items-start py-3 text-sm">
+    <div class="space-y-1">
+      <p>
+        {% trans "逐级继承：服务 → 线路 → 端点，每一级都可单独设状态 / 认证模式 / 项目范围；设为「跟随上级」则向上一级取，最终兜底为「正常 + 需要签名 + 不限项目」。" %}
+      </p>
+      <p class="text-xs opacity-80">
+        {% trans "维护态：生效状态为「维护中」时，命中路径的 /api/ 请求统一返回 30004「服务维护中」，且不做签名校验（匿名同样收到）。" %}
+      </p>
+      <p class="text-xs opacity-80">
+        {% trans "开发中 / 已下线只作前台展示标记，不拦截请求（便于排障与联调）。" %}
+      </p>
+      <p class="text-xs opacity-80">
+        {% trans "项目白名单：仅在生效认证模式为「需要签名」时生效——签名通过后若当前项目不在名单内，返回 20020「无权限」；开放模式不校验签名，拿不到调用项目。" %}
+      </p>
+      <p class="text-xs opacity-80">
+        {% trans "未命中任何策略的 /api/ 路径按全局默认「需要签名」处理（fail-closed）。" %}
+      </p>
+    </div>
+  </div>
+
+  {# 新建 #}
+  <div class="mt-5 flex justify-end">
+    <button type="button" class="btn btn-sm btn-primary" onclick="service_create_modal.showModal()">
+      <i data-lucide="plus" class="h-4 w-4"></i>{% trans "新建策略" %}
+    </button>
+  </div>
+
+  {# 策略列表 #}
+  <div class="mt-3 overflow-x-auto">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th class="whitespace-nowrap">{% trans "层级" %}</th>
+          <th class="whitespace-nowrap">{% trans "策略名称 / 路径" %}</th>
+          <th class="whitespace-nowrap">{% trans "状态" %}</th>
+          <th class="whitespace-nowrap">{% trans "认证模式" %}</th>
+          <th class="whitespace-nowrap">{% trans "生效结果" %}</th>
+          <th class="whitespace-nowrap">{% trans "项目范围" %}</th>
+          <th class="whitespace-nowrap text-right">{% trans "操作" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for policy in policies %}
+        <tr>
+          <td class="whitespace-nowrap"><span class="badge badge-ghost badge-sm">{{ policy.level_label }}</span></td>
+          <td>
+            <div class="text-sm font-medium">{{ policy.name }}</div>
+            {% if policy.path_label %}<div class="text-xs text-base-content/70">{{ policy.path_label }}{% if not policy.path_registered %}<span class="ml-1 text-warning">{% trans "（未在文档登记）" %}</span>{% endif %}</div>{% endif %}
+            <code class="font-mono text-xs text-base-content/60">{{ policy.path_prefix }}</code>
+            {% if policy.remark %}<div class="text-xs text-base-content/60">{{ policy.remark }}</div>{% endif %}
+          </td>
+          <td class="whitespace-nowrap text-sm">{{ policy.status_label }}</td>
+          <td class="whitespace-nowrap text-sm">{{ policy.auth_mode_label }}</td>
+          <td class="whitespace-nowrap">
+            <span class="badge {{ policy.effective_status_badge }} badge-sm">{{ policy.effective_status_label }}</span>
+            {% if policy.effective_auth %}
+            <span class="badge badge-soft badge-warning badge-sm ml-1">{% trans "需要签名" %}</span>
+            {% else %}
+            <span class="badge badge-soft badge-success badge-sm ml-1">{% trans "开放" %}</span>
+            {% endif %}
+          </td>
+          <td class="whitespace-nowrap text-sm">
+            {% if policy.app_scope == 'whitelist' %}
+            <span class="badge badge-soft badge-info badge-sm">{% trans "仅白名单项目" %}</span>
+            <span class="ml-1 text-xs text-base-content/60">{% blocktrans with n=policy.whitelist_count %}{{ n }} 个项目{% endblocktrans %}</span>
+            {% elif policy.app_scope == 'all' %}
+            <span class="text-sm">{% trans "不限项目" %}</span>
+            {% else %}
+            <span class="text-xs text-base-content/60">{% trans "跟随上级" %}{% if policy.effective_scope == 'whitelist' %}（{% trans "生效：仅白名单项目" %}）{% endif %}</span>
+            {% endif %}
+          </td>
+          <td class="whitespace-nowrap text-right">
+            <div class="flex items-center justify-end gap-1">
+              <button type="button" class="btn btn-xs btn-ghost" data-edit-policy
+                      data-id="{{ policy.id }}" data-name="{{ policy.name }}"
+                      data-prefix="{{ policy.path_prefix }}" data-status="{{ policy.status }}"
+                      data-mode="{{ policy.auth_mode }}" data-scope="{{ policy.app_scope }}"
+                      data-remark="{{ policy.remark }}" data-apps="{{ policy.app_ids|join:',' }}">{% trans "编辑" %}</button>
+              <form method="post" action="{% url 'website:console_services' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="toggle" />
+                <input type="hidden" name="id" value="{{ policy.id }}" />
+                <button type="submit" class="btn btn-xs btn-ghost{% if policy.status == 'maintenance' %} text-success{% else %} text-error{% endif %}">
+                  {% if policy.status == 'maintenance' %}{% trans "启用" %}{% else %}{% trans "停用" %}{% endif %}
+                </button>
+              </form>
+              <form method="post" action="{% url 'website:console_services' %}"
+                    data-confirm="{% trans '删除后不可恢复：该策略立即失效，接口鉴权回落到上级 / 全局默认，确认删除？' %}"
+                    data-confirm-title="{% trans '删除服务策略' %}"
+                    data-confirm-ok="{% trans '删除' %}"
+                    data-confirm-danger="1">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete" />
+                <input type="hidden" name="id" value="{{ policy.id }}" />
+                <button type="submit" class="btn btn-xs btn-error btn-outline">{% trans "删除" %}</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="py-6 text-center text-sm text-base-content/60">{% trans "暂无服务策略" %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# ===== 新建策略 ===== #}
+  <dialog id="service_create_modal" class="modal">
+    <div class="modal-box max-w-3xl">
+      <h3 class="text-lg font-bold">{% trans "新建策略" %}</h3>
+      <p class="mt-1 text-xs text-base-content/60">
+        {% trans "按「服务 → 线路 → 端点」三级选择，层级与 URL 前缀自动推导；命中后按最短路径优先在继承链上生效。" %}
+      </p>
+      <form id="service_create_form" method="post" action="{% url 'website:console_services' %}" class="mt-3 grid gap-3">
+        {% csrf_token %}
+        {% include 'console/_service_form.html' with form_action='create' %}
+        <div class="modal-action">
+          <button type="submit" class="btn btn-sm btn-primary">{% trans "创建" %}</button>
+          <button type="button" class="btn btn-sm btn-ghost" onclick="service_create_modal.close()">{% trans "取消" %}</button>
+        </div>
+      </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
+
+  {# ===== 编辑策略（由行内「编辑」按钮填充字段后打开） ===== #}
+  <dialog id="service_edit_modal" class="modal">
+    <div class="modal-box max-w-3xl">
+      <h3 class="text-lg font-bold">{% trans "编辑策略" %}</h3>
+      <p class="mt-1 text-xs text-base-content/60">
+        {% trans "启用 / 停用请使用列表中的按钮（停用即置为维护态）。" %}
+      </p>
+      <form id="service_edit_form" method="post" action="{% url 'website:console_services' %}" class="mt-3 grid gap-3">
+        {% csrf_token %}
+        {% include 'console/_service_form.html' with form_action='edit' %}
+        <div class="modal-action">
+          <button type="submit" class="btn btn-sm btn-primary">{% trans "保存" %}</button>
+          <button type="button" class="btn btn-sm btn-ghost" onclick="service_edit_modal.close()">{% trans "取消" %}</button>
+        </div>
+      </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
+
+  {{ tree|json_script:"service_tree_data" }}
+  {{ level_choices|json_script:"service_levels" }}
+{% endblock %}
+
+{% block js %}
+<script>
+(function () {
+  'use strict';
+  // 三级联动下拉：枚举数据由后端 json_script 内联（真实 Django 路由），无额外接口。
+  // 层级与 path_prefix 由「服务 → 线路 → 端点」选择自动推导，表单里只做只读展示。
+  var treeNode = document.getElementById('service_tree_data');
+  var levelNode = document.getElementById('service_levels');
+  var TREE = treeNode ? JSON.parse(treeNode.textContent) : [];
+  var LEVELS = {};
+  (levelNode ? JSON.parse(levelNode.textContent) : []).forEach(function (pair) {
+    LEVELS[pair[0]] = pair[1];
+  });
+
+  function unregistered() { return ' · ' + gettext('未登记'); }
+
+  function fillSelect(select, items, placeholder) {
+    select.innerHTML = '';
+    var first = document.createElement('option');
+    first.value = '';
+    first.textContent = placeholder;
+    select.appendChild(first);
+    items.forEach(function (it) {
+      var opt = document.createElement('option');
+      opt.value = it.value;
+      opt.textContent = it.label;
+      select.appendChild(opt);
+    });
+  }
+
+  function serviceSelect(form) { return form.querySelector('[data-tree-service]'); }
+  function channelSelect(form) { return form.querySelector('[data-tree-channel]'); }
+  function endpointSelect(form) { return form.querySelector('[data-tree-endpoint]'); }
+
+  function fillServices(form, selected) {
+    var sel = serviceSelect(form);
+    sel.innerHTML = '';
+    TREE.forEach(function (svc) {
+      var opt = document.createElement('option');
+      opt.value = svc.prefix;
+      opt.textContent = svc.name + (svc.registered ? '' : unregistered());
+      sel.appendChild(opt);
+    });
+    if (selected) sel.value = selected;
+  }
+
+  function findService(prefix) {
+    var best = null;
+    TREE.forEach(function (svc) {
+      if (prefix.indexOf(svc.prefix) === 0 && (!best || svc.prefix.length > best.prefix.length)) {
+        best = svc;
+      }
+    });
+    return best;
+  }
+
+  function fillChannels(form, servicePrefix, selected) {
+    var svc = findService(servicePrefix) || TREE.find(function (s) { return s.prefix === servicePrefix; });
+    var items = svc ? svc.channels.map(function (ch) {
+      return { value: ch.prefix, label: ch.name + (ch.registered ? '' : unregistered()) };
+    }) : [];
+    fillSelect(channelSelect(form), items, gettext('（留空=服务级）'));
+    if (selected) channelSelect(form).value = selected;
+  }
+
+  function fillEndpoints(form, channelPrefix, selected) {
+    var items = [];
+    if (channelPrefix) {
+      TREE.forEach(function (svc) {
+        svc.channels.forEach(function (ch) {
+          if (ch.prefix !== channelPrefix) return;
+          ch.endpoints.forEach(function (ep) {
+            items.push({ value: ep.path, label: ep.name + (ep.registered ? '' : unregistered()) });
+          });
+        });
+      });
+    }
+    fillSelect(endpointSelect(form), items, gettext('（留空=线路级）'));
+    if (selected) endpointSelect(form).value = selected;
+  }
+
+  function updatePreview(form) {
+    var service = serviceSelect(form).value;
+    var channel = channelSelect(form).value;
+    var endpoint = endpointSelect(form).value;
+    var level = 'service';
+    var prefix = service;
+    if (endpoint) { level = 'endpoint'; prefix = endpoint; }
+    else if (channel) { level = 'channel'; prefix = channel; }
+    var levelBox = form.querySelector('[data-tree-level]');
+    var prefixBox = form.querySelector('[data-tree-prefix]');
+    if (levelBox) levelBox.textContent = LEVELS[level] || level;
+    if (prefixBox) prefixBox.textContent = prefix || '—';
+  }
+
+  function initForm(form) {
+    if (!form) return;
+    fillServices(form);
+    fillChannels(form, serviceSelect(form).value, '');
+    fillEndpoints(form, '', '');
+    updatePreview(form);
+    serviceSelect(form).addEventListener('change', function () {
+      fillChannels(form, this.value, '');
+      fillEndpoints(form, '', '');
+      updatePreview(form);
+    });
+    channelSelect(form).addEventListener('change', function () {
+      fillEndpoints(form, this.value, '');
+      updatePreview(form);
+    });
+    endpointSelect(form).addEventListener('change', updatePreview);
+  }
+
+  /* 反查某 path_prefix 对应的三级选择 */
+  function locate(prefix) {
+    var svc = findService(prefix);
+    if (!svc) return null;
+    var result = { service: svc.prefix, channel: '', endpoint: '' };
+    svc.channels.forEach(function (ch) {
+      if (ch.prefix === prefix) result.channel = ch.prefix;
+      ch.endpoints.forEach(function (ep) {
+        if (ep.path === prefix) { result.channel = ch.prefix; result.endpoint = ep.path; }
+      });
+    });
+    return result;
+  }
+
+  initForm(document.getElementById('service_create_form'));
+
+  var editForm = document.getElementById('service_edit_form');
+  initForm(editForm);
+  document.querySelectorAll('[data-edit-policy]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      if (!editForm) return;
+      function set(name, value) {
+        var el = editForm.querySelector('[name=' + name + ']');
+        if (el) el.value = value;
+      }
+      set('id', btn.dataset.id);
+      set('name', btn.dataset.name);
+      set('status', btn.dataset.status);
+      set('auth_mode', btn.dataset.mode);
+      set('app_scope', btn.dataset.scope);
+      set('remark', btn.dataset.remark || '');
+      var loc = locate(btn.dataset.prefix) || { service: btn.dataset.prefix, channel: '', endpoint: '' };
+      fillServices(editForm, loc.service);
+      fillChannels(editForm, loc.service, loc.channel);
+      fillEndpoints(editForm, loc.channel, loc.endpoint);
+      updatePreview(editForm);
+      var apps = (btn.dataset.apps || '').split(',').filter(Boolean);
+      editForm.querySelectorAll('[name=apps]').forEach(function (box) {
+        box.checked = apps.indexOf(box.value) !== -1;
+      });
+      document.getElementById('service_edit_modal').showModal();
+    });
+  });
+})();
+</script>
+{% endblock %}

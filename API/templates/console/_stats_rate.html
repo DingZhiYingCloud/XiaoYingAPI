@@ -1,0 +1,9 @@
+{% load i18n %}
+{% comment %}失败率单元格：仅按阈值上色标记（≥5% 黄、≥20% 红），样本不足按普通文本展示{% endcomment %}
+{% if row.rate_level == 'danger' %}
+<span class="badge badge-error badge-sm font-mono">{{ row.failed_rate }}%</span>
+{% elif row.rate_level == 'warn' %}
+<span class="badge badge-warning badge-sm font-mono">{{ row.failed_rate }}%</span>
+{% else %}
+<span class="font-mono text-base-content/70">{{ row.failed_rate }}%</span>
+{% endif %}

@@ -3,11 +3,11 @@
 菜单来源：
 1. 已接入文档的服务（API.website.docs 注册表）→ 展开显示其全部子线路（channels）；
 2. 尚未接入文档的服务（官网服务清单 SERVICES）→ 按“服务对外状态”展示
-   （默认建设中；超级管理员可通过侧栏齿轮弹窗手动指定 开放/测试中/维护中/已下线）。
-   一旦在 docs 注册表补上该服务文档，菜单自动从“建设中”变成可展开。
+   （默认开发中；超级管理员可在「服务策略」页 /console/services/ 指定 正常/开发中/维护中/已下线）。
+   一旦在 docs 注册表补上该服务文档，菜单自动从“开发中”变成可展开。
 
-状态展示规则：状态字段由 service_status.annotate 统一计算（手动优先，默认派生）。
-   建设中 / 已下线 → 禁用态（不可展开、不可点击）；其余状态 → 正常展示。
+状态展示规则：状态字段由 service_status.annotate 统一计算（服务策略优先，默认派生）。
+   开发中 / 已下线 → 禁用态（不可展开、不可点击）；其余状态 → 正常展示。
 
 结构：docs_menu = [ {name, url, slug, url_prefix, disabled, status, status_label,
                     status_badge, children: [{name, url, channel}]}, ... ]
@@ -27,7 +27,7 @@ def build_docs_menu():
     for item in _annotate(_localize_services(_MARKET), lambda p: p in ready):
         prefix = item['url_prefix']
         doc = ready.get(prefix)
-        unavailable = item['status'] in ('building', 'offline')
+        unavailable = item['status'] in ('dev', 'offline')
         if doc is not None and not unavailable:
             children = [
                 {
@@ -50,7 +50,7 @@ def build_docs_menu():
                 'children': children,
             })
         else:
-            # 未录入文档 or 手动标记建设中/已下线：导航占位展示（带状态徽标）
+            # 未录入文档 or 标记开发中/已下线：导航占位展示（带状态徽标）
             menu.append({
                 'name': item['name'],
                 'url': '',

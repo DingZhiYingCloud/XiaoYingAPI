@@ -1,0 +1,43 @@
+{% load i18n %}
+{% comment %}调用统计：服务 × 时段矩阵（每个服务单独色阶，回答“什么时段哪个服务最多”）{% endcomment %}
+<div class="card mt-5 border border-base-300 bg-base-100">
+  <div class="card-body gap-3">
+    <div class="flex flex-wrap items-baseline justify-between gap-2">
+      <h2 class="card-title text-base">{% trans "服务 × 时段矩阵" %}</h2>
+      <span class="text-xs text-base-content/60">{% trans "各行按自身峰值配色，便于看出每个服务的高峰时段" %}</span>
+    </div>
+    {% if matrix_rows %}
+    <div class="overflow-x-auto">
+      <table class="table table-xs w-full">
+        <thead>
+          <tr>
+            <th>{% trans "服务" %}</th>
+            {% for p in hours.profile %}
+            <th class="p-0 text-center font-mono text-[10px] font-normal text-base-content/60">{{ p.hour|stringformat:"02d" }}</th>
+            {% endfor %}
+            <th class="text-right">{% trans "合计" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in matrix_rows %}
+          <tr>
+            <th class="whitespace-nowrap text-xs font-normal">
+              <a href="{{ row.url }}" class="link link-hover">{{ row.name }}</a>
+            </th>
+            {% for cell in row.cells %}
+            <td class="p-0.5">
+              <div class="flex h-5 min-w-5 items-center justify-center rounded-sm text-[10px] font-mono {% if cell.level == 0 %}bg-base-200 text-base-content/30{% elif cell.level == 1 %}bg-primary/15 text-base-content/70{% elif cell.level == 2 %}bg-primary/35 text-base-content/80{% elif cell.level == 3 %}bg-primary/60 text-primary-content{% else %}bg-primary/90 text-primary-content{% endif %}"
+                   title="{% blocktrans with h=cell.hour n=cell.calls %}{{ h }} 时：{{ n }} 次{% endblocktrans %}">{% if cell.calls %}{{ cell.calls }}{% endif %}</div>
+            </td>
+            {% endfor %}
+            <td class="text-right font-mono text-xs">{{ row.total }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="py-6 text-center text-sm text-base-content/60">{% trans "暂无小时粒度数据，无法生成时段矩阵。" %}</p>
+    {% endif %}
+  </div>
+</div>

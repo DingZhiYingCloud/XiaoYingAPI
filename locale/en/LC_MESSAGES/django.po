@@ -438,6 +438,9 @@ msgstr "6-digit code"
 msgid "8-64 位，需同时包含字母和数字"
 msgstr "8-64 characters, must include both letters and numbers"
 
+msgid "三选一，管理员填后台账号"
+msgstr "Any one of the three; admins use their console account"
+
 msgid "两步注册：先发验证码，校验通过后才创建账号并发放账号。"
 msgstr "Two-step sign-up: the code is sent first, and your account is created and issued only after verification."
 
@@ -480,14 +483,8 @@ msgstr "Phone Number"
 msgid "手机登录"
 msgstr "Phone Login"
 
-msgid "最多 50 个字符"
-msgstr "Up to 50 characters"
-
 msgid "欢迎回来"
 msgstr "Welcome back"
-
-msgid "注 册"
-msgstr "Sign Up"
 
 msgid "注册 - 小影API"
 msgstr "Sign Up - XiaoYingAPI"
@@ -495,17 +492,17 @@ msgstr "Sign Up - XiaoYingAPI"
 msgid "注册小影API 账号，畅用全部服务能力"
 msgstr "Sign up for a XiaoYingAPI account and enjoy all our services"
 
-msgid "注册小影API 账号：支持用户名密码、邮箱验证码、手机号验证码。两步注册先验码后发号，安全可靠。"
-msgstr "Sign up for a XiaoYingAPI account: username and password, email code, and phone code are supported. The two-step sign-up verifies the code before issuing an account, keeping it safe and reliable."
+msgid "注册小影API 账号：支持邮箱验证码、手机号验证码。两步注册先验码后发号，安全可靠。"
+msgstr "Sign up for a XiaoYingAPI account: email code and phone code are supported. The two-step sign-up verifies the code before issuing an account, keeping it safe and reliable."
 
 msgid "注册并获取验证码"
 msgstr "Sign up and get code"
 
-msgid "注册数字账号 或 超管用户名"
-msgstr "Registered numeric account or super admin username"
-
 msgid "注册方式"
 msgstr "Sign-up method"
+
+msgid "注册通道暂未开放，请稍后再试或联系我们。"
+msgstr "Sign-up is not open yet. Please try again later or contact us."
 
 msgid "用于展示，可不填"
 msgstr "For display only, optional"
@@ -528,8 +525,8 @@ msgstr "Log In - XiaoYingAPI"
 msgid "登录小影API 账号"
 msgstr "Log in to your XiaoYingAPI account"
 
-msgid "登录小影API，开启通用 API 聚合服务之旅。支持账号密码、邮箱验证码、手机验证码登录。"
-msgstr "Log in to XiaoYingAPI and start your journey with the general API aggregation service. Supports account and password, email code, and phone code logins."
+msgid "登录小影API，开启通用 API 聚合服务之旅。支持账号/邮箱/手机号+密码、邮箱/手机号验证码登录。"
+msgstr "Log in to XiaoYingAPI and start your journey with the general API aggregation service. Supports account/email/phone + password, or email/phone code login."
 
 msgid "登录方式"
 msgstr "Login Method"
@@ -546,8 +543,8 @@ msgstr "Get code"
 msgid "请输入密码"
 msgstr "Please enter your password"
 
-msgid "账号 / 管理员账号"
-msgstr "Account / Admin account"
+msgid "账号 / 邮箱 / 手机号"
+msgstr "Account / Email / Phone"
 
 msgid "账号是您登录的唯一凭据，请截图或抄写保存，谨防丢失。"
 msgstr "Your account is the only credential for logging in. Please screenshot or write it down and keep it safe."
@@ -748,9 +745,6 @@ msgstr "The left sidebar is organized by Service → Channel. Click a service na
 msgid "已下线"
 msgstr "Offline"
 
-msgid "建设中"
-msgstr "Under Construction"
-
 msgid "开放"
 msgstr "Open"
 
@@ -781,14 +775,8 @@ msgstr "New services/channels appear here automatically once declared in the doc
 msgid "服务/线路展开"
 msgstr "Expand Service/Channel"
 
-msgid "服务设置"
-msgstr "Service Settings"
-
-msgid "服务设置：%(name)s"
-msgstr "Service Settings: %(name)s"
-
-msgid "测试中"
-msgstr "Testing"
+msgid "服务说明"
+msgstr "Service Description"
 
 msgid "清空"
 msgstr "Clear"
@@ -824,7 +812,7 @@ msgid "，暂不可使用"
 msgstr ", currently unavailable"
 
 
-# ==================== 超级管理控制台页面（console/projects.html） ====================
+# ==================== 超级管理控制台页面（console/*.html） ====================
 msgid "Token 有效天数"
 msgstr "Token validity (days)"
 
@@ -833,6 +821,9 @@ msgstr "Token valid for %(days)s days · created at %(created)s"
 
 msgid "保存修改"
 msgstr "Save Changes"
+
+msgid "关键指标概览与各模块入口；模块入口取自左侧菜单声明，新模块上线后自动出现。"
+msgstr "Key metrics and module shortcuts. Shortcuts come from the sidebar menu declaration, so new modules show up here automatically."
 
 msgid "创建 / 编辑 / 启停 / 删除接入项目；APPID、APPSECRET 由系统自动生成。"
 msgstr "Create, edit, enable/disable and delete projects. APPID and APPSECRET are generated automatically."
@@ -846,14 +837,23 @@ msgstr "After deletion the project's APPID/APPSECRET is revoked immediately and 
 msgid "删除接入项目"
 msgstr "Delete Project"
 
+msgid "区间内产生过调用的接入项目"
+msgstr "Projects with calls in this range"
+
 msgid "启用,停用"
 msgstr "Enabled,Disabled"
 
 msgid "启用状态"
 msgstr "Status"
 
+msgid "小影API 超级管理员控制台：关键指标概览与各模块入口。"
+msgstr "XiaoYingAPI Super Admin console: key metrics overview and module shortcuts."
+
 msgid "小影API 超级管理员：接入项目（APPID/APPSECRET）增删改查管理。"
 msgstr "XiaoYingAPI Super Admin: manage projects (APPID/APPSECRET) — create, read, update and delete."
+
+msgid "已封禁用户"
+msgstr "Banned Users"
 
 msgid "应用名称"
 msgstr "Project Name"
@@ -861,8 +861,26 @@ msgstr "Project Name"
 msgid "按名称 / APPID 搜索"
 msgstr "Search by name / APPID"
 
+msgid "按服务、接口、项目与结果查看调用量与耗时。"
+msgstr "View call volume and latency by service, Endpoint, project and result."
+
 msgid "接入项目管理 - 超级管理员 - 小影API"
 msgstr "Projects - Super Admin - XiaoYingAPI"
+
+msgid "控制台导航"
+msgstr "Console navigation"
+
+msgid "控制台总览与各模块入口。"
+msgstr "Console overview and module shortcuts."
+
+msgid "控制台菜单"
+msgstr "Console menu"
+
+msgid "控制台首页"
+msgstr "Console Home"
+
+msgid "控制台首页 - 超级管理员 - 小影API"
+msgstr "Console Home - Super Admin - XiaoYingAPI"
 
 msgid "搜索"
 msgstr "Search"
@@ -879,14 +897,32 @@ msgstr "No projects yet"
 msgid "查看 APPSECRET"
 msgstr "View APPSECRET"
 
+msgid "概览"
+msgstr "Overview"
+
+msgid "模块入口"
+msgstr "Module Shortcuts"
+
+msgid "用户总数"
+msgstr "Total Users"
+
 msgid "编辑项目"
 msgstr "Edit Project"
 
 msgid "超级管理员,接入项目"
 msgstr "Super Admin,Projects"
 
-msgid "退出管理员"
-msgstr "Log Out"
+msgid "超级管理员,控制台"
+msgstr "Super Admin,Console"
+
+msgid "运营"
+msgstr "Operations"
+
+msgid "近 %(n)s 天调用量"
+msgstr "Calls in the last %(n)s days"
+
+msgid "配置各服务分类的认证模式（跟随上级 / 需要认证 / 开放）。"
+msgstr "Configure the auth mode of each service category (inherit / required / public)."
 
 msgid "项目创建成功！密钥仅在此展示一次，请立即复制并妥善保存。"
 msgstr "Project created! The secret is shown only once — copy and store it safely now."
@@ -900,9 +936,6 @@ msgstr "Multi-source aggregation of 66Free / 91HTTP / Qingyu dynamic and residen
 
 msgid "AI 服务"
 msgstr "AI Service"
-
-msgid "API 服务状态"
-msgstr "API Service Status"
 
 msgid "CDN"
 msgstr "CDN"
@@ -948,9 +981,6 @@ msgstr "Public API call statistics: how many times each Endpoint has been called
 
 msgid "公开统计"
 msgstr "Public Statistics"
-
-msgid "内测/演示阶段"
-msgstr "Beta / demo stage"
 
 msgid "内置模型"
 msgstr "Built-in Models"
@@ -1000,20 +1030,8 @@ msgstr "Character CAPTCHA"
 msgid "安全下载"
 msgstr "Secure Download"
 
-msgid "尚未开放"
-msgstr "Not yet available"
-
 msgid "工单"
 msgstr "Ticket"
-
-msgid "已恢复默认状态（%(label)s）"
-msgstr "Restored to default state (%(label)s)"
-
-msgid "已恢复默认（%(label)s）"
-msgstr "Restored to default (%(label)s)"
-
-msgid "已更新为「%(label)s」"
-msgstr "Updated to \"%(label)s\""
 
 msgid "已迁移"
 msgstr "Moved"
@@ -1047,9 +1065,6 @@ msgstr "Temporarily Closed"
 
 msgid "服务下线，不可用"
 msgstr "Service retired, unavailable"
-
-msgid "未知的服务"
-msgstr "Unknown service"
 
 msgid "本地生成"
 msgstr "Locally Rendered"
@@ -1095,9 +1110,6 @@ msgstr "Unified Authentication Center (UAC): a global user pool with account / e
 
 msgid "聚合爱听音乐网（2t58）与小影音乐，提供搜索、榜单、播放源等能力。"
 msgstr "Aggregates Aiting Music (2t58) and XiaoYing Music, offering search, rankings, playback source and more."
-
-msgid "自定义该服务的对外状态（开放/测试中/维护中/建设中/已下线），同步官网首页与文档中心。"
-msgstr "Customize the public status of this service (Open / Testing / Under Maintenance / Under Construction / Offline), synced across the homepage and the docs center."
 
 msgid "自研图形验证码"
 msgstr "Self-developed CAPTCHA"
@@ -1152,9 +1164,6 @@ msgstr "Alibaba Cloud SMS verification code authentication with server-side call
 
 msgid "静态代理"
 msgstr "Static Proxy"
-
-msgid "非法的状态值"
-msgstr "Invalid status value"
 
 msgid "音乐搜索"
 msgstr "Music Search"
@@ -1220,8 +1229,17 @@ msgstr "true (discard the existing mailbox and create a new one)"
 msgid "uqu.me（默认）"
 msgstr "uqu.me (default)"
 
+msgid "三条线路的认证口径不同：VMEmail 线路为开放接口，可不带签名直接调试；邮箱 v1 与 mail.cx 线路需要项目签名。"
+msgstr "The three channels differ in authentication: the VMEmail channel is open and can be debugged without signing, while Email v1 and the mail.cx channel require project signature authentication."
+
 msgid "上游为长轮询：无新邮件时会挂起约 25 秒后返回空列表，客户端 HTTP 超时应大于 35 秒。"
 msgstr "The upstream uses long polling: with no new mail it hangs for about 25 seconds before returning an empty list, so the client HTTP timeout should exceed 35 seconds."
+
+msgid "临时邮箱API,虚拟邮箱接口,邮箱验证码API,邮件发送接口"
+msgstr "Temporary Email API,Virtual Mailbox API,Email Verification Code API,Email Sending API"
+
+msgid "临时邮箱的收件是长轮询：没有新邮件时请求会挂起约 25 秒后返回空列表，属正常行为，请不要按短超时判定为失败；邮件有留存期限，重要内容请及时取回。"
+msgstr "Temporary mailbox polling is long-polling: when there is no new mail the request hangs for about 25 seconds before returning an empty list. This is expected, so do not treat it as a failure based on a short timeout. Mail is retained for a limited time, so retrieve anything important promptly."
 
 msgid "发送一封邮件，可指定多个收件人。"
 msgstr "Send an email to one or more recipients."
@@ -1391,6 +1409,9 @@ msgstr "Email v1"
 msgid "邮箱地址"
 msgstr "Mailbox Address"
 
+msgid "邮箱服务把「发信」和「收信」拆成三条线路：邮箱 v1 用平台邮箱发送业务邮件，适合验证码、通知、告警等场景；VMEmail 与 VMEmail(mail.cx) 提供临时邮箱（虚拟邮箱）能力，可随机生成一个邮箱地址并接收来信，常用于注册验证、接口联调、自动化测试等需要一次性邮箱的场合。"
+msgstr "The email service splits sending and receiving into three channels: Email v1 sends transactional mail with the platform mailbox, suited to verification codes, notifications and alerts; VMEmail and VMEmail(mail.cx) provide temporary (disposable) mailboxes that generate a random address and receive incoming mail, which is handy for registration checks, API integration and automated tests that need a one-off address."
+
 # ==================== API 文档内容 · 音乐服务 ====================
 msgid "2t58.com 歌手歌曲列表页完整地址（必填）"
 msgstr "Full URL of the 2t58.com singer-song list page (Required)"
@@ -1452,6 +1473,9 @@ msgstr "Not provided (all, including offline)"
 msgid "不传（默认仅在线）"
 msgstr "Omit (online only by default)"
 
+msgid "两条线路均需项目签名。2t58 线路的数据来自外部站点实时抓取，播放链接可能带时效，不建议在客户端长期缓存。"
+msgstr "Both channels require project signature authentication. Data on the 2t58 channel is scraped from an external site in real time and playback links may expire, so avoid caching them on the client for long."
+
 msgid "关键词"
 msgstr "Keyword"
 
@@ -1505,6 +1529,9 @@ msgstr "The exported content matches the JSON array format of Batch Import exact
 
 msgid "小影音乐"
 msgstr "XiaoYing Music"
+
+msgid "小影音乐的导入接口单文件不超过 10MB、单次不超过 9999 条，且不做去重；导出接口在结果超过 9999 条时返回一个 zip 压缩包（内含多个分片 json），可直接回灌导入。"
+msgstr "For XiaoYing Music, the import API accepts a single file up to 10 MB and up to 9999 records per call and does not de-duplicate; when an export exceeds 9999 records it returns a zip archive (containing several JSON parts) that can be imported back directly."
 
 msgid "批量导入"
 msgstr "Bulk Import"
@@ -1677,8 +1704,11 @@ msgstr "Music Name"
 msgid "音乐名称（必填）"
 msgstr "Music name (Required)"
 
-msgid "音乐源接口"
-msgstr "Music Source API"
+msgid "音乐服务聚合两条线路：爱听音乐网（2t58）提供首页榜单、歌手、歌曲详情、播放链接与歌词、关键词搜索，适合直接搭建在线音乐搜索与播放页面；小影音乐是平台自有曲库，提供音乐与播放源的增删改查，以及 JSON 批量导入、导出。"
+msgstr "The music service aggregates two channels: Aiting Music (2t58) provides home charts, singers, song details, playback links with lyrics, and keyword search, making it suitable for building an online music search and playback page; XiaoYing Music is the platform's own library, offering CRUD for music and its playback sources plus JSON bulk import and export."
+
+msgid "音乐源接口,音乐API,免费音乐接口,歌曲搜索API,歌词接口"
+msgstr "Music Source API,Music API,Free Music API,Song Search API,Lyrics API"
 
 msgid "音乐聚合能力：爱听音乐网抓取（首页/歌手/歌曲/搜索）与小影音乐自有曲库的增删改查。当前接入 2 条线路。"
 msgstr "Music aggregation: scraping Aiting Music (home/singer/song/search) plus CRUD for the XiaoYing Music library. 2 channels are currently integrated."
@@ -1698,6 +1728,9 @@ msgstr "7622798120358923583"
 
 msgid "一级纯文本评论内容"
 msgstr "Plain-text top-level comment"
+
+msgid "两条线路均需项目签名。抖音的风控参数全部由服务端处理：视频解析走匿名 ttwid 加重试策略，评论发布在服务端补环境执行抖音官方 JS 生成所需签名，调用方既不需要浏览器，也不需要自行实现签名算法。"
+msgstr "Both channels require project signature authentication. All Douyin anti-bot parameters are handled server-side: video parsing uses an anonymous ttwid plus a retry strategy, and comment publishing runs Douyin's official JS in a patched environment on the server to generate the required signature. Callers need neither a browser nor their own implementation of the signing algorithm."
 
 msgid "发布抖音评论"
 msgstr "Publish Douyin Comment"
@@ -1726,11 +1759,17 @@ msgstr "Parse Douyin share content into directly downloadable video / image & te
 msgid "抖音"
 msgstr "Douyin"
 
+msgid "抖音API,抖音视频解析,抖音去水印,抖音图文解析"
+msgstr "Douyin API,Douyin Video Parser,Douyin Watermark Remover,Douyin Image Post Parser"
+
 msgid "抖音分享文本"
 msgstr "Douyin Share Text"
 
 msgid "抖音平台能力聚合：视频/图文解析（无水印提取）与评论自动发布（纯服务端签名，无需浏览器）。"
 msgstr "Douyin capabilities in one place: video/image post parsing (watermark-free extraction) and automated comment publishing (server-side signing only, no browser needed)."
+
+msgid "抖音服务提供两类能力：视频 / 图文解析——传入分享链接即可拿到无水印的视频或图集地址等信息；评论发布——在指定视频下发布一条一级纯文本评论。"
+msgstr "The Douyin service offers two capabilities: video / image-post parsing, where a share link is all it takes to get the watermark-free video or gallery URLs and related information; and comment publishing, which posts a plain-text top-level comment under a given video."
 
 msgid "抖音登录 Cookie"
 msgstr "Douyin Login Cookie"
@@ -1767,6 +1806,9 @@ msgstr "Parse a Douyin video or image & text post and return the watermark-free 
 
 msgid "评论发布"
 msgstr "Comment Publishing"
+
+msgid "评论接口风控较严，建议低频调用并对失败做退避重试，避免短时间内对同一视频重复提交。"
+msgstr "The comment endpoint is subject to strict anti-bot controls: keep the call rate low and back off on failures, and avoid re-submitting to the same video within a short window."
 
 msgid "请使用真实可访问的分享内容测试；解析失败返回外部服务错误。"
 msgstr "Test with real, accessible share content; a failed parse is reported as an external service error."
@@ -1808,6 +1850,9 @@ msgstr "false (not returned, Default)"
 msgid "true（返回验证码，仅测试场景建议开启）"
 msgstr "true (return the verification code; recommended only for testing)"
 
+msgid "全部接口需项目签名，且请求体为 application/x-www-form-urlencoded 表单，不使用 JSON body。"
+msgstr "All endpoints require project signature authentication, and the request body must be an application/x-www-form-urlencoded form rather than a JSON body."
+
 msgid "发送成功即返回 code=10000；频控触发时提示等待（interval 秒）后再试。"
 msgstr "A successful send returns code=10000; when the rate limit is triggered, the response asks you to wait (interval seconds) before retrying."
 
@@ -1838,6 +1883,9 @@ msgstr "e.g. 1234"
 msgid "手机收到的验证码（必填）"
 msgstr "Verification code received on the phone (Required)"
 
+msgid "接入方可自定义验证码长度、有效时长、重复发送策略与频控间隔（默认 60 秒），用于防止短信被刷；核验在阿里云侧完成，调用方无需自己存储和比对验证码。"
+msgstr "Integrators can configure the code length, validity period, duplicate-send policy and throttling interval (60 seconds by default) to prevent SMS abuse. Verification happens on Alibaba Cloud's side, so you do not need to store or compare codes yourself."
+
 msgid "接口请求成功统一返回 code=10000；业务结果以 data.verify_result 判断："
 msgstr "A successful API request always returns code=10000; the business result is determined by data.verify_result:"
 
@@ -1852,6 +1900,12 @@ msgstr "Verify whether the verification code entered by the user is correct or h
 
 msgid "核验短信验证码"
 msgstr "Verify SMS Verification Code"
+
+msgid "短信验证服务基于阿里云号码认证能力，由服务端完成验证码的生成、下发与核验：先调发送接口向手机号下发验证码，用户输入后再调核验接口判断是否正确或已过期。"
+msgstr "The SMS verification service is built on Alibaba Cloud phone-number authentication, with the server generating, sending and checking codes: call the send API to deliver a code to a mobile number, then call the check API once the user enters it to see whether it is correct or has expired."
+
+msgid "短信验证码API,短信接口,手机验证码,短信认证"
+msgstr "SMS Verification Code API,SMS API,Mobile Verification Code,SMS Authentication"
 
 msgid "短信验证码能力：阿里云号码认证发送与核验，服务端生成/校验验证码，防短信轰炸。当前接入阿里云线路。"
 msgstr "SMS verification code capability: sending and verification via Aliyun phone number authentication, with codes generated/validated server-side to prevent SMS bombing. The Aliyun channel is currently integrated."
@@ -1917,11 +1971,17 @@ msgstr "Upload client verification parameters to confirm that the user's current
 msgid "两步接入：先用 config 拿 appId 初始化前端 SDK，用户验证通过后再用 verify 做服务端二次校验。"
 msgstr "Two-step integration: first call config to get the appId and initialize the frontend SDK, then call verify for server-side secondary validation after the user passes verification."
 
+msgid "为避免被绕过，验证结果必须在服务端二次核验，不能只依赖前端回调。"
+msgstr "To prevent bypassing, the result must be verified again server-side and never trusted from a frontend callback alone."
+
 msgid "二次校验"
 msgstr "Secondary Validation"
 
 msgid "响应 data.app_id 即前端 initAlicom4({ captchaId: app_id, product: \"bind\" }, ...) 所需的 captchaId。"
 msgstr "The response data.app_id is the captchaId required by the frontend initAlicom4({ captchaId: app_id, product: \"bind\" }, ...)."
+
+msgid "图形验证服务集成阿里云图形验证码（滑块、点选等行为验证），用于在注册、登录、发短信等入口拦截机器流量：前端先用配置接口拿到 appId 初始化 SDK 并完成验证，再把验证参数交给业务后端调用核验接口，确认本次验证真实有效。"
+msgstr "The graphic CAPTCHA service integrates Alibaba Cloud CAPTCHA (slider, click-select and other behavioral challenges) to block bot traffic at entry points such as sign-up, log-in and SMS sending: the frontend first fetches the config to obtain the appId, initializes the SDK and completes the challenge, then hands the verification parameters to your backend, which calls the check API to confirm the challenge was genuinely passed."
 
 msgid "必填：前端 SDK 验证通过后回调返回的 captchaOutput"
 msgstr "Required: the captchaOutput returned by the frontend SDK callback after verification passes"
@@ -1938,8 +1998,14 @@ msgstr "Required: the serial number returned by the frontend SDK callback after 
 msgid "接口请求成功统一返回 code=10000；业务结果以 data.result 判断："
 msgstr "A successful request always returns code=10000; determine the business result from data.result: "
 
+msgid "滑块验证码API,行为验证码,图形验证接口"
+msgstr "Slider CAPTCHA API,Behavioral CAPTCHA,Graphic CAPTCHA API"
+
 msgid "获取图形认证配置"
 msgstr "Get Graphic Authentication Config"
+
+msgid "该线路整体为开放接口，config 与 verify 均无需项目签名，便于前端直接集成。"
+msgstr "This channel is entirely open, so both config and verify need no project signature, which makes frontend integration straightforward."
 
 msgid "请求体为 application/x-www-form-urlencoded 表单；公开接口，无需项目签名。"
 msgstr "The request body is an application/x-www-form-urlencoded form; this is a public Endpoint with no project signature required."
@@ -1993,6 +2059,9 @@ msgstr "char (character image, default)"
 msgid "两步接入：先 generate 拿 captcha_id 与图片（base64），用户作答后 POST verify 校验；答案一次性，校验后无论对错立即失效，需配合前端换新图。"
 msgstr "Two-step integration: call generate first to obtain a captcha_id and image (base64), then POST the user answer to verify. The answer is single-use: it expires immediately after validation, correct or not, so the frontend must fetch a new image afterwards."
 
+msgid "图形验证码API,字符验证码,算术验证码"
+msgstr "Graphic CAPTCHA API,Character CAPTCHA,Arithmetic CAPTCHA"
+
 msgid "字符个数"
 msgstr "Character Count"
 
@@ -2001,6 +2070,9 @@ msgstr "Required: the captcha_id (UUID) returned by the generate Endpoint"
 
 msgid "必填：用户填写的答案（字符不区分大小写；算术填计算结果）"
 msgstr "Required: the answer entered by the user (case-insensitive for characters; enter the computed result for arithmetic)"
+
+msgid "接入为两步：先调用生成接口拿到 captcha_id 与 base64 图片（带有效期），用户作答后调用校验接口提交答案。答案是「一次性」的——无论校验成功还是失败都会立即失效，失败后需重新生成再试。"
+msgstr "Integration takes two steps: call the generate API to obtain a captcha_id and a base64 image with a validity period, then call the verify API with the user's answer. Answers are one-time: the challenge is invalidated immediately whether verification succeeds or fails, so a new image must be generated before retrying."
 
 msgid "提交用户答案校验，一次性消费（校验后立即失效）。"
 msgstr "Submit the user answer for validation; the CAPTCHA is consumed on use (invalidated immediately after validation)."
@@ -2026,11 +2098,17 @@ msgstr "User Answer"
 msgid "答案一次性：同一条验证码重复提交只会成功一次，失败后需重新调用 generate。"
 msgstr "The answer is single-use: repeated submissions of the same CAPTCHA can succeed only once, so call generate again after a failure."
 
+msgid "自研图形验证码不依赖任何第三方服务，由平台用 Pillow 在本地绘制字符图片或算术题，适合对数据外发敏感、或希望零成本自建验证码的场景。"
+msgstr "The self-hosted CAPTCHA depends on no third-party service: the platform draws character images or arithmetic questions locally with Pillow, making it suitable when data must not leave your infrastructure or when you want a zero-cost in-house CAPTCHA."
+
 msgid "自研图形验证码（字符图片 / 算术），Pillow 本地绘制、无第三方依赖，答案一次性校验。"
 msgstr "Self-developed CAPTCHA (character image / arithmetic), rendered locally with Pillow and no third-party dependency; each answer is validated only once."
 
 msgid "自研验证码"
 msgstr "Self-developed CAPTCHA"
+
+msgid "该线路为开放接口，无需项目签名；生产环境建议同时限制单 IP、单账号的校验频率。"
+msgstr "This channel is open and needs no project signature; in production, also throttle verification attempts per IP and per account."
 
 msgid "请求体为 application/x-www-form-urlencoded 表单；开放接口，无需项目签名。"
 msgstr "The request body is an application/x-www-form-urlencoded form; this is an open endpoint and needs no project signature."
@@ -2126,6 +2204,9 @@ msgstr "or fill in the image URL / base64 (use when no local file is available)"
 msgid "文件字段与 URL/base64 字段至少提供一个；同时提供时文件优先。"
 msgstr "Provide at least one of the file field or the URL/base64 field; when both are provided, the file takes precedence."
 
+msgid "本服务需项目签名。识别准确率受图片质量与干扰强度影响，建议对失败结果做重试或人工兜底。"
+msgstr "This service requires project signature authentication. Accuracy depends on image quality and noise level, so plan for retries or a manual fallback on failures."
+
 msgid "本服务需项目签名；上传文件时请求体为 multipart/form-data。"
 msgstr "This Service requires a project signature; when uploading a file, the request body is multipart/form-data."
 
@@ -2174,6 +2255,9 @@ msgstr "Set the character range of this recognition instance (a predefined numbe
 msgid "识别图片中的文字内容，返回识别文本；可返回概率、按颜色过滤等。"
 msgstr "Recognize the text content in an image and return the recognized text; it can also return probability and filter by color."
 
+msgid "识别实例的字符范围可配置（预定义编号或自定义字符集），在识别特定站点的验证码前先设置字符集，通常能明显提升准确率。"
+msgstr "The character set of a recognition instance is configurable, either through a predefined index or a custom character set; setting it before recognizing a particular site's CAPTCHA usually improves accuracy noticeably."
+
 msgid "返回概率分布"
 msgstr "Return Probability Distribution"
 
@@ -2194,6 +2278,12 @@ msgstr "Match the gap position of the slider thumbnail within the background ima
 
 msgid "颜色过滤(JSON 数组)"
 msgstr "Color Filter (JSON Array)"
+
+msgid "验证码识别API,ddddocr,OCR识别接口,滑块验证码识别"
+
+msgid "验证码识别服务基于 ddddocr 提供通用 OCR 能力：识别图片中的文字、检测图片内的目标位置，以及匹配滑块验证码的缺口位置（提供两种算法），常用于自动化测试与验证码相关的兼容性处理。"
+msgstr "The CAPTCHA recognition service provides general OCR based on ddddocr: recognizing text in an image, detecting target positions within an image, and locating the gap in slider CAPTCHAs (two algorithms are available). It is commonly used for automated testing and CAPTCHA compatibility work."
+msgstr "CAPTCHA Recognition API,ddddocr,OCR API,Slider CAPTCHA Recognition"
 
 
 # ==================== API 文档内容 · 文件上传 ====================
@@ -2221,8 +2311,14 @@ msgstr "Upload Generic File"
 msgid "上传通用文件（白名单：zip/pdf/docx/xlsx/txt 等）。"
 msgstr "Upload a generic file (whitelist: zip/pdf/docx/xlsx/txt, etc.)."
 
+msgid "体积限制：图片最大 20MB，视频与通用文件最大 100MB。本服务需项目签名。"
+msgstr "Size limits: images up to 20 MB, videos and generic files up to 100 MB. This service requires project signature authentication."
+
 msgid "全部使用 multipart/form-data，文件字段固定为 file；仅支持白名单类型并校验文件头（防伪装/防脚本上传）。"
 msgstr "All use multipart/form-data with the file field fixed to file; only whitelisted types are supported and file headers are validated (to prevent masquerading/script uploads)."
+
+msgid "全部接口使用 multipart/form-data，文件字段名固定为 file。服务端按白名单校验扩展名并校验文件头（magic bytes），可内联渲染或执行的文件类型（如 svg、html、脚本）一律拒绝，避免上传文件被当作存储型 XSS 利用。"
+msgstr "All endpoints use multipart/form-data with the file field fixed as file. The server validates the extension against a whitelist and checks magic bytes; file types that can be rendered inline or executed (such as svg, html and scripts) are rejected outright, so uploads cannot be abused as stored XSS."
 
 msgid "图片文件"
 msgstr "Image file"
@@ -2232,6 +2328,12 @@ msgstr "On success, returns the data field: filename / original_name / size / si
 
 msgid "支持类型：jpg/jpeg/png/gif/bmp/webp/ico/tiff；最大 20MB。"
 msgstr "Supported types: jpg/jpeg/png/gif/bmp/webp/ico/tiff; Size limit 20MB."
+
+msgid "文件上传API,图片上传接口"
+msgstr "File Upload API,Image Upload API"
+
+msgid "文件上传服务提供图片、视频与通用文件三类上传入口，文件落盘到站点 /media 目录并返回可直接引用的 URL，适合作为业务系统的统一附件通道。"
+msgstr "The file upload service provides three upload entry points: images, videos and generic files. Files are stored in the site's /media directory and returned with a directly usable URL, making it a convenient shared attachment channel for business systems."
 
 msgid "最大 100MB；白名单制并校验文件头；返回 type=file。"
 msgstr "Size limit 100MB; whitelist-based with file header validation; returns type=file."
@@ -2270,6 +2372,9 @@ msgstr "RESTful: GET/POST operate on the collection, while GET/PATCH/DELETE oper
 msgid "SEO 周边能力：友情链接集合的统一管理（列表/详情/新增/更新/删除），便于站点外链建设。当前接入友情链接线路。"
 msgstr "SEO-related capabilities: unified management of the Friend links collection (list/detail/create/update/delete) to facilitate Site Backlink building. Currently connected to the Friend links Channel."
 
+msgid "SEO 服务当前提供友情链接的统一管理：列表查询、单条详情、新增、更新与删除，可用于自有站点的友链库维护，也是本站在做外链交换时使用的同一套数据。"
+msgstr "The SEO service currently manages friend links: list, single-item detail, create, update and delete. It works for maintaining a link-exchange library and is the same data set this site uses when exchanging links."
+
 msgid "false（禁用）"
 msgstr "false (Disabled)"
 
@@ -2306,6 +2411,9 @@ msgstr "Delete Friend Link"
 msgid "友情链接 ID"
 msgstr "Friend link ID"
 
+msgid "友情链接API,友链管理,SEO接口"
+msgstr "Friend Links API,Link Exchange Management,SEO API"
+
 msgid "友情链接列表"
 msgstr "Friend Link List"
 
@@ -2336,11 +2444,17 @@ msgstr "Get the details of a friend link by primary key id."
 msgid "排序权重"
 msgstr "Sort weight"
 
+msgid "接口为 RESTful 风格：GET / POST 作用于集合，GET / PATCH / DELETE 按数字主键 id 操作单条；链接地址全局唯一，重复提交同一 URL 会被拒绝。"
+msgstr "The API is RESTful: GET / POST act on the collection, while GET / PATCH / DELETE operate on a single record by numeric id. Link URLs are globally unique, so submitting the same URL twice is rejected."
+
 msgid "新增一条友情链接（name 必填、url 必填且全局唯一）。"
 msgstr "Create a friend link (name is Required, url is Required and globally unique)."
 
 msgid "更新友情链接"
 msgstr "Update Friend Link"
+
+msgid "本服务需项目签名。"
+msgstr "This service requires project signature authentication."
 
 msgid "查询全部友情链接，支持关键词/分类/状态筛选。"
 msgstr "Query all friend links, with keyword/category/status filtering."
@@ -2487,6 +2601,9 @@ msgstr "qa (question and answer)"
 msgid "r2（Cloudflare R2）"
 msgstr "r2 (Cloudflare R2)"
 
+msgid "scdn 线路支持上传本地图片或传入远程图片 URL，服务端按内容 SHA-256 秒传——同一张图片重复上传会直接返回已有链接，不会额外占用容量；picui 线路附带服务端 Token 池管理，可查看各 Token 的已用与剩余容量，并支持批量补充 Token。"
+msgstr "The scdn channel accepts a local image or a remote image URL, and the server de-duplicates by SHA-256 content hash, so uploading the same image again returns the existing link without consuming extra capacity. The picui channel adds server-side Token-pool management: view used and remaining capacity per Token, and top up Tokens in bulk."
+
 msgid "scdn.io 图床"
 msgstr "scdn.io Image Host"
 
@@ -2541,6 +2658,9 @@ msgstr "Not provided (PicUI default: public)"
 msgid "不传（默认 local）"
 msgstr "Not provided (default local)"
 
+msgid "两条线路均需项目签名。第三方图床的链接可用性由对方平台决定，重要图片建议自行留存原图。"
+msgstr "Both channels require project signature authentication. Link availability on third-party hosts is up to them, so keep the original files for anything important."
+
 msgid "临时上传Token"
 msgstr "Temporary Upload Token"
 
@@ -2568,8 +2688,14 @@ msgstr "Add one or more Tokens to the pool (enter them directly, or upload a fil
 msgid "启用密码"
 msgstr "Enable Password"
 
+msgid "图床API,免费图床,图片外链,图片CDN"
+msgstr "Image Hosting API,Free Image Hosting,Image Direct Link,Image CDN"
+
 msgid "图床服务"
 msgstr "Image Hosting"
+
+msgid "图床服务把图片上传到第三方托管平台并返回可直接引用的 CDN 外链，适合做站点配图、Markdown 图床、用户头像托管等场景，省去自建存储与带宽。"
+msgstr "The image hosting service uploads images to third-party hosting platforms and returns CDN direct links, ideal for site illustrations, Markdown image hosting and user avatars, with no need to run your own storage or bandwidth."
 
 msgid "图片外链托管：上传图片（或 ≤10 秒短视频）返回可直链访问的 CDN 地址，支持输出格式、加密与存储位置选择。当前接入 2 条线路。"
 msgstr "Image hosting: upload an image (or a video up to 10 seconds) and get a directly linkable CDN address, with options for output format, encryption and storage location. 2 channels are currently available."
@@ -2708,6 +2834,9 @@ msgstr "4759 spider/crawler IP library"
 msgid "GET 查询接口；本服务需项目签名。"
 msgstr "GET query Endpoint; this Service requires a project signature."
 
+msgid "只读查询接口，支持 IPv4 与 IPv6。查询需访问外部 IP 库，单次耗时可能偏长，属正常现象。"
+msgstr "It is a read-only query API supporting both IPv4 and IPv6. Queries reach an external IP database, so a single call may take a while, which is normal."
+
 msgid "只读查询接口：提交一个 IP，服务端查证其是否为搜索引擎（如百度/谷歌等）爬虫来源。"
 msgstr "Read-only query Endpoint: submit an IP and the server checks whether it originates from a search engine crawler (such as Baidu/Google, etc.)."
 
@@ -2722,6 +2851,15 @@ msgstr "IP to verify"
 
 msgid "必填：合法的 IPv4 或 IPv6 地址"
 msgstr "Required: a valid IPv4 or IPv6 address"
+
+msgid "本服务需项目签名。识别结果依赖第三方 IP 库的覆盖范围，建议作为参考而非唯一判定条件。"
+msgstr "This service requires project signature authentication. Results depend on the coverage of the third-party IP database, so treat them as a reference rather than the sole criterion."
+
+msgid "爬虫验证API,环境检测接口,自动化检测"
+msgstr "Spider Verification API,Environment Detection API,Automation Detection"
+
+msgid "爬虫验证服务用于判断一个 IP 是否来自搜索引擎爬虫：提交 IP，服务端查询蜘蛛 IP 库并返回识别结论与来源类型，可用于访问日志分析、来源统计，或做「真爬虫才给收录内容」这类判断的辅助依据。"
+msgstr "The spider verification service determines whether an IP comes from a search-engine crawler: submit an IP and the server queries a spider IP database, returning the verdict and the source type. It can support access-log analysis and referrer statistics, or decisions such as only serving indexable content to genuine crawlers."
 
 msgid "识别自动化/爬虫环境：验证指定 IP 是否属于搜索引擎爬虫。当前接入 4759 验证线路。"
 msgstr "Identify Automated environments/crawlers: verify whether a given IP belongs to a search engine crawler. Currently connected to the 4759 verification Channel."
@@ -2853,6 +2991,12 @@ msgstr "Business ID"
 msgid "两者都不传时：用平台 .env 的密钥走 key 模式；平台未配置则返回 20011/40001。"
 msgstr "When neither is provided, the platform .env key is used in key mode; if the platform is not configured, 20011/40001 is returned."
 
+msgid "代理 IP 服务把多个渠道聚合成一套统一接口：66 免费代理、青雨动态代理与住宅长效、巨量代理 IP、91HTTP 动态代理、静态代理管理与 Thordata 动态住宅代理，调用方按需选择线路即可，不必分别对接各平台的协议与参数。"
+msgstr "The proxy IP service aggregates multiple providers behind one unified API: 66 free proxies, Qingyu dynamic proxies and long-lived residential nodes, Juliuliang proxy IPs, 91HTTP dynamic proxies, static proxy management, and Thordata dynamic residential proxies. Pick the channel you need instead of integrating each provider's protocol and parameters separately."
+
+msgid "代理IP API,免费代理IP接口,动态代理IP,住宅代理API,静态代理IP,HTTP代理接口"
+msgstr "Proxy IP API,Free Proxy IP API,Dynamic Proxy IP,Residential Proxy API,Static Proxy IP,HTTP Proxy API"
+
 msgid "代理协议"
 msgstr "Proxy Protocol"
 
@@ -2870,6 +3014,9 @@ msgstr "Residential long-lived nodes are extracted from Qingyu as a fixed set of
 
 msgid "删除静态代理"
 msgstr "Delete Static Proxy"
+
+msgid "动态代理的有效期普遍很短（部分线路仅 1-3 分钟），住宅长效与静态代理更适合需要固定出口 IP 的业务。所有线路均需项目签名，部分线路的订单号 / 密钥支持调用时自行传入，以覆盖平台默认配置。"
+msgstr "Dynamic proxies generally expire quickly (some channels last only 1-3 minutes), while long-lived residential and static proxies better suit workloads that need a stable egress IP. All channels require project signature authentication, and some accept your own order number or secret at call time to override the platform defaults."
 
 msgid "动态短期代理，每次调用返回全新 IP；订单号/apikey 默认由平台侧持有，调用方也可传自己的 order/apikey 使用自己购买的订单。"
 msgstr "Dynamic short-lived proxy; each call returns a brand-new IP. The order/apikey is held by the platform by default, and the caller may also pass their own order/apikey to use their own purchased order."
@@ -3156,6 +3303,9 @@ msgstr "Optional: Default false (assembly only, no traffic consumed); true sends
 msgid "选填：默认 true（验证并按速度排序）"
 msgstr "Optional: Default true (verify and sort by speed)"
 
+msgid "部分线路支持可用性验证（verify=true）：服务端会实际探测代理连通性并按响应速度排序返回，适合对稳定性要求高、又不介意多等一会儿的采集场景；关闭验证则直接返回原始提取结果，速度更快。"
+msgstr "Some channels support availability checking (verify=true): the server actually probes each proxy and returns them sorted by response speed, which suits scraping workloads that value stability over latency. With verification off, the raw extraction result is returned faster."
+
 msgid "重新从 JSON 文件加载代理列表（配置更新后调用）。"
 msgstr "Reload the proxy list from the JSON file (call after configuration updates)."
 
@@ -3197,6 +3347,9 @@ msgstr "Parent comment ID"
 msgid "二级评论列表"
 msgstr "Replies List"
 
+msgid "全部接口需项目签名。评论列表分页返回，避免海量评论一次性撑爆响应。"
+msgstr "All endpoints require project signature authentication. Comment lists are paginated so a large thread cannot blow up a single response."
+
 msgid "全部接口需项目签名；create/reply 额外校验用户登录 Token（反馈人身份以此为准）。同项目内所有用户可见全部反馈与评论。"
 msgstr "All endpoints require the project signature; create/reply additionally verify the user's login Token (which determines the reporter's identity). Within the same project, all users can see all feedback and comments."
 
@@ -3208,6 +3361,9 @@ msgstr "Single feedback detail: top-level comments are returned with pagination,
 
 msgid "反馈 ID"
 msgstr "Feedback ID"
+
+msgid "反馈API,工单接口,用户反馈系统"
+msgstr "Feedback API,Ticket API,User Feedback System"
 
 msgid "反馈列表"
 msgstr "Feedback List"
@@ -3232,6 +3388,9 @@ msgstr "Required: ID of the comment being viewed"
 
 msgid "提交反馈"
 msgstr "Submit feedback"
+
+msgid "数据按接入项目隔离——每个项目只能看到自己的反馈与评论；提交反馈与评论时会额外校验用户的登录 Token，因此反馈人身份真实可信，子项目无法伪造。"
+msgstr "Data is isolated per integrated project, so each project only sees its own feedback and comments. Submitting feedback and comments additionally validates the user's log-in Token, so the reporter's identity is trustworthy and cannot be forged by a sub-project."
 
 msgid "新建一条反馈（title/content 必填），反馈人身份由 token 校验。"
 msgstr "Create a feedback (title/content required); the reporter's identity is verified by token."
@@ -3290,7 +3449,16 @@ msgstr "Feedback Center"
 msgid "问题反馈中心：提交反馈、追加/回复评论、查看项目内反馈与评论树。数据按接入项目隔离。"
 msgstr "Feedback Center: submit feedback, add/reply to comments, and view feedback and comment trees within a project. Data is isolated per integration project."
 
+msgid "问题反馈服务提供一套类似 Issue 的反馈中心：用户提交反馈，服务方与用户围绕该反馈追加评论或回复，评论支持嵌套（可回复某条具体评论），并可按状态筛选查看处理进度。"
+msgstr "The feedback service provides an Issue-like feedback center: users submit feedback and the service side and the user add comments or replies around it. Comments support nesting (replying to a specific comment) and can be filtered by status to track progress."
+
 # ==================== API 文档内容 · AI 服务 ====================
+msgid "AI API,免费AI接口,大模型API,AI对话接口,DeepSeek API"
+msgstr "AI API,Free AI API,LLM API,AI Chat API,DeepSeek API"
+
+msgid "AI 服务提供开箱即用的对话能力，当前接入 DeepSeek 内置模型，无需自行申请和配置模型 API Key 即可直接调用，适合做内容生成、摘要、问答等功能的快速验证。"
+msgstr "The AI service offers ready-to-use chat capabilities and currently integrates the built-in DeepSeek model. You can call it without applying for or configuring a model API Key, which is convenient for quickly validating content generation, summarization and Q&A features."
+
 msgid "DeepSeek AI 对话"
 msgstr "DeepSeek AI Chat"
 
@@ -3348,11 +3516,17 @@ msgstr "Prefix continuation (Beta)"
 msgid "单条消息内容"
 msgstr "Single message content"
 
+msgid "同一个接口覆盖单轮与多轮对话：传 content 发起简单单轮问答，传 messages（JSON 数组，含 role 与 content）则进行多轮对话；同时支持系统提示词、流式输出与前缀续写，不传 api_key 时使用平台内置的模型密钥。"
+msgstr "A single endpoint covers both single-turn and multi-turn chat: pass content for a simple one-shot question, or messages (a JSON array of role and content) for a multi-turn conversation. System prompts, streaming output and prefix completion are also supported, and omitting api_key uses the platform's built-in model key."
+
 msgid "在线调用会真实消耗平台 DeepSeek 额度，请确认 Key/额度可用后再调试。"
 msgstr "Live calls actually consume the platform's DeepSeek quota; make sure the Key/quota is available before debugging."
 
 msgid "完整对话消息(JSON)"
 msgstr "Full conversation messages (JSON)"
+
+msgid "本服务需项目签名。开启流式（stream=true）后返回的是逐段内容，与普通 JSON 响应的呈现方式不同，在文档页在线调试时可直接看到。"
+msgstr "This service requires project signature authentication. With streaming enabled (stream=true) the response arrives in chunks rather than as a single JSON body, which the live debugger on this page shows as it streams."
 
 msgid "模型名称"
 msgstr "Model name"
@@ -3451,8 +3625,14 @@ msgstr "Power-leveling duration"
 msgid "代练要求"
 msgstr "Power-leveling requirements"
 
+msgid "代练通API,代练订单接口,代练通数据"
+msgstr "DaiLianTong API,Boosting Order API,DaiLianTong Data"
+
 msgid "代练通平台能力：验证码登录注册、用户资料、公共/个人代练订单查询与操作（接收/发布/删除）、图片上传。"
 msgstr "DaiLianTong platform capabilities: verification code log in and registration, user profile, public/private power-leveling order query and operations (accept/publish/delete), image upload."
+
+msgid "代练通服务封装代练通平台的数据接口，覆盖验证码登录注册、用户资料与联系方式维护、头像与留言图片上传，以及公共订单、个人订单的查询与操作（发布、接收、删除）。"
+msgstr "The DaiLianTong service wraps the DaiLianTong platform's data APIs, covering SMS-code sign-up and log-in, user profile and contact management, avatar and order-message image upload, and querying and operating on public and personal boosting orders (publish, accept, delete)."
 
 msgid "代练通订单平台"
 msgstr "DaiLianTong Order Platform"
@@ -3559,6 +3739,9 @@ msgstr "Old Password"
 msgid "是否公共"
 msgstr "Is public"
 
+msgid "本服务需项目签名。发布、接收、删除等接口会真实作用于第三方平台的订单数据，调试时请避免在正式环境误操作。"
+msgstr "This service requires project signature authentication, and the publish, accept and delete endpoints act on real order data on the third-party platform, so avoid accidental operations against production data while debugging."
+
 msgid "本项目侧需项目签名；业务侧还需先登录代练通取得 user_id / token。含资金/下单等高风险操作，调试请务必使用自己的真实小号并谨慎操作。"
 msgstr "Signature Required on this project's side; on the business side you must first log in to DaiLianTong to obtain user_id / token. Includes high-risk operations such as funds/order placement; when debugging, be sure to use your own real secondary account and proceed with caution."
 
@@ -3646,6 +3829,9 @@ msgstr "Set the Signature (no token required)."
 msgid "设置联系方式"
 msgstr "Set Contact"
 
+msgid "调用链路上，登录成功后需携带返回的 user_id 与 token 继续调用后续接口；部分操作（如接收订单、发布订单）还需额外的支付密码或保证金等信息，请按参数说明谨慎传参。"
+msgstr "Along the call chain, carry the returned user_id and token into subsequent requests after a successful log-in. Some operations, such as accepting or publishing an order, additionally require a payment password or deposit information, so pass parameters carefully as documented."
+
 msgid "过滤敏感词"
 msgstr "Filter sensitive words"
 
@@ -3683,11 +3869,17 @@ msgstr "QQ number"
 msgid "https://…/avatar.png"
 msgstr "https://…/avatar.png"
 
+msgid "代练丸子API,代练订单接口"
+msgstr "DaiLianWanZi API,Boosting Order API"
+
 msgid "代练丸子平台"
 msgstr "DaiLianWanZi Platform"
 
 msgid "代练丸子平台能力：验证码登录、用户资料/头像/实名/签到、公共与搜索订单、发布/取消订单、余额查询。"
 msgstr "DaiLianWanZi platform capabilities: verification code log in, user profile/Avatar/real-name/sign-in, public and search orders, publish/cancel orders, balance query."
+
+msgid "代练丸子服务封装代练丸子平台的能力，包含验证码登录（服务端自动完成图形验证码识别）、用户资料与头像维护、实名查询、每日签到，以及公共订单、搜索订单、订单详情、发布 / 取消订单与余额查询。"
+msgstr "The DaiLianWanZi service wraps the DaiLianWanZi platform: SMS-code log-in (the server completes the graphic CAPTCHA automatically), user profile and avatar management, real-name verification lookup, daily check-in, plus public orders, order search, order details, publish / cancel order and balance query."
 
 msgid "代练丸子（llwanzi.com）网页接口封装"
 msgstr "DaiLianWanZi (llwanzi.com) web API wrapper"
@@ -3754,6 +3946,9 @@ msgstr "Maximum price"
 
 msgid "服务器ID"
 msgstr "Server ID"
+
+msgid "本服务需项目签名；发布与取消订单会真实作用于第三方平台数据，请勿在调试中滥用。"
+msgstr "This service requires project signature authentication; publishing and cancelling orders act on real third-party platform data, so do not abuse them while debugging."
 
 msgid "本项目侧需项目签名；业务侧需先登录取得 authorization。发布/取消订单等操作会产生真实影响，请谨慎。"
 msgstr "Signature Required on this project's side; on the business side you must log in first to obtain authorization. Operations such as publishing/canceling orders have real effects; proceed with caution."
@@ -3824,9 +4019,15 @@ msgstr "Optional: default platform icon"
 msgid "验证码或密码登录；未注册手机号用验证码登录会自动注册。"
 msgstr "Log in with a Verification code or Password; logging in with a Verification code for an unregistered Phone number will register automatically."
 
+msgid "验证码登录对未注册手机号会自动注册，适合需要批量接入账号的场景；登录后使用返回的授权信息继续调用后续接口。"
+msgstr "SMS-code log-in automatically registers unregistered mobile numbers, which suits scenarios that need to onboard accounts in bulk. Use the returned authorization information for subsequent calls."
+
 # ==================== API 文档内容 · 用户中心 ====================
-msgid "username/email/phone 按后台可用方式组合；两步注册时 data.need_verify=true。"
-msgstr "Combine username/email/phone according to the methods enabled in the backend; for two-step sign-up, data.need_verify=true."
+msgid "email / phone 至少提供一个；两步注册时 data.need_verify=true，需再调 verify/email 或 verify/phone 校验通过后才创建账号。"
+msgstr "Provide at least one of email / phone; for two-step sign-up data.need_verify=true, and the account is created only after verify/email or verify/phone passes."
+
+msgid "不带 code 时必填：account/email/phone 任一标识 + 密码"
+msgstr "Required when code is omitted: one of account/email/phone plus a password"
 
 msgid "仅支持已绑定邮箱/手机号的账号；纯用户名账号没有可验证通道，无法自助重置。"
 msgstr "Only accounts with a bound email/phone are supported; username-only accounts have no verification channel and cannot reset the password themselves."
@@ -3852,14 +4053,23 @@ msgstr "Send Login Verification Code"
 msgid "发送重置密码验证码"
 msgstr "Send Password Reset Code"
 
+msgid "只提供 username（即\"用户名+密码注册\"）已停用，返回 30001 业务规则限制。"
+msgstr "Providing username only (i.e. username + password sign-up) is disabled and returns 30001 (business rule restriction)."
+
 msgid "可用注册/登录方式"
 msgstr "Available Sign-up / Login Methods"
 
 msgid "同一项目+凭证+IP 连续失败 5 次锁定 15 分钟（返回 20040）。"
 msgstr "5 consecutive failures for the same project + credential + IP locks it for 15 minutes (returns 20040)."
 
+msgid "带 code 即走邮箱/手机号验证码登录（免密码）"
+msgstr "With code, it uses email/phone verification-code login (no password needed)"
+
 msgid "必填：用户在该项目下持有的登录 Token（login 成功返回）"
 msgstr "Required: the login Token the user holds under this project (returned by a successful login)"
+
+msgid "密码登录的标识三选一：account / email / phone（邮箱与手机号需已注册）。"
+msgstr "Password login accepts any one of three identifiers: account / email / phone (email and phone must be registered)."
 
 msgid "忘记密码第一步：校验邮箱/手机号已注册后发码（60 秒冷却）。"
 msgstr "Forgot-password step 1: verify that the email/phone is registered, then send the code (60-second cooldown)."
@@ -3869,6 +4079,9 @@ msgstr "Forgot-password step 2: after the code is verified, set the new password
 
 msgid "成功返回 data={valid, user_id, account, username}。"
 msgstr "Returns data={valid, user_id, account, username} on success."
+
+msgid "手机号+密码登录，或手机号+code 验证码登录"
+msgstr "Phone + password login, or phone + code verification login"
 
 msgid "手机号两步验证"
 msgstr "Phone Two-Step Verification"
@@ -3888,14 +4101,11 @@ msgstr "Provide email → first step of two-step sign-up; the email must then be
 msgid "提供 phone → 两步注册第一步，需再验证手机号"
 msgstr "Provide phone → first step of two-step sign-up; the phone number must then be verified"
 
-msgid "提供 username+password → 直接注册成功"
-msgstr "Provide username + password → the account is created directly"
-
 msgid "查询调用方（签名所属项目）自身信息，用于核对配置。"
 msgstr "Query the caller's own info (the project the signature belongs to) to check the configuration."
 
-msgid "注册：username+password 直接建号；email 或 phone+password 走两步注册（先发验证码）。"
-msgstr "Sign up: username + password creates the account directly; email or phone + password goes through two-step sign-up (the code is sent first)."
+msgid "注册（只支持邮箱 / 手机号）：提交邮箱或手机号 + 密码走两步注册，先发验证码。"
+msgstr "Sign up (email / phone only): submit an email or phone number plus a password to start two-step sign-up, which sends the code first."
 
 msgid "浏览器打开邮件内激活链接，校验通过后创建账号并发放。"
 msgstr "Open the activation link in the email in a browser; once verified, the account is created and issued."
@@ -3903,11 +4113,20 @@ msgstr "Open the activation link in the email in a browser; once verified, the a
 msgid "激活令牌"
 msgstr "Activation token"
 
+msgid "用户中心API,统一认证,注册登录接口,Token验证"
+msgstr "User Center API,Unified Authentication,Sign-up and Log-in API,Token Verification"
+
+msgid "用户中心是一套统一账号系统（UAC）：所有接入项目共用一个全局用户池，用户在一个项目下注册的账号，在其它项目下同样可以登录，不必每个项目各建一套账号体系。"
+msgstr "The user center is a unified account system (UAC): all integrated projects share one global user pool, so an account registered under one project can also log in under others, with no need to build a separate account system per project."
+
 msgid "用户账号体系"
 msgstr "User Account System"
 
-msgid "登录：账号+密码，或邮箱/手机号+验证码；成功返回绑定项目的 Token。"
-msgstr "Log in: account + password, or email/phone number + verification code; on success, returns a Token bound to the project."
+msgid "登录态用 Token 承载，Token 绑定签发它的接入项目。注册仅支持邮箱或手机号，且为两步流程——先提交凭证发验证码，校验通过后才真正创建账号，可有效防止恶意批量注册；忘记密码同样走「先发码、再校验改密」，重置成功后会作废该用户的全部 Token。"
+msgstr "Sessions are carried by Tokens, and each Token is bound to the project that issued it. Sign-up supports email or mobile number only and is a two-step flow: submit the credential to receive a code, and the account is created only after the code is verified, which effectively prevents bulk malicious registrations. Password recovery follows the same pattern, sending a code first and verifying before the password is changed, and a successful reset invalidates all of that user's Tokens."
+
+msgid "登录：账号/邮箱/手机号+密码；或邮箱/手机号+验证码。成功返回绑定项目的 Token。"
+msgstr "Log in: account/email/phone + password, or email/phone + verification code. On success, returns a Token bound to the project."
 
 msgid "统一账号中心（UAC）：全局用户池，多方式注册/登录、Token 签发与验证、两步注册邮箱/手机号校验。"
 msgstr "Unified Account Center (UAC): a global user pool with multi-method sign-up/log-in, Token issuance and verification, and email/phone verification for two-step sign-up."
@@ -3918,14 +4137,14 @@ msgstr "Unified Account Pool (Token bound to the integration project)"
 msgid "账号"
 msgstr "Account"
 
-msgid "账号+密码登录时使用（username）"
-msgstr "Used for account + password login (username)"
+msgid "账号+密码登录：系统发放的账号"
+msgstr "Account + password login: the account issued by the system"
 
 msgid "返回 HTML 结果页；在线调试会得到 HTML 原文，属正常。"
 msgstr "Returns an HTML result page; live debug will show the raw HTML, which is expected."
 
-msgid "返回 data={methods:[email,phone], username:true}；客户端先查此接口再渲染表单。"
-msgstr "Returns data={methods:[email,phone], username:true}; clients should call this endpoint first before rendering the form."
+msgid "返回 data={methods:[email,phone], username:false}；客户端先查此接口再渲染表单，username=false 表示\"用户名+密码注册\"已停用。"
+msgstr "Returns data={methods:[email,phone], username:false}; clients should call this endpoint first before rendering the form — username=false means username + password sign-up is disabled."
 
 msgid "返回后台启用的注册/登录方式（公开，免签名）。"
 msgstr "Returns the sign-up/log-in methods enabled in the backend (public, no signature required)."
@@ -3933,11 +4152,14 @@ msgstr "Returns the sign-up/log-in methods enabled in the backend (public, no si
 msgid "返回当前接入项目配置（含 Token 默认有效期等）。"
 msgstr "Returns the current integration project's configuration (including the Token's default validity period, etc.)."
 
+msgid "选填：仅用于展示，不作为注册凭证"
+msgstr "Optional: for display only, not a sign-up credential"
+
 msgid "邮件内链接专用（浏览器访问）"
 msgstr "For in-email links only (opened in a browser)"
 
-msgid "邮箱/手机号登录时用"
-msgstr "Used for email/phone login"
+msgid "邮箱+密码登录，或邮箱+code 验证码登录"
+msgstr "Email + password login, or email + code verification login"
 
 msgid "邮箱/手机号验证码登录第一步：校验已注册后发码（60 秒冷却）。"
 msgstr "First step of email/phone verification-code login: verifies the account is registered, then sends the code (60-second cooldown)."
@@ -3975,6 +4197,9 @@ msgstr "All endpoints require the project signature except methods and the email
 msgid "除 methods 与邮箱激活链接(GET) 外均需项目签名。邮箱/手机号两步注册流程：先 register（仅暂存+发验证码），再调 verify/email 或 verify/phone 校验通过后才创建账号。忘记密码流程：先调 password/send 发码，再调 password/reset 校验通过后改密（并作废该用户全部 Token）。"
 msgstr "Everything except methods and the email activation link (GET) requires a project signature. Two-step email/phone registration: call register first (it only stores the intent and sends a code), then call verify/email or verify/phone to create the account. Forgot password: call password/send for a code, then password/reset to set a new password (which also invalidates all of that user's Tokens)."
 
+msgid "除「可用注册/登录方式」与邮箱激活链接（公开 GET）外，其余接口均需项目签名。客户端建议先查注册/登录方式接口，再按返回结果渲染表单，不要在前端写死支持方式。"
+msgstr "Apart from the available sign-up / log-in methods endpoint and the email activation link (public GET), all endpoints require project signature authentication. Clients should query the methods endpoint first and render the form from the result rather than hard-coding the supported methods."
+
 msgid "项目信息"
 msgstr "Project Info"
 
@@ -4000,6 +4225,9 @@ msgstr "Returns 40001 when sid / nid are out of range or the source site has no 
 
 msgid "一次返回首页全部推荐区块，便于直接渲染站点首页。"
 msgstr "Returns all home recommendation blocks in one call, ready to render the site home page."
+
+msgid "关键 ID 有固定的传递顺序：分类接口返回的 id 传给列表接口的 type_id，列表中的 id 传给详情接口的 vod_id，详情中的 sid / nid 再传给播放接口取地址，串起来就是一条完整的播放流程。"
+msgstr "Key IDs follow a fixed order: the id returned by the categories API goes to the list API's type_id, an item's id goes to the detail API's vod_id, and the sid / nid from the detail response go to the playback API. Chaining them yields a complete playback flow."
 
 msgid "分类 ID"
 msgstr "Category ID"
@@ -4094,6 +4322,9 @@ msgstr "Playback URL"
 msgid "播放源序号"
 msgstr "Source Index"
 
+msgid "数据类信息（片名、简介、集数等）缓存时间较长；播放地址（m3u8）因为带时效只做较短缓存，请勿在客户端长期缓存播放地址。本服务需项目签名。"
+msgstr "Metadata such as title, synopsis and episode count is cached for a long time, while playback URLs (m3u8) expire and are cached only briefly, so do not cache playback URLs on the client for long. This service requires project signature authentication."
+
 msgid "源站地址直出，不做代理转发。"
 msgstr "The source URL is returned directly without proxying."
 
@@ -4102,6 +4333,12 @@ msgstr "Use it to build site navigation: main holds the primary categories and s
 
 msgid "电影"
 msgstr "Movies"
+
+msgid "电影API,影视API接口,免费电影接口,m3u8播放地址,影视解析API,影片搜索接口"
+msgstr "Movie API,Video Streaming API,Free Movie API,m3u8 Playback URL,Movie Parser API,Movie Search API"
+
+msgid "电影服务聚合影视站数据，提供分类、筛选条件、首页推荐、列表、详情、选集与播放地址（m3u8）等完整链路，按「分类 → 列表 → 详情 → 播放地址」的顺序即可搭起一个影视站，搜索接口则支持按片名关键词查片。"
+msgstr "The movie service aggregates data from a film and TV site and provides the full chain of categories, filters, home recommendations, lists, details, episode lists and playback URLs (m3u8). Following \"category, list, detail, playback URL\" is enough to build a movie site, and the search endpoint looks titles up by keyword."
 
 msgid "电影聚合服务：提供影视的分类、列表、详情、选集与播放地址（m3u8）能力，按「列表 → 详情 → 播放」流程即可搭建完整影视站。"
 msgstr "Movie aggregation service: categories, lists, details, episode lists, and playback URLs (m3u8) for films and TV shows — build a complete streaming site with the \"list → detail → play\" flow."
@@ -4157,37 +4394,7 @@ msgstr "Home Feed"
 msgid "默认"
 msgstr "Default"
 
-# ==================== 超级管理控制台 · API 服务分类（认证模式） ====================
-msgid "API 服务分类"
-msgstr "API Categories"
-
-msgid "API 服务分类 - 超级管理员 - 小影API"
-msgstr "API Categories - Super Admin - XiaoYingAPI"
-
-msgid "超级管理员,API服务分类,认证模式"
-msgstr "Super Admin,API Categories,Auth mode"
-
-msgid "小影API 超级管理员：配置 API 服务分类的认证模式（跟随上级 / 需要认证 / 开放）。"
-msgstr "XiaoYingAPI Super Admin: configure the auth mode of API categories (Inherit / Auth Required / Open)."
-
-msgid "共 %(total)s 个分类；修改后立即对接口鉴权生效，无需重启。"
-msgstr "%(total)s categories in total. Changes take effect on API authentication immediately — no restart needed."
-
-msgid "生效规则：请求按「最长前缀」命中分类后，沿父链向上取第一个非「跟随上级」的模式生效。"
-msgstr "Resolution rule: a request matches the category with the longest matching prefix, then walks up the parent chain and uses the first mode that is not Inherit."
-
-msgid "跟随上级：继承父级配置；需要认证：调用方必须携带 APPID/APPSECRET 签名；开放：免签名可直接调用。"
-msgstr "Inherit: use the parent's configuration; Auth Required: callers must send an APPID/APPSECRET signature; Open: callable without a signature."
-
-msgid "若整条链全为「跟随上级」或未命中任何分类，按安全默认「需要认证」处理（fail-closed）。"
-msgstr "If the whole chain is Inherit, or no category matches, the secure default Auth Required applies (fail-closed)."
-
-msgid "分类树由管理命令按 API/apis/ 目录生成（rebuild_category_tree）；本页只调整认证模式，重建不会覆盖它。"
-msgstr "The category tree is generated from the API/apis/ directory by a management command (rebuild_category_tree). This page only adjusts auth modes, which a rebuild will not overwrite."
-
-msgid "本节点模式"
-msgstr "Node Mode"
-
+# ==================== 超级管理控制台 · 通用（策略 / 表单共用文案） ====================
 msgid "生效结果"
 msgstr "Effective"
 
@@ -4205,15 +4412,6 @@ msgstr "Disabled"
 
 msgid "保存"
 msgstr "Save"
-
-msgid "分类不存在"
-msgstr "Category not found"
-
-msgid "非法的认证模式"
-msgstr "Invalid auth mode"
-
-msgid "已把「%(path)s」的认证模式更新为「%(mode)s」"
-msgstr "Auth mode of %(path)s updated to %(mode)s"
 
 # ==================== 登录 / 注册 / 发送验证码的图形验证（服务端二次校验） ====================
 msgid "请先完成图形验证"
@@ -4290,6 +4488,9 @@ msgstr "API Call Statistics"
 msgid "API 调用统计 - 超级管理员 - 小影API"
 msgstr "API Call Statistics - Super Admin - XiaoYingAPI"
 
+msgid "API调用统计,接口调用量查询"
+msgstr "API Call Statistics,API Call Count Query"
+
 msgid "path 未登记时返回 code=20003；未传时返回 code=20001。"
 msgstr "Returns code=20003 if path is not registered, or code=20001 if path is missing."
 
@@ -4314,8 +4515,8 @@ msgstr "Failed"
 msgid "小影API 内置调用统计（按天预聚合）"
 msgstr "XiaoYingAPI built-in call statistics (daily pre-aggregation)"
 
-msgid "小影API 超级管理员：API 调用量统计看板（服务 / 接口 / 项目 / 状态码 / 耗时）。"
-msgstr "XiaoYingAPI Super Admin: API call volume dashboard (service / Endpoint / project / status code / latency)."
+msgid "小影API 超级管理员：API 调用统计看板（服务 / 接口 / 项目 / 时段分布 / 峰值 / 成功率与失败率）。"
+msgstr "XiaoYingAPI Super Admin: API call statistics dashboard (service / Endpoint / project / hourly distribution / peaks / success and failure rates)."
 
 msgid "平均"
 msgstr "Avg"
@@ -4335,20 +4536,23 @@ msgstr "Succeeded"
 msgid "成功率"
 msgstr "Success Rate"
 
-msgid "按服务、接口、接入项目与结果统计调用量；数据按天聚合，写入最多延迟数秒。"
-msgstr "Call volume by service, Endpoint, integrated project and result; data is aggregated daily, so writes may lag by a few seconds."
+msgid "按服务、接口、接入项目与时段统计调用量：成功率 / 失败率、时段分布、峰值与环比一屏可见；支持按服务与项目筛选。数据按天全量、按小时近 90 天预聚合，写入最多延迟数秒。"
+msgstr "Call volume by service, Endpoint, integrated project and hour: success/failure rates, hourly distribution, peaks and period-over-period comparison on one screen, with filtering by service and project. Daily data is kept in full and hourly data for the last 90 days; writes may lag by a few seconds."
 
 msgid "接入项目"
 msgstr "Integrated Project"
 
-msgid "接入项目调用排行 Top 20"
-msgstr "Project Call Ranking (Top 20)"
+msgid "接入项目调用排行"
+msgstr "Call Volume by Project"
 
 msgid "接口调用排行 Top 20"
 msgstr "Endpoint Call Ranking (Top 20)"
 
 msgid "接口路径"
 msgstr "Endpoint Path"
+
+msgid "数据按天预聚合，写入最多延迟数秒，因此刚发生的调用可能不会立刻体现在结果里。"
+msgstr "Data is pre-aggregated per day and writes are delayed by up to a few seconds, so a call you just made may not appear immediately."
 
 msgid "最大"
 msgstr "Max"
@@ -4389,14 +4593,17 @@ msgstr "No call data in this period"
 msgid "说明"
 msgstr "Description"
 
+msgid "调用统计服务对外公开每个接口的调用量：可以查某个接口被调用了多少次（累计与今日），也可以查各服务的调用量排行，适合做公开的运营数据展示，或写入自己的监控面板。"
+msgstr "The statistics service publicly exposes call counts per endpoint: query how many times an endpoint has been called (total and today), or view a ranking of services by call volume. It is useful for public dashboards or your own monitoring panel."
+
 msgid "调用量为公开信息，接口开放（免签名）。数据按天聚合，写入最多延迟数秒；统计范围仅 /api/ 业务接口，认证被拒与未匹配路由同样计入。"
 msgstr "Call volume is public information, so this Endpoint is open (no signature required). Data is aggregated daily, so writes may lag by a few seconds; only /api/ Endpoints are counted, including rejected authentication and unmatched routes."
 
 msgid "调用量查询"
 msgstr "Call Volume Query"
 
-msgid "超级管理员,调用统计,API 统计"
-msgstr "Super Admin,call statistics,API statistics"
+msgid "超级管理员,调用统计,API 统计,成功率,时段分布"
+msgstr "Super Admin,call statistics,API statistics,success rate,hourly distribution"
 
 msgid "返回 data = {path, total_calls, today_calls}。"
 msgstr "Returns data = {path, total_calls, today_calls}."
@@ -4409,6 +4616,9 @@ msgstr "Returns each service's total and today's call count, sorted by total cal
 
 msgid "返回某个接口的累计调用次数与今日调用次数。"
 msgstr "Returns the total and today's call count of an Endpoint."
+
+msgid "这是本站唯一无需签名的开放服务，未登录也能直接调用。统计口径只包含调用次数，不包含调用方项目、失败率与耗时等敏感信息。"
+msgstr "This is the only open service on the site that requires no signature, and it can be called without logging in. The figures cover call counts only; no caller project, failure rate or latency information is exposed."
 
 
 # ==================== 计算程序模块（programs/index.html、programs/detail.html） ====================
@@ -4492,5 +4702,771 @@ msgstr "Failed to read this document. Please make sure the file is saved as UTF-
 
 msgid "超过 1 MB，请下载后查看"
 msgstr "Over 1 MB — download to view"
+
+# ==================== API 调用统计重做（筛选 / 时段 / 峰值 / 详情页） ====================
+msgid "全部服务"
+msgstr "All Services"
+
+msgid "全部项目"
+msgstr "All Projects"
+
+msgid "筛选"
+msgstr "Filter"
+
+msgid "重置"
+msgstr "Reset"
+
+msgid "日内高峰时段"
+msgstr "Peak Hour of Day"
+
+msgid "环比上一周期"
+msgstr "vs. previous period"
+
+msgid "上一周期无数据，暂无法对比"
+msgstr "No data in the previous period; comparison unavailable"
+
+msgid "%(n)s 天调用量"
+msgstr "Calls in %(n)s Days"
+
+msgid "暂无小时粒度数据"
+msgstr "No hourly data yet"
+
+msgid "%(n)s 次 · 近 %(d)s 天累计"
+msgstr "%(n)s calls · accumulated over the last %(d)s days"
+
+msgid "时段分布（24 小时）"
+msgstr "Hourly Distribution (24 Hours)"
+
+msgid "仅统计最近 %(d)s 天的小时数据"
+msgstr "Based on hourly data from the last %(d)s days"
+
+msgid "峰值时点"
+msgstr "Peak Time Slots"
+
+msgid "暂无小时粒度数据：小时统计自本次升级后开始记录，升级前的调用只有按天数据。"
+msgstr "No hourly data yet: hourly statistics start recording after this upgrade, so earlier calls only have daily data."
+
+msgid "星期 × 小时热力图"
+msgstr "Weekday × Hour Heatmap"
+
+msgid "颜色越深代表该时段调用越多，鼠标悬停可看具体次数"
+msgstr "Darker cells mean more calls in that slot; hover to see the exact count"
+
+msgid "%(h)s 时：%(n)s 次"
+msgstr "%(h)s:00 — %(n)s calls"
+
+msgid "暂无小时粒度数据，无法生成热力图。"
+msgstr "No hourly data yet; the heatmap cannot be generated."
+
+msgid "服务 × 时段矩阵"
+msgstr "Service × Hour Matrix"
+
+msgid "各行按自身峰值配色，便于看出每个服务的高峰时段"
+msgstr "Each row is colored by its own peak, making each service's busiest hours easy to spot"
+
+msgid "合计"
+msgstr "Total"
+
+msgid "暂无小时粒度数据，无法生成时段矩阵。"
+msgstr "No hourly data yet; the matrix cannot be generated."
+
+msgid "占比"
+msgstr "Share"
+
+msgid "主要服务"
+msgstr "Top Service"
+
+msgid "失败率"
+msgstr "Failure Rate"
+
+msgid "最大耗时"
+msgstr "Max Latency"
+
+msgid "失败最多的接口 Top 10"
+msgstr "Most Failed Endpoints (Top 10)"
+
+msgid "日期"
+msgstr "Date"
+
+msgid "调用量最高的日期"
+msgstr "Busiest Days"
+
+msgid "周一"
+msgstr "Mon"
+
+msgid "周二"
+msgstr "Tue"
+
+msgid "周三"
+msgstr "Wed"
+
+msgid "周四"
+msgstr "Thu"
+
+msgid "周五"
+msgstr "Fri"
+
+msgid "周六"
+msgstr "Sat"
+
+msgid "周日"
+msgstr "Sun"
+
+msgid "服务调用详情"
+msgstr "Service Call Details"
+
+msgid "接入项目调用详情"
+msgstr "Project Call Details"
+
+msgid "返回调用统计总览"
+msgstr "Back to Call Statistics Overview"
+
+msgid "该服务的接口调用排行 Top 20"
+msgstr "Endpoint Call Ranking of This Service (Top 20)"
+
+msgid "该项目的接口调用排行 Top 20"
+msgstr "Endpoint Call Ranking of This Project (Top 20)"
+
+msgid "%(name)s 调用统计 - 超级管理员 - 小影API"
+msgstr "%(name)s Call Statistics - Super Admin - XiaoYingAPI"
+
+msgid "超级管理员,调用统计,服务详情"
+msgstr "Super Admin,call statistics,service details"
+
+msgid "小影API 超级管理员：%(name)s 服务的调用量、成功率、时段分布与接口排行。"
+msgstr "XiaoYingAPI Super Admin: call volume, success rate, hourly distribution and Endpoint ranking of the %(name)s service."
+
+msgid "超级管理员,调用统计,接入项目"
+msgstr "Super Admin,call statistics,integrated project"
+
+msgid "小影API 超级管理员：接入项目「%(name)s」的调用量、成功率、时段分布与接口排行。"
+msgstr "XiaoYingAPI Super Admin: call volume, success rate, hourly distribution and Endpoint ranking of the integrated project \"%(name)s\"."
+
+msgid "统计口径：仅 /api/ 业务接口（不含调用统计接口自身）；认证被拒与未匹配路由也会计入；「开放接口 / 未认证」表示未携带有效项目签名的请求；成功 = 业务码 10000。"
+msgstr "Scope: /api/ Endpoints only (the statistics API itself is excluded). Rejected authentication and unmatched routes are also counted. \"Public Endpoint / Unauthenticated\" means the request carried no valid project signature. Success = business code 10000."
+
+msgid "失败率标记：样本满 %(n)s 次才判定，达到 %(warn)s 标黄、%(danger)s 标红（仅页面提示，不告警）。"
+msgstr "Failure-rate markers: only judged when a row has at least %(n)s calls; %(warn)s or more is highlighted in yellow and %(danger)s or more in red (page-level hints only, no alerts)."
+
+msgid "小时维度（时段分布 / 热力图 / 时段矩阵 / 峰值）只保留最近 90 天，更早的调用只有按天数据。"
+msgstr "Hourly data (hourly distribution, heatmap, service × hour matrix, peaks) is kept for the last 90 days only; earlier calls have daily data only."
+
+msgid "统计口径：仅 /api/ 业务接口；成功 = 业务码 10000；失败率标记需样本满 %(min_rate_calls)s 次。"
+msgstr "Scope: /api/ Endpoints only. Success = business code 10000. Failure-rate markers require at least %(min_rate_calls)s calls."
+
+msgid "小时维度只保留最近 90 天。"
+msgstr "Hourly data is kept for the last 90 days only."
+
+# ==================== 状态码说明（StatusCode.get_message 的展示文案，供超管调用统计翻译） ====================
+msgid "参数缺失"
+msgstr "Missing parameter"
+
+msgid "参数格式错误"
+msgstr "Invalid parameter format"
+
+msgid "参数值非法"
+msgstr "Invalid parameter value"
+
+msgid "未认证"
+msgstr "Unauthenticated"
+
+msgid "认证失败"
+msgstr "Authentication failed"
+
+msgid "Token已过期"
+msgstr "Token expired"
+
+msgid "无权限"
+msgstr "Forbidden"
+
+msgid "账号已被禁用"
+msgstr "Account disabled"
+
+msgid "资源不存在"
+msgstr "Resource not found"
+
+msgid "资源已存在"
+msgstr "Resource already exists"
+
+msgid "请求过于频繁"
+msgstr "Too many requests"
+
+msgid "请求方法不允许"
+msgstr "Method not allowed"
+
+msgid "业务规则限制"
+msgstr "Business rule restricted"
+
+msgid "当前状态不允许此操作"
+msgstr "Operation not allowed in the current state"
+
+msgid "数据冲突"
+msgstr "Data conflict"
+
+msgid "服务维护中"
+msgstr "Service under maintenance"
+
+msgid "余额不足"
+msgstr "Insufficient balance"
+
+msgid "库存不足"
+msgstr "Insufficient stock"
+
+msgid "外部API调用失败"
+msgstr "External API call failed"
+
+msgid "外部API调用超时"
+msgstr "External API call timed out"
+
+msgid "外部API返回异常"
+msgstr "External API returned an unexpected result"
+
+msgid "网络连接失败"
+msgstr "Network connection failed"
+
+msgid "DNS解析失败"
+msgstr "DNS resolution failed"
+
+msgid "服务器内部错误"
+msgstr "Internal server error"
+
+msgid "服务暂不可用"
+msgstr "Service unavailable"
+
+msgid "数据库错误"
+msgstr "Database error"
+
+msgid "缓存错误"
+msgstr "Cache error"
+
+msgid "文件读取失败"
+msgstr "File read failed"
+
+msgid "文件写入失败"
+msgstr "File write failed"
+
+msgid "配置错误"
+msgstr "Configuration error"
+
+msgid "未知错误"
+msgstr "Unknown error"
+
+msgid "未知状态码"
+msgstr "Unknown status code"
+
+# ==================== 超管控制台：用户管理（列表 / 详情 / 登录明细） ====================
+
+msgid "用户管理"
+msgstr "User Management"
+
+msgid "用户管理 - 超级管理员 - 小影API"
+msgstr "User Management - Super Admin - XiaoYingAPI"
+
+msgid "超级管理员,用户管理,登录记录"
+msgstr "Super Admin,user management,login records"
+
+msgid "查看用户中心全部用户：资料、登录过的项目与次数、最后登录时间。支持建号、编辑、封禁/解封、重置密码与删除。"
+msgstr "Browse all user center users: profile, projects logged into with counts, and last login time. Supports creating, editing, banning/unbanning, resetting passwords and deleting."
+
+
+msgid "账号 / 用户名 / 邮箱 / 手机号"
+msgstr "Account / username / email / phone"
+
+msgid "全部"
+msgstr "All"
+
+msgid "正常"
+msgstr "Active"
+
+msgid "已封禁"
+msgstr "Banned"
+
+
+msgid "登录过项目"
+msgstr "Logged into project"
+
+msgid "每页"
+msgstr "Per page"
+
+msgid "新建用户"
+msgstr "New User"
+
+
+
+
+
+msgid "注册时间"
+msgstr "Registered At"
+
+msgid "登录项目"
+msgstr "Projects"
+
+msgid "登录次数"
+msgstr "Logins"
+
+msgid "最后登录"
+msgstr "Last Login"
+
+msgid "操作"
+msgstr "Actions"
+
+msgid "已验证"
+msgstr "Verified"
+
+msgid "未验证"
+msgstr "Unverified"
+
+msgid "详情"
+msgstr "Details"
+
+msgid "封禁"
+msgstr "Ban"
+
+msgid "解封"
+msgstr "Unban"
+
+msgid "没有匹配的用户"
+msgstr "No matching users"
+
+msgid "口径：登录次数 = 登录日志条数（每次登录成功记一条，退出登录与重置密码不会减少）；登录项目 = 该用户登录过的接入项目数。用户是全局用户池，不属于任何项目。"
+msgstr "Scope: logins = number of login log rows (one per successful login; signing out or resetting the password does not reduce it); projects = number of integrated projects the user has logged into. Users live in a global pool and do not belong to any project."
+
+msgid "登录日志自本次升级起开始记录，升级之前的登录无法回填。"
+msgstr "Login logs start recording with this upgrade; earlier logins cannot be reconstructed."
+
+msgid "创建"
+msgstr "Create"
+
+msgid "取消"
+msgstr "Cancel"
+
+msgid "邮箱与手机号至少填一个。账号由系统随机分配（6-12 位数字）；后台创建的凭证会直接标记为已验证，用户可用「账号 / 邮箱 / 手机号 + 密码」登录。"
+msgstr "Provide at least an email or a phone number. The account is generated randomly by the system (6-12 digits); credentials created here are marked as verified, and the user can sign in with account / email / phone + password."
+
+msgid "用户名（可选，仅展示用）"
+msgstr "Username (optional, display only)"
+
+msgid "初始密码（8-64 位，含字母与数字）"
+msgstr "Initial password (8-64 chars, letters and digits)"
+
+msgid "上一页"
+msgstr "Previous"
+
+msgid "下一页"
+msgstr "Next"
+
+msgid "第 %(start)s-%(end)s 条，共 %(total)s 条"
+msgstr "%(start)s-%(end)s of %(total)s"
+
+msgid "用户 %(account)s - 超级管理员 - 小影API"
+msgstr "User %(account)s - Super Admin - XiaoYingAPI"
+
+msgid "超级管理员,用户详情,登录记录"
+msgstr "Super Admin,user details,login records"
+
+msgid "小影API 超级管理员：用户 %(account)s 的资料、登录过的项目与次数、Token 剩余有效天数。"
+msgstr "XiaoYingAPI Super Admin: profile of user %(account)s, projects logged into with counts, and remaining token validity."
+
+msgid "返回用户列表"
+msgstr "Back to User List"
+
+msgid "累计登录次数"
+msgstr "Total Logins"
+
+msgid "登录日志条数，退出登录不会减少"
+msgstr "Login log rows; signing out does not reduce this"
+
+msgid "登录过的项目"
+msgstr "Projects Logged Into"
+
+msgid "该用户登录过的接入项目数"
+msgstr "Number of integrated projects this user has logged into"
+
+msgid "当前有效登录"
+msgstr "Active Sessions"
+
+msgid "未过期的 Token（登录态）数量"
+msgstr "Number of unexpired tokens (sessions)"
+
+msgid "最后一次登录成功的时间"
+msgstr "Time of the last successful login"
+
+msgid "基本资料"
+msgstr "Basic Profile"
+
+
+
+msgid "最后更新"
+msgstr "Last Updated"
+
+msgid "注册信息"
+msgstr "Registration Info"
+
+msgid "来源项目"
+msgstr "Source Project"
+
+msgid "含历史记录（未记录来源项目）"
+msgstr "includes legacy records (source project not recorded)"
+
+msgid "来源项目由本次升级后新增的验证记录字段提供，升级之前的注册记录没有该信息。"
+msgstr "The source project comes from a verification-record field added in this upgrade; registrations made before the upgrade have no such information."
+
+msgid "账号操作"
+msgstr "Account Actions"
+
+msgid "编辑资料"
+msgstr "Edit Profile"
+
+
+msgid "封禁账号"
+msgstr "Ban Account"
+
+msgid "解除封禁"
+msgstr "Unban Account"
+
+msgid "删除用户"
+msgstr "Delete User"
+
+msgid "删除会级联清除该用户的 Token、验证记录与登录日志，且不可恢复。"
+msgstr "Deleting also removes this user's tokens, verification records and login logs, and cannot be undone."
+
+msgid "按项目登录明细"
+msgstr "Login Details by Project"
+
+
+msgid "登录概况"
+msgstr "Login Summary"
+
+msgid "%(p)s 个项目 · 共 %(n)s 次"
+msgstr "%(p)s projects · %(n)s logins"
+
+msgid "从未登录"
+msgstr "Never signed in"
+
+msgid "密码 %(pw)s · 验证码 %(code)s"
+msgstr "Password %(pw)s · Code %(code)s"
+
+msgid "首次登录"
+msgstr "First Login"
+
+msgid "最后活跃"
+msgstr "Last Active"
+
+msgid "有效登录"
+msgstr "Valid Sessions"
+
+msgid "登录态剩余"
+msgstr "Session Expiry"
+
+msgid "项目已停用"
+msgstr "Project disabled"
+
+msgid "已过期"
+msgstr "Expired"
+
+msgid "不足 1 天"
+msgstr "Less than 1 day"
+
+msgid "剩余 %(n)s 天"
+msgstr "%(n)s days left"
+
+msgid "「登录态剩余」按该项目最近一次签发的 Token 计算；同一项目多次登录会签发多条 Token，各自独立过期。"
+msgstr "Session expiry is based on the most recently issued token for that project; logging in multiple times issues multiple tokens that expire independently."
+
+msgid "该用户还没有登录过任何接入项目"
+msgstr "This user has not logged into any integrated project yet"
+
+msgid "最近登录记录"
+msgstr "Recent Logins"
+
+msgid "时间"
+msgstr "Time"
+
+
+msgid "IP"
+msgstr "IP"
+
+msgid "客户端"
+msgstr "Client"
+
+msgid "暂无登录记录（登录日志自本次升级起开始记录）"
+msgstr "No login records yet (login logs start recording with this upgrade)"
+
+msgid "登录凭证（Token）明细"
+msgstr "Tokens (Login Credentials)"
+
+msgid "签发时间"
+msgstr "Issued At"
+
+
+msgid "剩余"
+msgstr "Remaining"
+
+msgid "%(n)s 天"
+msgstr "%(n)s days"
+
+msgid "退出登录或重置密码会删除对应 Token（本表随之为空），但登录记录与登录次数不受影响。"
+msgstr "Signing out or resetting the password deletes the related tokens (this table then becomes empty), but login records and login counts are unaffected."
+
+msgid "当前没有登录态（可能从未登录，或已退出登录 / 密码被重置）"
+msgstr "No active session (never signed in, signed out, or password reset)."
+
+msgid "验证记录"
+msgstr "Verification Records"
+
+msgid "最多展示最近 %(n)s 条"
+msgstr "Showing up to the latest %(n)s records"
+
+msgid "场景"
+msgstr "Scene"
+
+msgid "方式"
+msgstr "Method"
+
+msgid "凭证"
+msgstr "Credential"
+
+msgid "是否已使用"
+msgstr "Used?"
+
+msgid "已使用"
+msgstr "Used"
+
+msgid "未使用"
+msgstr "Unused"
+
+msgid "暂无验证记录"
+msgstr "No verification records"
+
+msgid "留空的字段表示不修改。修改邮箱或手机号后会被标记为「未验证」，需用户重新验证后才能用于登录（账号/密码登录不受影响）。"
+msgstr "Empty fields are left unchanged. Changing the email or phone marks it as unverified; the user must verify it again before it can be used to sign in (account/password sign-in is unaffected)."
+
+msgid "用户名（仅展示用，可重复）"
+msgstr "Username (display only, duplicates allowed)"
+
+
+msgid "重置后该用户在所有接入项目的登录态会立即作废（强制重新登录），请自行把新密码告知用户。"
+msgstr "After resetting, all of this user's sessions across projects are invalidated immediately (they must sign in again). Remember to tell the user the new password."
+
+msgid "新密码（8-64 位，含字母与数字）"
+msgstr "New password (8-64 chars, letters and digits)"
+
+msgid "确认重置"
+msgstr "Confirm Reset"
+
+msgid "删除后不可恢复：该用户的登录凭证、验证记录与登录日志会一并删除。"
+msgstr "This cannot be undone: the user's tokens, verification records and login logs will be deleted as well."
+
+msgid "请输入账号 %(account)s 以确认删除："
+msgstr "Type the account %(account)s to confirm deletion:"
+
+msgid "确认删除"
+msgstr "Confirm Delete"
+
+msgid "用户创建成功：账号 %(account)s（请转告用户，账号与密码即可登录）"
+msgstr "User created: account %(account)s (tell the user they can sign in with the account and password)"
+
+msgid "资料未发生变化"
+msgstr "No changes were made"
+
+msgid "资料已更新（换绑的邮箱/手机号需用户重新验证后才能用于登录）"
+msgstr "Profile updated (a newly bound email/phone must be verified by the user before it can be used to sign in)"
+
+msgid "密码已重置，该用户全部项目的登录态已作废，需重新登录"
+msgstr "Password reset. All of this user's sessions across projects are now invalid and they must sign in again."
+
+msgid "已封禁「%(account)s」：该用户所有项目都无法登录"
+msgstr "Banned \"%(account)s\": this user can no longer sign in to any project."
+
+msgid "已解封「%(account)s」"
+msgstr "Unbanned \"%(account)s\""
+
+msgid "删除已取消：输入的账号与原账号不一致"
+msgstr "Deletion cancelled: the account you typed does not match"
+
+msgid "用户「%(account)s」已删除（含其 Token、验证记录与登录日志）"
+msgstr "User \"%(account)s\" deleted (including tokens, verification records and login logs)"
+
+msgid "用户不存在"
+msgstr "User not found"
+
+
+msgid "账号已封禁"
+msgstr "Account banned"
+
+msgid "有效"
+msgstr "Valid"
+
+msgid "邮箱注册"
+msgstr "Registered by email"
+
+msgid "手机号注册"
+msgstr "Registered by phone"
+
+msgid "账号/邮箱/手机号 + 密码"
+msgstr "Account / email / phone + password"
+
+msgid "邮箱/手机号 + 验证码"
+msgstr "Email / phone + verification code"
+
+msgid "小影API 超级管理员：用户中心用户管理（资料、登录过的项目与次数、最后登录、Token 剩余有效天数；支持建号、编辑、封禁、重置密码、删除）。"
+msgstr "XiaoYingAPI Super Admin: user center user management (profile, projects logged into with counts, last login, remaining token validity; create, edit, ban, reset password, delete)."
+
+# ==================== 超级管理控制台 · 服务策略（服务 / 线路 / 端点三级继承） ====================
+msgid "服务策略"
+msgstr "Service Policies"
+
+msgid "服务策略 - 超级管理员 - 小影API"
+msgstr "Service Policies - Super Admin - XiaoYingAPI"
+
+msgid "超级管理员,服务策略,状态,认证模式,项目白名单,三级继承"
+msgstr "Super Admin,service policies,status,auth mode,project whitelist,three-level inheritance"
+
+msgid "小影API 超级管理员：按服务 / 线路 / 端点三级配置认证模式与对外状态，逐级继承。"
+msgstr "XiaoYingAPI Super Admin: configure auth mode and public status by service / channel / endpoint, inherited level by level."
+
+msgid "共 %(total)s 条策略；服务 / 线路 / 端点三级逐级继承，改动后立即对接口鉴权生效，无需重启。"
+msgstr "%(total)s policies in total; service / channel / endpoint inherit level by level. Changes take effect on API authentication immediately — no restart needed."
+
+msgid "逐级继承：服务 → 线路 → 端点，每一级都可单独设状态 / 认证模式 / 项目范围；设为「跟随上级」则向上一级取，最终兜底为「正常 + 需要签名 + 不限项目」。"
+msgstr "Level-by-level inheritance: Service → Channel → Endpoint. Each level can set status / auth mode / project scope independently; \"Inherit\" takes the value from the level above, and the final fallback is \"Active + Auth Required + All projects\"."
+
+msgid "维护态：生效状态为「维护中」时，命中路径的 /api/ 请求统一返回 30004「服务维护中」，且不做签名校验（匿名同样收到）。"
+msgstr "Maintenance: when the effective status is \"Under Maintenance\", every /api/ request under the matched path returns 30004 \"Service under maintenance\", with no signature check (anonymous callers get it too)."
+
+msgid "开发中 / 已下线只作前台展示标记，不拦截请求（便于排障与联调）。"
+msgstr "\"In Development\" / \"Offline\" are display-only markers on the public site; they do not block requests (to ease troubleshooting and integration testing)."
+
+msgid "项目白名单：仅在生效认证模式为「需要签名」时生效——签名通过后若当前项目不在名单内，返回 20020「无权限」；开放模式不校验签名，拿不到调用项目。"
+msgstr "Project whitelist: applies only when the effective auth mode is \"Auth Required\". After the signature is verified, a project not on the list gets 20020 (Forbidden). Open mode skips the signature check, so the calling project is unknown."
+
+msgid "未命中任何策略的 /api/ 路径按全局默认「需要签名」处理（fail-closed）。"
+msgstr "/api/ paths matching no policy fall back to the global default \"Auth Required\" (fail-closed)."
+
+msgid "新建策略"
+msgstr "New Policy"
+
+msgid "编辑策略"
+msgstr "Edit Policy"
+
+msgid "层级"
+msgstr "Level"
+
+msgid "策略名称 / 路径"
+msgstr "Policy Name / Path"
+
+msgid "（未在文档登记）"
+msgstr "(not registered in docs)"
+
+msgid "策略名称"
+msgstr "Policy Name"
+
+msgid "URL 前缀"
+msgstr "URL Prefix"
+
+msgid "认证模式"
+msgstr "Auth Mode"
+
+msgid "项目范围"
+msgstr "Project Scope"
+
+msgid "服务状态"
+msgstr "Service Status"
+
+msgid "开发中"
+msgstr "In Development"
+
+msgid "需要签名"
+msgstr "Auth Required"
+
+msgid "不限项目"
+msgstr "All projects"
+
+msgid "仅白名单项目"
+msgstr "Whitelisted projects only"
+
+msgid "生效：仅白名单项目"
+msgstr "Effective: whitelisted projects only"
+
+msgid "%(n)s 个项目"
+msgstr "%(n)s projects"
+
+msgid "备注"
+msgstr "Remark"
+
+msgid "线路（留空=服务级）"
+msgstr "Channel (empty = service level)"
+
+msgid "端点（留空=线路级）"
+msgstr "Endpoint (empty = channel level)"
+
+msgid "将生效的层级："
+msgstr "Effective level: "
+
+msgid "URL 前缀："
+msgstr "URL prefix: "
+
+msgid "白名单项目（仅生效值「仅白名单项目」时生效）"
+msgstr "Whitelist projects (used only when the effective scope is \"Whitelisted projects only\")"
+
+msgid "暂无接入项目，可先到「接入项目」页创建。"
+msgstr "No projects yet — create one on the Projects page first."
+
+msgid "编辑"
+msgstr "Edit"
+
+msgid "暂无服务策略"
+msgstr "No service policies yet"
+
+msgid "按「服务 → 线路 → 端点」三级选择，层级与 URL 前缀自动推导；命中后按最短路径优先在继承链上生效。"
+msgstr "Pick a Service → Channel → Endpoint; the level and URL prefix are derived automatically. On match, the most specific path wins along the inheritance chain."
+
+msgid "启用 / 停用请使用列表中的按钮（停用即置为维护态）。"
+msgstr "Use the buttons in the list to enable/disable a policy (disabling sets it to maintenance)."
+
+msgid "删除服务策略"
+msgstr "Delete Service Policy"
+
+msgid "删除后不可恢复：该策略立即失效，接口鉴权回落到上级 / 全局默认，确认删除？"
+msgstr "This cannot be undone: the policy stops working immediately and API authentication falls back to the parent level / global default. Delete anyway?"
+
+msgid "服务策略不存在"
+msgstr "Service policy not found"
+
+msgid "请填写策略名称"
+msgstr "Please enter a policy name"
+
+msgid "请选择 API 服务"
+msgstr "Please select an API service"
+
+msgid "线路与所选服务不匹配"
+msgstr "The channel does not belong to the selected service"
+
+msgid "端点与所选线路不匹配"
+msgstr "The endpoint does not belong to the selected channel"
+
+msgid "非法的服务状态"
+msgstr "Invalid service status"
+
+msgid "非法的项目范围"
+msgstr "Invalid project scope"
+
+msgid "该路径已存在策略，请更换"
+msgstr "A policy already exists for this path, please use another one"
+
+msgid "服务策略「%(name)s」已创建"
+msgstr "Service policy \"%(name)s\" created"
+
+msgid "服务策略「%(name)s」已更新"
+msgstr "Service policy \"%(name)s\" updated"
+
+msgid "服务策略「%(name)s」已启用"
+msgstr "Service policy \"%(name)s\" enabled"
+
+msgid "服务策略「%(name)s」已停用，该服务进入维护态"
+msgstr "Service policy \"%(name)s\" disabled; the service is now under maintenance"
+
+msgid "服务策略「%(name)s」已删除"
+msgstr "Service policy \"%(name)s\" deleted"
 
 

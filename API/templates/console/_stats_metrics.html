@@ -1,0 +1,43 @@
+{% load i18n %}
+{% comment %}调用统计：关键指标卡（调用量 / 成功率 / 耗时 / 日内高峰），带环比{% endcomment %}
+<div class="stats stats-vertical mt-4 w-full border border-base-300 sm:stats-horizontal">
+  <div class="stat">
+    <div class="stat-title">{% blocktrans with n=days %}{{ n }} 天调用量{% endblocktrans %}</div>
+    <div class="stat-value font-mono text-2xl">{{ overview.calls }}</div>
+    <div class="stat-desc">
+      {% if overview.calls_delta is not None %}
+      <span class="font-mono {% if overview.calls_delta >= 0 %}text-success{% else %}text-error{% endif %}">{% if overview.calls_delta >= 0 %}+{% endif %}{{ overview.calls_delta }}%</span>
+      {% trans "环比上一周期" %}
+      {% else %}
+      {% trans "上一周期无数据，暂无法对比" %}
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="stat">
+    <div class="stat-title">{% trans "成功率" %}</div>
+    <div class="stat-value font-mono text-2xl">{{ overview.success_rate }}%</div>
+    <div class="stat-desc">
+      <span class="font-mono {% if overview.success_rate_delta >= 0 %}text-success{% else %}text-error{% endif %}">{% if overview.success_rate_delta >= 0 %}+{% endif %}{{ overview.success_rate_delta }}pp</span>
+      {% trans "成功" %} {{ overview.success }} / {% trans "失败" %} {{ overview.failed }}
+    </div>
+  </div>
+
+  <div class="stat">
+    <div class="stat-title">{% trans "平均耗时" %}</div>
+    <div class="stat-value font-mono text-2xl">{{ overview.avg_ms }}<span class="text-base font-normal"> ms</span></div>
+    <div class="stat-desc">{% trans "最大" %} {{ overview.max_ms }} ms · {% trans "活跃项目" %} {{ overview.active_apps }}</div>
+  </div>
+
+  <div class="stat">
+    <div class="stat-title">{% trans "日内高峰时段" %}</div>
+    <div class="stat-value font-mono text-2xl">{% if peak_hour %}{{ peak_hour.hour|stringformat:"02d" }}:00{% else %}—{% endif %}</div>
+    <div class="stat-desc">
+      {% if peak_hour %}
+      {% blocktrans with n=peak_hour.calls d=hours.hour_days %}{{ n }} 次 · 近 {{ d }} 天累计{% endblocktrans %}
+      {% else %}
+      {% trans "暂无小时粒度数据" %}
+      {% endif %}
+    </div>
+  </div>
+</div>

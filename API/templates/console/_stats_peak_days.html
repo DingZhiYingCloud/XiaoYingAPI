@@ -1,0 +1,37 @@
+{% load i18n %}
+{% comment %}调用统计：调用量最高的日期（按天表，含当日失败率）{% endcomment %}
+<div class="card mt-5 border border-base-300 bg-base-100">
+  <div class="card-body gap-3">
+    <h2 class="card-title text-base">{% trans "调用量最高的日期" %}</h2>
+    {% if peak_days %}
+    <div class="overflow-x-auto">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th>{% trans "日期" %}</th>
+            <th class="text-right">{% trans "调用量" %}</th>
+            <th class="text-right">{% trans "成功" %}</th>
+            <th class="text-right">{% trans "失败" %}</th>
+            <th class="text-right">{% trans "失败率" %}</th>
+            <th class="text-right">{% trans "平均耗时" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in peak_days %}
+          <tr>
+            <td class="font-mono text-xs">{{ row.key }}</td>
+            <td class="text-right font-mono">{{ row.calls }}</td>
+            <td class="text-right font-mono">{{ row.success }}</td>
+            <td class="text-right font-mono {% if row.failed %}text-error{% endif %}">{{ row.failed }}</td>
+            <td class="text-right">{% include 'console/_stats_rate.html' with row=row %}</td>
+            <td class="text-right font-mono">{{ row.avg_ms }} ms</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="py-6 text-center text-sm text-base-content/60">{% trans "该时间范围内暂无调用数据" %}</p>
+    {% endif %}
+  </div>
+</div>

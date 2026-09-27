@@ -1,0 +1,24 @@
+{% load i18n %}
+{% comment %}控制台左侧导航（菜单见 console_menu.py）：
+- 宽屏（≥lg）：常驻左栏、吸附滚动，标题不折叠（避免视觉重量过大）；
+- 小屏（<lg）：收敛为一条「控制台菜单」折叠条，默认收起，点开才占空间（不再整块挤占内容区）。
+注意：这里不给 aside 加 w-full —— flex 竖排时默认 align-self:stretch 已自动撑满宽度，
+少一个 w-full 也让「响应式类缺失」时不会退化成整行全宽。{% endcomment %}
+
+<details class="collapse collapse-arrow rounded-box border border-base-300 bg-base-100 lg:hidden">
+  <summary class="collapse-title min-h-0 py-3 text-sm font-semibold">
+    <span class="flex items-center gap-2">
+      <i data-lucide="panel-left" class="h-4 w-4 text-primary"></i>{% trans "控制台菜单" %}
+    </span>
+  </summary>
+  <div class="collapse-content">
+    {% include 'console/_menu.html' %}
+  </div>
+</details>
+
+<aside class="hidden shrink-0 lg:sticky lg:top-20 lg:block lg:w-56 lg:self-start"
+       aria-label="{% trans '控制台导航' %}">
+  <nav class="rounded-box border border-base-300 bg-base-100 p-2">
+    {% include 'console/_menu.html' %}
+  </nav>
+</aside>

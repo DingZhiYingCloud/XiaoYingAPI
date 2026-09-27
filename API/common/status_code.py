@@ -59,6 +59,10 @@ class StatusCode:
     BUSINESS_RULE_RESTRICTED = 30001
     STATUS_NOT_ALLOWED = 30002
     DATA_CONFLICT = 30003
+    # 服务维护中：单条 API 服务被「服务策略」置为维护态（ApiServicePolicy.enabled=False）时，
+    # 命中路径的 /api/ 请求统一返回此码（不做签名校验）。
+    # 注：需求原指定 30002，但 30002 已被 STATUS_NOT_ALLOWED 占用，为不破坏既有语义改用 30004。
+    SERVICE_MAINTENANCE = 30004
 
     # 资源不足 30010-30019
     INSUFFICIENT_BALANCE = 30010
@@ -120,6 +124,7 @@ class StatusCode:
         BUSINESS_RULE_RESTRICTED: '业务规则限制',
         STATUS_NOT_ALLOWED: '当前状态不允许此操作',
         DATA_CONFLICT: '数据冲突',
+        SERVICE_MAINTENANCE: '服务维护中',
 
         INSUFFICIENT_BALANCE: '余额不足',
         INSUFFICIENT_STOCK: '库存不足',
@@ -178,6 +183,7 @@ class StatusCode:
 
         命中规则（按顺序，命中即返回）：
             参数缺失 -> 20001；参数格式错误 -> 20002；参数值非法 -> 20003；
+            业务规则限制 -> 30001（如"已不再支持用户名+密码注册"这类业务上不允许的操作）；
             不存在 / 未找到 -> 20030；已存在 / 已被注册 / 已使用 -> 20031；
             频繁 / 频率限制 -> 20040
 
@@ -186,6 +192,7 @@ class StatusCode:
         """
         text = str(msg or '')
         rules = (
+            ('业务规则限制', cls.BUSINESS_RULE_RESTRICTED),
             ('参数缺失', cls.PARAM_MISSING),
             ('参数格式错误', cls.PARAM_FORMAT_ERROR),
             ('参数值非法', cls.PARAM_VALUE_INVALID),

@@ -1,5 +1,5 @@
 User-agent: *
-Disallow:
+Disallow: /console/
 
 Sitemap: {{ request.scheme }}://{{ request.get_host }}/sitemap.xml
 

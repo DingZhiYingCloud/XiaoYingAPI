@@ -1,0 +1,46 @@
+{% extends 'console/base.html' %}
+{% load static i18n %}
+
+{% block title %}{% blocktrans with name=service_name %}{{ name }} 调用统计 - 超级管理员 - 小影API{% endblocktrans %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,调用统计,服务详情" %}{% endblock %}
+{% block description %}{% blocktrans with name=service_name %}小影API 超级管理员：{{ name }} 服务的调用量、成功率、时段分布与接口排行。{% endblocktrans %}{% endblock %}
+
+{% block console_content %}
+<div class="flex min-w-0 items-start gap-3">
+  <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-box bg-primary/10 text-primary">
+    <i data-lucide="chart-column" class="h-5 w-5"></i>
+  </span>
+  <div class="min-w-0">
+    <h1 class="text-xl font-bold sm:text-2xl">{{ service_name }}</h1>
+    <p class="mt-0.5 text-sm text-base-content/70">
+      <code class="font-mono text-xs">{{ service }}</code> · {% trans "服务调用详情" %}
+    </p>
+  </div>
+</div>
+
+<p class="mt-3 text-sm">
+  <a href="{% url 'website:console_stats' %}" class="link link-hover">← {% trans "返回调用统计总览" %}</a>
+</p>
+
+{% include 'console/_stats_range_tabs.html' %}
+{% include 'console/_stats_metrics.html' %}
+{% include 'console/_stats_trend.html' %}
+
+<div class="mt-5 grid gap-5 lg:grid-cols-2">
+  {% include 'console/_stats_hours.html' %}
+  {% include 'console/_stats_status.html' %}
+</div>
+
+{% include 'console/_stats_heatmap.html' %}
+{% include 'console/_stats_table_endpoints.html' with title='该服务的接口调用排行 Top 20' rows=endpoints %}
+{% include 'console/_stats_table_apps.html' %}
+
+<p class="mt-4 text-xs leading-relaxed text-base-content/60">
+  {% blocktrans %}统计口径：仅 /api/ 业务接口；成功 = 业务码 10000；失败率标记需样本满 {{ min_rate_calls }} 次。{% endblocktrans %}
+  {% blocktrans %}小时维度只保留最近 90 天。{% endblocktrans %}
+</p>
+{% endblock %}
+
+{% block js %}
+{% include 'console/_stats_charts_js.html' %}
+{% endblock %}

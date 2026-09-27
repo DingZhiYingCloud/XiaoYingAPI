@@ -3,7 +3,7 @@
 
 {% block title %}{% trans "登录 - 小影API" %}{% endblock %}
 {% block keywords %}登录,小影API{% endblock %}
-{% block description %}{% trans "登录小影API，开启通用 API 聚合服务之旅。支持账号密码、邮箱验证码、手机验证码登录。" %}{% endblock %}
+{% block description %}{% trans "登录小影API，开启通用 API 聚合服务之旅。支持账号/邮箱/手机号+密码、邮箱/手机号验证码登录。" %}{% endblock %}
 
 {% block content %}
 <section class="flex min-h-[70vh] items-center justify-center px-4 py-10">
@@ -31,10 +31,10 @@
       <div id="login-alert" role="alert" class="alert mt-3 hidden py-2 text-sm"></div>
       <input type="hidden" id="login-next" value="{{ next }}" />
 
-      {# ---- 账号 + 密码登录 ---- #}
+      {# ---- 账号 + 密码登录（账号 / 邮箱 / 手机号皆可） ---- #}
       <form id="login-account-form" class="auth-panel mt-2" novalidate>
-        <label class="fieldset-label" for="login-account">{% trans "账号 / 管理员账号" %}</label>
-        <input id="login-account" name="account" type="text" class="input input-bordered w-full" placeholder="{% trans '注册数字账号 或 超管用户名' %}"
+        <label class="fieldset-label" for="login-account">{% trans "账号 / 邮箱 / 手机号" %}</label>
+        <input id="login-account" name="account" type="text" class="input input-bordered w-full" placeholder="{% trans '三选一，管理员填后台账号' %}"
                autocomplete="username" maxlength="64" required />
         <label class="fieldset-label mt-3" for="login-password">{% trans "密码" %}</label>
         <input id="login-password" name="password" type="password" class="input input-bordered w-full" placeholder="{% trans '请输入密码' %}"
@@ -91,12 +91,12 @@
 {% endblock %}
 
 {% block js %}
-{% if email_enabled or phone_enabled or username_enabled %}
+{% if email_enabled or phone_enabled %}
 {# 图形验证（自研验证码）：启用时才加载客户端；开关变量供 account.js 判断是否弹验证（与后端校验口径一致） #}
 {% if captcha_enabled %}
 <script src="{% static 'js/captcha_auth/self/captcha-client.js' %}?v=20260926b"></script>
 {% endif %}
 <script>window.XY_CAPTCHA_ENABLED = {{ captcha_enabled|yesno:'true,false' }};</script>
-<script src="{% static 'js/site/account.js' %}?v=20260911b"></script>
+<script src="{% static 'js/site/account.js' %}?v=20260927a"></script>
 {% endif %}
 {% endblock %}

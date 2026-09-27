@@ -43,6 +43,9 @@ SpiderServices/*/output/
 # 数据库文件
 *.db
 *.sqlite3
+# SQLite 开启 WAL 后的伴生文件（WAL 见 API/apps.py 的 _configure_sqlite）
+*.sqlite3-wal
+*.sqlite3-shm
 
 # 媒体文件:仅忽略 media/uploads/ 下的用户上传内容,允许提交 API/apis/uploads/ 代码目录
 /media/uploads/

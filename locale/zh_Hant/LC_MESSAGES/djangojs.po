@@ -25,21 +25,6 @@ msgstr "低保真"
 msgid "使用浏览器原生 HLS 播放"
 msgstr "使用瀏覽器原生 HLS 播放"
 
-msgid "保存中…"
-msgstr "保存中…"
-
-msgid "保存失败，请稍后重试"
-msgstr "保存失敗，請稍後重試"
-
-msgid "保存成功后页面自动刷新生效。"
-msgstr "保存成功後頁面自動刷新生效。"
-
-msgid "保存状态"
-msgstr "保存狀態"
-
-msgid "全部设置"
-msgstr "全部設置"
-
 msgid "关闭"
 msgstr "關閉"
 
@@ -54,9 +39,6 @@ msgstr "加載中…"
 
 msgid "加载失败，请稍后重试"
 msgstr "加載失敗，請稍後重試"
-
-msgid "加载设置中…"
-msgstr "加載設置中…"
 
 msgid "北极"
 msgstr "北極"
@@ -118,9 +100,6 @@ msgstr "密碼長度至少 8 位"
 msgid "尚未开始"
 msgstr "尚未開始"
 
-msgid "已保存"
-msgstr "已保存"
-
 msgid "已保存到本机"
 msgstr "已保存到本機"
 
@@ -133,9 +112,6 @@ msgstr "已加載，共 %(n)s 個清晰度"
 msgid "已复制"
 msgstr "已複製"
 
-msgid "已恢复默认"
-msgstr "已恢復默認"
-
 msgid "幻想"
 msgstr "幻想"
 
@@ -145,32 +121,14 @@ msgstr "開始圖形驗證"
 msgid "当前浏览器不支持 HLS 播放，请改用 Chrome / Edge / Safari"
 msgstr "當前瀏覽器不支持 HLS 播放，請改用 Chrome / Edge / Safari"
 
-msgid "当前状态："
-msgstr "當前狀態："
-
 msgid "微光"
 msgstr "微光"
 
 msgid "德古拉"
 msgstr "德古拉"
 
-msgid "恢复中…"
-msgstr "恢復中…"
-
-msgid "恢复默认"
-msgstr "恢復默認"
-
-msgid "恢复默认后，将按“已接入文档=开放 / 未接入文档=建设中”自动派生。"
-msgstr "恢復默認後，將按「已接入文檔=開放 / 未接入文檔=建設中」自動派生。"
-
-msgid "恢复默认状态"
-msgstr "恢復默認狀態"
-
 msgid "情人节"
 msgstr "情人節"
-
-msgid "手动指定"
-msgstr "手動指定"
 
 msgid "手机号"
 msgstr "手機號"
@@ -184,9 +142,6 @@ msgstr "搜索主題…"
 msgid "播放失败"
 msgstr "播放失敗"
 
-msgid "操作失败，请稍后重试"
-msgstr "操作失敗，請稍後重試"
-
 msgid "日落"
 msgstr "日落"
 
@@ -195,9 +150,6 @@ msgstr "明亮"
 
 msgid "暗黑"
 msgstr "暗黑"
-
-msgid "服务状态数据缺失"
-msgstr "服務狀態數據缺失"
 
 msgid "未知"
 msgstr "未知"
@@ -265,12 +217,6 @@ msgstr "登錄成功，正在跳轉…"
 msgid "确认"
 msgstr "確認"
 
-msgid "确认恢复「%(name)s」为默认状态？"
-msgstr "確認恢復「%(name)s」為默認狀態？"
-
-msgid "确认操作"
-msgstr "確認操作"
-
 msgid "秋日"
 msgstr "秋日"
 
@@ -310,15 +256,6 @@ msgstr "獲取驗證碼"
 msgid "该服务"
 msgstr "該服務"
 
-msgid "该服务暂无可用设置项。"
-msgstr "該服務暫無可用設置項。"
-
-msgid "该设置功能暂未实现渲染。"
-msgstr "該設置功能暫未實現渲染。"
-
-msgid "该设置功能渲染失败：%(error)s"
-msgstr "該設置功能渲染失敗：%(error)s"
-
 msgid "请先填写 m3u8 地址"
 msgstr "請先填寫 m3u8 地址"
 
@@ -340,9 +277,6 @@ msgstr "請求失敗（HTTP %(status)s），請稍後重試"
 msgid "请稍候…"
 msgstr "請稍候…"
 
-msgid "请输入用户名"
-msgstr "請輸入用戶名"
-
 msgid "请输入账号和密码"
 msgstr "請輸入賬號和密碼"
 
@@ -354,9 +288,6 @@ msgstr "賽博朋克"
 
 msgid "选择主题"
 msgstr "選擇主題"
-
-msgid "选择要设置的功能："
-msgstr "選擇要設置的功能："
 
 msgid "邮箱"
 msgstr "郵箱"
@@ -393,9 +324,6 @@ msgstr "驗證通過，參數已自動回填，正在二次校驗…"
 
 msgid "默认"
 msgstr "默認"
-
-msgid "默认：%(label)s"
-msgstr "默認：%(label)s"
 
 msgid "（可能是地址已过期或源站不可达）"
 msgstr "（可能是地址已過期或源站不可達）"
@@ -476,8 +404,21 @@ msgid "%(minutes)s 分钟内有效"
 msgstr "%(minutes)s 分鐘內有效"
 
 # ==================== API 调用统计看板（console/stats.html） ====================
-msgid "失败量"
-msgstr "失敗量"
+msgid "成功"
+msgstr "成功"
+
+msgid "失败"
+msgstr "失敗"
 
 msgid "调用量"
 msgstr "調用量"
+
+# ==================== 控制台 · 服务策略三级联动（console/services.html 内联 JS） ====================
+msgid "未登记"
+msgstr "未登記"
+
+msgid "（留空=服务级）"
+msgstr "（留空=服務級）"
+
+msgid "（留空=线路级）"
+msgstr "（留空=線路級）"
