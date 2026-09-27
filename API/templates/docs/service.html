@@ -77,11 +77,16 @@
   </div>
   {% endif %}
 
-  {# ===== 线路 Tab ===== #}
+  {# ===== 线路 Tab（每条线路带自己的状态图标；状态口径与左侧导航同源） ===== #}
   <div role="tablist" aria-label="{% trans '线路选择' %}" class="tabs tabs-box mt-6 w-fit">
     {% for channel in doc.channels %}
     <button type="button" role="tab" data-doc-tab="{{ channel.slug }}"
-            class="tab {% if forloop.first %}tab-active{% endif %}">{{ channel.name }}</button>
+            class="tab gap-2 {% if forloop.first %}tab-active{% endif %}">
+      <span class="shrink-0 {{ channel.status_fg }}" role="img" title="{{ channel.status_label }}" aria-label="{{ channel.status_label }}">
+        <i data-lucide="{{ channel.status_icon }}" class="h-4 w-4"></i>
+      </span>
+      {{ channel.name }}
+    </button>
     {% endfor %}
   </div>
 

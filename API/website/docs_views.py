@@ -44,7 +44,7 @@ def index(request):
 
 def service(request, slug: str):
     """/docs/<slug>/ 单个服务文档页（线路 tab + 端点调试）"""
-    from .service_status import annotate as _annotate_status
+    from .service_status import annotate as _annotate_status, channel_status_fields
     doc = get_doc(slug)
     if doc is None:
         return render(request, '404.html', status=404)
@@ -53,8 +53,12 @@ def service(request, slug: str):
     counts = api_stats_query.endpoint_call_counts(
         [ep.path for channel in doc.channels for ep in channel.endpoints])
     for channel in doc.channels:
+        endpoint_paths = [ep.path for ep in channel.endpoints]
         for endpoint in channel.endpoints:
             endpoint.call_count = counts.get(endpoint.path, 0)
+        # 线路状态（取该线路下端点最严重者）：与左侧导航同源，供顶部线路 Tab 显示状态图标
+        for field, value in channel_status_fields(endpoint_paths).items():
+            setattr(channel, field, value)
     # 服务状态（服务策略优先）；已接入文档的服务默认正常，非正常态在页面顶部给横幅提示
     status = _annotate_status([{'url_prefix': doc.prefix}], lambda p: True)[0]
     # 是否存在需要在线播放器的端点（如 m3u8 播放地址），有则加载播放器脚本

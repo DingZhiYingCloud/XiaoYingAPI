@@ -6,14 +6,23 @@
    （默认开发中；超级管理员可在「服务策略」页 /console/services/ 指定 正常/开发中/维护中/已下线）。
    一旦在 docs 注册表补上该服务文档，菜单自动从“开发中”变成可展开。
 
-状态展示规则：状态字段由 service_status.annotate 统一计算（服务策略优先，默认派生）。
-   开发中 / 已下线 → 禁用态（不可展开、不可点击）；其余状态 → 正常展示。
+状态展示规则：状态字段由 service_status 统一计算。
+   - 服务级：策略显式设置优先，否则按是否接入文档派生（正常 / 开发中）；
+   - 线路级：取该线路下全部端点的生效状态里**最严重**的一个（端点级策略也会体现）；
+   - 开发中 / 已下线 → 禁用态（不可展开、不可点击）；其余状态 → 正常展示。
 
 结构：docs_menu = [ {name, url, slug, url_prefix, disabled, status, status_label,
                     status_badge, status_icon, status_fg,
-                    children: [{name, url, channel}]}, ... ]
+                    children: [{name, url, channel, disabled,
+                                status, status_label, status_badge,
+                                status_icon, status_fg}]}, ... ]
 """
-from ..service_status import annotate as _annotate
+from ..service_status import (
+    UNCLICKABLE_STATUSES,
+    annotate as _annotate,
+    channel_status_fields,
+    status_fields,
+)
 from ..services import SERVICES as _MARKET
 from ..services import localize as _localize_services
 
@@ -28,43 +37,38 @@ def build_docs_menu():
     for item in _annotate(_localize_services(_MARKET), lambda p: p in ready):
         prefix = item['url_prefix']
         doc = ready.get(prefix)
-        unavailable = item['status'] in ('dev', 'offline')
-        # 状态展示字段（文案 / 徽标 / 图标 / 图标配色）统一取自 service_status，模板不得自行拼接
-        status_fields = {
-            'status': item['status'],
-            'status_label': item['status_label'],
-            'status_badge': item['status_badge'],
-            'status_icon': item['status_icon'],
-            'status_fg': item['status_fg'],
-        }
+        unavailable = item['status'] in UNCLICKABLE_STATUSES
         if doc is not None and not unavailable:
-            children = [
-                {
+            children = []
+            for ch in doc.channels:
+                # 线路状态 = 该线路下端点最严重者（端点级策略也会体现）
+                fields = channel_status_fields([ep.path for ep in ch.endpoints])
+                children.append({
                     'name': ch.name,
                     'url': f'/docs/{doc.slug}/#channel-{ch.slug}',
                     'channel': ch.slug,
-                    'disabled': False,
-                }
-                for ch in doc.channels
-            ]
+                    # 与服务级一致：开发中 / 已下线的线路同样占位不可点击
+                    'disabled': fields['status'] in UNCLICKABLE_STATUSES,
+                    **fields,
+                })
             menu.append({
                 'name': doc.name,
                 'url': f'/docs/{doc.slug}/',
                 'slug': doc.slug,
                 'url_prefix': prefix,
                 'disabled': False,
-                **status_fields,
+                **status_fields(item['status']),
                 'children': children,
             })
         else:
-            # 未录入文档 or 标记开发中/已下线：导航占位展示（带状态图标）
+            # 未录入文档 or 开发中/已下线：导航占位展示（带状态图标，无子项）
             menu.append({
                 'name': item['name'],
                 'url': '',
                 'slug': '',
                 'url_prefix': prefix,
                 'disabled': True,
-                **status_fields,
+                **status_fields(item['status']),
                 'children': [],
             })
     return menu

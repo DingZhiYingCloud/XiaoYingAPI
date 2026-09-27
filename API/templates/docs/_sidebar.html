@@ -34,9 +34,24 @@
           <span class="flex-1">{{ node.name }}</span>
         </summary>
         <ul>
+          {# 线路子项：各自带「线路级」状态图标（取该线路下端点最严重者）；开发中/已下线与服务级一致不可点击 #}
           {% for child in node.children %}
           <li>
-            <a href="{{ child.url }}" data-docs-leaf data-group-url="{{ node.url }}">{{ child.name }}</a>
+            {% if child.disabled %}
+            <span class="flex items-center gap-2" aria-disabled="true">
+              <span class="shrink-0 {{ child.status_fg }}" role="img" title="{{ child.status_label }}" aria-label="{{ child.status_label }}">
+                <i data-lucide="{{ child.status_icon }}" class="h-4 w-4"></i>
+              </span>
+              <span class="min-w-0 flex-1 truncate opacity-60">{{ child.name }}</span>
+            </span>
+            {% else %}
+            <a href="{{ child.url }}" data-docs-leaf data-group-url="{{ node.url }}">
+              <span class="shrink-0 {{ child.status_fg }}" role="img" title="{{ child.status_label }}" aria-label="{{ child.status_label }}">
+                <i data-lucide="{{ child.status_icon }}" class="h-4 w-4"></i>
+              </span>
+              <span class="flex-1">{{ child.name }}</span>
+            </a>
+            {% endif %}
           </li>
           {% endfor %}
         </ul>

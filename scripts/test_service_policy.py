@@ -11,7 +11,8 @@
     第 8 轮 控制台页面：未登录跳转、超管可访问、含三级联动数据、增删改各自生效
     第 9 轮 三语（zh-hans / zh-hant / en）页面正常渲染且关键词已翻译
     第 10 轮 服务树枚举自证（真实路由 vs 文档注册表）
-    第 11 轮 前台状态图标：四态图标唯一、导航项字段齐备、渲染无空图标名、图例含四态图标
+    第 11 轮 前台状态图标：四态图标唯一、服务项与线路子项字段齐备、线路状态取端点最严重、
+             渲染无空图标名、图例与文档页线路 Tab 均带图标
 
 隔离策略：全部测试数据用 MARK（xysvcpolicy<RUN>）标记，策略路径前缀一律包含 MARK，
 测试结束统一删除，绝不触碰真实策略配置。
@@ -46,7 +47,12 @@ from API.common.middleware import (
 )
 from API.models import ApiServicePolicy, UserApp
 from API.website.docs.menu import build_docs_menu
-from API.website.service_status import STATUS_DEFS
+from API.website.service_status import (
+    STATUS_DEFS,
+    UNCLICKABLE_STATUSES,
+    channel_status_fields,
+    worst_status,
+)
 from API.website.service_tree import service_tree
 
 RUN = str(int(time.time()))
@@ -457,12 +463,12 @@ def _resolve_ok(path):
         return False
 
 
-# ───────────────────── 第 11 轮：前台状态图标（左侧导航 / 图例） ─────────────────────
+# ───────────────────── 第 11 轮：前台状态图标（导航 / 图例 / 线路 Tab） ─────────────────────
 
 def round11_status_icons():
     """状态图标是「静默失效」型功能：字段缺失时 lucide 只会跳过空图标名，页面照常渲染。
     因此这里既查菜单数据源，也查渲染结果里没有空的 data-lucide。"""
-    section('第 11 轮 前台服务状态图标（左侧导航 / 图例）')
+    section('第 11 轮 前台服务状态图标（导航 / 图例 / 线路 Tab）')
 
     # 状态定义表自带图标与配色，且四态互不相同
     defs = {k: STATUS_DEFS[k] for k in ('normal', 'dev', 'maintenance', 'offline')}
@@ -471,12 +477,34 @@ def round11_status_icons():
     icons = [v['icon'] for v in defs.values()]
     check('四态图标互不相同', len(set(icons)) == 4, f'icons={icons}')
 
-    client = Client()
-    resp = client.get(reverse('website:docs_index'))
-    body = resp.content.decode()
-    check('/docs/ 正常渲染（200）', resp.status_code == 200, f'status={resp.status_code}')
+    # 线路级状态 = 该线路下全部端点生效状态里最严重的一个（端点级策略也要体现）
+    check('worst_status 取最严重', worst_status(['normal', 'dev', 'maintenance']) == 'maintenance')
+    check('worst_status 空集合兜底为 normal', worst_status([]) == 'normal')
 
-    # 左侧导航渲染的数据源（非 TestCase 环境下 resp.context 恒为 None，故直接查构建结果）
+    ch_prefix, ep_a, ep_b = f'{BASE}line/', f'{BASE}line/one', f'{BASE}line/two'
+    line = _mk_policy(name=f'Line {MARK}', level='channel', path_prefix=ch_prefix,
+                      status='normal', auth_mode='inherit', app_scope='inherit')
+    check('线路无异常时状态为 normal',
+          channel_status_fields([ep_a, ep_b])['status'] == 'normal')
+
+    ep = _mk_policy(name=f'LineEp {MARK}', level='endpoint', path_prefix=ep_a,
+                    status='maintenance', auth_mode='inherit', app_scope='inherit')
+    check('端点级维护会体现在线路状态上',
+          channel_status_fields([ep_a, ep_b])['status'] == 'maintenance')
+    check('线路状态图标与配色随之变化',
+          channel_status_fields([ep_a, ep_b])['status_icon'] == 'wrench'
+          and channel_status_fields([ep_a, ep_b])['status_fg'] == 'text-warning')
+
+    line.status = 'offline'
+    line.save(update_fields=['status', 'updated_time'])
+    check('线路级下线比端点级维护更严重（取更严重者）',
+          channel_status_fields([ep_a, ep_b])['status'] == 'offline')
+    check('未设策略的线路走全局兜底 normal',
+          channel_status_fields([f'{BASE}none/one'])['status'] == 'normal')
+    ep.delete()
+    line.delete()
+
+    # 导航数据源：服务项与线路子项都必须带状态图标，且「不可点击」规则一致
     menu = build_docs_menu()
     check('导航菜单非空', bool(menu), f'menu={len(menu)}')
     bad = [n['name'] for n in menu if not n.get('status_icon') or not n.get('status_fg')]
@@ -487,13 +515,35 @@ def round11_status_icons():
                      or n['status_fg'] != defs[n['status']]['fg'])]
     check('导航图标与状态一一对应', not mismatch, f'mismatch={mismatch[:5]}')
 
+    kids = [c for n in menu for c in n['children']]
+    check('导航含可展开服务的线路子项', bool(kids), f'kids={len(kids)}')
+    bad_kids = [c['name'] for c in kids if not c.get('status_icon') or not c.get('status_fg')]
+    check('每个线路子项都带状态图标与配色', not bad_kids, f'bad={bad_kids[:5]}')
+    bad_flag = [c['name'] for c in kids
+                if c['disabled'] != (c['status'] in UNCLICKABLE_STATUSES)]
+    check('线路子项「不可点击」与服务级规则一致', not bad_flag, f'bad={bad_flag[:5]}')
+
+    client = Client()
+    resp = client.get(reverse('website:docs_index'))
+    body = resp.content.decode()
+    check('/docs/ 正常渲染（200）', resp.status_code == 200, f'status={resp.status_code}')
     check('渲染结果无空图标名（data-lucide=""）', 'data-lucide=""' not in body)
-    used = {n['status'] for n in menu} & set(defs)
-    check('渲染结果含导航各状态图标（%s）' % '/'.join(sorted(used)),
-          all(f'data-lucide="{defs[k]["icon"]}"' in body for k in used))
     for key, d in defs.items():
         check(f'图例含「{d["label"]}」图标（{d["icon"]}）',
               f'data-lucide="{d["icon"]}"' in body)
+
+    # 文档页顶部线路 Tab：每条线路都带自己的状态图标
+    page = next(n for n in menu if n['children'])
+    resp = client.get(page['url'])
+    body = resp.content.decode()
+    check(f'文档页 {page["slug"]} 正常渲染（200）', resp.status_code == 200,
+          f'status={resp.status_code}')
+    tabs = re.findall(r'<button[^>]*data-doc-tab="[^"]*"[^>]*>(.*?)</button>', body, re.S)
+    check('文档页线路 Tab 数量与线路数一致', len(tabs) == len(page['children']),
+          f'tabs={len(tabs)} kids={len(page["children"])}')
+    check('每个线路 Tab 都带状态图标',
+          bool(tabs) and all('data-lucide="' in t for t in tabs))
+    check('文档页同样无空图标名', 'data-lucide=""' not in body)
 
 
 def main():
