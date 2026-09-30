@@ -11,8 +11,10 @@
       → +faststart 原子落盘 → 由 API 的 stream 端点按 HTTP Range 出流
 
 并发
-    同一集可能被多个请求同时触发：用「进程内锁 + 锁文件」保证只转一次，
-    后来者直接拿到「准备中」状态去轮询，不会重复消耗算力。
+    同一集可能被多个请求同时触发：用「进程内锁 + 锁文件」保证只转一次，后来者直接拿到
+    「准备中」状态去轮询，不会重复消耗算力。**锁文件同时是「是否正在转」的唯一真相**
+    （内容是属主 pid，mtime 是开工时间）：多 worker 各读同一份文件，状态天然一致；
+    属主进程已死（部署重启留下的僵尸锁）会被下一次点播立刻接管，不会把某集永久卡住。
 """
 import logging
 import os
@@ -54,8 +56,14 @@ _RATE_BY_WIDTH = {
 # 未登记宽度的兜底上限（正常走不到：宽度来自 API 层的白名单）
 _RATE_FALLBACK = 3000
 
-# 转码任务状态：key = "series_id:ep:宽度" -> {state, started, error}
-# state: running（转码中）/ failed（失败）；就绪与否以产物文件是否存在为准
+# 转码失败记录：key = "series_id:ep:宽度" -> {state, error}
+#
+# 「是否正在转」**不放在内存里**，而是以锁文件为唯一真相（见 _lock_state）。原因（线上事故）：
+#   · uwsgi 多 worker（尤其 lazy-apps）下每个进程各有一份内存字典，状态会分裂：
+#     真正在转的 worker 说 running、别的 worker 说 pending；
+#   · 进程被 kill（部署重启 uwsgi）时内存态直接蒸发，锁文件却还留着 ——
+#     于是谁也不敢接管，界面永远停在「正在生成播放地址，请稍候重试」。
+# 内存里只保留「失败原因」：失败不必跨进程共享（语义见 job_status 注释）。
 _JOBS = {}
 _JOBS_LOCK = threading.Lock()
 _LOCAL_LOCKS = {}
@@ -67,27 +75,99 @@ def stream_path(series_id, ep, width):
     return os.path.join(_STREAM_DIR, str(series_id), str(int(width)), f'{int(ep):03d}.mp4')
 
 
+def _lock_path(series_id, ep, width):
+    """锁文件路径：与产物同目录同名，加 .lock 后缀"""
+    return stream_path(series_id, ep, width) + '.lock'
+
+
+def _job_key(series_id, ep, width):
+    return f'{series_id}:{int(ep)}:{int(width)}'
+
+
 def is_ready(series_id, ep, width):
     """该画质的产物是否已就绪（存在且非空）"""
     path = stream_path(series_id, ep, width)
     return os.path.exists(path) and os.path.getsize(path) > 0
 
 
+def _pid_alive(pid):
+    """该 pid 是否仍存活（判不出来时按存活处理：宁可多等，也不并发重复转码）
+
+    注意 Windows 上不能用 `os.kill(pid, 0)` 探活 —— CPython 在那里会用
+    TerminateProcess 真的把进程杀掉（官方文档明确说明），只能走 OpenProcess 查询。
+    """
+    if not pid or pid <= 0:
+        return False
+    if os.name == 'nt':
+        import ctypes
+
+        process_query_limited_information = 0x1000
+        still_active = 259
+        kernel32 = ctypes.windll.kernel32
+        handle = kernel32.OpenProcess(process_query_limited_information, False, int(pid))
+        if not handle:
+            return False
+        try:
+            code = ctypes.c_ulong()
+            if kernel32.GetExitCodeProcess(handle, ctypes.byref(code)):
+                return code.value == still_active
+            return True
+        finally:
+            kernel32.CloseHandle(handle)
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except OSError:
+        return True
+    return True
+
+
+def _lock_state(path):
+    """解读锁文件：None=没锁；'stale'=僵尸锁；{'elapsed': 秒}=确实有人在转
+
+    锁文件里写的是属主 pid（见 _acquire_lock_file），文件 mtime 即开工时间，
+    所以 elapsed 可以直接从文件推算 —— 不依赖任何进程的内存状态，多 worker 天然一致。
+    两种情形都算僵尸锁：属主进程已死（部署重启留下的），或已超过 _STALE_LOCK_SECONDS
+    （兜底 pid 被复用、以及单次转码意外超长的情况）。
+    """
+    try:
+        mtime = os.path.getmtime(path)
+    except OSError:
+        return None
+    age = time.time() - mtime
+    if age > _STALE_LOCK_SECONDS:
+        return 'stale'
+    try:
+        with open(path, encoding='ascii', errors='replace') as fh:
+            pid = int((fh.read().strip() or '0').split()[0])
+    except (OSError, ValueError, IndexError):
+        return {'elapsed': int(age)}        # 内容坏了：按有人在转处理，交给超时兜底
+    if pid and not _pid_alive(pid):
+        return 'stale'
+    return {'elapsed': int(age)}
+
+
 def job_status(series_id, ep, width):
-    """该集该画质的转码状态：ready / running / failed / pending"""
+    """该集该画质的转码状态：ready / running / failed / pending
+
+    running / pending 由**锁文件**判定，因此各 worker 看到的一致；failed 来自本进程内存
+    —— 其余 worker 此时看到 pending 会各自重试一次：偶发失败下这正是想要的，
+    而对「必失败」的集也只是多试几次，不影响正确性。
+    """
     if is_ready(series_id, ep, width):
         return {'state': 'ready'}
-    with _JOBS_LOCK:
-        job = dict(_JOBS.get(f'{series_id}:{int(ep)}:{int(width)}') or {})
-    if not job:
+    lock_state = _lock_state(_lock_path(series_id, ep, width))
+    if lock_state == 'stale':
+        # 僵尸锁按「等待中」上报（不能报 running 骗前端）；清锁与接管由 ensure() 执行
         return {'state': 'pending'}
-    state = job.get('state') or 'running'
-    payload = {'state': state}
-    if state == 'running':
-        payload['elapsed'] = int(time.time() - (job.get('started') or time.time()))
-    if state == 'failed':
-        payload['error'] = job.get('error') or '转码失败'
-    return payload
+    if lock_state:
+        return {'state': 'running', 'elapsed': lock_state['elapsed']}
+    with _JOBS_LOCK:
+        job = dict(_JOBS.get(_job_key(series_id, ep, width)) or {})
+    if job.get('state') == 'failed':
+        return {'state': 'failed', 'error': job.get('error') or '转码失败'}
+    return {'state': 'pending'}
 
 
 def _local_lock(key):
@@ -95,21 +175,51 @@ def _local_lock(key):
         return _LOCAL_LOCKS.setdefault(key, threading.Lock())
 
 
+def _release_lock_file(path):
+    """释放锁文件 —— 只删**自己**的锁
+
+    若已被判超时并被别的进程接管，这里不能删（那是别人的锁），否则会把对方变成无锁状态。
+    """
+    try:
+        with open(path, encoding='ascii', errors='replace') as fh:
+            owner = int((fh.read().strip() or '0').split()[0])
+    except (OSError, ValueError, IndexError):
+        owner = None
+    if owner is not None and owner != os.getpid():
+        return
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+
+
 def _acquire_lock_file(path):
-    """抢占锁文件；返回 True 表示抢到（陈旧锁会被接管）"""
+    """抢占锁文件；返回 True 表示抢到
+
+    同一集只放一个人：文件已存在时，属主还活着就让给它（返回 False）；属主已死或已超时
+    则视为僵尸锁，删掉重抢 —— 这样部署重启留下的锁会在**下一次点播时立刻被接管**，
+    不必再干等 _STALE_LOCK_SECONDS。
+    """
     try:
         fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-        os.write(fd, str(os.getpid()).encode())
-        os.close(fd)
-        return True
     except FileExistsError:
+        state = _lock_state(path)
+        if state is None:                   # 文件刚被删掉，再抢一次
+            return _acquire_lock_file(path)
+        if state != 'stale':
+            return False
         try:
-            if time.time() - os.path.getmtime(path) > _STALE_LOCK_SECONDS:
-                os.remove(path)
-                return _acquire_lock_file(path)
-        except OSError:
+            os.remove(path)
+        except FileNotFoundError:
             pass
-        return False
+        except OSError:
+            return False
+        return _acquire_lock_file(path)
+    try:
+        os.write(fd, str(os.getpid()).encode())
+    finally:
+        os.close(fd)
+    return True
 
 
 def ensure(series_id, ep, width):
@@ -119,29 +229,19 @@ def ensure(series_id, ep, width):
     """
     if is_ready(series_id, ep, width):
         return True
-    key = f'{series_id}:{int(ep)}:{int(width)}'
+    key = _job_key(series_id, ep, width)
     with _local_lock(key):
-        with _JOBS_LOCK:
-            job = _JOBS.get(key)
-            if job and job.get('state') == 'running':
-                return False
-        path = stream_path(series_id, ep, width)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        if not _acquire_lock_file(path + '.lock'):
-            # 别的进程在转：标记为 running，避免本进程重复启动
-            with _JOBS_LOCK:
-                _JOBS.setdefault(key, {'state': 'running', 'started': time.time()})
-            return False
+        if is_ready(series_id, ep, width):   # 等锁期间可能已被转完
+            return True
+        os.makedirs(os.path.dirname(stream_path(series_id, ep, width)), exist_ok=True)
+        if not _acquire_lock_file(_lock_path(series_id, ep, width)):
+            return False                     # 有活着的属主在转（状态见 job_status）
         _start(series_id, ep, width, key)
         return False
 
 
 def _start(series_id, ep, width, key):
     """启动后台转码线程"""
-    record = {'state': 'running', 'started': time.time(), 'error': None}
-    with _JOBS_LOCK:
-        _JOBS[key] = record
-
     def worker():
         try:
             _transcode(series_id, ep, width)
@@ -149,8 +249,7 @@ def _start(series_id, ep, width, key):
                 _JOBS.pop(key, None)          # 就绪状态由产物文件表达
         except Exception as exc:  # noqa: BLE001 - 失败要落到状态里给前端看
             with _JOBS_LOCK:
-                _JOBS[key] = {'state': 'failed', 'started': record['started'],
-                              'error': str(exc)[:300]}
+                _JOBS[key] = {'state': 'failed', 'error': str(exc)[:300]}
 
     threading.Thread(target=worker, name=f'hongguo-transcode-{key}',
                      daemon=True).start()
@@ -261,6 +360,4 @@ def _transcode(series_id, ep, width):
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
-        lock = out_path + '.lock'
-        if os.path.exists(lock):
-            os.remove(lock)
+        _release_lock_file(out_path + '.lock')

@@ -492,6 +492,7 @@ proxy_set_header Host $host;
 | **页面能打开，但需签名 / 写库的接口随机 500**，日志 `sqlite3.OperationalError: disk I/O error` | uwsgi 默认在 master 加载应用；本应用 `AppConfig.ready()` 启动的「反馈中心 AI 审核线程」会立刻读库，于是 master 先建好 SQLite 连接，fork 后各 worker 共享同一 fd，并发写 WAL 即冲突 | uwsgi.ini 加 **`lazy-apps = true`**（每个 worker 各自加载应用与连接），完全重启。验证：`lsof 项目/db.sqlite3` 里 master 进程不应再出现 |
 | 短剧**点播第 4 集**报「红果离线签名服务的运行物缺失」 | `sign/unidbg-sign.jar` 或 `capture/fq_oversea/*` 没放（**第三方二进制不入库，`git pull` 拿不到**）；前 3 集走源站明链所以不受影响 | 按步骤 1 补齐那 4 个文件，`sha256sum` 与开发机比对一致；无需重启（签名服务按需拉起） |
 | 短剧点播第 4 集报「找不到可用的 Java」 | Linux 线上没装 JDK 17，或 `.env` 没设 `HONGGUO_JAVA_BIN`（代码会先找内置 `jre/bin/java`，而那是 Windows 版） | `apt/dnf install` JDK 17，`.env` 设 `HONGGUO_JAVA_BIN=/usr/bin/java`，**完全重启 uwsgi** |
+| 短剧点播**长时间**停在「正在生成播放地址，请稍候重试」 | ① 确实在转（软编一集 30~40 秒，机器没有硬件编码器时更慢）；② **部署重启 uwsgi 打断转码留下的僵尸锁**；③ 上游取流卡住 | 先 `ps -ef | grep ffmpeg` + `tail logs/app.log \| grep hongguo`：**没有 ffmpeg 却一直 running = 状态卡死**。再看 `cache/dramas/hongguo_stream/*/*/*.lock` 里的属主 pid 是否还在（`ps -p <pid>`）——不在就删掉该锁，下一次点播自动重转（修复后此判断已内置，无需人工） |
 
 ---
 
