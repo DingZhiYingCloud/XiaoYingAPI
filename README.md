@@ -66,7 +66,7 @@ XiaoYingAPI/
 │   ├── Douyin/                   # 抖音：Video/（视频解析）、Comment/（评论发布，含 sign/ 与 js/）
 │   └── dramas/hongguo/           # 红果短剧：H5 爬取 + App 取流（app_api / offline）+ 签名服务托管（sign_service）
 ├── scripts/                      # 辅助脚本：回归测试 / 词条编译与 i18n 体检 / douyin_comment_publish（抖音补环境沙箱）
-│   └── hongguo_sign/             # 红果取流签名器运行物：jre/（内置裁剪版 JRE，入库）、sign/ 与 capture/（第三方二进制，不入库）
+│   └── hongguo_sign/             # 红果取流签名器运行物：jre/（内置裁剪版 JRE，**仅 Windows**，入库）、sign/ 与 capture/（第三方二进制，不入库，首次部署须手工补齐）
 ├── CalculationProgram/           # 「计算程序」模块的内容目录（前台 /programs/ 的唯一数据源，见第八章第 6 节）
 ├── locale/                       # 多语言词条（en / zh_Hant）+ 多语言开发指南.md
 ├── BugAndRepair/                 # 部署手册 / 事故复盘 / 安全整改报告（索引见其 README.md）
@@ -176,12 +176,11 @@ XiaoYingAPI/
 
 | 依赖 | 说明 |
 | --- | --- |
-| **内置 JRE** | 取流签名器基于 unidbg（Java），仓库已内置 jlink 裁剪版 JRE（约 32 MB，随代码入库）→ **无需在本机安装 Java**；预处理 / 转码进程按需自动拉起签名服务并复用（见 `SpiderServices/dramas/hongguo/sign_service.py`） |
+| **Java** | 取流签名器基于 unidbg（Java）。仓库内置的 `jre/` 是 **Windows 版**（只有 `java.exe` / `.dll`），Windows 本机开箱可用；**Linux 服务器另装 JDK 17 并设 `HONGGUO_JAVA_BIN=/usr/bin/java`**（该变量优先级高于内置 `jre/`）。预处理 / 转码进程按需自动拉起签名服务并复用（见 `SpiderServices/dramas/hongguo/sign_service.py`） |
 | **ffmpeg** | 解密依赖 `ffmpeg -decryption_key`（CENC AES-CTR），网页直出还用它转 H.264。默认取 PATH 上的 `ffmpeg`，可用 `HONGGUO_FFMPEG_BIN` 指定绝对路径 |
 | **硬件编码器（可选）** | 装了 NVENC / QSV / AMF 时转码显著更快（实测 QSV 约 25~30 秒/集，软编 libx264 veryfast 约 70 秒/集）；都不可用时自动回退 libx264 |
 
-> 想用本机已装的 JDK 17+ 替代内置 JRE？设 `HONGGUO_JAVA_BIN` 指向它即可（内置 JRE 优先，其次该变量，最后回退 PATH 上的 `java`）。
-> 取流签名器的运行物（`unidbg-sign.jar` 与 metasec 原生库）属第三方二进制、不入库，按 `scripts/hongguo_sign/start_sign_service.bat` 顶部说明单独获取。
+> 取流签名器的运行物（`unidbg-sign.jar` 与 metasec 原生库）属第三方二进制、**不入库**，按 `scripts/hongguo_sign/start_sign_service.bat` 顶部说明单独获取后放到相同相对路径；**换机器 / 首次部署最容易漏这一步**，症状是「前 3 集能播、点播第 4 集报运行物缺失」。Linux 上线清单见《Django部署上线操作手册》步骤 1。
 
 ***
 

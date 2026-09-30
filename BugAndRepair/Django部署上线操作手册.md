@@ -19,7 +19,7 @@
 | Python 路径 | `{PYTHON_BIN}` | 同左 |
 | uwsgi 路径 | `{UWSGI_BIN}` | 同左 |
 | 运行用户 | `www` | `www` |
-| Java | **无需安装**（红果短剧签名器用仓库内置的 `scripts/hongguo_sign/jre/`） | 同左 |
+| Java | **Linux 服务器要装 JDK 17** 并设 `HONGGUO_JAVA_BIN`（仓库内置 `jre/` 是 Windows 版，Linux 用不了） | __________ |
 | ffmpeg | 需在 PATH 上；**仅**红果短剧线路「第 4 集及以后」解密用（不部署该线路可忽略） | __________ |
 
 > 后续命令默认在**项目根目录**下执行：`cd {PROJECT_ROOT}`
@@ -34,7 +34,7 @@
 
 | # | 步骤 | 要点 | 完成 |
 |---|------|------|------|
-| 1 | 环境检查（Python / pip） | 版本正确、可执行；**短剧线路另需 `ffmpeg`，Java 无需安装** | ☐ |
+| 1 | 环境检查（Python / pip） | 版本正确、可执行；**短剧线路另需 `ffmpeg` 与 JDK 17**（内置 `jre/` 是 Windows 版，Linux 用不了） | ☐ |
 | 2 | 安装项目依赖 | `requirements.txt` 含构建期依赖 `zhconv` | ☐ |
 | 3 | 确认前端产物已随代码入库 | `output.css` / `locale/**/*.mo` / `migrations/*.py` / `hongguo_sign/jre/`；**线上不重新生成** | ☐ |
 | 4 | 配置 `.env` 环境变量 | 至少 `SECRET_KEY`、`DEBUG=False`、`ALLOWED_HOSTS` | ☐ |
@@ -62,17 +62,30 @@ $PY --version          # 应显示 Python 3.12.x
 $PY -m pip --version   # 应显示 pip 版本
 ```
 
-红果短剧线路（可选）另需一个外部依赖与一个「无需安装」的说明：
+红果短剧线路（可选）另需两项外部依赖：
 
 ```bash
-ffmpeg -version        # 仅部署短剧线路时需要：第 4 集及以后的 CENC 解密用
+ffmpeg -version        # 第 4 集及以后的 CENC 解密用
+java -version          # 第 4 集及以后的 metasec 签名用（需 17+）
 ```
 
-- **Java 不需要安装**：红果取流签名器（unidbg）的运行时是仓库内置的 jlink 裁剪版 JRE（`scripts/hongguo_sign/jre/`，随代码入库）。需要签名时由 API 服务自动拉起该进程并复用，因此**线上只需跑小影 API 一个服务**。若想改用本机 JDK 17+，设环境变量 `HONGGUO_JAVA_BIN` 指向它即可。
+- **Java 必须装（Linux 线上）**：红果签名器是 unidbg（Java）程序。仓库里那个 `scripts/hongguo_sign/jre/` 是 **Windows 版**（只有 `java.exe` 与 `.dll`，128 个文件），**Linux 上跑不了**，所以线上要装 JDK 17 并在 `.env` 显式指定：
+  ```dotenv
+  HONGGUO_JAVA_BIN=/usr/bin/java
+  ```
+  该变量**优先级高于内置 `jre/`**（见 `sign_service._java_bin()`）。不设的话代码会先找不存在的 `jre/bin/java`，再回退 PATH 上的 `java`——而 uwsgi 的 PATH 往往很干净，容易找不到。
 - **ffmpeg 必须可用**：默认取 PATH 上的 `ffmpeg`，也可用 `HONGGUO_FFMPEG_BIN` 指定绝对路径。**缺失时只有红果短剧「第 4 集及以后」会取流失败**（前 3 集是源站明链，不受影响）。
-- 同目录的 `sign/unidbg-sign.jar` 与 `capture/` 属**第三方二进制、不入库**，首次部署需按 `scripts/hongguo_sign/start_sign_service.bat` 顶部说明单独获取；`jre/` 已入库、无需处理。
+- **签名器运行物要单独补齐（不入库，git 拉不到）**：`sign/unidbg-sign.jar`（约 32MB）与 `capture/fq_oversea/` 下的 `libmetasec_ml.so`、`libc++_shared.so`、`ms_16777218.bin` 属第三方二进制，按 `scripts/hongguo_sign/start_sign_service.bat` 顶部说明获取后放到相同相对路径。**漏这一步的典型症状是：前 3 集能播，点播第 4 集报「红果离线签名服务的运行物缺失」**（本次线上就踩了这个坑）。
 
-**验证**：三条命令都有正常输出，不报 command not found。
+**验证**：
+
+```bash
+ffmpeg -version | head -1
+java -version 2>&1 | head -1
+ls -l scripts/hongguo_sign/sign/unidbg-sign.jar scripts/hongguo_sign/capture/fq_oversea/
+```
+
+四者的哈希应与开发机一致（`sha256sum` 比对即可），保证二进制没传坏。
 
 ---
 
@@ -111,11 +124,13 @@ $PY manage.py check    # 应输出：System check identified no issues.
 | `API/static/css/output.css` | `tailwindcss.exe` 编译 | 新增 / 修改了 daisyUI、Tailwind 类名 |
 | `locale/**/*.mo` | `python scripts/compile_locale.py` | 新增 / 修改了 `.po` 词条 |
 | `API/migrations/*.py` | `manage.py makemigrations` | 模型变更 |
-| `scripts/hongguo_sign/jre/` | `jlink`（命令见该目录 `start_sign_service.bat` 顶部） | 换机器 / 升级 Java / 需要调整模块集时 |
+| `scripts/hongguo_sign/jre/` | `jlink`（命令见该目录 `start_sign_service.bat` 顶部） | **仅 Windows 用得上**；Linux 线上改用系统 JDK 17（见步骤 1） |
+| `scripts/hongguo_sign/sign/`、`capture/` | **第三方二进制，不入库，需单独获取**（见步骤 1） | 首次部署 / 换机器——`git pull` 拿不到，漏了会让第 4 集点播报「运行物缺失」 |
 
 > 本地生成命令见 README 第八章；**若这些文件缺失或过期，线上会出现「样式全乱」「语言切不动」等问题**。
 > 改过文案后，本地生成顺序是：`check_i18n.py`（自查漏包翻译 / 词条缺失 / 跨行 `{# #}` 注释）→ `make_zh_hant.py`（繁体）→ `compile_locale.py`（`.mo`），再把 `.mo` 随代码提交。
-> `jre/` 已随代码入库（红果短剧签名器的 Java 运行时，约 32MB），**故线上无需安装 Java**；同目录的 `sign/unidbg-sign.jar` 与 `capture/` 是第三方二进制、不入库，需单独获取（见步骤 1）。
+> `jre/` 虽随代码入库（约 32MB），但它是 **Windows 版**：Linux 线上要装 JDK 17 并设 `HONGGUO_JAVA_BIN`（见步骤 1）。
+> 同目录的 `sign/unidbg-sign.jar` 与 `capture/` 是第三方二进制、**不入库**，`git pull` 拿不到，必须按步骤 1 单独补齐。
 
 **验证**：
 
@@ -123,7 +138,11 @@ $PY manage.py check    # 应输出：System check identified no issues.
 ls API/static/css/output.css
 ls locale/en/LC_MESSAGES/ locale/zh_Hant/LC_MESSAGES/
 ls API/migrations/00*.py | tail -3
-ls scripts/hongguo_sign/jre/bin/          # 红果短剧线路需要；其它环境可忽略
+ls scripts/hongguo_sign/jre/bin/                       # 红果短剧线路：内置 JRE（仅 Windows 有效）
+ls scripts/hongguo_sign/sign/unidbg-sign.jar scripts/hongguo_sign/capture/fq_oversea/
+                                                       # 红果短剧线路：第三方运行物（不入库，必须手工补齐）
+sha256sum scripts/hongguo_sign/sign/unidbg-sign.jar scripts/hongguo_sign/capture/fq_oversea/*
+                                                       # 与开发机比对，确认二进制没传坏
 ```
 
 ---
@@ -471,6 +490,8 @@ proxy_set_header Host $host;
 | 页脚「联系我们」整块不见了 | 后台没给「官网项目」（`WEB_APP_NAME`）配任何联系方式；按设计一条都没配就整块隐藏 | 到 `/console/contacts/` 选中官网项目，逐条新增平台与值 |
 | 控制台页面样式错乱 / 弹窗打不开 | `output.css` 未重编译，或 `console_forms.js` 未 collectstatic / 引用处的 `?v=` 未 bump（浏览器仍在用旧缓存） | 本机重编译 `output.css`、确认 `console_forms.js` 的 `?v=` 已改 → 线上 collectstatic → 重启 uwsgi |
 | **页面能打开，但需签名 / 写库的接口随机 500**，日志 `sqlite3.OperationalError: disk I/O error` | uwsgi 默认在 master 加载应用；本应用 `AppConfig.ready()` 启动的「反馈中心 AI 审核线程」会立刻读库，于是 master 先建好 SQLite 连接，fork 后各 worker 共享同一 fd，并发写 WAL 即冲突 | uwsgi.ini 加 **`lazy-apps = true`**（每个 worker 各自加载应用与连接），完全重启。验证：`lsof 项目/db.sqlite3` 里 master 进程不应再出现 |
+| 短剧**点播第 4 集**报「红果离线签名服务的运行物缺失」 | `sign/unidbg-sign.jar` 或 `capture/fq_oversea/*` 没放（**第三方二进制不入库，`git pull` 拿不到**）；前 3 集走源站明链所以不受影响 | 按步骤 1 补齐那 4 个文件，`sha256sum` 与开发机比对一致；无需重启（签名服务按需拉起） |
+| 短剧点播第 4 集报「找不到可用的 Java」 | Linux 线上没装 JDK 17，或 `.env` 没设 `HONGGUO_JAVA_BIN`（代码会先找内置 `jre/bin/java`，而那是 Windows 版） | `apt/dnf install` JDK 17，`.env` 设 `HONGGUO_JAVA_BIN=/usr/bin/java`，**完全重启 uwsgi** |
 
 ---
 
@@ -486,6 +507,7 @@ proxy_set_header Host $host;
 8. **生成产物要在本地生成并提交**：`output.css`、`locale/**/*.mo`、`migrations/*.py` 线上都不重新生成。
 9. **改了 .env / 模板 / .mo 必须完全重启 uwsgi**：`--reload` 对这几类不生效。
 10. **SQLite + prefork 必须写 `lazy-apps = true`**：否则应用在 master 里加载、先建好数据库连接，fork 后各 worker 共享同一个 fd，并发写就 `disk I/O error` —— 而**页面还是好的**，只有接口随机 500，极易误判成「业务报错」。
+11. **第三方二进制 `git pull` 拉不到**：红果签名器的 `sign/unidbg-sign.jar` 与 `capture/` 不入库，换机器 / 首次部署必须手工补齐；且内置 `jre/` 是 **Windows 版**，Linux 线上要另装 JDK 17 —— 文档里「Java 无需安装」只对 Windows 成立。**验证方式**：真跑一集第 4 集的转码（签 `app_api.get_episode_vids()` 能返回集数即说明签名通了）。
 
 ---
 
@@ -520,6 +542,8 @@ proxy_set_header Host $host;
 | `XYAPI_COOKIE_ISOLATION` | `true`（与其他本地项目共用域名时不打架、不强制 HTTPS） | **删除或 `false`** | 生产要标准 Cookie 名 + 强制 HTTPS Cookie；需 Nginx 透传 `X-Forwarded-Proto` |
 | uwsgi `http=` | 可以 `0.0.0.0:端口`（局域网 / 手机调试方便） | **`127.0.0.1:端口`** | `0.0.0.0` 会把应用端口裸暴露到公网，绕过 Nginx 的 HTTPS 与安全响应头（S-11） |
 | uwsgi `lazy-apps` | 无所谓（`runserver` 单进程，用不到） | **`true`** | 见本手册步骤 10 与第五节第 10 条：多 worker 共享库连接会 `disk I/O error` |
+| Java / 签名器 | Windows 本机有内置 `jre/`，开箱可用 | 装 **JDK 17** + 设 `HONGGUO_JAVA_BIN=/usr/bin/java` | 内置 `jre/` 只有 `java.exe` / `.dll`，是 **Windows 版**，Linux 跑不了 |
+| 签名器运行物 | 本机已放好 `sign/` 与 `capture/` | 首次部署要**手工补齐**（不入库） | 第三方二进制，`git pull` 拿不到；漏了第 4 集点播会报「运行物缺失」 |
 | `SECRET_KEY` | 随意（可直接用 `django-insecure-` 开发值） | **与本地不同，且上线后固定不变** | 它参与库内 `app_secret` / AI Key 的密文派生，变更即这些数据无法解密 |
 | `PROXY_JULIANG_API_BASE` | 留空（直连官方） | 海外服务器填**国内中转地址** | 巨量代理的取 IP 接口只认国内来源 |
 | 静态文件 | `runserver` 直接读源码目录 | `collectstatic --clear` 后由 Nginx 的 `alias` 提供 | 线上不跑 Django 的静态托管；改过 JS/CSS 还要同步 bump 模板 `?v=` |
