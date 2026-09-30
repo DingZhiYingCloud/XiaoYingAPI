@@ -28,21 +28,31 @@ from ..services import localize as _localize_services
 
 
 def build_docs_menu():
-    """按官网服务清单顺序构建菜单（幂等、无缓存：数据源均为常量，构建开销极小）"""
+    """按官网服务清单顺序构建菜单（幂等、无缓存：数据源均为常量，构建开销极小）
+
+    被服务策略判为「文档隐藏」的服务整项略过；线路则先剔除隐藏端点，
+    整条线路端点全被隐藏时该线路也不展示（与文档页 /docs/<slug>/ 口径一致）。
+    """
     from . import all_docs as _all
     from . import localize as _localize_doc
+    from ...common.middleware import is_docs_hidden
     # 菜单名与子线路名均来源于声明常量，需按当前语言翻译（对副本翻译，不污染原文）
     ready = {svc.prefix: _localize_doc(svc) for svc in _all()}
     menu = []
     for item in _annotate(_localize_services(_MARKET), lambda p: p in ready):
         prefix = item['url_prefix']
+        if is_docs_hidden(prefix):
+            continue
         doc = ready.get(prefix)
         unavailable = item['status'] in UNCLICKABLE_STATUSES
         if doc is not None and not unavailable:
             children = []
             for ch in doc.channels:
+                endpoints = [ep for ep in ch.endpoints if not is_docs_hidden(ep.path)]
+                if not endpoints:
+                    continue
                 # 线路状态 = 该线路下端点最严重者（端点级策略也会体现）
-                fields = channel_status_fields([ep.path for ep in ch.endpoints])
+                fields = channel_status_fields([ep.path for ep in endpoints])
                 children.append({
                     'name': ch.name,
                     'url': f'/docs/{doc.slug}/#channel-{ch.slug}',

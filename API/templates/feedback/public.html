@@ -1,0 +1,72 @@
+{% extends 'feedback/base.html' %}
+{% load static i18n %}
+
+{# 公开区：游客提交且已通过审核的反馈（不展示附件与提交者身份，可被搜索引擎收录） #}
+
+{% block feedback_content %}
+<form method="get" class="mb-4 flex gap-2">
+  <input type="search" name="q" value="{{ keyword }}" maxlength="100"
+         class="input input-bordered w-full" placeholder="{% trans '搜索关键词，看看有没有人提过同样的问题…' %}" />
+  <button type="submit" class="btn btn-primary shrink-0 gap-1.5">
+    <i data-lucide="search" class="h-4 w-4"></i>
+    <span class="hidden sm:inline">{% trans "搜索" %}</span>
+  </button>
+</form>
+
+{% if page_obj.object_list %}
+<ul class="flex flex-col gap-2.5">
+  {% for item in page_obj.object_list %}
+  <li>
+    <a href="{% url 'website:feedback_detail' fb_app.app_id item.pk %}"
+       class="card border border-base-300 bg-base-100 transition-colors hover:border-primary/60">
+      <div class="card-body gap-2 p-4 sm:p-5">
+        <div class="flex flex-wrap items-center gap-2 text-xs text-base-content/60">
+          <span class="badge badge-ghost badge-sm">{{ item.type_name }}</span>
+          {% if item.status == 'replied' %}
+          <span class="badge badge-success badge-sm badge-soft">{% trans "已回复" %}</span>
+          {% else %}
+          <span class="badge badge-info badge-sm badge-soft">{% trans "处理中" %}</span>
+          {% endif %}
+          <span class="ml-auto">{{ item.create_time|date:'Y-m-d H:i' }}</span>
+        </div>
+        <p class="text-sm leading-relaxed">{{ item.display_title }}</p>
+        <p class="flex items-center gap-1 text-xs text-base-content/50">
+          <i data-lucide="message-square" class="h-3.5 w-3.5"></i>
+          {% blocktrans with n=item.replies.count %}{{ n }} 条回复{% endblocktrans %}
+        </p>
+      </div>
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+
+{% if page_obj.has_other_pages %}
+<div class="mt-5 flex items-center justify-center gap-2">
+  {% if page_obj.has_previous %}
+  <a href="?{% if keyword %}q={{ keyword|urlencode }}&amp;{% endif %}page={{ page_obj.previous_page_number }}"
+     class="btn btn-ghost btn-sm">{% trans "上一页" %}</a>
+  {% endif %}
+  <span class="text-sm text-base-content/60">
+    {% blocktrans with now=page_obj.number total=page_obj.paginator.num_pages %}{{ now }} / {{ total }}{% endblocktrans %}
+  </span>
+  {% if page_obj.has_next %}
+  <a href="?{% if keyword %}q={{ keyword|urlencode }}&amp;{% endif %}page={{ page_obj.next_page_number }}"
+     class="btn btn-ghost btn-sm">{% trans "下一页" %}</a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<div class="card border border-dashed border-base-300 bg-base-100">
+  <div class="card-body items-center gap-2 py-12 text-center">
+    <i data-lucide="inbox" class="h-8 w-8 text-base-content/30"></i>
+    {% if keyword %}
+    <p class="text-sm text-base-content/60">{% blocktrans %}没有找到包含「{{ keyword }}」的公开反馈。{% endblocktrans %}</p>
+    <a href="{% url 'website:feedback_public' fb_app.app_id %}" class="btn btn-ghost btn-sm">{% trans "查看全部" %}</a>
+    {% else %}
+    <p class="text-sm text-base-content/60">{% trans "公开区还没有内容，你的反馈通过审核后会出现在这里。" %}</p>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

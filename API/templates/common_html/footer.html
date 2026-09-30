@@ -21,13 +21,29 @@
     <a class="link link-hover" href="/">{% trans "首页" %}</a>
     <a class="link link-hover" href="/docs/">{% trans "接口文档中心" %}</a>
     <a class="link link-hover" href="/programs/">{% trans "计算程序" %}</a>
+    <a class="link link-hover" href="{% url 'website:feedback_self' %}">{% trans "问题反馈" %}</a>
     <a class="link link-hover" href="{% url 'website:login' %}">{% trans "登录" %}</a>
   </nav>
+  {# 联系我们：平台与值全部由超管在后台「联系方式」模块按「小影API官网」项目维护，前台不硬编码任何账号（数据由 context.footer_contacts 注入）；一条都没配时整块隐藏 #}
+  {% if footer_contacts %}
   <nav>
     <h6 class="footer-title">{% trans "联系我们" %}</h6>
-    <span class="link link-hover text-sm">{% trans "微信：" %}duyanbz</span>
-    <a class="link link-hover text-sm" href="https://t.me/xiaoying1216" target="_blank" rel="noopener nofollow">Telegram</a>
+    {% for contact in footer_contacts %}
+    {% if contact.url %}
+    <a class="link link-hover flex items-start gap-1.5 text-sm" href="{{ contact.url }}"
+       target="_blank" rel="noopener nofollow">
+      {% if contact.icon %}<i data-lucide="{{ contact.icon }}" class="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-70"></i>{% endif %}
+      <span class="min-w-0 break-all">{{ contact.name }}<span class="ml-1 font-mono text-xs opacity-70">{{ contact.value }}</span></span>
+    </a>
+    {% else %}
+    <span class="flex items-start gap-1.5 text-sm">
+      {% if contact.icon %}<i data-lucide="{{ contact.icon }}" class="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-70"></i>{% endif %}
+      <span class="min-w-0 break-all">{{ contact.name }}<span class="ml-1 font-mono text-xs opacity-70">{{ contact.value }}</span></span>
+    </span>
+    {% endif %}
+    {% endfor %}
   </nav>
+  {% endif %}
   {# 友情链接区（数据来自 SEO 友情链接模块，无启用数据时整块隐藏） #}
   {% include 'common_html/friend_links.html' %}
 </footer>

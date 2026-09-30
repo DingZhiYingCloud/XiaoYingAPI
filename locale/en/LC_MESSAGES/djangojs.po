@@ -161,6 +161,9 @@ msgstr "Unknown error"
 msgid "未获取到播放地址"
 msgstr "No playback URL found"
 
+msgid "已加载直链，正在播放；支持拖动进度条"
+msgstr "Direct URL loaded and playing; seeking is supported"
+
 msgid "柠檬水"
 msgstr "Lemonade"
 
@@ -257,8 +260,8 @@ msgstr "Get code"
 msgid "该服务"
 msgstr "this service"
 
-msgid "请先填写 m3u8 地址"
-msgstr "Please enter an m3u8 URL first"
+msgid "请先填写播放地址"
+msgstr "Please enter a playback URL first"
 
 msgid "请先填写%(type)s"
 msgstr "Please enter %(type)s first"
@@ -271,6 +274,35 @@ msgstr "Please enter %(type)s and the verification code"
 
 msgid "请求中…"
 msgstr "Requesting…"
+
+msgid "流式接收中…"
+msgstr "Streaming…"
+
+msgid "流式接收完成"
+msgstr "Stream complete"
+
+# ---- 文档中心调试面板：二进制响应的「可打开地址」与播放地址提示（docs.js / docs_player.js） ----
+
+msgid "在新窗口打开"
+msgstr "Open in a new window"
+
+msgid "可打开的地址"
+msgstr "Openable address"
+
+msgid "播放地址"
+msgstr "Playback URL"
+
+msgid "该接口需要项目签名，浏览器直接打开会被拒；上面这条不含签名参数（签名是一次性的，不能复用）。"
+msgstr "This endpoint requires a project signature, so opening it directly in a browser will be rejected. The address above carries no signature parameters (signatures are single-use and cannot be reused)."
+
+msgid "该集地址仍在生成中（首次点播约需数十秒），稍后重新点「发送请求」即可播放。"
+msgstr "This episode's URL is still being generated (the first play takes about tens of seconds). Click 'Send request' again in a moment to play."
+
+msgid "该集首次点播，服务端正在生成播放地址（约数十秒）；请稍后重新点「发送请求」，拿到 ready=true 再播。"
+msgstr "This is the first play of this episode, so the server is generating the stream URL (about tens of seconds). Click 'Send request' again in a moment and play once ready=true."
+
+msgid "请求失败"
+msgstr "Request failed"
 
 msgid "请求失败（HTTP %(status)s），请稍后重试"
 msgstr "Request failed (HTTP %(status)s), please try again later"
@@ -423,4 +455,495 @@ msgstr "(empty = service level)"
 
 msgid "（留空=线路级）"
 msgstr "(empty = channel level)"
+
+# ==================== 文档中心 · 注册辅助（docs_register.js） ====================
+msgid "生成中…"
+msgstr "Generating…"
+
+msgid "生成失败："
+msgstr "Generation failed: "
+
+msgid "已填入："
+msgstr "Filled: "
+
+msgid "未找到可填写的表单字段"
+msgstr "No matching form fields found"
+
+msgid "数量需为 1-%(max)s 的整数"
+msgstr "Count must be an integer from 1 to %(max)s"
+
+msgid "正在获取 %(n)s 张验证码…"
+msgstr "Fetching %(n)s captcha(s)…"
+
+msgid "已获取 %(n)s 张验证码，请逐张填入验证码后点“一键注册”"
+msgstr "Fetched %(n)s captcha(s). Enter each code, then click \"Register all\""
+
+msgid "获取验证码失败，请重试"
+msgstr "Failed to fetch captchas, please try again"
+
+msgid "注册验证码"
+msgstr "Registration captcha"
+
+msgid "待填写"
+msgstr "Pending"
+
+msgid "获取失败"
+msgstr "Fetch failed"
+
+msgid "请填入图中验证码"
+msgstr "Enter the code shown in the image"
+
+msgid "请先获取验证码"
+msgstr "Fetch captchas first"
+
+msgid "第 %(rows)s 行还没填验证码"
+msgstr "Row(s) %(rows)s still have no captcha code"
+
+msgid "没有可提交的验证码，请重新获取"
+msgstr "No submittable captcha left, please fetch again"
+
+msgid "正在注册 %(n)s 个账号…"
+msgstr "Registering %(n)s account(s)…"
+
+msgid "注册失败"
+msgstr "Registration failed"
+
+msgid "成功：%(u)s / %(p)s"
+msgstr "Success: %(u)s / %(p)s"
+
+msgid "失败："
+msgstr "Failed: "
+
+msgid "未知原因"
+msgstr "unknown reason"
+
+msgid "完成：成功 %(ok)s / 共 %(total)s 条"
+msgstr "Done: %(ok)s succeeded out of %(total)s"
+
+# ==================== 问题反馈中心（提交页与超管后台的页面脚本） ====================
+
+msgid "发送中…"
+msgstr "Sending…"
+
+msgid "操作失败，请重试"
+msgstr "Operation failed, please try again"
+
+msgid "网络异常，请重试"
+msgstr "Network error, please try again"
+
+msgid "新增反馈类型"
+msgstr "New feedback type"
+
+msgid "编辑反馈类型"
+msgstr "Edit feedback type"
+
+msgid "新增联系方式平台"
+msgstr "New contact platform"
+
+msgid "编辑联系方式平台"
+msgstr "Edit contact platform"
+
+# ==================== 反馈中心 · 图标集（后台挑图标的小弹窗） ====================
+
+msgid "反馈类型"
+msgstr "Feedback type"
+
+msgid "功能建议"
+msgstr "Feature request"
+
+msgid "优化升级"
+msgstr "Improvement"
+
+msgid "使用求助"
+msgstr "Usage help"
+
+msgid "故障 BUG"
+msgstr "Bug"
+
+msgid "留言建议"
+msgstr "Comment / suggestion"
+
+msgid "举报投诉"
+msgstr "Report / complaint"
+
+msgid "安全违规"
+msgstr "Security violation"
+
+msgid "异常警告"
+msgstr "Warning"
+
+msgid "无法复现"
+msgstr "Cannot reproduce"
+
+msgid "等待处理"
+msgstr "Awaiting handling"
+
+msgid "体验评价"
+msgstr "Experience rating"
+
+msgid "无效内容"
+msgstr "Invalid content"
+
+msgid "联系方式"
+msgstr "Contact"
+
+msgid "发送 / Telegram"
+msgstr "Send / Telegram"
+
+msgid "聊天 / 微信"
+msgstr "Chat / WeChat"
+
+msgid "邮箱地址"
+msgstr "Email address"
+
+msgid "电话"
+msgstr "Phone"
+
+msgid "网站"
+msgstr "Website"
+
+msgid "公告"
+msgstr "Announcement"
+
+msgid "在线客服"
+msgstr "Live support"
+
+msgid "社群"
+msgstr "Community"
+
+msgid "机器人"
+msgstr "Bot"
+
+msgid "链接"
+msgstr "Link"
+
+msgid "二维码"
+msgstr "QR code"
+
+msgid "常用"
+msgstr "Common"
+
+msgid "完成"
+msgstr "Done"
+
+msgid "说明"
+msgstr "Info"
+
+msgid "通知"
+msgstr "Notification"
+
+msgid "用户"
+msgstr "User"
+
+msgid "设置"
+msgstr "Settings"
+
+msgid "活动福利"
+msgstr "Promotions"
+
+msgid "会员"
+msgstr "Membership"
+
+msgid "性能"
+msgstr "Performance"
+
+msgid "数据统计"
+msgstr "Statistics"
+
+msgid "点赞"
+msgstr "Like"
+
+msgid "赞成"
+msgstr "Approve"
+
+msgid "反对"
+msgstr "Disapprove"
+
+msgid "匹配 %(n)s 个，只显示前 %(limit)s 个，再输几个字母缩小范围。"
+msgstr "%(n)s matches found; showing the first %(limit)s — keep typing to narrow it down."
+
+
+# ===== 补齐缺失词条（2026-09-30 第四批次：海角发帖页 / 文档工具面板 / 控制台首页） =====
+
+msgid "确认操作"
+msgstr "Confirm action"
+
+msgid "上传失败"
+msgstr "Upload failed"
+
+msgid "上传失败："
+msgstr "Upload failed: "
+
+msgid "发布失败："
+msgstr "Publish failed: "
+
+msgid "发帖成功："
+msgstr "Posted: "
+
+msgid "查询失败："
+msgstr "Query failed: "
+
+msgid "板块加载失败："
+msgstr "Failed to load boards: "
+
+msgid "标签加载失败："
+msgstr "Failed to load tags: "
+
+msgid "接口无响应"
+msgstr "No response from the API"
+
+msgid "接口无响应，请稍后重试"
+msgstr "No response from the API, please try again later"
+
+msgid "发布成功，待源站审核通过后即可查看"
+msgstr "Published — visible once the source site approves it"
+
+msgid "正在发布…"
+msgstr "Publishing…"
+
+msgid "正在上传，请稍候"
+msgstr "Uploading, please wait"
+
+msgid "正在上传 %(i)s/%(n)s · %(p)s%%"
+msgstr "Uploading %(i)s/%(n)s · %(p)s%%"
+
+msgid "继续上传 %(n)s 个…"
+msgstr "Uploading %(n)s more…"
+
+msgid "正在获取验证码…"
+msgstr "Fetching captchas…"
+
+msgid "正在解码…"
+msgstr "Decoding…"
+
+msgid "填好右侧的账号凭据后即可查看自己的帖子"
+msgstr "Fill in the credentials on the right to see your own posts"
+
+msgid "这里还没有帖子"
+msgstr "No posts here yet"
+
+msgid "还没有选择标签"
+msgstr "No tags selected yet"
+
+msgid "还没有添加图片或视频"
+msgstr "No images or videos added yet"
+
+msgid "本页没有匹配的标签"
+msgstr "No matching tags on this page"
+
+msgid "没有可上传的文件"
+msgstr "No files to upload"
+
+msgid "请选择板块"
+msgstr "Please choose a board"
+
+msgid "可选"
+msgstr "Optional"
+
+msgid "可选：二级板块"
+msgstr "Optional: second-level board"
+
+msgid "可选：三级板块"
+msgstr "Optional: third-level board"
+
+msgid "请填写标题"
+msgstr "Please enter a title"
+
+msgid "请填写验证码"
+msgstr "Please enter the captcha"
+
+msgid "请至少添加一个标签"
+msgstr "Please add at least one tag"
+
+msgid "请填写正文或添加图片 / 视频"
+msgstr "Please write the body or add images / videos"
+
+msgid "请填写海角账号的用户ID与Token"
+msgstr "Please fill in your Haijiao user ID and token"
+
+msgid "请填写接入鉴权的 APPID / APPSECRET"
+msgstr "Please fill in the API APPID / APPSECRET"
+
+msgid "请先填写接入鉴权的 APPID / APPSECRET"
+msgstr "Enter the API APPID / APPSECRET first"
+
+msgid "请先填写加密图片地址"
+msgstr "Enter the encrypted image URL first"
+
+msgid "看不清？点击更换一张"
+msgstr "Can not read it? Click to swap in a new one"
+
+msgid "已删除 %(name)s"
+msgstr "Removed %(name)s"
+
+msgid "已添加 %(name)s"
+msgstr "Added %(name)s"
+
+msgid "已添加的图片"
+msgstr "Images added"
+
+msgid "已清空媒体"
+msgstr "Media cleared"
+
+msgid "已恢复上次未发布的草稿"
+msgstr "Restored your last unpublished draft"
+
+msgid "已有 1 个视频，请先删除"
+msgstr "One video already added, please delete it first"
+
+msgid "已有 1 个视频（源站一次只允许 1 个），请先删除后再添加"
+msgstr "One video already added (the source site allows only one); delete it before adding another"
+
+msgid "源站一次只能上传 1 个视频，已只保留第一个"
+msgstr "The source site accepts only one video at a time; only the first was kept"
+
+msgid "媒体还在上传，请稍候"
+msgstr "Media is still uploading, please wait"
+
+msgid "图片最多 %(n)s 张，超出部分已忽略"
+msgstr "At most %(n)s images; the extra ones were ignored"
+
+msgid "%(name)s：只支持 mp4 视频"
+msgstr "%(name)s: only mp4 videos are supported"
+
+msgid "%(name)s：只支持 png / jpg / jpeg / gif / bmp"
+msgstr "%(name)s: only png / jpg / jpeg / gif / bmp are supported"
+
+msgid "%(name)s：图片超过 10MB"
+msgstr "%(name)s: image exceeds 10 MB"
+
+msgid "%(n)s 字"
+msgstr "%(n)s characters"
+
+msgid "共 %(n)s 条"
+msgstr "%(n)s results"
+
+msgid "第 %(n)s 个"
+msgstr "No. %(n)s"
+
+msgid "第 %(p)s / %(t)s 页"
+msgstr "Page %(p)s / %(t)s"
+
+msgid "第 %(p)s / %(t)s 页（共 %(n)s 个标签）"
+msgstr "Page %(p)s / %(t)s (%(n)s tags in total)"
+
+msgid "%(time)s · 浏览 %(v)s · 评论 %(c)s · 赞 %(l)s"
+msgstr "%(time)s · %(v)s views · %(c)s comments · %(l)s likes"
+
+msgid "显示 %(shown)s / %(total)s 个接口"
+msgstr "Showing %(shown)s / %(total)s endpoints"
+
+msgid "出口 %(proxy)s"
+msgstr "Exit %(proxy)s"
+
+msgid "直连（本机 IP）"
+msgstr "Direct (local IP)"
+
+msgid "待审 ID %(id)s"
+msgstr "Pending review, ID %(id)s"
+
+msgid "帖子配图"
+msgstr "Post image"
+
+msgid "图文"
+msgstr "Post"
+
+msgid "发布顺序"
+msgstr "Publish order"
+
+msgid "文件名"
+msgstr "File name"
+
+msgid "大小"
+msgstr "Size"
+
+msgid "附件 ID"
+msgstr "Attachment ID"
+
+msgid "图片信息"
+msgstr "Image info"
+
+msgid "视频信息"
+msgstr "Video info"
+
+msgid "图片路径"
+msgstr "Image path"
+
+msgid "视频路径"
+msgstr "Video path"
+
+msgid "正文片段"
+msgstr "Body snippet"
+
+msgid "驳回原因："
+msgstr "Rejection reason: "
+
+msgid "源站不返回视频地址（视频靠附件 ID 关联播放器）"
+msgstr "The source site does not return a video URL (videos are linked to the player by attachment ID)"
+
+msgid "解码成功：%(w)s × %(h)s 像素"
+msgstr "Decoded: %(w)s × %(h)s px"
+
+msgid "解码失败：请确认填的是加密图片地址（形如 …/xxxx_mini.jpg.txt），且为公网可访问地址"
+msgstr "Decoding failed: make sure this is an encrypted image URL (like …/xxxx_mini.jpg.txt) that is publicly reachable"
+
+
+# ===== 补齐缺失词条（2026-09-30 第五批次：文档工具面板 / 图形验证客户端 / 账号页 keywords） =====
+
+msgid "有 token"
+msgstr "Has token"
+
+msgid "无 token"
+msgstr "No token"
+
+msgid "（无昵称 / 备注）"
+msgstr "(no nickname / remark)"
+
+msgid "查询中…"
+msgstr "Searching…"
+
+msgid "没有匹配的账号"
+msgstr "No matching accounts"
+
+msgid "已填入 %(fields)s：%(user)s（%(id)s）"
+msgstr "Filled %(fields)s: %(user)s (%(id)s)"
+
+msgid "共 %(n)s 条，点一条即填入参数"
+msgstr "%(n)s results — click one to fill the parameters"
+
+msgid "该端点没有可自动填入的参数字段"
+msgstr "This endpoint has no parameter that can be auto-filled"
+
+msgid "已选中「%(name)s」：item_id=%(id)s，%(price)s %(unit)s / 个%(filled)s"
+msgstr "Selected “%(name)s”: item_id=%(id)s, %(price)s %(unit)s each%(filled)s"
+
+msgid "（已填入表单）"
+msgstr " (filled into the form)"
+
+msgid "该类型下没有礼物"
+msgstr "No gifts in this category"
+
+msgid "共 %(n)s 种，点一个即填入 item_id"
+msgstr "%(n)s kinds — click one to fill item_id"
+
+msgid "加载失败："
+msgstr "Load failed: "
+
+msgid "官方 SDK 加载失败，请检查静态资源: "
+msgstr "Failed to load the official SDK, please check the static assets: "
+
+msgid "校验接口异常"
+msgstr "Verification API error"
+
+msgid "校验接口请求失败"
+msgstr "Verification API request failed"
+
+msgid "验证参数获取失败"
+msgstr "Failed to obtain verification parameters"
+
+msgid "图形验证未通过"
+msgstr "Captcha verification failed"
+
+msgid "图形验证出错"
+msgstr "Captcha verification error"
 

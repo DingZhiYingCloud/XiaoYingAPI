@@ -1,0 +1,130 @@
+{% extends 'feedback/base.html' %}
+{% load static i18n %}
+
+{# 提交反馈：类型 → 内容 → 附件 → 联系方式（游客另需图形验证） #}
+
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block feedback_content %}
+{% if closed %}
+<div role="alert" class="alert alert-warning">
+  <span>{% trans "该项目的反馈通道暂未开放，请稍后再试。" %}</span>
+</div>
+{% else %}
+<form id="fb-submit-form" method="post" enctype="multipart/form-data" class="flex flex-col gap-5">
+  {% csrf_token %}
+
+  <div class="card border border-base-300 bg-base-100">
+    <div class="card-body gap-6 p-5 sm:p-6">
+
+      {# ---- 反馈类型 ---- #}
+      <div>
+        <div class="mb-3 flex items-center gap-3">
+          <span class="text-sm font-semibold">{% trans "反馈类型" %}</span>
+          <span class="h-px flex-1 bg-base-300"></span>
+        </div>
+        <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {% for type in types %}
+          <label class="flex cursor-pointer items-start gap-2.5 rounded-box border border-base-300 p-3 transition-colors hover:border-primary/60 has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+            <input type="radio" name="type_id" value="{{ type.id }}" class="radio radio-primary radio-sm mt-0.5"
+                   {% if form.type_id == type.id|stringformat:'s' or not form.type_id and type.is_default %}checked{% endif %} />
+            <span class="flex flex-col gap-0.5">
+              <span class="text-sm font-medium">
+                {% if type.icon %}<i data-lucide="{{ type.icon }}" class="mr-1 inline h-4 w-4 align-[-3px]"></i>{% endif %}{{ type.name }}
+              </span>
+              {% if type.desc %}<span class="text-xs text-base-content/60">{{ type.desc }}</span>{% endif %}
+            </span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      {# ---- 反馈内容 ---- #}
+      <div>
+        <div class="mb-3 flex items-center gap-3">
+          <label for="fb-content" class="text-sm font-semibold">{% trans "反馈内容" %}</label>
+          <span class="h-px flex-1 bg-base-300"></span>
+        </div>
+        <textarea id="fb-content" name="content" rows="6" maxlength="5000" required
+                  class="textarea textarea-bordered w-full leading-relaxed"
+                  placeholder="{% trans '请详细描述你的建议、遇到的问题或 BUG，越具体我们处理得越快…' %}">{{ form.content|default:'' }}</textarea>
+        <p class="mt-1.5 text-xs text-base-content/50">{% trans "无需填写标题，列表会用正文开头作为标题。" %}</p>
+      </div>
+
+      {# ---- 附件 ---- #}
+      {% if fb_setting.max_images or fb_setting.max_videos %}
+      <div>
+        <div class="mb-3 flex items-center gap-3">
+          <span class="text-sm font-semibold">{% trans "附件" %}</span>
+          <span class="h-px flex-1 bg-base-300"></span>
+          <span class="text-xs text-base-content/50">{% trans "选填" %}</span>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2">
+          {% if fb_setting.max_images %}
+          <label class="flex flex-col gap-1.5">
+            <span class="text-xs text-base-content/70">{% blocktrans with n=fb_setting.max_images mb=fb_setting.max_image_mb %}图片（最多 {{ n }} 张，单张不超过 {{ mb }}MB）{% endblocktrans %}</span>
+            <input type="file" name="images" accept="image/*" multiple
+                   class="file-input file-input-bordered file-input-sm w-full" />
+          </label>
+          {% endif %}
+          {% if fb_setting.max_videos %}
+          <label class="flex flex-col gap-1.5">
+            <span class="text-xs text-base-content/70">{% blocktrans with n=fb_setting.max_videos mb=fb_setting.max_video_mb %}视频（最多 {{ n }} 个，单个不超过 {{ mb }}MB）{% endblocktrans %}</span>
+            <input type="file" name="videos" accept="video/*" multiple
+                   class="file-input file-input-bordered file-input-sm w-full" />
+          </label>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      {# ---- 联系邮箱 ---- #}
+      <div>
+        <div class="mb-3 flex items-center gap-3">
+          <label for="fb-email" class="text-sm font-semibold">{% trans "联系邮箱" %}</label>
+          <span class="h-px flex-1 bg-base-300"></span>
+          <span class="text-xs text-base-content/50">{% trans "选填" %}</span>
+        </div>
+        <input id="fb-email" type="email" name="contact_email" maxlength="254"
+               value="{{ form.contact_email|default:'' }}"
+               class="input input-bordered w-full" placeholder="you@example.com" />
+        <p class="mt-1.5 text-xs text-base-content/50">{% trans "填写后，管理员回复时会给你发一封通知邮件。" %}</p>
+      </div>
+
+      {# ---- 图形验证（仅游客） ---- #}
+      {% if captcha_required %}
+      <div>
+        <div class="mb-3 flex items-center gap-3">
+          <span class="text-sm font-semibold">{% trans "安全验证" %}</span>
+          <span class="h-px flex-1 bg-base-300"></span>
+        </div>
+        <p class="text-xs text-base-content/60">{% trans "为防止恶意刷屏，游客提交前需完成一次图形验证。" %}</p>
+        <input type="hidden" name="captcha_id" id="fb-captcha-id" />
+        <input type="hidden" name="answer" id="fb-captcha-answer" />
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <p class="text-xs text-base-content/60">
+      {% if fb_user %}
+        {% blocktrans with name=fb_user.username|default:fb_user.account %}将以「{{ name }}」的身份提交，管理员可直接回复你。{% endblocktrans %}
+      {% else %}
+        {% trans "当前为匿名（游客）提交；登录后可查看自己的反馈并与管理员对话。" %}
+      {% endif %}
+    </p>
+    <button type="submit" class="btn btn-primary">{% trans "提交反馈" %}</button>
+  </div>
+</form>
+{% endif %}
+{% endblock %}
+
+{% block js %}
+{% if captcha_required %}
+<script src="{% static 'js/captcha_auth/self/captcha-client.js' %}?v=20260926b"></script>
+<script>window.XY_FB_CAPTCHA = true;</script>
+<script src="{% static 'js/site/feedback_submit.js' %}?v=20260930a"></script>
+{% endif %}
+{% endblock %}

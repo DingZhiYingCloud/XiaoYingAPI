@@ -139,6 +139,10 @@ TEMPLATES = [
                 'API.website.context.website_user',
                 # 页脚友情链接（取自 SEO 友情链接模块的启用项）
                 'API.website.context.friend_links',
+                # 页脚「联系我们」（取自官网接入项目在后台「联系方式」模块里维护的平台与值）
+                'API.website.context.footer_contacts',
+                # 官网外观（视觉气质预设 + 首页 Hero 文案覆盖），超管在 /console/appearance/ 维护
+                'API.website.context.site_appearance',
                 # 文档中心左侧服务菜单（仅 /docs/* 由中间件注入）
                 'API.website.docs_menu.docs_menu_context',
                 # 控制台左侧导航（仅 /console/* 注入，菜单在 console_menu.py 一处声明）
@@ -238,6 +242,78 @@ MOVIE_555_DATA_CACHE_TTL = int(os.getenv('MOVIE_555_DATA_CACHE_TTL', '1440'))
 # 媒体类（m3u8 播放地址等有时效的资源）：默认 30 分钟
 MOVIE_555_MEDIA_CACHE_TTL = int(os.getenv('MOVIE_555_MEDIA_CACHE_TTL', '30'))
 
+# 短剧 - 红果线路缓存过期时间（分钟），可由 .env 覆盖
+# 数据类（榜单 / 分类列表 / 搜索 / 详情等固定信息）：默认 1440 分钟（24 小时）
+HONGGUO_DATA_CACHE_TTL = int(os.getenv('HONGGUO_DATA_CACHE_TTL', '1440'))
+# 媒体类（播放直链等有时效的资源）：默认 30 分钟
+HONGGUO_MEDIA_CACHE_TTL = int(os.getenv('HONGGUO_MEDIA_CACHE_TTL', '30'))
+
+# 海角社区 数据缓存过期时间（分钟），可由 .env 覆盖
+# 热门帖按热度排序、随时间变动，缓存不宜过长
+HAIJIAO_DATA_CACHE_TTL = int(os.getenv('HAIJIAO_DATA_CACHE_TTL', '60'))
+# 海角社区 视频播放列表缓存过期时间（分钟）：派生真密钥开销较大（多次请求 + node），缓存稍长
+HAIJIAO_MEDIA_CACHE_TTL = int(os.getenv('HAIJIAO_MEDIA_CACHE_TTL', '30'))
+# 海角社区 默认登录凭据（x-user-id / x-user-token，可选）：用于取帖内视频等需登录态的内容；
+# 调用方可用请求参数 user_id / user_token 覆盖为自己的账号，留空则匿名请求。
+HAIJIAO_USER_ID = os.getenv('HAIJIAO_USER_ID', '')
+HAIJIAO_USER_TOKEN = os.getenv('HAIJIAO_USER_TOKEN', '')
+
+# 短剧 - 红果线路「预处理」配置
+# 背景：源站只对每部剧前 3 集下发明文直链，第 4 集及以后是 DRM 加密的 H.265，浏览器
+# 无法直接播放。故用预处理工具（manage.py hongguo_preprocess）在服务端解密导出，
+# 人工上传到外部平台后，再在超管控制台 /console/dramas/hongguo/ 登记链接
+# （登记仅后台内部使用，不提供对外接口）。
+# 签名服务地址：项目自带的 unidbg 离线签名器（生成 metasec 安全头）。
+# 指向本机时由预处理进程按需自动拉起（见 SpiderServices/dramas/hongguo/sign_service.py），
+# 无需单独启动；指向远端签名服务时只做客户端、不自动拉起。
+HONGGUO_SIGN_URL = os.getenv('HONGGUO_SIGN_URL', 'http://127.0.0.1:9099')
+# 签名服务运行物目录（unidbg-sign.jar、capture/fq_oversea/ 与内置 jre/）
+HONGGUO_SIGN_DIR = os.getenv('HONGGUO_SIGN_DIR') or str(BASE_DIR / 'scripts' / 'hongguo_sign')
+# 拉起签名服务用的 java（需 JDK 17+）；留空则优先用内置 jre/，其次 PATH 上的 java
+# （此处仅作覆盖用，正常情况下无需配置本机已装 Java）
+HONGGUO_JAVA_BIN = os.getenv('HONGGUO_JAVA_BIN') or 'java'
+# 等待签名服务就绪的超时（秒；JVM + unidbg 初始化较慢）
+HONGGUO_SIGN_START_TIMEOUT = int(os.getenv('HONGGUO_SIGN_START_TIMEOUT', '90'))
+# 签名服务 / App 接口单次请求超时（秒）
+# 注：签名服务的端口会早于 unidbg 初始化完成就绪，首次签名请求会排队等初始化，
+#     故这里给得宽一些，避免开机首个请求误判超时。
+HONGGUO_SIGN_TIMEOUT = int(os.getenv('HONGGUO_SIGN_TIMEOUT', '60'))
+HONGGUO_APP_TIMEOUT = int(os.getenv('HONGGUO_APP_TIMEOUT', '20'))
+# 预处理产物根目录（每部剧一个子目录，命名 `{剧名}_{剧集ID}`，随 /cache/ 一起不入库）
+HONGGUO_PREPROCESS_DIR = os.getenv('HONGGUO_PREPROCESS_DIR') or str(
+    XYAPI_CACHE_ROOT / 'dramas' / 'hongguo_preprocess')
+# 预处理期望清晰度高度，0 = 自动取最高可解清晰度
+HONGGUO_PREPROCESS_HEIGHT = int(os.getenv('HONGGUO_PREPROCESS_HEIGHT', '1080'))
+# ffmpeg 可执行文件（CENC 解密必需；留空用 PATH 上的 ffmpeg）
+HONGGUO_FFMPEG_BIN = os.getenv('HONGGUO_FFMPEG_BIN') or 'ffmpeg'
+
+# 短剧 - 红果线路「网页直出」配置
+# 背景：源站第 4 集及以后只有 DRM 加密的 H.265，而浏览器（原生 / MSE / WebCodecs）
+# 在多数机器上都无法解 HEVC（实测 Chrome 三者全为 false），所以「网页能播」只能出
+# H.264 —— 服务端解密 + 转码一次，产物落盘永久复用，按需转、不用全量预处理。
+# 转码产物根目录（每部剧 / 每个画质一个子目录，随 /cache/ 一起不入库）
+HONGGUO_STREAM_DIR = os.getenv('HONGGUO_STREAM_DIR') or str(
+    XYAPI_CACHE_ROOT / 'dramas' / 'hongguo_stream')
+# 默认出流画质 = 输出**宽度**上限（短剧是竖屏 1080×1920，日常说的 1080p / 720p 就指宽度）。
+# 请求方可用 play 接口的 q 参数按次覆盖；可选档位与各档码率上限见
+# API/apis/dramas/hongguo/utils.py 的 QUALITY_WIDTHS 与
+# SpiderServices/dramas/hongguo/transcode.py 的 _RATE_BY_WIDTH。
+# 默认 1080 = 源站最高档（不缩放）：源站本身只有 ~540 kbps，此前默认缩到 720 后
+# 竖屏宽度只剩 408px，全屏看明显发虚 —— 这是「画质差」的主因，不是源站没有高清。
+HONGGUO_STREAM_QUALITY = int(os.getenv('HONGGUO_STREAM_QUALITY', '1080'))
+# 转码优先使用的硬件编码器（按顺序探测，都不可用则回退 libx264）
+HONGGUO_STREAM_HW_ENCODERS = [
+    e.strip() for e in os.getenv('HONGGUO_STREAM_HW_ENCODERS', 'h264_nvenc,h264_qsv,h264_amf').split(',')
+    if e.strip()
+]
+# 软件编码兜底 preset 与质量（体积/耗时折中）：CRF 20 对已压缩片源基本不再掉画质
+HONGGUO_STREAM_X264_PRESET = os.getenv('HONGGUO_STREAM_X264_PRESET', 'veryfast')
+HONGGUO_STREAM_X264_CRF = int(os.getenv('HONGGUO_STREAM_X264_CRF', '20'))
+# 单集转码最长耗时（秒），超时判失败，默认 900
+HONGGUO_STREAM_TIMEOUT = int(os.getenv('HONGGUO_STREAM_TIMEOUT', '900'))
+# 播放地址时效令牌有效期（秒），过期需重新调 play 接口换新地址
+HONGGUO_STREAM_TOKEN_TTL = int(os.getenv('HONGGUO_STREAM_TOKEN_TTL', '7200'))
+
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
@@ -247,6 +323,18 @@ CACHES = {
         'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
         'LOCATION': str(XYAPI_CACHE_ROOT / 'movies' / 'movie_555'),
         'TIMEOUT': MOVIE_555_MEDIA_CACHE_TTL * 60,
+    },
+    # 短剧 - 红果线路缓存
+    'hongguo': {
+        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+        'LOCATION': str(XYAPI_CACHE_ROOT / 'dramas' / 'hongguo'),
+        'TIMEOUT': HONGGUO_MEDIA_CACHE_TTL * 60,
+    },
+    # 海角社区缓存
+    'haijiao': {
+        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+        'LOCATION': str(XYAPI_CACHE_ROOT / 'haijiao'),
+        'TIMEOUT': HAIJIAO_DATA_CACHE_TTL * 60,
     },
 }
 

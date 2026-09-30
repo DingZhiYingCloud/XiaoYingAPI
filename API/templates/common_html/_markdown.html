@@ -1,6 +1,7 @@
 {# Markdown 渲染结果的统一排版容器 #}
 {# 项目未启用 typography 插件（无 prose 类），故用 Tailwind 任意变体给容器内的元素挂样式； #}
-{# 集中在这一处维护，列表页的分类说明与详情页的正文共用，避免各页面重复写长类名。 #}
+{# 集中在这一处维护，计算程序的说明文档与接口文档中心的服务说明共用，避免各页面重复写长类名。 #}
+{# 用法：{% include 'common_html/_markdown.html' with content=已渲染好的_html %} #}
 <div class="overflow-x-auto text-sm leading-relaxed text-base-content/80
             [&_h1]:mt-8 [&_h1]:mb-3 [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:text-base-content
             [&_h2]:mt-8 [&_h2]:mb-3 [&_h2]:border-b [&_h2]:border-base-300 [&_h2]:pb-2 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-base-content

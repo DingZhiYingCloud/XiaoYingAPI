@@ -6,7 +6,6 @@ urlpatterns = [
     path('email/', include('API.apis.emails.urls')), # 邮箱服务路由
     path('music/', include('API.apis.musics.urls')), # 音乐服务路由
     path('upload/', include('API.apis.uploads.urls')), # 文件上传服务路由
-    path('video_analysis/', include('API.apis.VideoAnalysis.urls')), # 视频分析服务路由
     path('ai/', include('API.apis.ai.urls')), # AI服务路由
     path('spider_verification/', include('API.apis.SpiderVerification.urls')), # 爬虫验证服务路由
     path('dlt/', include('API.apis.DaiLianTong.urls')), # 代练通服务路由
@@ -24,5 +23,7 @@ urlpatterns = [
     path('VMEmail_mailcx/', include('API.apis.VMEmail_mailcx.urls')), # VMEmail 虚拟邮件(mail.cx)服务路由
     path('ImageHosting/', include('API.apis.ImageHosting.urls')), # 图床服务路由
     path('movies/', include('API.apis.movies.urls')), # 电影服务路由
+    path('dramas/', include('API.apis.dramas.urls')), # 短剧服务路由
+    path('haijiao/', include('API.apis.haijiao.urls')), # 海角社区服务路由
 ]
 

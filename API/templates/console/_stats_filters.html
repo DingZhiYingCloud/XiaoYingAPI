@@ -1,6 +1,6 @@
 {% load i18n %}
 {% comment %}调用统计总览：时间范围 + 服务/项目筛选（筛选后所有卡片同步生效）{% endcomment %}
-<div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+<div class="con-toolbar mt-5 justify-between">
   <div role="tablist" class="tabs tabs-box w-fit">
     {% for r in range_choices %}
     <a role="tab" href="?days={{ r }}{% if service_choice %}&amp;service={{ service_choice|urlencode }}{% endif %}{% if app_choice %}&amp;app_id={{ app_choice|urlencode }}{% endif %}"

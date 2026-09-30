@@ -6,61 +6,44 @@
 {% block description %}{{ doc.name }}：{{ doc.summary }}{% endblock %}
 
 {% block content %}
-<section class="mx-auto w-full max-w-7xl px-4 py-6 lg:py-8">
+<section class="mx-auto w-full max-w-[88rem] px-4 py-6 lg:py-8">
   <div class="flex flex-col gap-6 lg:flex-row">
 
   {# ===== 左侧服务导航（docs_menu 自动注入） ===== #}
   {% include 'docs/_sidebar.html' %}
 
-  {# ===== 右侧内容 ===== #}
+  {# ===== 中间内容 ===== #}
   <div class="min-w-0 flex-1">
 
-  {# ===== 页面标题 ===== #}
-  <div class="flex flex-wrap items-end justify-between gap-3">
-    <div>
+  {# ===== 页面标题（与首页/文档目录同一套视觉气质，装饰层由预设决定） ===== #}
+  <div class="feel-hero rounded-box border border-base-300 px-5 py-5 sm:px-6">
+    <div class="feel-glow" aria-hidden="true"></div>
+    <div class="feel-hero-inner">
       <nav class="breadcrumbs text-sm">
         <ul>
           <li><a href="/docs/">{% trans "接口文档" %}</a></li>
           <li><a href="/docs/{{ doc.slug }}/">{{ doc.name }}</a></li>
         </ul>
       </nav>
-      <h1 class="mt-2 text-2xl font-bold sm:text-3xl">{{ doc.name }}</h1>
-      <p class="mt-2 max-w-3xl text-sm text-base-content/70">{{ doc.summary }}</p>
-      <code class="mt-2 inline-block rounded-box bg-base-200 px-2 py-1 font-mono text-xs">{{ doc.prefix }}</code>
-    </div>
-
-    {# ===== 鉴权设置卡（本机保存，服务端代签） ===== #}
-    <div id="docs-auth-card" class="card w-full max-w-md border border-base-300 bg-base-100">
-      <div class="card-body gap-3 p-4">
-        <div class="flex items-center justify-between">
-          <h2 class="card-title text-base">{% trans "鉴权设置" %}</h2>
-          <span class="badge badge-ghost badge-sm">{% trans "仅本机保存" %}</span>
-        </div>
-        <form id="docs-auth-form" novalidate>
-          {% csrf_token %}
-          <label class="fieldset-label" for="doc-app-id">APPID</label>
-          <input id="doc-app-id" type="text" class="input input-bordered w-full text-xs"
-                 placeholder="{% trans 'app_ 开头，接入项目公开标识' %}" autocomplete="off" />
-          <label class="fieldset-label mt-2" for="doc-app-secret">APPSECRET</label>
-          <input id="doc-app-secret" type="password" class="input input-bordered w-full text-xs"
-                 placeholder="{% trans 'sk_ 开头签名密钥，仅用于本次服务端代签' %}" autocomplete="off" />
-          <p class="mt-2 text-xs text-base-content/60">
-            {% trans "需要签名接口必须填写你的接入项目密钥；开放接口可留空直接调试。密钥只在发起请求时用于服务端签名，不落库、不上传到页面以外。" %}
-          </p>
-          <button type="button" id="docs-auth-save" class="btn btn-outline btn-sm mt-3 w-full">{% trans "保存到本机浏览器" %}</button>
-        </form>
-      </div>
+      <h1 class="feel-title mt-2 text-2xl sm:text-3xl">{{ doc.name }}</h1>
+      <p class="feel-sub mt-2 max-w-3xl text-sm">{{ doc.summary }}</p>
+      <code class="mt-3 inline-block rounded-box bg-base-200 px-2 py-1 font-mono text-xs">{{ doc.prefix }}</code>
     </div>
   </div>
 
-  {# ===== 服务说明（正文，SEO 用；内容由各服务文档模块的 intro 声明） ===== #}
-  {% if doc.intro %}
-  <section class="mt-6 rounded-box border border-base-300 bg-base-100 p-4 sm:p-5">
+  {# ===== 服务级公告（超管在后台按服务前缀发布） ===== #}
+  {% if doc.announcements %}
+  <div class="mt-4">
+    {% include 'docs/_announcements.html' with announcements=doc.announcements %}
+  </div>
+  {% endif %}
+
+  {# ===== 服务说明（正文，SEO 用；内容由各服务文档模块的 intro 声明，按 Markdown 渲染） ===== #}
+  {% if doc.intro_html %}
+  <section class="feel-card mt-5 p-4 sm:p-5">
     <h2 class="text-lg font-semibold">{% trans "服务说明" %}</h2>
-    <div class="mt-2 space-y-2 text-sm leading-relaxed text-base-content/80">
-      {% for para in doc.intro %}
-      <p>{{ para }}</p>
-      {% endfor %}
+    <div class="mt-2">
+      {% include 'common_html/_markdown.html' with content=doc.intro_html %}
     </div>
   </section>
   {% endif %}
@@ -106,17 +89,25 @@
       <span class="badge badge-ghost badge-sm">{% trans "认证：跟随上级" %}</span>
       {% endif %}
     </div>
-    {% if channel.note %}
-    <p class="mt-1 text-sm text-base-content/70">{{ channel.note }}</p>
+    {% if channel.note_html %}
+    <p class="mt-1 text-sm text-base-content/70">{{ channel.note_html|safe }}</p>
+    {% endif %}
+
+    {# ===== 线路级公告（超管按本线路前缀发布，可多条） ===== #}
+    {% if channel.announcements %}
+    <div class="mt-3">
+      {% include 'docs/_announcements.html' with announcements=channel.announcements %}
+    </div>
     {% endif %}
 
     <div class="mt-4 space-y-4">
       {% for ep in channel.endpoints %}
-      {# ---------- 端点 ---------- #}
-      <article class="card border border-base-300 bg-base-100">
+      {# ---------- 端点（id/data-ep-channel 供「接口目录」锚点直达） ---------- #}
+      <article id="ep-{{ channel.slug }}-{{ ep.slug }}" data-ep-channel="{{ channel.slug }}"
+               class="feel-card scroll-mt-20">
         <div class="card-body gap-3 p-4 sm:p-5">
           <header class="flex flex-wrap items-center gap-2">
-            <span class="badge {% if ep.method == 'GET' %}badge-success{% else %}badge-info{% endif %} badge-lg font-mono">{{ ep.method }}</span>
+            <span class="badge {{ ep.method_badge }} badge-lg font-mono">{{ ep.method }}</span>
             <code class="break-all font-mono text-sm">{{ ep.path }}</code>
             <span class="badge badge-soft badge-ghost badge-sm" title="{% trans '该接口历史累计调用次数（未登录也可见）' %}">
               {% blocktrans with n=ep.call_count %}累计调用 {{ n }} 次{% endblocktrans %}
@@ -128,6 +119,59 @@
             <p class="mt-0.5 text-sm text-base-content/70">{{ ep.summary }}</p>
             {% endif %}
           </div>
+
+          {# ===== 端点级公告（超管按本接口路径发布，可多条） ===== #}
+          {% if ep.announcements %}
+          {% include 'docs/_announcements.html' with announcements=ep.announcements %}
+          {% endif %}
+
+          {# 配套工具页入口：端点在文档声明中提供 tool_path 时渲染（跳转到该服务的可视化工具页） #}
+          {% if ep.tool_path %}
+          <div>
+            <a href="{{ ep.tool_path }}" class="btn btn-outline btn-sm gap-1">
+              <i data-lucide="external-link" class="h-4 w-4" aria-hidden="true"></i>
+              {% if ep.tool_label %}{{ ep.tool_label }}{% else %}{% trans "打开工具页" %}{% endif %}
+            </a>
+          </div>
+          {% endif %}
+
+          {# 账号选择器：服务声明了库内账号查询接口、且本端点带 account_id 参数时渲染 #}
+          {% if ep.account_picker_path %}
+          <div class="rounded-box border border-base-300 bg-base-200/40 p-3"
+               data-account-picker data-picker-endpoint="{{ ep.account_picker_path }}">
+            <div class="mb-2 flex flex-wrap items-center gap-2">
+              <span class="text-sm font-semibold">{% trans "账号选择器" %}</span>
+              <span class="badge badge-ghost badge-sm">{% trans "搜库内账号" %}</span>
+              <span data-picker-status class="min-w-0 flex-1 text-xs text-base-content/60">
+                {% trans "输入用户名 / 用户ID / 昵称 / 备注搜索，点一条即自动填入 account_id 与 user_id。" %}
+              </span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <input data-picker-keyword type="text" name="picker_keyword" class="input input-bordered input-sm w-48 text-sm"
+                     placeholder="{% trans '关键词（可留空看全部）' %}" autocomplete="off" />
+              <button type="button" data-picker-search class="btn btn-outline btn-sm">{% trans "搜索" %}</button>
+            </div>
+            <div class="mt-2 max-h-56 space-y-1 overflow-y-auto" data-picker-list></div>
+          </div>
+          {% endif %}
+
+          {# 礼物面板：端点在文档声明中提供 gift_picker_path 时渲染（看图挑礼物，点选填入 item_id） #}
+          {% if ep.gift_picker_path %}
+          <div class="rounded-box border border-base-300 bg-base-200/40 p-3"
+               data-gift-picker data-picker-endpoint="{{ ep.gift_picker_path }}">
+            <div class="mb-2 flex flex-wrap items-center gap-2">
+              <span class="text-sm font-semibold">{% trans "礼物面板" %}</span>
+              <span data-gift-status class="min-w-0 flex-1 text-xs text-base-content/60">
+                {% trans "点选礼物即把它的 item_id 填进下方表单；价格为单个礼物的花费，数量见 quantity。" %}
+              </span>
+            </div>
+            <div role="tablist" class="tabs tabs-boxed tabs-sm w-fit">
+              <button type="button" class="tab tab-active" data-gift-kind="gold">{% trans "金币礼物" %}</button>
+              <button type="button" class="tab" data-gift-kind="diamond">{% trans "钻石礼物" %}</button>
+            </div>
+            <div class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3" data-gift-list></div>
+          </div>
+          {% endif %}
 
           {# 参数表单 #}
           <div class="grid gap-x-4 gap-y-3 sm:grid-cols-2">
@@ -161,8 +205,8 @@
                      value="{{ p.default }}" data-param-name="{{ p.name }}" autocomplete="off" />
               {% endif %}
 
-              {% if p.desc %}
-              <p class="mt-1 text-xs text-base-content/60">{{ p.desc }}</p>
+              {% if p.desc_html %}
+              <p class="mt-1 text-xs text-base-content/60">{{ p.desc_html|safe }}</p>
               {% endif %}
               {% if p.repeatable %}
               <p class="mt-0.5 text-xs text-info">{% blocktrans with hint=p.repeat_hint %}多值写法：{{ hint }}{% endblocktrans %}</p>
@@ -171,12 +215,23 @@
             {% endfor %}
           </div>
 
-          {% if ep.notes %}
+          {% if ep.notes_html %}
           <ul class="list-inside list-disc space-y-0.5 text-xs text-base-content/60">
-            {% for n in ep.notes %}
-            <li>{{ n }}</li>
+            {% for n in ep.notes_html %}
+            <li>{{ n|safe }}</li>
             {% endfor %}
           </ul>
+          {% endif %}
+
+          {# 一键填写：端点在文档声明中提供 auto_fill_path 时渲染（调凭据生成接口填入本表单） #}
+          {% if ep.auto_fill_path %}
+          <div class="mt-1 flex flex-wrap items-center gap-2" data-auto-fill
+               data-fill-endpoint="{{ ep.auto_fill_path }}">
+            <button type="button" data-auto-fill-run class="btn btn-outline btn-sm">{% trans "一键填写账号" %}</button>
+            <span data-auto-fill-status class="text-xs text-base-content/60">
+              {% trans "自动生成用户名 / 邮箱 / 密码并填入上方表单（用户名统一 xy_ 前缀）" %}
+            </span>
+          </div>
           {% endif %}
 
           <div class="card-actions mt-1 flex flex-wrap items-center gap-2">
@@ -190,24 +245,103 @@
           {# 响应面板 #}
           <div id="res-{{ channel.slug }}-{{ ep.slug }}" class="hidden"></div>
 
-          {# 在线播放器：端点在文档声明中标记 player=True 时渲染（如电影 m3u8 播放地址） #}
+          {# 在线播放器：端点在文档声明中标记 player=True 时渲染（电影 m3u8 / 短剧 mp4 播放地址） #}
           {% if ep.player %}
           <div class="mt-3 rounded-box border border-base-300 bg-base-200/40 p-3"
                data-player data-player-res="{{ channel.slug }}-{{ ep.slug }}"
                data-hls-src="{% static 'js/vendor/hls.min.js' %}">
             <div class="mb-2 flex flex-wrap items-center gap-2">
               <span class="text-sm font-semibold">{% trans "在线播放测试" %}</span>
-              <span class="badge badge-ghost badge-sm">hls.js</span>
+              <span class="badge badge-ghost badge-sm">hls.js / mp4</span>
               <span data-player-status class="text-xs text-base-content/60">
-                {% trans "发送上方请求成功后自动加载播放；也可直接粘贴任意 m3u8 地址测试。" %}
+                {% trans "发送上方请求成功后自动加载播放；也可直接粘贴任意播放地址（m3u8 / mp4）测试。" %}
               </span>
             </div>
             <video data-player-video class="aspect-video w-full rounded-box bg-black" controls playsinline preload="metadata"></video>
             <div class="mt-2 flex flex-wrap items-center gap-2">
               <input data-player-url type="text" class="input input-bordered input-sm w-full flex-1 font-mono text-xs"
-                     placeholder="{% trans '或直接粘贴 m3u8 地址' %}" autocomplete="off" />
+                     placeholder="{% trans '或直接粘贴播放地址（m3u8 / mp4）' %}" autocomplete="off" />
               <button type="button" data-player-load class="btn btn-outline btn-sm">{% trans "加载播放" %}</button>
             </div>
+          </div>
+          {% endif %}
+
+          {# 图片解码预览：端点在文档声明中提供 image_help 时渲染 #}
+          {% if ep.image_help %}
+          <div class="mt-3 rounded-box border border-base-300 bg-base-200/40 p-3"
+               data-image-panel data-image-endpoint="{{ ep.path }}">
+            <div class="mb-2 flex flex-wrap items-center gap-2">
+              <span class="text-sm font-semibold">{% trans "图片解码预览" %}</span>
+              <span class="badge badge-ghost badge-sm">{% trans "服务端解码" %}</span>
+              <span data-image-status class="text-xs text-base-content/60">
+                {% trans "粘贴加密图片地址（形如 …/xxxx_mini.jpg.txt），点“解码并显示”即可看到真实图片。" %}
+              </span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <input data-image-url type="text" class="input input-bordered input-sm w-full flex-1 font-mono text-xs"
+                     placeholder="{% trans 'https://…/xxxx_mini.jpg.txt' %}" autocomplete="off" />
+              <button type="button" data-image-load class="btn btn-outline btn-sm">{% trans "解码并显示" %}</button>
+              <button type="button" data-image-help class="btn btn-ghost btn-sm">{% trans "解密说明" %}</button>
+            </div>
+            <div class="mt-3 hidden" data-image-box>
+              <img data-image-preview alt="{% trans '解码后的图片' %}"
+                   class="mx-auto max-h-96 rounded-box border border-base-300 bg-base-100" />
+            </div>
+          </div>
+
+          {# 解密说明弹窗：正文来自端点声明的 image_help（段落内换行原样保留） #}
+          <dialog data-image-dialog class="modal">
+            <div class="modal-box max-w-2xl">
+              <h3 class="text-base font-bold">{% trans "加密图片地址是如何解密的" %}</h3>
+              <div class="mt-3 space-y-3 text-sm leading-relaxed text-base-content/80">
+                {% for para in ep.image_help %}
+                <p class="whitespace-pre-wrap break-words">{{ para }}</p>
+                {% endfor %}
+              </div>
+              <div class="modal-action">
+                <form method="dialog"><button class="btn btn-sm">{% trans "关闭" %}</button></form>
+              </div>
+            </div>
+            <form method="dialog" class="modal-backdrop"><button>{% trans "关闭" %}</button></form>
+          </dialog>
+          {% endif %}
+
+          {# 批量注册面板：声明了 batch_register_path 时渲染（取本端点验证码 → 逐张人工填码 → 一键注册） #}
+          {% if ep.batch_register_path %}
+          <div class="mt-3 rounded-box border border-base-300 bg-base-200/40 p-3"
+               data-batch-panel data-captcha-endpoint="{{ ep.path }}"
+               data-batch-endpoint="{{ ep.batch_register_path }}">
+            <div class="mb-2 flex flex-wrap items-center gap-2">
+              <span class="text-sm font-semibold">{% trans "批量注册" %}</span>
+              <span class="badge badge-ghost badge-sm">{% trans "验证码人工识别" %}</span>
+              <span data-batch-status class="text-xs text-base-content/60">
+                {% trans "填数量 → 取验证码 → 每张图旁填入验证码 → 一键注册（用户名/密码/邮箱由服务端生成；看不清可点验证码图更换一张）" %}
+              </span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <input data-batch-count type="text" inputmode="numeric" value="3"
+                     class="input input-bordered input-sm w-24 text-sm"
+                     placeholder="{% trans '数量' %}" autocomplete="off" />
+              <button type="button" data-batch-fetch class="btn btn-outline btn-sm">{% trans "获取验证码" %}</button>
+              <button type="button" data-batch-run class="btn btn-primary btn-sm">{% trans "一键注册" %}</button>
+              <span class="text-xs text-base-content/60">{% trans "单次最多 20 条" %}</span>
+            </div>
+            <div class="mt-3 space-y-2" data-batch-list></div>
+
+            {# 换一张验证码的二次确认：点击某行验证码图时弹出（表示看不清当前这张） #}
+            <dialog data-batch-confirm class="modal">
+              <div class="modal-box max-w-sm">
+                <h3 class="text-base font-bold">{% trans "看不清这张验证码？" %}</h3>
+                <p class="mt-2 text-sm text-base-content/70">
+                  {% trans "确认后将为该行重新获取一张新验证码，该行已填写的验证码会一并清空。" %}
+                </p>
+                <form method="dialog" class="modal-action">
+                  <button value="cancel" class="btn btn-sm">{% trans "取消" %}</button>
+                  <button value="confirm" class="btn btn-primary btn-sm">{% trans "换一张" %}</button>
+                </form>
+              </div>
+              <form method="dialog" class="modal-backdrop"><button>{% trans "取消" %}</button></form>
+            </dialog>
           </div>
           {% endif %}
         </div>
@@ -217,21 +351,116 @@
   </div>
   {% endfor %}
 
-  </div>{# /右侧内容 #}
+  </div>{# /中间内容 #}
+
+  {# ===== 右侧栏：接口目录 + 接入鉴权（桌面端吸顶跟随，紧跟左侧导航） ===== #}
+  <aside class="flex w-full shrink-0 flex-col gap-4 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:w-72 lg:overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+         aria-label="{% trans '接口目录与接入鉴权' %}">
+
+    {% if endpoint_count > 1 %}
+    {# 接口目录：本服务全部接口速览，支持搜索 + 按请求方法筛选，点击直达端点；列表区限高、内部滚动 #}
+    <details class="collapse collapse-arrow feel-card" data-doc-toc open>
+      <summary class="collapse-title text-base font-semibold">
+        <span class="flex flex-wrap items-center gap-2">
+          <i data-lucide="list-tree" class="h-4 w-4 shrink-0 opacity-60" aria-hidden="true"></i>
+          {% trans "接口目录" %}
+          <span class="badge badge-ghost badge-sm">{{ endpoint_count }}</span>
+        </span>
+      </summary>
+      <div class="collapse-content px-3 pb-3">
+        <label class="input input-bordered input-sm flex w-full items-center gap-2">
+          <i data-lucide="search" class="h-4 w-4 shrink-0 opacity-50" aria-hidden="true"></i>
+          <input data-toc-search type="text" name="toc_search" class="grow text-sm" autocomplete="off"
+                 placeholder="{% trans '搜索接口名称或路径' %}" />
+        </label>
+        {# 方法筛选按钮由脚本按本服务实际用到的请求方法生成（带各自数量） #}
+        <div class="mt-2 hidden flex-wrap gap-1" data-toc-methods></div>
+
+        {# 接口列表：按线路分组；过滤时无命中的分组会整组隐藏 #}
+        <div class="mt-2 max-h-72 overflow-y-auto" data-toc-list>
+          {% for channel in doc.channels %}
+          <div class="mt-1" data-toc-group>
+            <p class="px-2 py-1 text-xs font-semibold text-base-content/70">{{ channel.name }}</p>
+            {% for ep in channel.endpoints %}
+            <a href="#ep-{{ channel.slug }}-{{ ep.slug }}" data-toc-link data-ep-method="{{ ep.method }}"
+               data-toc-key="{{ ep.name }} {{ ep.path }}"
+               class="flex items-start gap-2 rounded-box px-2 py-1 hover:bg-base-200">
+              <span class="badge badge-xs {{ ep.method_badge }} mt-0.5 font-mono">{{ ep.method }}</span>
+              <span class="min-w-0 flex-1">
+                <span class="block truncate text-sm">{{ ep.name }}</span>
+                <span class="block truncate font-mono text-xs text-base-content/50">{{ ep.path }}</span>
+              </span>
+            </a>
+            {% endfor %}
+          </div>
+          {% endfor %}
+          <p data-toc-empty class="hidden px-2 py-6 text-center text-xs text-base-content/50">
+            {% trans "没有匹配的接口" %}
+          </p>
+        </div>
+
+        {# 过滤结果计数 #}
+        <div class="mt-1 text-xs text-base-content/60" data-toc-count></div>
+      </div>
+    </details>
+    {% endif %}
+
+    {# 鉴权设置卡（本机保存，服务端代签） #}
+    <div id="docs-auth-card" class="feel-card">
+      <div class="card-body gap-3 p-4">
+        <div class="flex items-center justify-between">
+          <h2 class="card-title text-base">
+            <i data-lucide="key-round" class="h-4 w-4 shrink-0 opacity-60" aria-hidden="true"></i>
+            {% trans "鉴权设置" %}
+          </h2>
+          <span class="badge badge-ghost badge-sm">{% trans "仅本机保存" %}</span>
+        </div>
+        <form id="docs-auth-form" novalidate>
+          {% csrf_token %}
+          <label class="fieldset-label" for="doc-app-id">APPID</label>
+          <input id="doc-app-id" type="text" class="input input-bordered w-full text-xs"
+                 placeholder="{% trans 'app_ 开头，接入项目公开标识' %}" autocomplete="off" />
+          <label class="fieldset-label mt-2" for="doc-app-secret">APPSECRET</label>
+          <input id="doc-app-secret" type="password" class="input input-bordered w-full text-xs"
+                 placeholder="{% trans 'sk_ 开头签名密钥，仅用于本次服务端代签' %}" autocomplete="off" />
+          <p class="mt-2 text-xs text-base-content/60">
+            {% trans "需要签名接口必须填写你的接入项目密钥；开放接口可留空直接调试。密钥只在发起请求时用于服务端签名，不落库、不上传到页面以外。" %}
+          </p>
+          <button type="button" id="docs-auth-save" class="btn btn-outline btn-sm mt-3 w-full">{% trans "保存到本机浏览器" %}</button>
+        </form>
+      </div>
+    </div>
+  </aside>
 
   </div>{# /flex #}
 </section>
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'js/site/docs.js' %}?v=20260926a"></script>
+<script src="{% static 'js/site/docs.js' %}?v=20260930d"></script>
+{% if has_announcement %}
+{# 接口公告条：超长正文折叠 / 展开，单条「关闭」（仅本机记忆） #}
+<script src="{% static 'js/site/docs_announcements.js' %}?v=20260930a"></script>
+{% endif %}
 {% if has_player %}
 {# 在线播放器（m3u8）：端点在文档声明中标记 player=True 时加载 #}
-<script src="{% static 'js/site/docs_player.js' %}?v=20260926a"></script>
+<script src="{% static 'js/site/docs_player.js' %}?v=20260930c"></script>
+{% endif %}
+{% if has_image %}
+{# 图片解码预览：端点在文档声明中提供 image_help 时加载 #}
+<script src="{% static 'js/site/docs_image.js' %}?v=20260929a"></script>
+{% endif %}
+{% if has_register_ui %}
+{# 注册辅助：一键填写 + 批量注册面板（端点在文档声明中提供 auto_fill_path / batch_register_path） #}
+<script src="{% static 'js/site/docs_register.js' %}?v=20260929d"></script>
+{% endif %}
+{% if has_picker %}
+{# 参数选择器：账号选择器（搜库内账号）+ 礼物面板（看图挑礼物），见 docs_picker.js #}
+<script src="{% static 'js/site/docs_picker.js' %}?v=20260930a"></script>
 {% endif %}
 {% if doc.slug == 'captcha_auth' %}
 {# 图形验证：在线调试中模拟“前端真实弹窗”完成验证（仅该服务需要） #}
-<script src="{% static 'js/captcha_auth/aliyun/captcha-client.js' %}?v=20260911b"></script>
+<script src="{% static 'js/captcha_auth/aliyun/captcha-client.js' %}?v=20260930a"></script>
 <script src="{% static 'js/site/docs_captcha.js' %}?v=20260909a"></script>
 {% elif doc.slug == 'captcha_self' %}
 {# 自研图形验证码：在线调试中弹出真实验证码弹窗完成验证（仅该服务需要） #}

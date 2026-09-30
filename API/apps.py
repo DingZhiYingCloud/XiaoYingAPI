@@ -42,8 +42,28 @@ class ApiConfig(AppConfig):
         m2m_changed.connect(_invalidate_policy_cache,
                             sender=ApiServicePolicy.apps.through, weak=False)
 
+        # AI 模型清单缓存失效钩子：后台保存 / 删除厂商、模型或系统提示词后立即失效，
+        # 文档页下拉与 /api/ai/BuiltInModel/models 立刻反映改动，无需等 TTL
+        from API.apis.ai.BuiltInModel.utils import invalidate_models_cache
+        from API.models.AI.provider import AiModel, AiProvider, AiSystemPrompt
+
+        def _invalidate_ai_cache(sender, instance, **kwargs):
+            invalidate_models_cache()
+
+        for model_cls in (AiProvider, AiModel, AiSystemPrompt):
+            post_save.connect(_invalidate_ai_cache, sender=model_cls, weak=False)
+            post_delete.connect(_invalidate_ai_cache, sender=model_cls, weak=False)
+
         # SQLite 连接级 PRAGMA（WAL + synchronous=NORMAL）
         connection_created.connect(_configure_sqlite, weak=False)
+
+        # 反馈中心 AI 审核线程：只在「对外提供服务」的进程里启动（管理命令一律不起，
+        # runserver 自动重载时只有子进程起），线程内一次审一条、慢慢来，
+        # 多 worker 部署靠行级抢占保证同一条不会被审两次（见 API/apis/feedback/ai.py）
+        from API.apis.feedback.ai import is_serving_process, start_review_worker
+
+        if is_serving_process():
+            start_review_worker()
 
         # collectstatic：把「前端编译源码与工具」排除在收集之外 —— 它们只服务编译期，不是运行时资源：
         #   - css/input.css 第 1 行的 @import "tailwindcss" 会被 Manifest 存储当成待解析的 URL，直接报错；

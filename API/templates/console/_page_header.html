@@ -1,13 +1,17 @@
 {% load i18n %}
 {% comment %}控制台页面头（统一视觉）。用法：
 {% trans "简短说明" as ph_desc %}{% include 'console/_page_header.html' with icon='boxes' title='接入项目管理' desc=ph_desc %}
+可选 meta：页面头右侧的一行补充信息（如「共 128 条」），传已翻译好的文本。
 icon = lucide 图标名；title 为中文源语言（这里用 {% trans %} 翻译）；desc 传已翻译好的文本，不传则不显示。{% endcomment %}
-<div class="flex min-w-0 items-start gap-3">
+<div class="flex min-w-0 flex-wrap items-center gap-3 border-b border-base-300 pb-4">
   <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-box bg-primary/10 text-primary">
     <i data-lucide="{{ icon }}" class="h-5 w-5"></i>
   </span>
-  <div class="min-w-0">
+  <div class="min-w-0 flex-1">
     <h1 class="text-xl font-bold sm:text-2xl">{% trans title %}</h1>
     {% if desc %}<p class="mt-0.5 text-sm text-base-content/70">{{ desc }}</p>{% endif %}
   </div>
+  {% if meta %}
+  <span class="badge badge-soft badge-ghost shrink-0">{{ meta }}</span>
+  {% endif %}
 </div>

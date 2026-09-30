@@ -1,0 +1,298 @@
+{% extends 'console/base.html' %}
+{% load static i18n %}
+
+{# 问题反馈中心 · 设置：功能开关与规则、AI 审核与提示词、附件上限、反馈类型字典；联系方式平台与各项目开发者联系方式已独立成模块页 /console/contacts/（见 console_feedback.py 说明） #}
+
+{% block title %}{% trans "反馈中心设置 - 超级管理员 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,问题反馈,反馈设置" %}{% endblock %}
+{% block description %}{% trans "小影API 超级管理员：问题反馈中心设置（功能开关、AI 审核开关与两套提示词、审核模型、附件上限、游客防刷）与反馈类型字典。" %}{% endblock %}
+
+{% block console_content %}
+{% trans "反馈中心的功能开关、AI 审核与提示词、附件上限与防刷规则，以及反馈类型字典。" as ph_desc %}
+{% include 'console/_page_header.html' with icon='settings' title='反馈中心设置' desc=ph_desc %}
+
+{% include 'console/_messages.html' %}
+
+<div class="mt-3 flex flex-wrap items-center gap-2">
+  <a href="{% url 'website:console_feedback' %}" class="btn btn-ghost btn-sm gap-1.5">
+    <i data-lucide="arrow-left" class="h-4 w-4"></i>{% trans "返回反馈管理" %}
+  </a>
+  <a href="{% url 'website:console_contacts' %}" class="btn btn-ghost btn-sm gap-1.5">
+    <i data-lucide="headset" class="h-4 w-4"></i>{% trans "开发者联系方式" %}
+  </a>
+</div>
+
+{# ==================== 一、开关与规则 ==================== #}
+<form method="post" class="con-panel mt-3">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="save_setting" />
+  <div class="con-panel-body gap-5">
+
+    <div class="flex items-center gap-3">
+      <span class="text-sm font-semibold">{% trans "功能与提交规则" %}</span>
+      <span class="h-px flex-1 bg-base-300"></span>
+    </div>
+
+    <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <label class="flex cursor-pointer items-center gap-2">
+        <input type="checkbox" name="enabled" value="1" class="toggle toggle-sm" {% if setting.enabled %}checked{% endif %} />
+        <span class="text-sm">{% trans "启用反馈中心" %}</span>
+      </label>
+      <label class="flex cursor-pointer items-center gap-2">
+        <input type="checkbox" name="captcha_required" value="1" class="toggle toggle-sm" {% if setting.captcha_required %}checked{% endif %} />
+        <span class="text-sm">{% trans "游客提交需图形验证码" %}</span>
+      </label>
+      <label class="flex cursor-pointer items-center gap-2">
+        <input type="checkbox" name="email_notify" value="1" class="toggle toggle-sm" {% if setting.email_notify %}checked{% endif %} />
+        <span class="text-sm">{% trans "回复时给联系邮箱发通知" %}</span>
+      </label>
+    </div>
+
+    <div class="grid gap-3 sm:grid-cols-2">
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/70">{% trans "同 IP 每小时提交上限（0=不限）" %}</span>
+        <input type="number" name="rate_limit_hour" min="0" max="1000" value="{{ setting.rate_limit_hour }}"
+               class="input input-sm input-bordered" />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/70">{% trans "同 IP 每天提交上限（0=不限）" %}</span>
+        <input type="number" name="rate_limit_day" min="0" max="10000" value="{{ setting.rate_limit_day }}"
+               class="input input-sm input-bordered" />
+      </label>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <span class="text-sm font-semibold">{% trans "AI 审核" %}</span>
+      <span class="h-px flex-1 bg-base-300"></span>
+    </div>
+
+    <div class="grid gap-2 sm:grid-cols-2">
+      <label class="flex cursor-pointer items-center gap-2">
+        <input type="checkbox" name="ai_review_enabled" value="1" class="toggle toggle-sm" {% if setting.ai_review_enabled %}checked{% endif %} />
+        <span class="text-sm">{% trans "提交时先过 AI 审核" %}</span>
+      </label>
+      <label class="flex cursor-pointer items-center gap-2">
+        <input type="checkbox" name="ai_reject_image" value="1" class="toggle toggle-sm" {% if setting.ai_reject_image %}checked{% endif %} />
+        <span class="text-sm">{% trans "AI 驳回时生成中文说明图" %}</span>
+      </label>
+    </div>
+
+    <label class="flex flex-col gap-1">
+      <span class="text-xs text-base-content/70">{% trans "审核专用模型（留空用平台默认模型）" %}</span>
+      <select name="review_model" class="select select-sm select-bordered w-full sm:w-80">
+        <option value="">{% trans "跟随平台默认模型" %}</option>
+        {% for model in models %}
+        <option value="{{ model.pk }}"{% if setting.review_model_id == model.pk %} selected{% endif %}>{{ model.name }}（{{ model.key }}）</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <div class="grid gap-3">
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/70">{% trans "提交内容审核提示词（留空用内置通用规则）" %}</span>
+        <textarea name="submit_prompt" rows="5" class="textarea textarea-bordered w-full font-mono text-xs"
+                  placeholder="{% trans '把规则写成提示词，与反馈正文、提交者信息一起发给 AI；由 AI 判定是否驳回。' %}">{{ setting.submit_prompt }}</textarea>
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/70">{% trans "回复语气审查提示词（留空用内置通用规则）" %}</span>
+        <textarea name="reply_prompt" rows="4" class="textarea textarea-bordered w-full font-mono text-xs"
+                  placeholder="{% trans '管理员回复前审查语气；AI 只提醒，管理员可强制发送。' %}">{{ setting.reply_prompt }}</textarea>
+      </label>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <span class="text-sm font-semibold">{% trans "附件上限" %}</span>
+      <span class="h-px flex-1 bg-base-300"></span>
+    </div>
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/70">{% trans "图片张数上限" %}</span>
+        <input type="number" name="max_images" min="0" max="20" value="{{ setting.max_images }}"
+               class="input input-sm input-bordered" />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/70">{% trans "单张图片大小上限(MB)" %}</span>
+        <input type="number" name="max_image_mb" min="1" max="100" value="{{ setting.max_image_mb }}"
+               class="input input-sm input-bordered" />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/70">{% trans "视频个数上限" %}</span>
+        <input type="number" name="max_videos" min="0" max="10" value="{{ setting.max_videos }}"
+               class="input input-sm input-bordered" />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/70">{% trans "单个视频大小上限(MB)" %}</span>
+        <input type="number" name="max_video_mb" min="1" max="500" value="{{ setting.max_video_mb }}"
+               class="input input-sm input-bordered" />
+      </label>
+    </div>
+    <p class="text-xs text-base-content/50">
+      {% trans "附件上限为全局一套，反馈提交与管理员回复共用同一口径；填 0 表示该类附件不允许上传。" %}
+    </p>
+
+    <div class="flex justify-end">
+      <button type="submit" class="btn btn-primary btn-sm">{% trans "保存设置" %}</button>
+    </div>
+  </div>
+</form>
+
+{# ==================== 二、反馈类型 ==================== #}
+<div class="con-panel mt-4">
+  <div class="con-panel-body gap-3">
+    <div class="flex flex-wrap items-center gap-3">
+      <span class="text-sm font-semibold">{% trans "反馈类型" %}</span>
+      <span class="h-px flex-1 bg-base-300"></span>
+      <button type="button" class="btn btn-primary btn-sm" id="type-create">
+        <i data-lucide="plus" class="h-4 w-4"></i>{% trans "新增类型" %}
+      </button>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="table table-sm min-w-[52rem]">
+        <thead>
+          <tr>
+            <th class="whitespace-nowrap">{% trans "排序" %}</th>
+            <th class="whitespace-nowrap">{% trans "标识" %}</th>
+            <th class="whitespace-nowrap">{% trans "名称" %}</th>
+            <th class="whitespace-nowrap">{% trans "说明" %}</th>
+            <th class="whitespace-nowrap">{% trans "图标" %}</th>
+            <th class="whitespace-nowrap">{% trans "默认" %}</th>
+            <th class="whitespace-nowrap">{% trans "启用" %}</th>
+            <th class="whitespace-nowrap text-right">{% trans "操作" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for type in types %}
+          <tr>
+            <td class="text-xs">{{ type.sort }}</td>
+            <td class="font-mono text-xs">{{ type.code }}</td>
+            <td class="text-sm">{{ type.name }}</td>
+            <td class="max-w-[18rem] truncate text-xs text-base-content/70">{{ type.desc|default:'—' }}</td>
+            <td class="text-xs">{{ type.icon|default:'—' }}</td>
+            <td>{% if type.is_default %}<span class="badge badge-primary badge-xs">{% trans "默认" %}</span>{% endif %}</td>
+            <td>
+              <span class="badge badge-sm {% if type.enabled %}badge-success{% else %}badge-ghost{% endif %}">
+                {% if type.enabled %}{% trans "启用" %}{% else %}{% trans "停用" %}{% endif %}
+              </span>
+            </td>
+            <td class="whitespace-nowrap text-right">
+              <button type="button" class="btn btn-ghost btn-xs"
+                      data-type-edit="1"
+                      data-id="{{ type.pk }}" data-code="{{ type.code }}" data-name="{{ type.name }}"
+                      data-desc="{{ type.desc }}" data-icon="{{ type.icon }}" data-sort="{{ type.sort }}"
+                      data-enabled="{{ type.enabled|yesno:'1,0' }}" data-default="{{ type.is_default|yesno:'1,0' }}"
+                      data-remark="{{ type.remark }}">{% trans "编辑" %}</button>
+              <form method="post" class="inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="type_toggle" />
+                <input type="hidden" name="id" value="{{ type.pk }}" />
+                <button type="submit" class="btn btn-ghost btn-xs">{% if type.enabled %}{% trans "停用" %}{% else %}{% trans "启用" %}{% endif %}</button>
+              </form>
+              <form method="post" class="inline"
+                    data-confirm="{% trans '删除该类型后，历史反馈会显示为「未分类」。确认删除？' %}"
+                    data-confirm-danger="1">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="type_delete" />
+                <input type="hidden" name="id" value="{{ type.pk }}" />
+                <button type="submit" class="btn btn-ghost btn-xs text-error">{% trans "删除" %}</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{# ==================== 类型编辑弹窗 ==================== #}
+<dialog id="type-modal" class="modal">
+  <div class="modal-box max-w-lg">
+    <h3 class="text-base font-bold" id="type-modal-title">{% trans "新增反馈类型" %}</h3>
+    <form method="post" id="type-form" class="mt-3 flex flex-col gap-3">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="type_create" />
+      <input type="hidden" name="id" value="" />
+      <div class="grid gap-3 sm:grid-cols-2">
+        <label class="flex flex-col gap-1">
+          <span class="text-xs text-base-content/70">{% trans "类型标识 *" %}</span>
+          <input type="text" name="code" maxlength="30" class="input input-sm input-bordered" placeholder="suggestion" />
+        </label>
+        <label class="flex flex-col gap-1">
+          <span class="text-xs text-base-content/70">{% trans "类型名称 *" %}</span>
+          <input type="text" name="name" maxlength="30" class="input input-sm input-bordered" placeholder="{% trans '功能建议' %}" />
+        </label>
+      </div>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/70">{% trans "类型说明" %}</span>
+        <input type="text" name="desc" maxlength="100" class="input input-sm input-bordered" />
+      </label>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <label class="flex flex-col gap-1">
+          <span class="text-xs text-base-content/70">{% trans "图标（lucide 名称）" %}</span>
+          <span class="flex w-full items-center gap-1">
+            <input type="text" name="icon" maxlength="30" class="input input-sm input-bordered min-w-0 flex-1" placeholder="lightbulb" />
+            {# 按钮左侧那个小图标就是当前图标名的预览（由下方脚本按输入框内容实时渲染） #}
+            <button type="button" class="btn btn-sm btn-outline shrink-0 gap-1 px-2" data-icon-open="1"
+                    title="{% trans '从图标集里挑一个' %}">
+              <span class="flex h-4 w-4 items-center justify-center" data-icon-preview></span>
+              {% trans "图标集" %}
+            </button>
+          </span>
+        </label>
+        <label class="flex flex-col gap-1">
+          <span class="text-xs text-base-content/70">{% trans "排序（越小越前）" %}</span>
+          <input type="number" name="sort" value="0" class="input input-sm input-bordered" />
+        </label>
+      </div>
+      <div class="flex flex-wrap items-center gap-4">
+        <label class="flex cursor-pointer items-center gap-2">
+          <input type="checkbox" name="enabled" value="1" class="toggle toggle-sm" checked />
+          <span class="text-sm">{% trans "启用" %}</span>
+        </label>
+        <label class="flex cursor-pointer items-center gap-2">
+          <input type="checkbox" name="is_default" value="1" class="toggle toggle-sm" />
+          <span class="text-sm">{% trans "设为默认选中" %}</span>
+        </label>
+      </div>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/70">{% trans "备注" %}</span>
+        <input type="text" name="remark" maxlength="255" class="input input-sm input-bordered" />
+      </label>
+      <div class="modal-action">
+        <button type="button" class="btn btn-ghost btn-sm" data-modal-close="type-modal">{% trans "取消" %}</button>
+        <button type="submit" class="btn btn-primary btn-sm">{% trans "保存" %}</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>{% trans "关闭" %}</button></form>
+</dialog>
+
+{% endblock %}
+
+{% block js %}
+{# 新增 / 编辑弹窗与图标集是「反馈类型 / 联系方式平台」两页共用的交互，见 console_forms.js #}
+<script src="{% static 'js/site/console_forms.js' %}?v=20260930b"></script>
+<script>
+(function () {
+  var FIELDS = ['code', 'name', 'desc', 'icon', 'sort', 'remark'];
+  var OPEN = {
+    modalId: 'type-modal', formId: 'type-form', titleId: 'type-modal-title',
+    fields: FIELDS, prefix: 'type', hasDefault: true,
+    createTitle: gettext('新增反馈类型'), editTitle: gettext('编辑反馈类型')
+  };
+
+  var create = document.getElementById('type-create');
+  if (create) {
+    create.addEventListener('click', function () {
+      XYConsoleForm.open(Object.assign({}, OPEN, { source: null }));
+    });
+    document.querySelectorAll('[data-type-edit]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        XYConsoleForm.open(Object.assign({}, OPEN, { source: btn }));
+      });
+    });
+  }
+})();
+</script>
+{% endblock %}

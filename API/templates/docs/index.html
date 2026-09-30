@@ -6,71 +6,94 @@
 {% block description %}{% trans "小影API 接口文档中心：左侧导航按服务与线路查看接口参数说明，并支持在线调试。" %}{% endblock %}
 
 {% block content %}
-<section class="mx-auto w-full max-w-7xl px-4 py-6 lg:py-8">
+
+{# ==================== 页头（与首页同一套视觉气质，装饰层由预设决定） ==================== #}
+<section class="feel-hero">
+  <div class="feel-glow" aria-hidden="true"></div>
+  <div class="feel-hero-inner mx-auto w-full max-w-7xl px-4 py-8 lg:py-12">
+    <nav class="breadcrumbs text-sm">
+      <ul>
+        <li><a href="/docs/">{% trans "接口文档" %}</a></li>
+      </ul>
+    </nav>
+
+    <span class="feel-kicker feel-rise mt-2">{% trans "文档中心" %}</span>
+    <h1 class="feel-title feel-rise mt-3 text-3xl sm:text-4xl [animation-delay:60ms]">{% trans "接口文档中心" %}</h1>
+    <p class="feel-sub feel-rise mt-3 max-w-3xl text-sm sm:text-base [animation-delay:120ms]">
+      {% blocktrans %}左侧导航按「服务 → 线路」组织，点击服务名展开查看其下全部子接口，每个接口都支持<span class="font-medium text-primary">参数填写与在线调试</span>。{% endblocktrans %}
+    </p>
+
+    <div class="feel-rise mt-5 flex flex-wrap items-center gap-2 [animation-delay:180ms]">
+      <span class="feel-chip gap-1.5">
+        <i data-lucide="terminal" class="h-3.5 w-3.5 text-primary" aria-hidden="true"></i>{% trans "在线调试" %}
+      </span>
+      <span class="feel-chip gap-1.5">
+        <i data-lucide="list-tree" class="h-3.5 w-3.5 text-secondary" aria-hidden="true"></i>{% trans "服务 / 线路展开" %}
+      </span>
+      {# 服务状态图例：图标与文案均取自 service_status（单一数据源），与左侧导航/服务卡片一致 #}
+      {% for st in status_legend %}
+      <span class="badge {{ st.badge }} gap-1">
+        <i data-lucide="{{ st.icon }}" class="h-3.5 w-3.5" aria-hidden="true"></i>{{ st.label }}
+      </span>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{# ==================== 左侧导航 + 服务总览 ==================== #}
+<section class="mx-auto w-full max-w-7xl px-4 py-8 lg:py-10">
   <div class="flex flex-col gap-6 lg:flex-row">
 
     {% include 'docs/_sidebar.html' %}
 
     {# ===== 右侧内容 ===== #}
     <div class="min-w-0 flex-1">
-      <nav class="breadcrumbs text-sm">
-        <ul>
-          <li><a href="/docs/">{% trans "接口文档" %}</a></li>
-        </ul>
-      </nav>
-
-      <div class="mt-2 rounded-box border border-base-300 bg-gradient-to-br from-base-100 to-base-200 p-6 sm:p-8">
-        <h1 class="text-2xl font-bold sm:text-3xl">{% trans "接口文档中心" %}</h1>
-        <p class="mt-2 max-w-2xl text-sm text-base-content/70 sm:text-base">
-          {% blocktrans %}左侧导航按「服务 → 线路」组织，点击服务名展开查看其下全部子接口，每个接口都支持<span class="font-medium text-primary">参数填写与在线调试</span>。{% endblocktrans %}
-        </p>
-        <div class="mt-4 flex flex-wrap gap-2 text-sm">
-          <span class="badge badge-soft badge-primary">{% trans "在线调试" %}</span>
-          <span class="badge badge-soft badge-secondary">{% trans "服务/线路展开" %}</span>
-          {# 服务状态图例：图标与文案均取自 service_status（单一数据源），与左侧导航/服务卡片一致 #}
-          {% for st in status_legend %}
-          <span class="badge {{ st.badge }} gap-1">
-            <i data-lucide="{{ st.icon }}" class="h-3.5 w-3.5" aria-hidden="true"></i>{{ st.label }}
-          </span>
-          {% endfor %}
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <span class="feel-kicker">{% trans "全部服务" %}</span>
+          <h2 class="feel-h2 mt-2 text-xl sm:text-2xl">
+            {% blocktrans with total=services|length %}共 {{ total }} 个服务{% endblocktrans %}
+          </h2>
         </div>
+        <span class="feel-chip gap-1.5">
+          <i data-lucide="circle-check" class="h-3.5 w-3.5 text-success" aria-hidden="true"></i>
+          {% blocktrans with online=online_count %}可在线调试 {{ online }} 个{% endblocktrans %}
+        </span>
       </div>
 
       {# 全量服务速览（状态由超级管理员在「服务策略」页 /console/services/ 维护） #}
-      <div class="mt-6">
-        <h2 class="text-lg font-semibold">{% blocktrans with total=services|length online=online_count %}全部服务（共 {{ total }} 个，可在线调试 {{ online }} 个）{% endblocktrans %}</h2>
-        <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {% for svc in services %}
-          {% if svc.registered and svc.status != 'dev' and svc.status != 'offline' %}
-          <a href="/docs/{{ svc.slug }}/"
-             class="card card-border bg-base-100 transition hover:-translate-y-0.5 hover:shadow-md">
-          {% else %}
-          <div class="card card-border bg-base-100 opacity-75" aria-disabled="true">
-          {% endif %}
-            <div class="card-body gap-1 p-4">
-              <div class="flex items-center justify-between gap-2">
-                <h3 class="card-title text-base">{{ svc.name }}</h3>
-                <span class="badge {{ svc.status_badge }} badge-sm gap-1">
-                  <i data-lucide="{{ svc.status_icon }}" class="h-3.5 w-3.5" aria-hidden="true"></i>{{ svc.status_label }}
-                </span>
-              </div>
-              <p class="line-clamp-2 text-xs text-base-content/70">{{ svc.desc }}</p>
-              <div class="mt-1 flex items-center justify-between text-xs">
-                {% if svc.registered %}
-                <span class="font-mono text-primary">{{ svc.slug }}</span>
-                <span class="badge badge-soft badge-primary badge-sm">{% blocktrans with n=svc.channel_count %}{{ n }} 线路{% endblocktrans %}</span>
-                {% else %}
-                <span class="opacity-60">{% trans "文档接入中" %}</span>
-                {% endif %}
-              </div>
-            </div>
-          {% if svc.registered and svc.status != 'dev' and svc.status != 'offline' %}
-          </a>
-          {% else %}
+      <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {% for svc in services %}
+        {% if svc.registered and svc.status != 'dev' and svc.status != 'offline' %}
+        <a href="/docs/{{ svc.slug }}/"
+           class="feel-card group flex flex-col gap-2 p-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+        {% else %}
+        <div class="feel-card flex flex-col gap-2 p-4 opacity-75" aria-disabled="true">
+        {% endif %}
+          <div class="flex items-start justify-between gap-2">
+            <h3 class="text-base font-semibold leading-snug">{{ svc.name }}</h3>
+            <span class="badge {{ svc.status_badge }} badge-sm shrink-0 gap-1">
+              <i data-lucide="{{ svc.status_icon }}" class="h-3.5 w-3.5" aria-hidden="true"></i>{{ svc.status_label }}
+            </span>
           </div>
-          {% endif %}
-          {% endfor %}
+          <p class="line-clamp-2 flex-1 text-xs leading-relaxed text-base-content/70">{{ svc.desc }}</p>
+          <div class="flex items-center justify-between gap-2 text-xs">
+            {% if svc.registered %}
+            <span class="truncate font-mono text-primary">{{ svc.slug }}</span>
+            <span class="flex shrink-0 items-center gap-1.5">
+              <span class="feel-chip">{% blocktrans with n=svc.channel_count %}{{ n }} 线路{% endblocktrans %}</span>
+              <i data-lucide="arrow-right" class="h-3.5 w-3.5 text-primary transition group-hover:translate-x-0.5" aria-hidden="true"></i>
+            </span>
+            {% else %}
+            <span class="opacity-60">{% trans "文档接入中" %}</span>
+            {% endif %}
+          </div>
+        {% if svc.registered and svc.status != 'dev' and svc.status != 'offline' %}
+        </a>
+        {% else %}
         </div>
+        {% endif %}
+        {% endfor %}
       </div>
     </div>
 

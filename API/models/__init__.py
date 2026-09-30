@@ -6,10 +6,25 @@ from API.models.Users.auth_method import AuthMethod
 from API.models.Projects.app import UserApp
 from API.models.Auth.policy import ApiServicePolicy
 from API.models.Email.email_template import EmailTemplate
-from API.models.Feedback.feedback import Feedback, FeedbackReply
+from API.models.Feedback.contact import ContactPlatform, ProjectContact
+from API.models.Feedback.feedback import (
+    Feedback,
+    FeedbackAttachment,
+    FeedbackAuditLog,
+    FeedbackReply,
+    FeedbackReplyAttachment,
+    FeedbackType,
+)
+from API.models.Feedback.setting import FeedbackSetting
+from API.models.Feedback.ticket import FeedbackTicket
 from API.models.Captcha.captcha import CaptchaChallenge
 from API.models.Statistics.api_call_stat import ApiCallStat, ApiCallStatHour
 from API.models.ImageHosting.image_hosting_token import ImageHostingToken
+from API.models.Dramas.episode_video import HongguoEpisodeVideo
+from API.models.Haijiao.account import HaijiaoAccount
+from API.models.Docs.announcement import Announcement
+from API.models.AI.provider import AiModel, AiProvider, AiSystemPrompt
+from API.models.Website.appearance import SiteAppearance
 
 __all__ = [
     'BaseModel',
@@ -25,9 +40,24 @@ __all__ = [
     'ApiServicePolicy',
     'EmailTemplate',
     'Feedback',
+    'FeedbackType',
     'FeedbackReply',
+    'FeedbackAttachment',
+    'FeedbackReplyAttachment',
+    'FeedbackAuditLog',
+    'FeedbackSetting',
+    'FeedbackTicket',
+    'ContactPlatform',
+    'ProjectContact',
     'CaptchaChallenge',
     'ApiCallStat',
     'ApiCallStatHour',
     'ImageHostingToken',
+    'HongguoEpisodeVideo',
+    'HaijiaoAccount',
+    'Announcement',
+    'AiProvider',
+    'AiSystemPrompt',
+    'AiModel',
+    'SiteAppearance',
 ]

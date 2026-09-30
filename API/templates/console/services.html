@@ -15,7 +15,7 @@
   <div role="alert" class="alert alert-soft bg-base-200 mt-4 items-start py-3 text-sm">
     <div class="space-y-1">
       <p>
-        {% trans "逐级继承：服务 → 线路 → 端点，每一级都可单独设状态 / 认证模式 / 项目范围；设为「跟随上级」则向上一级取，最终兜底为「正常 + 需要签名 + 不限项目」。" %}
+        {% trans "逐级继承：服务 → 线路 → 端点，每一级都可单独设状态 / 认证模式 / 项目范围 / 文档可见性 / 使用范围；设为「跟随上级」则向上一级取，最终兜底为「正常 + 需要签名 + 不限项目 + 文档展示 + 正常」。" %}
       </p>
       <p class="text-xs opacity-80">
         {% trans "维护态：生效状态为「维护中」时，命中路径的 /api/ 请求统一返回 30004「服务维护中」，且不做签名校验（匿名同样收到）。" %}
@@ -25,6 +25,12 @@
       </p>
       <p class="text-xs opacity-80">
         {% trans "项目白名单：仅在生效认证模式为「需要签名」时生效——签名通过后若当前项目不在名单内，返回 20020「无权限」；开放模式不校验签名，拿不到调用项目。" %}
+      </p>
+      <p class="text-xs opacity-80">
+        {% trans "文档可见性：生效值「文档隐藏」的路径不会出现在官网文档中心与在线调试中（后台内部接口用）。" %}
+      </p>
+      <p class="text-xs opacity-80">
+        {% trans "使用范围：生效值「仅专属管理员」的路径仅供后台内部使用，对外调用一律返回 20020「无权限」（不区分是否带签名）。" %}
       </p>
       <p class="text-xs opacity-80">
         {% trans "未命中任何策略的 /api/ 路径按全局默认「需要签名」处理（fail-closed）。" %}
@@ -40,7 +46,7 @@
   </div>
 
   {# 策略列表 #}
-  <div class="mt-3 overflow-x-auto">
+  <div class="con-table-wrap mt-3">
     <table class="table table-sm">
       <thead>
         <tr>
@@ -50,6 +56,7 @@
           <th class="whitespace-nowrap">{% trans "认证模式" %}</th>
           <th class="whitespace-nowrap">{% trans "生效结果" %}</th>
           <th class="whitespace-nowrap">{% trans "项目范围" %}</th>
+          <th class="whitespace-nowrap">{% trans "文档 / 使用范围" %}</th>
           <th class="whitespace-nowrap text-right">{% trans "操作" %}</th>
         </tr>
       </thead>
@@ -83,12 +90,30 @@
             <span class="text-xs text-base-content/60">{% trans "跟随上级" %}{% if policy.effective_scope == 'whitelist' %}（{% trans "生效：仅白名单项目" %}）{% endif %}</span>
             {% endif %}
           </td>
+          <td class="whitespace-nowrap text-sm">
+            {% if policy.docs_visible == 'hidden' %}
+            <span class="badge badge-soft badge-ghost badge-sm">{% trans "文档隐藏" %}</span>
+            {% elif policy.docs_visible == 'visible' %}
+            <span class="text-sm">{% trans "文档展示" %}</span>
+            {% else %}
+            <span class="text-xs text-base-content/60">{% trans "跟随上级" %}{% if policy.effective_docs_visible == 'hidden' %}（{% trans "生效：文档隐藏" %}）{% endif %}</span>
+            {% endif %}
+            <span class="mx-1 opacity-40">·</span>
+            {% if policy.audience == 'admin_only' %}
+            <span class="badge badge-soft badge-warning badge-sm">{% trans "仅专属管理员" %}</span>
+            {% elif policy.audience == 'normal' %}
+            <span class="text-sm">{% trans "正常" %}</span>
+            {% else %}
+            <span class="text-xs text-base-content/60">{% trans "跟随上级" %}{% if policy.effective_audience == 'admin_only' %}（{% trans "生效：仅专属管理员" %}）{% endif %}</span>
+            {% endif %}
+          </td>
           <td class="whitespace-nowrap text-right">
             <div class="flex items-center justify-end gap-1">
               <button type="button" class="btn btn-xs btn-ghost" data-edit-policy
                       data-id="{{ policy.id }}" data-name="{{ policy.name }}"
                       data-prefix="{{ policy.path_prefix }}" data-status="{{ policy.status }}"
                       data-mode="{{ policy.auth_mode }}" data-scope="{{ policy.app_scope }}"
+                      data-docs-visible="{{ policy.docs_visible }}" data-audience="{{ policy.audience }}"
                       data-remark="{{ policy.remark }}" data-apps="{{ policy.app_ids|join:',' }}">{% trans "编辑" %}</button>
               <form method="post" action="{% url 'website:console_services' %}">
                 {% csrf_token %}
@@ -113,7 +138,7 @@
         </tr>
         {% empty %}
         <tr>
-          <td colspan="7" class="py-6 text-center text-sm text-base-content/60">{% trans "暂无服务策略" %}</td>
+          <td colspan="8" class="py-6 text-center text-sm text-base-content/60">{% trans "暂无服务策略" %}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -305,6 +330,8 @@
       set('status', btn.dataset.status);
       set('auth_mode', btn.dataset.mode);
       set('app_scope', btn.dataset.scope);
+      set('docs_visible', btn.dataset.docsVisible);
+      set('audience', btn.dataset.audience);
       set('remark', btn.dataset.remark || '');
       var loc = locate(btn.dataset.prefix) || { service: btn.dataset.prefix, channel: '', endpoint: '' };
       fillServices(editForm, loc.service);

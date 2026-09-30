@@ -1,0 +1,314 @@
+{% extends 'console/base.html' %}
+{% load i18n static %}
+
+{% block title %}{% trans "接口公告 - 超级管理员 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,接口公告,公告栏,服务,线路,端点" %}{% endblock %}
+{% block description %}{% trans "小影API 超级管理员：给服务 / 线路 / 端点发布公告，在官网文档中心对应位置展示。" %}{% endblock %}
+
+{% block console_content %}
+{% blocktrans with total=items|length asvar ph_desc %}共 {{ total }} 条公告；挂到服务 / 线路 / 端点三级 API 对象上，发布后立即在官网文档中心对应位置展示。{% endblocktrans %}
+{% include 'console/_page_header.html' with icon='megaphone' title='接口公告' desc=ph_desc %}
+
+  {% include 'console/_messages.html' %}
+
+  {# 规则说明（纯提示，中性灰） #}
+  <div role="alert" class="alert alert-soft bg-base-200 mt-4 items-start py-3 text-sm">
+    <div class="space-y-1">
+      <p>
+        {% trans "展示位置：服务级公告显示在服务文档页顶部；线路级显示在该线路 Tab 内容顶部；端点级显示在该接口卡片内。一条线路 / 端点可挂多条，按「排序」从小到大平铺。" %}
+      </p>
+      <p class="text-xs opacity-80">
+        {% trans "生效条件：已启用、且落在「生效开始 / 生效结束」区间内（两端留空表示不限）。未到开始时间或已过结束时间的公告只在后台可见，前台不展示。" %}
+      </p>
+      <p class="text-xs opacity-80">
+        {% trans "正文原样展示（保留换行），填什么语言就显示什么语言，不做翻译；官网三语访客看到的是同一份原文。" %}
+      </p>
+    </div>
+  </div>
+
+  {# 新建 #}
+  <div class="mt-5 flex justify-end">
+    <button type="button" class="btn btn-sm btn-primary" onclick="announcement_create_modal.showModal()">
+      <i data-lucide="plus" class="h-4 w-4"></i>{% trans "新建公告" %}
+    </button>
+  </div>
+
+  {# 公告列表 #}
+  <div class="con-table-wrap mt-3">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th class="whitespace-nowrap">{% trans "层级" %}</th>
+          <th class="whitespace-nowrap">{% trans "公告内容" %}</th>
+          <th class="whitespace-nowrap">{% trans "级别" %}</th>
+          <th class="whitespace-nowrap">{% trans "状态" %}</th>
+          <th class="whitespace-nowrap">{% trans "生效时间" %}</th>
+          <th class="whitespace-nowrap">{% trans "排序" %}</th>
+          <th class="whitespace-nowrap text-right">{% trans "操作" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td class="whitespace-nowrap"><span class="badge badge-ghost badge-sm">{{ item.scope_label }}</span></td>
+          <td class="max-w-md">
+            <div class="text-sm font-medium">{{ item.title }}</div>
+            <div class="line-clamp-2 whitespace-pre-line text-xs text-base-content/70">{{ item.content }}</div>
+            {% if item.path_label %}<div class="text-xs text-base-content/70">{{ item.path_label }}{% if not item.path_registered %}<span class="ml-1 text-warning">{% trans "（未在文档登记）" %}</span>{% endif %}</div>{% endif %}
+            <code class="font-mono text-xs text-base-content/60">{{ item.path_prefix }}</code>
+            {% if item.remark %}<div class="text-xs text-base-content/60">{% trans "备注：" %}{{ item.remark }}</div>{% endif %}
+          </td>
+          <td class="whitespace-nowrap">
+            <span class="badge {{ item.level_def.alert }} badge-sm gap-1">
+              <i data-lucide="{{ item.level_def.icon }}" class="h-3.5 w-3.5"></i>{{ item.level_label }}
+            </span>
+          </td>
+          <td class="whitespace-nowrap">
+            {% if not item.enabled %}
+            <span class="badge badge-soft badge-ghost badge-sm">{% trans "已停用" %}</span>
+            {% elif item.is_visible %}
+            <span class="badge badge-soft badge-success badge-sm">{% trans "生效中" %}</span>
+            {% else %}
+            <span class="badge badge-soft badge-warning badge-sm">{% trans "未生效" %}</span>
+            {% endif %}
+          </td>
+          <td class="whitespace-nowrap text-xs text-base-content/70">
+            {% if item.start_input %}<div>{% trans "开始：" %}{{ item.start_input }}</div>{% else %}<div>{% trans "开始：立即" %}</div>{% endif %}
+            {% if item.end_input %}<div>{% trans "结束：" %}{{ item.end_input }}</div>{% else %}<div>{% trans "结束：长期" %}</div>{% endif %}
+          </td>
+          <td class="whitespace-nowrap text-sm">{{ item.sort }}</td>
+          <td class="whitespace-nowrap text-right">
+            <div class="flex items-center justify-end gap-1">
+              <button type="button" class="btn btn-xs btn-ghost" data-edit-announcement
+                      data-id="{{ item.id }}">{% trans "编辑" %}</button>
+              <form method="post" action="{% url 'website:console_announcements' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="toggle" />
+                <input type="hidden" name="id" value="{{ item.id }}" />
+                <button type="submit" class="btn btn-xs btn-ghost{% if item.enabled %} text-error{% else %} text-success{% endif %}">
+                  {% if item.enabled %}{% trans "停用" %}{% else %}{% trans "启用" %}{% endif %}
+                </button>
+              </form>
+              <form method="post" action="{% url 'website:console_announcements' %}"
+                    data-confirm="{% trans '删除后不可恢复：该公告立即从文档中心移除，确认删除？' %}"
+                    data-confirm-title="{% trans '删除公告' %}"
+                    data-confirm-ok="{% trans '删除' %}"
+                    data-confirm-danger="1">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete" />
+                <input type="hidden" name="id" value="{{ item.id }}" />
+                <button type="submit" class="btn btn-xs btn-error btn-outline">{% trans "删除" %}</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="py-6 text-center text-sm text-base-content/60">{% trans "暂无公告" %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# ===== 新建公告 ===== #}
+  <dialog id="announcement_create_modal" class="modal">
+    <div class="modal-box max-w-3xl">
+      <h3 class="text-lg font-bold">{% trans "新建公告" %}</h3>
+      <p class="mt-1 text-xs text-base-content/60">
+        {% trans "按「服务 → 线路 → 端点」三级选择挂载对象，层级与 URL 前缀自动推导；线路 / 端点留空即表示挂到上一级。" %}
+      </p>
+      <form id="announcement_create_form" method="post" action="{% url 'website:console_announcements' %}" class="mt-3 grid gap-3">
+        {% csrf_token %}
+        {% include 'console/_announcement_form.html' with form_action='create' %}
+        <div class="modal-action">
+          <button type="submit" class="btn btn-sm btn-primary">{% trans "发布" %}</button>
+          <button type="button" class="btn btn-sm btn-ghost" onclick="announcement_create_modal.close()">{% trans "取消" %}</button>
+        </div>
+      </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
+
+  {# ===== 编辑公告（由行内「编辑」按钮按 announcement_items 回填后打开） ===== #}
+  <dialog id="announcement_edit_modal" class="modal">
+    <div class="modal-box max-w-3xl">
+      <h3 class="text-lg font-bold">{% trans "编辑公告" %}</h3>
+      <p class="mt-1 text-xs text-base-content/60">
+        {% trans "启用 / 停用请使用列表中的按钮。" %}
+      </p>
+      <form id="announcement_edit_form" method="post" action="{% url 'website:console_announcements' %}" class="mt-3 grid gap-3">
+        {% csrf_token %}
+        {% include 'console/_announcement_form.html' with form_action='edit' %}
+        <div class="modal-action">
+          <button type="submit" class="btn btn-sm btn-primary">{% trans "保存" %}</button>
+          <button type="button" class="btn btn-sm btn-ghost" onclick="announcement_edit_modal.close()">{% trans "取消" %}</button>
+        </div>
+      </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
+
+  {{ tree|json_script:"service_tree_data" }}
+  {{ items|json_script:"announcement_items" }}
+{% endblock %}
+
+{% block js %}
+<script>
+(function () {
+  'use strict';
+  // 三级联动下拉：枚举数据由后端 json_script 内联（真实 Django 路由），无额外接口。
+  // 层级与 path_prefix 由「服务 → 线路 → 端点」选择自动推导，表单里只做只读展示。
+  var treeNode = document.getElementById('service_tree_data');
+  var itemsNode = document.getElementById('announcement_items');
+  var TREE = treeNode ? JSON.parse(treeNode.textContent) : [];
+  var ITEMS = {};
+  (itemsNode ? JSON.parse(itemsNode.textContent) : []).forEach(function (it) { ITEMS[it.id] = it; });
+
+  var LEVELS = {};
+  {% for value, label in level_choices %}LEVELS['{{ value }}'] = '{{ label|escapejs }}';{% endfor %}
+
+  function unregistered() { return ' · ' + gettext('未登记'); }
+
+  function fillSelect(select, items, placeholder) {
+    select.innerHTML = '';
+    var first = document.createElement('option');
+    first.value = '';
+    first.textContent = placeholder;
+    select.appendChild(first);
+    items.forEach(function (it) {
+      var opt = document.createElement('option');
+      opt.value = it.value;
+      opt.textContent = it.label;
+      select.appendChild(opt);
+    });
+  }
+
+  function serviceSelect(form) { return form.querySelector('[data-tree-service]'); }
+  function channelSelect(form) { return form.querySelector('[data-tree-channel]'); }
+  function endpointSelect(form) { return form.querySelector('[data-tree-endpoint]'); }
+
+  function fillServices(form, selected) {
+    var sel = serviceSelect(form);
+    sel.innerHTML = '';
+    TREE.forEach(function (svc) {
+      var opt = document.createElement('option');
+      opt.value = svc.prefix;
+      opt.textContent = svc.name + (svc.registered ? '' : unregistered());
+      sel.appendChild(opt);
+    });
+    if (selected) sel.value = selected;
+  }
+
+  function findService(prefix) {
+    var best = null;
+    TREE.forEach(function (svc) {
+      if (prefix.indexOf(svc.prefix) === 0 && (!best || svc.prefix.length > best.prefix.length)) {
+        best = svc;
+      }
+    });
+    return best;
+  }
+
+  function fillChannels(form, servicePrefix, selected) {
+    var svc = findService(servicePrefix) || TREE.find(function (s) { return s.prefix === servicePrefix; });
+    var items = svc ? svc.channels.map(function (ch) {
+      return { value: ch.prefix, label: ch.name + (ch.registered ? '' : unregistered()) };
+    }) : [];
+    fillSelect(channelSelect(form), items, gettext('（留空=服务级）'));
+    if (selected) channelSelect(form).value = selected;
+  }
+
+  function fillEndpoints(form, channelPrefix, selected) {
+    var items = [];
+    if (channelPrefix) {
+      TREE.forEach(function (svc) {
+        svc.channels.forEach(function (ch) {
+          if (ch.prefix !== channelPrefix) return;
+          ch.endpoints.forEach(function (ep) {
+            items.push({ value: ep.path, label: ep.name + (ep.registered ? '' : unregistered()) });
+          });
+        });
+      });
+    }
+    fillSelect(endpointSelect(form), items, gettext('（留空=线路级）'));
+    if (selected) endpointSelect(form).value = selected;
+  }
+
+  function updatePreview(form) {
+    var service = serviceSelect(form).value;
+    var channel = channelSelect(form).value;
+    var endpoint = endpointSelect(form).value;
+    var level = 'service';
+    var prefix = service;
+    if (endpoint) { level = 'endpoint'; prefix = endpoint; }
+    else if (channel) { level = 'channel'; prefix = channel; }
+    var levelBox = form.querySelector('[data-tree-level]');
+    var prefixBox = form.querySelector('[data-tree-prefix]');
+    if (levelBox) levelBox.textContent = LEVELS[level] || level;
+    if (prefixBox) prefixBox.textContent = prefix || '—';
+  }
+
+  function initForm(form) {
+    if (!form) return;
+    fillServices(form);
+    fillChannels(form, serviceSelect(form).value, '');
+    fillEndpoints(form, '', '');
+    updatePreview(form);
+    serviceSelect(form).addEventListener('change', function () {
+      fillChannels(form, this.value, '');
+      fillEndpoints(form, '', '');
+      updatePreview(form);
+    });
+    channelSelect(form).addEventListener('change', function () {
+      fillEndpoints(form, this.value, '');
+      updatePreview(form);
+    });
+    endpointSelect(form).addEventListener('change', updatePreview);
+  }
+
+  /* 反查某 path_prefix 对应的三级选择 */
+  function locate(prefix) {
+    var svc = findService(prefix);
+    if (!svc) return null;
+    var result = { service: svc.prefix, channel: '', endpoint: '' };
+    svc.channels.forEach(function (ch) {
+      if (ch.prefix === prefix) result.channel = ch.prefix;
+      ch.endpoints.forEach(function (ep) {
+        if (ep.path === prefix) { result.channel = ch.prefix; result.endpoint = ep.path; }
+      });
+    });
+    return result;
+  }
+
+  initForm(document.getElementById('announcement_create_form'));
+
+  var editForm = document.getElementById('announcement_edit_form');
+  initForm(editForm);
+  document.querySelectorAll('[data-edit-announcement]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var item = ITEMS[btn.dataset.id];
+      if (!editForm || !item) return;
+      function set(name, value) {
+        var el = editForm.querySelector('[name=' + name + ']');
+        if (el) el.value = value;
+      }
+      set('id', item.id);
+      set('title', item.title);
+      set('content', item.content);
+      set('level', item.level);
+      set('sort', item.sort);
+      set('start_time', item.start_input || '');
+      set('end_time', item.end_input || '');
+      set('remark', item.remark || '');
+      var loc = locate(item.path_prefix) || { service: item.path_prefix, channel: '', endpoint: '' };
+      fillServices(editForm, loc.service);
+      fillChannels(editForm, loc.service, loc.channel);
+      fillEndpoints(editForm, loc.channel, loc.endpoint);
+      updatePreview(editForm);
+      document.getElementById('announcement_edit_modal').showModal();
+    });
+  });
+})();
+</script>
+{% endblock %}

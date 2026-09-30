@@ -13,13 +13,17 @@
     第 10 轮 服务树枚举自证（真实路由 vs 文档注册表）
     第 11 轮 前台状态图标：四态图标唯一、服务项与线路子项字段齐备、线路状态取端点最严重、
              渲染无空图标名、图例与文档页线路 Tab 均带图标
+    第 12 轮 文档可见性 / 使用范围：两字段三级继承、admin_only 对外 20020（状态拦截优先）、
+             docs_visible=hidden 从 /docs/ 目录、文档页、左侧菜单与在线调试中消失
 
-隔离策略：全部测试数据用 MARK（xysvcpolicy<RUN>）标记，策略路径前缀一律包含 MARK，
-测试结束统一删除，绝不触碰真实策略配置。
+隔离策略：测试数据用 MARK（xysvcpolicy<RUN>）标记，策略路径前缀一律包含 MARK，
+测试结束统一删除。仅第 12 轮为了验证「文档隐藏」在真实文档页 / 在线调试上的效果，
+会临时给一个真实端点建策略（前置检查该前缀原本无策略，`finally` 里必删）。
 
 运行方式：
     .venv\\Scripts\\python.exe scripts\\test_service_policy.py
 """
+import json
 import os
 import re
 import secrets
@@ -42,6 +46,8 @@ from API.apis.user_center.sign import build_sign
 from API.common import StatusCode
 from API.common.middleware import (
     invalidate_api_service_policy_cache,
+    is_admin_only,
+    is_docs_hidden,
     requires_auth,
     resolve_service_policy,
 )
@@ -354,37 +360,52 @@ def round8_console(client, app_a):
     prefix = f'{BASE}console/'
     resp = client.post(url, {'action': 'create', 'name': f'Console {MARK}',
                              'service': prefix, 'status': 'normal', 'auth_mode': 'auth',
-                             'app_scope': 'whitelist', 'apps': [str(app_a.pk)], 'remark': 'created'})
+                             'app_scope': 'whitelist', 'docs_visible': 'hidden',
+                             'audience': 'admin_only',
+                             'apps': [str(app_a.pk)], 'remark': 'created'})
     policy = ApiServicePolicy.objects.filter(path_prefix=prefix).first()
     check('视图新建策略成功（层级自动推导为服务级）',
           resp.status_code == 302 and policy is not None and policy.level == 'service')
     check('新建时保存了白名单项目', policy is not None and policy.apps.count() == 1)
+    check('新建时保存了文档可见性 / 使用范围',
+          policy is not None and policy.docs_visible == 'hidden'
+          and policy.audience == 'admin_only')
     check('新建后立即生效（需要认证）', requires_auth(f'{prefix}probe') is True)
 
     # 编辑（改为线路级 open）
     channel = f'{BASE}console/ch/'
     resp = client.post(url, {'action': 'edit', 'id': str(policy.pk), 'name': f'Console2 {MARK}',
                              'service': prefix, 'channel': channel, 'status': 'normal',
-                             'auth_mode': 'open', 'app_scope': 'all', 'remark': 'edited'})
+                             'auth_mode': 'open', 'app_scope': 'all', 'docs_visible': 'visible',
+                             'audience': 'normal', 'remark': 'edited'})
     policy.refresh_from_db()
     check('编辑生效（层级推导为线路级 / 模式 / 范围 / 备注）',
           resp.status_code == 302 and policy.level == 'channel'
           and policy.path_prefix == channel and policy.auth_mode == 'open'
           and policy.app_scope == 'all' and policy.remark == 'edited')
+    check('编辑生效（文档可见性 / 使用范围）',
+          policy.docs_visible == 'visible' and policy.audience == 'normal')
     check('编辑后白名单已清空', policy.apps.count() == 0)
     check('编辑后认证模式立即生效（开放）', requires_auth(f'{channel}probe') is False)
 
     # 表单校验
     client.post(url, {'action': 'create', 'name': '', 'service': prefix,
-                      'status': 'normal', 'auth_mode': 'auth', 'app_scope': 'all'})
+                      'status': 'normal', 'auth_mode': 'auth', 'app_scope': 'all',
+                      'docs_visible': 'inherit', 'audience': 'inherit'})
     check('缺少名称被拒且不新建',
           ApiServicePolicy.objects.filter(path_prefix=channel).count() == 1)
     client.post(url, {'action': 'create', 'name': 'bad', 'service': 'no-slash',
-                      'status': 'normal', 'auth_mode': 'auth', 'app_scope': 'all'})
+                      'status': 'normal', 'auth_mode': 'auth', 'app_scope': 'all',
+                      'docs_visible': 'inherit', 'audience': 'inherit'})
     check('非法服务被拒', not ApiServicePolicy.objects.filter(name='bad').exists())
     client.post(url, {'action': 'create', 'name': 'dup', 'service': prefix, 'channel': channel,
-                      'status': 'normal', 'auth_mode': 'auth', 'app_scope': 'all'})
+                      'status': 'normal', 'auth_mode': 'auth', 'app_scope': 'all',
+                      'docs_visible': 'inherit', 'audience': 'inherit'})
     check('重复路径被拒', ApiServicePolicy.objects.filter(path_prefix=channel).count() == 1)
+    client.post(url, {'action': 'create', 'name': 'badfield', 'service': f'{BASE}badfield/',
+                      'status': 'normal', 'auth_mode': 'auth', 'app_scope': 'all',
+                      'docs_visible': 'whatever', 'audience': 'inherit'})
+    check('非法文档可见性被拒', not ApiServicePolicy.objects.filter(name='badfield').exists())
 
     # 启停切换（维护态）
     resp = client.post(url, {'action': 'toggle', 'id': str(policy.pk)})
@@ -412,7 +433,8 @@ def round9_i18n(client, admin):
     check('简体页面正常渲染且含「服务策略」',
           resp.status_code == 200 and '服务策略' in text)
 
-    for lang, must in (('en', 'Service Policies'), ('zh-hant', '服務策略')):
+    for lang, must, extras in (('en', 'Service Policies', ('Docs Visibility', 'Audience')),
+                               ('zh-hant', '服務策略', ('文檔可見性', '使用範圍'))):
         lang_client = Client()
         lang_client.force_login(admin)
         lang_client.cookies[settings.LANGUAGE_COOKIE_NAME] = lang
@@ -420,6 +442,9 @@ def round9_i18n(client, admin):
         text = resp.content.decode()
         check(f'{lang} 页面渲染成功且关键词已翻译',
               resp.status_code == 200 and must in text, f'status={resp.status_code}')
+        missing = [word for word in extras if word not in text]
+        check(f'{lang} 新配置项文案已翻译（文档可见性 / 使用范围）', not missing,
+              f'missing={missing}')
 
 
 # ───────────────────────── 第 10 轮：枚举模块自证 ─────────────────────────
@@ -546,6 +571,90 @@ def round11_status_icons():
     check('文档页同样无空图标名', 'data-lucide=""' not in body)
 
 
+# ───────────────── 第 12 轮：文档可见性 / 使用范围 ─────────────────
+
+# 真实文档端点（用于验证「文档隐藏」在真实文档页与在线调试上的过滤效果）
+_REAL_ENDPOINT = '/api/seo/friend_links'
+_REAL_SERVICE_PREFIX = '/api/seo/'
+_REAL_SERVICE_SLUG = 'seo'
+
+
+def round12_docs_visible_audience():
+    section('第 12 轮 文档可见性（docs_visible）与使用范围（audience）')
+
+    # 12.1 全局兜底：未命中策略时为 visible / normal
+    probe = f'{BASE}dv/probe'
+    eff = resolve_service_policy(probe)
+    check('未命中策略时兜底 docs_visible=visible', eff['docs_visible'] == 'visible')
+    check('未命中策略时兜底 audience=normal', eff['audience'] == 'normal')
+    check('is_docs_hidden 未命中为 False', is_docs_hidden(probe) is False)
+    check('is_admin_only 未命中为 False', is_admin_only(probe) is False)
+
+    # 12.2 三级继承：服务级设定 → 线路 / 端点继承；端点级覆盖
+    _mk_policy(name=f'DvSvc {MARK}', level='service', path_prefix=f'{BASE}dv/',
+               docs_visible='hidden', audience='admin_only')
+    check('线路级继承服务级 docs_visible=hidden', is_docs_hidden(f'{BASE}dv/ch/any') is True)
+    check('端点级继承服务级 audience=admin_only', is_admin_only(f'{BASE}dv/ch/any') is True)
+
+    _mk_policy(name=f'DvEp {MARK}', level='endpoint', path_prefix=f'{BASE}dv/ch/visible',
+               docs_visible='visible', audience='normal')
+    check('端点级 visible 覆盖服务级 hidden', is_docs_hidden(f'{BASE}dv/ch/visible') is False)
+    check('端点级 normal 覆盖服务级 admin_only', is_admin_only(f'{BASE}dv/ch/visible') is False)
+    check('同服务其他端点仍继承隐藏', is_docs_hidden(f'{BASE}dv/ch/other') is True)
+
+    # 12.3 admin_only 对外一律 20020（带不带签名都一样）
+    anon = Client()
+    resp = anon.get(f'{BASE}dv/ch/any')
+    check('admin_only 匿名请求返回 20020', _code(resp) == StatusCode.FORBIDDEN,
+          f'code={_code(resp)}')
+    resp = anon.get(f'{BASE}dv/ch/any', _signed(_mk_app('D')))
+    check('admin_only 携带合法签名仍返回 20020（未做签名校验）',
+          _code(resp) == StatusCode.FORBIDDEN, f'code={_code(resp)}')
+    resp = anon.get(f'{BASE}dv/ch/visible')
+    check('端点级 normal 覆盖后不再被 20020 拦截',
+          _code(resp) == StatusCode.AUTH_FAILED, f'code={_code(resp)}')
+
+    # 12.4 状态拦截优先于 admin_only（维护态先返回 30004）
+    _mk_policy(name=f'DvMaint {MARK}', level='service', path_prefix=f'{BASE}dvm/',
+               status='maintenance', audience='admin_only')
+    resp = anon.get(f'{BASE}dvm/x')
+    check('维护态优先于 admin_only（返回 30004 而非 20020）',
+          _code(resp) == StatusCode.SERVICE_MAINTENANCE, f'code={_code(resp)}')
+
+    # 12.5 真实文档页 / 在线调试的过滤效果（临时建策略，finally 必删）
+    if ApiServicePolicy.objects.filter(path_prefix=_REAL_ENDPOINT).exists():
+        check('真实端点无既有策略（跳过 12.5）', False,
+              f'{_REAL_ENDPOINT} 已存在策略，未做临时隐藏测试')
+        return
+    temp = _mk_policy(name=f'DvReal {MARK}', level='endpoint', path_prefix=_REAL_ENDPOINT,
+                      docs_visible='hidden')
+    try:
+        check('真实端点被判定为文档隐藏', is_docs_hidden(_REAL_ENDPOINT) is True)
+
+        resp = anon.get(reverse('website:docs_service', args=[_REAL_SERVICE_SLUG]))
+        body = resp.content.decode()
+        check('文档页仍可访问（服务未整体隐藏）', resp.status_code == 200,
+              f'status={resp.status_code}')
+        check('隐藏的端点不出现在文档页', _REAL_ENDPOINT not in body)
+
+        hidden_menu = [(c['name'], c['url']) for n in build_docs_menu()
+                       for c in n['children']]
+        check('左侧菜单不受端点级隐藏影响（线路仍在）', bool(hidden_menu))
+
+        resp = anon.post(reverse('website:docs_call'),
+                         data=json.dumps({'path': _REAL_ENDPOINT, 'method': 'GET'}),
+                         content_type='application/json')
+        payload = _json(resp)
+        check('在线调试拒绝隐藏端点（404）', payload.get('http_status') == 404,
+              f'payload={payload}')
+    finally:
+        temp.delete()
+        invalidate_api_service_policy_cache()
+    check('临时策略已删除（真实配置还原）',
+          not ApiServicePolicy.objects.filter(path_prefix=_REAL_ENDPOINT).exists())
+    check('删除后真实端点恢复可见', is_docs_hidden(_REAL_ENDPOINT) is False)
+
+
 def main():
     print('\nAPI 服务策略回归测试开始')
     print(f'标记：{MARK}（策略前缀统一含该标记，测试后自动清理）')
@@ -564,6 +673,7 @@ def main():
         round9_i18n(client, admin)
         round10_service_tree()
         round11_status_icons()
+        round12_docs_visible_audience()
     finally:
         cleanup()
         if created_admin:

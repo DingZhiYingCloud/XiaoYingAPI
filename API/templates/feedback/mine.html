@@ -1,0 +1,61 @@
+{% extends 'feedback/base.html' %}
+{% load static i18n %}
+
+{# 我的反馈：登录用户在本项目下提交的全部反馈（含未过审 / 已驳回等未公开状态） #}
+
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block feedback_content %}
+{% if page_obj.object_list %}
+<ul class="flex flex-col gap-2.5">
+  {% for item in page_obj.object_list %}
+  <li>
+    <a href="{% url 'website:feedback_detail' fb_app.app_id item.pk %}"
+       class="card border border-base-300 bg-base-100 transition-colors hover:border-primary/60">
+      <div class="card-body gap-2 p-4 sm:p-5">
+        <div class="flex flex-wrap items-center gap-2 text-xs text-base-content/60">
+          <span class="badge badge-ghost badge-sm">{{ item.type_name }}</span>
+          <span class="badge badge-sm badge-soft {% if item.status == 'replied' %}badge-success{% elif item.status == 'rejected' %}badge-error{% elif item.status == 'pending' %}badge-warning{% elif item.status == 'closed' %}badge-ghost{% else %}badge-info{% endif %}">{{ item.get_status_display }}</span>
+          {% if item.ai_status == 'failed' %}
+          <span class="badge badge-warning badge-sm badge-soft" title="{% trans 'AI 审核未完成，管理员会尽快处理' %}">{% trans "审核未完成" %}</span>
+          {% endif %}
+          {% if item.admin_unread %}
+          <span class="badge badge-primary badge-sm badge-soft">{% trans "有新回复" %}</span>
+          {% endif %}
+          <span class="ml-auto">{{ item.create_time|date:'Y-m-d H:i' }}</span>
+        </div>
+        <p class="text-sm leading-relaxed">{{ item.display_title }}</p>
+        <p class="flex items-center gap-1 text-xs text-base-content/50">
+          <i data-lucide="message-square" class="h-3.5 w-3.5"></i>
+          {% blocktrans with n=item.replies.count %}{{ n }} 条回复{% endblocktrans %}
+        </p>
+      </div>
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+
+{% if page_obj.has_other_pages %}
+<div class="mt-5 flex items-center justify-center gap-2">
+  {% if page_obj.has_previous %}
+  <a href="?page={{ page_obj.previous_page_number }}" class="btn btn-ghost btn-sm">{% trans "上一页" %}</a>
+  {% endif %}
+  <span class="text-sm text-base-content/60">
+    {% blocktrans with now=page_obj.number total=page_obj.paginator.num_pages %}{{ now }} / {{ total }}{% endblocktrans %}
+  </span>
+  {% if page_obj.has_next %}
+  <a href="?page={{ page_obj.next_page_number }}" class="btn btn-ghost btn-sm">{% trans "下一页" %}</a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<div class="card border border-dashed border-base-300 bg-base-100">
+  <div class="card-body items-center gap-3 py-12 text-center">
+    <i data-lucide="inbox" class="h-8 w-8 text-base-content/30"></i>
+    <p class="text-sm text-base-content/60">{% trans "你还没有提交过反馈。" %}</p>
+    <a href="{% url 'website:feedback' fb_app.app_id %}" class="btn btn-primary btn-sm">{% trans "去提交一条" %}</a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

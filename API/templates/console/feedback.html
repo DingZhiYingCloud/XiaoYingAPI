@@ -1,0 +1,432 @@
+{% extends 'console/base.html' %}
+{% load i18n %}
+
+{# 问题反馈中心 · 反馈管理：筛选列表 + 详情（回复 / 送审 / 公开区 / 关闭 / 删除） #}
+
+{% block title %}{% trans "问题反馈 - 超级管理员 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,问题反馈,反馈处理" %}{% endblock %}
+{% block description %}{% trans "小影API 超级管理员：查看各接入项目提交的反馈（按项目、状态、类型、AI 审核状态筛选），回复可带图与视频，支持 AI 语气提醒、强制发送与手动送审。" %}{% endblock %}
+
+{% block console_content %}
+{% trans "查看各接入项目提交的反馈，按项目 / 状态 / 类型 / AI 审核状态筛选；回复可带图片与视频，AI 只提醒不阻断，管理员可强制发送。" as ph_desc %}
+{% include 'console/_page_header.html' with icon='messages-square' title='问题反馈' desc=ph_desc %}
+
+{% include 'console/_messages.html' %}
+
+{% if review_hint %}
+<div role="alert" class="alert alert-warning mt-3 py-2 text-sm">
+  <span>{% blocktrans %}AI 审核当前不可用：{{ review_hint }}。期间新提交的反馈会直接进入「待处理」。{% endblocktrans %}</span>
+</div>
+{% endif %}
+
+{# ==================== 详情（?detail=<id> 时展开） ==================== #}
+{% if detail %}
+{% with fb=detail.feedback %}
+<div class="card mt-4 border border-primary/40 bg-base-100" id="fb-detail">
+  <div class="con-panel-body gap-4">
+
+    <div class="flex flex-wrap items-center gap-2">
+      <span class="badge badge-ghost badge-sm">{{ fb.app.name }}</span>
+      <span class="badge badge-ghost badge-sm">{{ fb.type_name }}</span>
+      <span class="badge badge-sm {% if fb.status == 'replied' %}badge-success{% elif fb.status == 'rejected' %}badge-error{% elif fb.status == 'pending' %}badge-warning{% elif fb.status == 'closed' %}badge-ghost{% else %}badge-info{% endif %}">{{ fb.get_status_display }}</span>
+      <span class="badge badge-outline badge-sm">{{ fb.get_ai_status_display }}</span>
+      {% if fb.is_guest %}<span class="badge badge-ghost badge-sm">{% trans "游客" %}</span>{% endif %}
+      <span class="ml-auto text-xs text-base-content/60">{{ fb.create_time|date:'Y-m-d H:i' }}</span>
+      <a href="?{{ list_query }}" class="btn btn-ghost btn-xs">{% trans "收起" %}</a>
+    </div>
+
+    <div class="rounded-box border border-base-300 bg-base-200/40 p-4">
+      <p class="text-sm leading-relaxed whitespace-pre-line">{{ fb.content }}</p>
+      <p class="mt-3 text-xs text-base-content/60">
+        {% trans "提交者：" %}{{ fb.submitter_name }}
+        {% if fb.contact_email %}· {% trans "联系邮箱：" %}{{ fb.contact_email }}{% endif %}
+        {% if fb.ai_model_key %}· {% trans "审核模型：" %}<span class="font-mono">{{ fb.ai_model_key }}</span>{% endif %}
+        {% if fb.ai_checked_time %}· {% trans "审核时间：" %}{{ fb.ai_checked_time|date:'Y-m-d H:i' }}{% endif %}
+      </p>
+      <p class="mt-1 text-xs text-base-content/40">
+        IP {{ fb.ip|default:'—' }} · UA {{ fb.user_agent|default:'—' }}
+      </p>
+    </div>
+
+    {% if detail.attachments %}
+    <div class="grid gap-2 sm:grid-cols-4">
+      {% for att in detail.attachments %}
+      {% if att.is_image %}
+      <a href="{{ att.url }}" target="_blank" rel="noopener noreferrer">
+        <img src="{{ att.url }}" alt="{{ att.original_name }}" loading="lazy"
+             class="h-28 w-full rounded-box border border-base-300 object-cover" />
+      </a>
+      {% else %}
+      <video src="{{ att.url }}" controls preload="metadata"
+             class="h-28 w-full rounded-box border border-base-300 bg-base-200"></video>
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {# ---- 回复列表 ---- #}
+    <div class="flex items-center gap-3">
+      <span class="text-sm font-semibold">{% trans "往来记录" %}</span>
+      <span class="h-px flex-1 bg-base-300"></span>
+    </div>
+    {% for reply in detail.replies %}
+    <div class="rounded-box border border-base-300 p-3 {% if reply.author_role == 'admin' %}bg-primary/5{% endif %}">
+      <div class="flex flex-wrap items-center gap-2 text-xs text-base-content/60">
+        <span class="font-medium text-base-content/80">{{ reply.author_name }}</span>
+        <span class="badge badge-ghost badge-xs">{{ reply.get_author_role_display }}</span>
+        {% if reply.admin_name %}<span class="font-mono">{{ reply.admin_name }}</span>{% endif %}
+        <span class="ml-auto">{{ reply.create_time|date:'Y-m-d H:i' }}</span>
+      </div>
+      <p class="mt-1.5 text-sm leading-relaxed whitespace-pre-line">{{ reply.content }}</p>
+      {% if reply.attachments.all %}
+      <div class="mt-2 grid gap-2 sm:grid-cols-4">
+        {% for att in reply.attachments.all %}
+        {% if att.is_image %}
+        <a href="{{ att.url }}" target="_blank" rel="noopener noreferrer">
+          <img src="{{ att.url }}" alt="{{ att.original_name }}" loading="lazy"
+               class="h-24 w-full rounded-box border border-base-300 object-cover" />
+        </a>
+        {% else %}
+        <video src="{{ att.url }}" controls preload="metadata"
+               class="h-24 w-full rounded-box border border-base-300 bg-base-200"></video>
+        {% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% empty %}
+    <p class="con-empty">
+      {% trans "暂无回复" %}
+    </p>
+    {% endfor %}
+
+    {# ---- 回复表单 ---- #}
+    <form id="fb-reply-form" method="post" enctype="multipart/form-data" class="flex flex-col gap-2 border-t border-base-300 pt-4">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="reply" />
+      <input type="hidden" name="id" value="{{ fb.pk }}" />
+      <input type="hidden" name="next" value="{{ request.get_full_path }}" />
+      <input type="hidden" name="ai_verdict" value="" />
+      <input type="hidden" name="ai_reason" value="" />
+      <input type="hidden" name="ai_model" value="" />
+      <textarea name="content" rows="3" maxlength="5000" required
+                class="textarea textarea-bordered w-full leading-relaxed"
+                placeholder="{% trans '回复用户（发送前会先让 AI 审一遍语气，AI 只提醒不阻断）' %}"></textarea>
+      <p id="fb-reply-msg" role="alert" class="hidden text-sm text-error"></p>
+      <div class="flex flex-wrap items-center gap-2">
+        <input type="file" name="images" accept="image/*" multiple
+               class="file-input file-input-bordered file-input-sm w-full sm:w-64" />
+        <input type="file" name="videos" accept="video/*" multiple
+               class="file-input file-input-bordered file-input-sm w-full sm:w-64" />
+        <span class="text-xs text-base-content/50">
+          {% blocktrans with i=setting.max_images im=setting.max_image_mb v=setting.max_videos vm=setting.max_video_mb %}图片 ≤{{ i }} 张 / {{ im }}MB，视频 ≤{{ v }} 个 / {{ vm }}MB{% endblocktrans %}
+        </span>
+        <button type="submit" id="fb-reply-submit" class="btn btn-primary btn-sm ml-auto">{% trans "发送回复" %}</button>
+      </div>
+    </form>
+
+    {# ---- 单条操作 ---- #}
+    <div class="flex flex-wrap items-center gap-2 border-t border-base-300 pt-4">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="resubmit" />
+        <input type="hidden" name="id" value="{{ fb.pk }}" />
+        <input type="hidden" name="next" value="{{ request.get_full_path }}" />
+        <button type="submit" class="btn btn-outline btn-sm">{% trans "立即送审" %}</button>
+      </form>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="toggle_public" />
+        <input type="hidden" name="id" value="{{ fb.pk }}" />
+        <input type="hidden" name="next" value="{{ request.get_full_path }}" />
+        <button type="submit" class="btn btn-outline btn-sm">
+          {% if fb.public_hidden %}{% trans "恢复到公开区" %}{% else %}{% trans "从公开区撤下" %}{% endif %}
+        </button>
+      </form>
+      {% if fb.status == 'closed' %}
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="reopen" />
+        <input type="hidden" name="id" value="{{ fb.pk }}" />
+        <input type="hidden" name="next" value="{{ request.get_full_path }}" />
+        <button type="submit" class="btn btn-outline btn-sm">{% trans "重新打开" %}</button>
+      </form>
+      {% else %}
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="close" />
+        <input type="hidden" name="id" value="{{ fb.pk }}" />
+        <input type="hidden" name="next" value="{{ request.get_full_path }}" />
+        <button type="submit" class="btn btn-outline btn-sm">{% trans "关闭" %}</button>
+      </form>
+      {% endif %}
+      <form method="post" class="ml-auto"
+            data-confirm="{% trans '删除后该反馈及其全部回复将无法恢复，确认删除？' %}"
+            data-confirm-danger="1">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="delete" />
+        <input type="hidden" name="id" value="{{ fb.pk }}" />
+        <input type="hidden" name="next" value="{{ request.get_full_path }}" />
+        <button type="submit" class="btn btn-error btn-outline btn-sm">{% trans "删除" %}</button>
+      </form>
+    </div>
+
+    {% if detail.audit_logs %}
+    <details class="border-t border-base-300 pt-3">
+      <summary class="cursor-pointer text-sm text-base-content/70">{% trans "AI 审核留痕" %}</summary>
+      <div class="mt-2 overflow-x-auto">
+        <table class="table table-xs">
+          <thead>
+            <tr>
+              <th>{% trans "时间" %}</th>
+              <th>{% trans "场景" %}</th>
+              <th>{% trans "结论" %}</th>
+              <th>{% trans "模型" %}</th>
+              <th>{% trans "AI 意见" %}</th>
+              <th>{% trans "强制" %}</th>
+              <th>{% trans "操作人" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in detail.audit_logs %}
+            <tr>
+              <td class="whitespace-nowrap">{{ log.create_time|date:'m-d H:i' }}</td>
+              <td class="whitespace-nowrap">{{ log.get_kind_display }}</td>
+              <td class="whitespace-nowrap">{{ log.get_verdict_display }}</td>
+              <td class="whitespace-nowrap font-mono text-xs">{{ log.model_key|default:'—' }}</td>
+              <td class="max-w-[24rem] text-xs">{{ log.reason|default:'—' }}</td>
+              <td>{% if log.forced %}{% trans "是" %}{% else %}—{% endif %}</td>
+              <td class="whitespace-nowrap">{{ log.operator|default:'—' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </details>
+    {% endif %}
+  </div>
+</div>
+{% endwith %}
+{% endif %}
+
+{# ==================== 筛选 + 列表 ==================== #}
+<div class="con-toolbar mt-4 justify-between">
+  <form method="get" class="flex flex-wrap items-end gap-3">
+    <label class="con-field">
+      <span class="con-field-label">{% trans "项目" %}</span>
+      <select name="app" class="select select-sm w-full sm:w-44">
+        <option value="">{% trans "全部项目" %}</option>
+        {% for app in apps %}
+        <option value="{{ app.app_id }}"{% if app_filter == app.app_id %} selected{% endif %}>{{ app.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="con-field">
+      <span class="con-field-label">{% trans "状态" %}</span>
+      <select name="status" class="select select-sm w-full sm:w-28">
+        <option value="">{% trans "全部" %}</option>
+        {% for value, label in status_choices %}
+        <option value="{{ value }}"{% if status_filter == value %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="con-field">
+      <span class="con-field-label">{% trans "类型" %}</span>
+      <select name="type" class="select select-sm w-full sm:w-32">
+        <option value="">{% trans "全部" %}</option>
+        {% for type in types %}
+        <option value="{{ type.pk }}"{% if type_filter == type.pk|stringformat:'s' %} selected{% endif %}>{{ type.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="con-field">
+      <span class="con-field-label">{% trans "AI 审核" %}</span>
+      <select name="ai" class="select select-sm w-full sm:w-32">
+        <option value="">{% trans "全部" %}</option>
+        {% for value, label in ai_choices %}
+        <option value="{{ value }}"{% if ai_filter == value %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="con-field">
+      <span class="con-field-label">{% trans "关键词" %}</span>
+      <input type="search" name="q" value="{{ keyword }}" autocomplete="off"
+             placeholder="{% trans '反馈内容 / 联系邮箱' %}" class="input input-sm w-full sm:w-56" />
+    </label>
+    <label class="con-field">
+      <span class="con-field-label">{% trans "每页" %}</span>
+      <select name="size" class="select select-sm w-full sm:w-20">
+        {% for size in page_sizes %}
+        <option value="{{ size }}"{% if size == page_size %} selected{% endif %}>{{ size }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit" class="btn btn-sm btn-primary">{% trans "搜索" %}</button>
+    {% if list_query %}
+    <a href="{% url 'website:console_feedback' %}" class="btn btn-sm btn-ghost">{% trans "重置" %}</a>
+    {% endif %}
+  </form>
+
+  <a href="{% url 'website:console_feedback_settings' %}" class="btn btn-sm btn-outline gap-1.5">
+    <i data-lucide="settings" class="h-4 w-4"></i>{% trans "反馈中心设置" %}
+  </a>
+</div>
+
+<div class="con-panel mt-3">
+  <div class="con-panel-body gap-3">
+    {% if page_obj.object_list %}
+    <div class="overflow-x-auto">
+      <table class="table table-sm min-w-[64rem]">
+        <thead>
+          <tr>
+            <th class="whitespace-nowrap">{% trans "提交时间" %}</th>
+            <th class="whitespace-nowrap">{% trans "项目" %}</th>
+            <th class="whitespace-nowrap">{% trans "类型" %}</th>
+            <th class="whitespace-nowrap">{% trans "内容摘要" %}</th>
+            <th class="whitespace-nowrap">{% trans "提交者" %}</th>
+            <th class="whitespace-nowrap">{% trans "状态" %}</th>
+            <th class="whitespace-nowrap">{% trans "AI 审核" %}</th>
+            <th class="whitespace-nowrap text-right">{% trans "操作" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in page_obj.object_list %}
+          <tr{% if detail and detail.feedback.pk == row.pk %} class="bg-primary/5"{% endif %}>
+            <td class="whitespace-nowrap text-xs">{{ row.create_time|date:'Y-m-d H:i' }}</td>
+            <td class="whitespace-nowrap text-sm">{{ row.app.name }}</td>
+            <td class="whitespace-nowrap text-xs">{{ row.type_name }}</td>
+            <td class="max-w-[22rem]">
+              <div class="truncate text-sm">{{ row.display_title }}</div>
+              {% if row.reply_count %}
+              <div class="text-xs text-base-content/50">{% blocktrans with n=row.reply_count %}{{ n }} 条回复{% endblocktrans %}</div>
+              {% endif %}
+            </td>
+            <td class="whitespace-nowrap text-xs">
+              {% if row.is_guest %}{% trans "匿名用户" %}{% else %}{{ row.submitter_name }}{% endif %}
+              {% if row.admin_unread %}<span class="badge badge-primary badge-xs">{% trans "有新回复" %}</span>{% endif %}
+            </td>
+            <td class="whitespace-nowrap">
+              <span class="badge badge-sm {% if row.status == 'replied' %}badge-success{% elif row.status == 'rejected' %}badge-error{% elif row.status == 'pending' %}badge-warning{% elif row.status == 'closed' %}badge-ghost{% else %}badge-info{% endif %}">{{ row.get_status_display }}</span>
+              {% if row.public_hidden %}<span class="badge badge-ghost badge-xs">{% trans "已隐藏" %}</span>{% endif %}
+            </td>
+            <td class="whitespace-nowrap text-xs">{{ row.get_ai_status_display }}</td>
+            <td class="whitespace-nowrap text-right">
+              <a href="?{{ page_prefix }}detail={{ row.pk }}" class="btn btn-ghost btn-xs">{% trans "详情" %}</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include 'console/_pagination.html' %}
+    {% else %}
+    <p class="py-10 text-center text-sm text-base-content/50">{% trans "没有符合条件的反馈。" %}</p>
+    {% endif %}
+  </div>
+</div>
+
+{# AI 语气提醒弹窗：AI 只提醒，管理员有最终决定权 #}
+<dialog id="fb-ai-warn" class="modal">
+  <div class="modal-box max-w-lg">
+    <h3 class="flex items-center gap-2 text-base font-bold">
+      <i data-lucide="shield-alert" class="h-4 w-4 text-warning"></i>{% trans "AI 提醒" %}
+    </h3>
+    <p class="mt-3 text-sm leading-relaxed" id="fb-ai-warn-reason"></p>
+    <p class="mt-3 text-xs text-base-content/60">
+      {% trans "AI 只做提醒，不阻断发送。你可以修改后再发，也可以坚持发送（强制发送会记录在审核留痕里）。" %}
+    </p>
+    <div class="modal-action">
+      <button type="button" class="btn btn-ghost btn-sm" id="fb-ai-cancel">{% trans "返回修改" %}</button>
+      <button type="button" class="btn btn-warning btn-sm" id="fb-ai-force">{% trans "强制发送" %}</button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>{% trans "关闭" %}</button></form>
+</dialog>
+{% endblock %}
+
+{% block js %}
+{% if detail %}
+<script>
+/* 回复发送：先让后端做一次 AI 语气预检，AI 提醒时弹窗由管理员决定是否强制发送。
+   预检结果通过隐藏字段回传（一次回复只调用一次 AI），服务端仍会按同一口径复核。 */
+(function () {
+  var form = document.getElementById('fb-reply-form');
+  if (!form) { return; }
+  var dialog = document.getElementById('fb-ai-warn');
+  var reasonEl = document.getElementById('fb-ai-warn-reason');
+  var msgEl = document.getElementById('fb-reply-msg');
+  var submitBtn = document.getElementById('fb-reply-submit');
+  var idleLabel = submitBtn.textContent;
+
+  /* 站内规范：不用原生 alert，错误就地显示在表单里 */
+  function showError(message) {
+    msgEl.textContent = message || '';
+    msgEl.classList.toggle('hidden', !message);
+  }
+
+  function setHidden(verdict, reason, model) {
+    form.querySelector('[name="ai_verdict"]').value = verdict || '';
+    form.querySelector('[name="ai_reason"]').value = reason || '';
+    form.querySelector('[name="ai_model"]').value = model || '';
+  }
+
+  function post(force) {
+    var body = new FormData(form);
+    if (force) { body.set('force', '1'); }
+    return fetch(window.location.pathname + window.location.search, { method: 'POST', body: body })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data.code === 10000 && data.data && data.data.redirect) {
+          window.location.href = data.data.redirect;
+          return true;
+        }
+        if (data.code === 30002) {   // AI 提醒：交给管理员决定
+          reasonEl.textContent = (data.data && data.data.reason) || data.msg || '';
+          dialog.showModal();
+          return true;
+        }
+        showError(data.msg || gettext('操作失败，请重试'));
+        return false;
+      });
+  }
+
+  form.addEventListener('submit', function (event) {
+    event.preventDefault();
+    if (!form.querySelector('[name="content"]').value.trim()) { return; }
+    showError('');
+    submitBtn.disabled = true;
+    submitBtn.textContent = gettext('发送中…');
+    var body = new FormData(form);
+    body.set('action', 'review_reply');
+    fetch(window.location.pathname + window.location.search, { method: 'POST', body: body })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        var info = (data && data.data) || {};
+        if (data.code !== 10000) {
+          showError(data.msg || gettext('操作失败，请重试'));
+          return false;
+        }
+        setHidden(info.verdict, info.reason, info.model);
+        if (info.verdict === 'warn') {   // 提醒：先弹窗，不发送
+          reasonEl.textContent = info.reason || '';
+          dialog.showModal();
+          return true;
+        }
+        return post(false);
+      })
+      .catch(function () { showError(gettext('网络异常，请重试')); })
+      .finally(function () {
+        submitBtn.disabled = false;
+        submitBtn.textContent = idleLabel;
+      });
+  });
+
+  document.getElementById('fb-ai-cancel').addEventListener('click', function () { dialog.close(); });
+  document.getElementById('fb-ai-force').addEventListener('click', function () {
+    dialog.close();
+    post(true);
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

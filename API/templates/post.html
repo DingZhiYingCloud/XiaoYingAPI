@@ -1,0 +1,275 @@
+{% extends 'template.html' %}
+{% load static i18n %}
+
+{% block title %}{% trans "海角社区发帖 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "海角社区发帖,海角自动发帖,社区发帖工具,海角API" %}{% endblock %}
+{% block description %}{% trans "用你自己的海角社区账号（用户ID + Token）直接发帖：选择板块与标签、填写标题正文、上传图片与视频，一键发布。" %}{% endblock %}
+
+{% block content %}
+<section class="mx-auto w-full max-w-6xl px-4 py-6 lg:py-8" data-site-base="{{ haijiao_base_url }}">
+  <nav class="breadcrumbs text-sm">
+    <ul>
+      <li><a href="/">{% trans "首页" %}</a></li>
+      <li><a href="/docs/haijiao/">{% trans "海角社区" %}</a></li>
+      <li>{% trans "发帖" %}</li>
+    </ul>
+  </nav>
+
+  <h1 class="mt-2 text-2xl font-bold sm:text-3xl">{% trans "海角社区发帖" %}</h1>
+  <p class="mt-2 max-w-3xl text-sm text-base-content/70">
+    {% trans "填写自己的海角账号凭据即可发帖：选板块 → 加标签 → 写标题与正文 → 插入图片 / 视频 → 发布。" %}
+    {% trans "接口说明见" %}<a class="link link-primary" href="/docs/haijiao/">{% trans "海角社区文档" %}</a>。
+  </p>
+
+  {# ===== 发帖表单 ===== #}
+  <div class="mt-6 grid gap-6 lg:grid-cols-3">
+    <form id="post-form" class="card border border-base-300 bg-base-100 lg:col-span-2" novalidate>
+      {% csrf_token %}
+      <div class="card-body gap-4">
+
+        {# 板块：一级 → 二级 → 三级联动（源站按所选的最后一级作为 node_id） #}
+        <div>
+          <label class="fieldset-label">{% trans "板块" %} <span class="text-error">*</span></label>
+          <div id="post-nodes" class="mt-1 flex flex-wrap items-center gap-2">
+            <select data-node-level="1" class="select select-bordered select-sm w-full sm:w-auto sm:min-w-40">
+              <option value="">{% trans "加载中…" %}</option>
+            </select>
+            <select data-node-level="2" class="select select-bordered select-sm hidden w-full sm:w-auto sm:min-w-40"></select>
+            <select data-node-level="3" class="select select-bordered select-sm hidden w-full sm:w-auto sm:min-w-40"></select>
+          </div>
+        </div>
+
+        {# 标签：已选 chips + 自定义输入 + 标签池选择 #}
+        <div>
+          <label class="fieldset-label">{% trans "标签" %} <span class="text-error">*</span></label>
+          <div data-post-tags class="mt-1 flex flex-wrap gap-1"></div>
+          <div class="mt-2 flex flex-wrap items-center gap-2">
+            <input data-tag-input type="text" class="input input-bordered input-sm w-40 text-sm"
+                   placeholder="{% trans '自定义标签' %}" autocomplete="off" />
+            <button type="button" data-tag-add class="btn btn-outline btn-sm">{% trans "添加" %}</button>
+            <button type="button" data-tag-pool class="btn btn-ghost btn-sm">{% trans "从标签池选择" %}</button>
+          </div>
+          <div data-tag-panel class="mt-2 hidden rounded-box border border-base-300 bg-base-200/40 p-3">
+            <div class="flex flex-wrap items-center gap-2">
+              <input data-tag-filter type="text" class="input input-bordered input-sm w-40 text-sm"
+                     placeholder="{% trans '在本页结果里过滤' %}" autocomplete="off" />
+              <button type="button" data-tag-prev class="btn btn-ghost btn-sm">{% trans "上一页" %}</button>
+              <span data-tag-page class="text-xs text-base-content/60"></span>
+              <button type="button" data-tag-next class="btn btn-ghost btn-sm">{% trans "下一页" %}</button>
+            </div>
+            <div data-tag-list class="mt-2 flex flex-wrap gap-1"></div>
+            <p class="mt-2 text-xs text-base-content/60">
+              {% trans "标签池按创建时间倒序、每页 20 条且不支持搜索，可直接用上面的输入框添加自定义标签（源站会把不存在的标签当作新标签）。" %}
+            </p>
+          </div>
+        </div>
+
+        {# 标题 #}
+        <div>
+          <label class="fieldset-label" for="post-title">{% trans "标题" %} <span class="text-error">*</span></label>
+          <input id="post-title" data-post-title type="text" maxlength="36"
+                 class="input input-bordered w-full text-sm" placeholder="{% trans '请输入标题（≤36 字）' %}"
+                 autocomplete="off" />
+        </div>
+
+        {# 正文：轻量富文本（不承载媒体，媒体在下方独立模块） #}
+        <div>
+          <label class="fieldset-label">{% trans "正文" %}</label>
+          <div class="mt-1 rounded-box border border-base-300 bg-base-100">
+            <div data-editor-toolbar class="flex flex-wrap items-center gap-1 border-b border-base-300 p-2">
+              <button type="button" data-editor-cmd="undo" class="btn btn-ghost btn-xs" title="{% trans '撤销' %}">{% trans "撤销" %}</button>
+              <button type="button" data-editor-cmd="redo" class="btn btn-ghost btn-xs" title="{% trans '重做' %}">{% trans "重做" %}</button>
+              <span class="mx-1 h-4 w-px bg-base-300"></span>
+              <button type="button" data-editor-cmd="bold" class="btn btn-ghost btn-xs font-bold" title="{% trans '加粗' %}">B</button>
+              <button type="button" data-editor-cmd="italic" class="btn btn-ghost btn-xs italic" title="{% trans '斜体' %}">I</button>
+              <button type="button" data-editor-cmd="underline" class="btn btn-ghost btn-xs underline" title="{% trans '下划线' %}">U</button>
+              <button type="button" data-editor-cmd="strikeThrough" class="btn btn-ghost btn-xs line-through" title="{% trans '删除线' %}">S</button>
+              <span class="mx-1 h-4 w-px bg-base-300"></span>
+              <button type="button" data-editor-block="H2" class="btn btn-ghost btn-xs font-semibold" title="{% trans '大标题' %}">H2</button>
+              <button type="button" data-editor-block="H3" class="btn btn-ghost btn-xs font-semibold" title="{% trans '小标题' %}">H3</button>
+              <button type="button" data-editor-block="BLOCKQUOTE" class="btn btn-ghost btn-xs" title="{% trans '引用' %}">{% trans "引用" %}</button>
+              <button type="button" data-editor-block="P" class="btn btn-ghost btn-xs" title="{% trans '变回正文' %}">{% trans "正文" %}</button>
+              <span class="mx-1 h-4 w-px bg-base-300"></span>
+              <button type="button" data-editor-cmd="insertUnorderedList" class="btn btn-ghost btn-xs" title="{% trans '无序列表' %}">{% trans "• 列表" %}</button>
+              <button type="button" data-editor-cmd="insertOrderedList" class="btn btn-ghost btn-xs" title="{% trans '有序列表' %}">{% trans "1. 列表" %}</button>
+              <button type="button" data-editor-cmd="insertHorizontalRule" class="btn btn-ghost btn-xs" title="{% trans '分割线' %}">{% trans "分割线" %}</button>
+              <span class="mx-1 h-4 w-px bg-base-300"></span>
+              <button type="button" data-editor-clear-format class="btn btn-ghost btn-xs" title="{% trans '清除格式' %}">{% trans "清格式" %}</button>
+              <span data-editor-count class="ml-auto text-xs text-base-content/50">0</span>
+            </div>
+            <div data-editor class="min-h-40 max-h-96 overflow-auto p-3 text-sm leading-relaxed focus:outline-none"
+                 contenteditable="true"></div>
+          </div>
+          <p class="mt-1 text-xs text-base-content/60">
+            {% trans "支持撤销 / 重做与常用排版；粘贴时会自动清理外部样式，避免源站排版错乱。内容会自动暂存在本机，刷新不丢。" %}
+          </p>
+        </div>
+
+        {# 媒体模块：图片 / 视频以缩略图网格展示，详细操作走右键菜单（不直接铺信息与按钮） #}
+        <div class="rounded-box border border-base-300 bg-base-200/40 p-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-sm font-semibold">{% trans "图片 / 视频" %}</span>
+            <span class="badge badge-ghost badge-sm">{% trans "独立模块" %}</span>
+            <button type="button" data-media-pick="image" class="btn btn-outline btn-sm">{% trans "添加图片" %}</button>
+            <button type="button" data-media-pick="video" class="btn btn-outline btn-sm">{% trans "添加视频" %}</button>
+            <button type="button" data-media-clear class="btn btn-ghost btn-sm">{% trans "清空媒体" %}</button>
+            <span data-media-status class="min-w-0 flex-1 truncate text-xs text-base-content/60"></span>
+          </div>
+          {# 两个隐藏的文件选择框：图片可多选、视频单选（源站限制） #}
+          <input data-media-image-input type="file" accept="image/png,image/jpeg,image/gif,image/bmp" multiple class="hidden" />
+          <input data-media-video-input type="file" accept="video/mp4" class="hidden" />
+
+          <div data-media-list class="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5"></div>
+
+          <p class="mt-2 text-xs leading-relaxed text-base-content/60">
+            {% trans "缩略图左上角为发布顺序；右键（触屏点右上角 ⋯）可查看信息 / 上移 / 下移 / 删除。" %}
+            {% trans "媒体不占正文，发布时按顺序附在正文末尾；源站限制：视频一次只能 1 个，图片最多 20 张、单张 ≤10MB。" %}
+          </p>
+
+          {# 右键菜单：单实例，按点击位置显示并自动避让视口边界 #}
+          <div data-media-menu
+               class="fixed z-50 hidden w-32 overflow-hidden rounded-box border border-base-300 bg-base-100 p-1 shadow-lg">
+            <button type="button" data-menu-act="info"
+                    class="btn btn-ghost btn-xs w-full justify-start">{% trans "查看信息" %}</button>
+            <button type="button" data-menu-act="up"
+                    class="btn btn-ghost btn-xs w-full justify-start">{% trans "上移" %}</button>
+            <button type="button" data-menu-act="down"
+                    class="btn btn-ghost btn-xs w-full justify-start">{% trans "下移" %}</button>
+            <div class="my-0.5 h-px bg-base-300"></div>
+            <button type="button" data-menu-act="del"
+                    class="btn btn-ghost btn-xs w-full justify-start text-error">{% trans "删除" %}</button>
+          </div>
+
+          {# 附件信息弹窗：路径 / 数据等一律在弹窗里看，避免长地址撑破布局 #}
+          <dialog data-media-info class="modal">
+            <div class="modal-box w-[calc(100vw-2rem)] max-w-lg">
+              <h3 class="text-base font-bold" data-info-title>{% trans "附件信息" %}</h3>
+              <div data-info-body class="mt-3 max-h-[55vh] space-y-2 overflow-y-auto text-xs"></div>
+              <div class="modal-action">
+                <button type="button" data-info-preview class="btn btn-sm">{% trans "预览图片" %}</button>
+                <button type="button" data-info-close class="btn btn-sm">{% trans "关闭" %}</button>
+              </div>
+            </div>
+            <div class="modal-backdrop" data-info-close></div>
+          </dialog>
+        </div>
+
+        {# 帖子类型 #}
+        <div class="flex flex-wrap items-end gap-3">
+          <div>
+            <label class="fieldset-label" for="post-type">{% trans "帖子类型" %}</label>
+            <select id="post-type" data-post-type class="select select-bordered select-sm w-32">
+              <option value="0">{% trans "普通" %}</option>
+              <option value="1">{% trans "出售" %}</option>
+              <option value="2">{% trans "悬赏" %}</option>
+            </select>
+          </div>
+          <div data-money-box class="hidden">
+            <label class="fieldset-label" for="post-money-type">{% trans "货币" %}</label>
+            <select id="post-money-type" data-post-money-type class="select select-bordered select-sm w-28">
+              <option value="0">{% trans "金币" %}</option>
+              <option value="1">{% trans "钻石" %}</option>
+            </select>
+          </div>
+          <div data-amount-box class="hidden">
+            <label class="fieldset-label" for="post-amount">{% trans "价格 / 金额" %}</label>
+            <input id="post-amount" data-post-amount type="text" inputmode="numeric" value="0"
+                   class="input input-bordered input-sm w-28 text-sm" autocomplete="off" />
+          </div>
+          <div data-reward-box class="hidden">
+            <label class="fieldset-label" for="post-reward-hours">{% trans "悬赏时长(小时)" %}</label>
+            <input id="post-reward-hours" data-post-reward-hours type="text" inputmode="numeric" value="72"
+                   class="input input-bordered input-sm w-28 text-sm" autocomplete="off" />
+          </div>
+        </div>
+
+        <div class="card-actions mt-1 items-center gap-3">
+          <button type="submit" data-post-submit class="btn btn-primary btn-sm">{% trans "发布帖子" %}</button>
+          <button type="button" data-post-clear class="btn btn-ghost btn-sm">{% trans "清空正文" %}</button>
+          <span data-post-status class="text-xs text-base-content/60"></span>
+        </div>
+      </div>
+    </form>
+
+    {# ===== 右侧：凭据与说明 ===== #}
+    <aside class="flex flex-col gap-4">
+      <div class="card border border-base-300 bg-base-100">
+        <div class="card-body gap-2 p-4">
+          <div class="flex items-center justify-between">
+            <h2 class="card-title text-base">{% trans "海角账号凭据" %}</h2>
+            <span class="badge badge-ghost badge-sm">{% trans "仅本机保存" %}</span>
+          </div>
+          <label class="fieldset-label" for="post-user-id">{% trans "用户ID" %}</label>
+          <input id="post-user-id" data-cred-user-id type="text" class="input input-bordered w-full text-xs"
+                 placeholder="{% trans '海角用户 ID（登录后个人主页可见）' %}" autocomplete="off" />
+          <label class="fieldset-label mt-1" for="post-user-token">{% trans "登录Token" %}</label>
+          <input id="post-user-token" data-cred-user-token type="password" class="input input-bordered w-full text-xs"
+                 placeholder="{% trans '登录后的 token' %}" autocomplete="off" />
+          <button type="button" data-cred-save class="btn btn-outline btn-sm mt-2 w-full">{% trans "保存到本机浏览器" %}</button>
+          <p class="text-xs text-base-content/60">
+            {% trans "发帖必须带海角登录态：在自己的账号页或浏览器存储里取到 user id 与 token 后填入即可，服务端不落库。" %}
+          </p>
+        </div>
+      </div>
+
+      <div class="card border border-base-300 bg-base-100">
+        <div class="card-body gap-2 p-4">
+          <div class="flex items-center justify-between">
+            <h2 class="card-title text-base">{% trans "接入鉴权" %}</h2>
+            <span class="badge badge-ghost badge-sm">{% trans "仅本机保存" %}</span>
+          </div>
+          <label class="fieldset-label" for="post-app-id">APPID</label>
+          <input id="post-app-id" data-auth-app-id type="text" class="input input-bordered w-full text-xs"
+                 placeholder="{% trans 'app_ 开头，接入项目公开标识' %}" autocomplete="off" />
+          <label class="fieldset-label mt-1" for="post-app-secret">APPSECRET</label>
+          <input id="post-app-secret" data-auth-app-secret type="password" class="input input-bordered w-full text-xs"
+                 placeholder="{% trans 'sk_ 开头签名密钥' %}" autocomplete="off" />
+          <button type="button" data-auth-save class="btn btn-outline btn-sm mt-2 w-full">{% trans "保存到本机浏览器" %}</button>
+          <p class="text-xs text-base-content/60">
+            {% trans "本页通过服务端代签调用本站接口，密钥只在发起请求时使用，不落库。还没有接入项目？请先注册并在控制台创建。" %}
+          </p>
+        </div>
+      </div>
+
+      <div class="card border border-base-300 bg-base-100">
+        <div class="card-body gap-2 p-4 text-xs text-base-content/70">
+          <h2 class="card-title text-base">{% trans "发布须知" %}</h2>
+          <p>{% trans "源站对所有新帖走人工审核：提交成功后会提示「待审核」，审核通过后才对外可见；被驳回会给出原因，可在下方「我的帖子」查看。" %}</p>
+          <p>{% trans "源站有发帖频率风控，短时间重复发帖会被拒绝（提示灌水），请控制节奏。" %}</p>
+          <p>{% trans "图片支持 png / jpg / jpeg / gif / bmp（单张 ≤10MB），视频仅支持 mp4。" %}</p>
+          <p>{% trans "图片与视频需先上传成功再插入正文，未插入正文的上传不会被发布。" %}</p>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  {# ===== 我的帖子看板：发布成功 / 审核中 / 审核失败（失败会给出原因） ===== #}
+  <section class="mt-6 card border border-base-300 bg-base-100">
+    <div class="card-body gap-3">
+      <div class="flex flex-wrap items-center gap-2">
+        <h2 class="card-title text-base">{% trans "我的帖子" %}</h2>
+        <span class="badge badge-ghost badge-sm">{% trans "用右侧的账号凭据查询" %}</span>
+        <div class="tabs tabs-boxed tabs-sm" data-mine-tabs>
+          <button type="button" class="tab tab-active" data-mine-status="published">{% trans "发布成功" %}</button>
+          <button type="button" class="tab" data-mine-status="pending">{% trans "审核中" %}</button>
+          <button type="button" class="tab" data-mine-status="rejected">{% trans "审核失败" %}</button>
+        </div>
+        <button type="button" data-mine-refresh class="btn btn-ghost btn-sm">{% trans "刷新" %}</button>
+        <span data-mine-hint class="min-w-0 flex-1 truncate text-xs text-base-content/60"></span>
+      </div>
+
+      <div data-mine-list class="space-y-2"></div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <button type="button" data-mine-prev class="btn btn-ghost btn-xs">{% trans "上一页" %}</button>
+        <span data-mine-page class="text-xs text-base-content/60"></span>
+        <button type="button" data-mine-next class="btn btn-ghost btn-xs">{% trans "下一页" %}</button>
+      </div>
+    </div>
+  </section>
+</section>
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'js/site/haijiao_post.js' %}?v=20260929h"></script>
+{% endblock %}

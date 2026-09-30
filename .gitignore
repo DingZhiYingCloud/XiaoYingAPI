@@ -33,6 +33,13 @@ toekns.txt
 /scripts/douyin_comment_publish/ms_token.txt
 /scripts/douyin_comment_publish/sec_headers.json
 
+# 红果离线签名服务的运行物：unidbg 胖 jar（约 31MB）与 metasec 原生库/证书。
+# 属第三方二进制，按 scripts/hongguo_sign/start_sign_service.bat 顶部说明单独获取，不入库。
+# 注：内置裁剪版 JRE（jre/，约 32MB）已入库——它是「免装 Java 即可运行」的关键，
+# 用 jlink 生成，重建命令见 start_sign_service.bat 顶部说明。
+/scripts/hongguo_sign/sign/unidbg-sign.jar
+/scripts/hongguo_sign/capture/
+
 # 日志文件
 *.log
 logs/

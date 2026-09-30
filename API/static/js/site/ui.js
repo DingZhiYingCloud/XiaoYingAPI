@@ -1,7 +1,12 @@
-/* 全局交互弹窗（daisyUI 实现，替代浏览器原生 confirm/alert）
+/* 全局交互：daisyUI 弹窗 + 页头下拉框 + 提示条关闭
  * - XYConfirm(message, opts) -> Promise<boolean>：daisyUI <dialog class="modal"> 确认框
  * - 声明式用法：给任意 <form data-confirm="提示文案">，提交前自动弹确认；
  *   可选 data-confirm-title / data-confirm-ok / data-confirm-danger="1"。
+ * - 下拉框：页头的主题 / 语言 / 用户菜单 / 移动端菜单都是 <details class="dropdown">，
+ *   浏览器原生行为只支持「再点一次 summary」收起，点页面其它地方不会关；
+ *   这里统一补上「点外部即收起」，并保证同时只展开一个。
+ * - 提示条：给容器加 data-dismissable、给关闭按钮加 data-dismiss，点击即移除该容器
+ *   （纯前端移除，不落库；刷新后消息本身已不在会话里）。
  */
 (function () {
   'use strict';
@@ -77,5 +82,26 @@
       form.dataset.xyConfirmed = '1';
       form.submit();
     });
+  });
+
+  /* ---------- 页头下拉框：点外部自动收起 ----------
+   * 只做「收起」，不干预展开：点 summary 的展开/收起仍由浏览器原生 details 行为负责。
+   * 时序上本监听器先于浏览器的默认动作（切换 open）执行，因此：
+   *   点外部 → 关掉全部；点另一个下拉 → 关掉除它以外的；点下拉内部（选主题等）→ 保持展开。 */
+  document.addEventListener('click', function (e) {
+    var current = e.target.closest('details.dropdown');
+    document.querySelectorAll('details.dropdown[open]').forEach(function (box) {
+      if (box !== current) box.open = false;
+    });
+  });
+
+  /* ---------- 提示条关闭 ----------
+   * 声明式：容器加 data-dismissable，内部关闭按钮加 data-dismiss。
+   * 只做移除，不做动画 —— 未加载本脚本时按钮不显示（见模板里的 .hidden 兜底由属性驱动）。 */
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-dismiss]');
+    if (!btn) return;
+    var box = btn.closest('[data-dismissable]');
+    if (box) box.remove();
   });
 })();

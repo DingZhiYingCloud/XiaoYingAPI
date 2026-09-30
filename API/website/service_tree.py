@@ -172,3 +172,18 @@ def service_tree():
 def choices():
     """供控制台三级联动下拉使用的枚举数据（等价于 service_tree()）"""
     return service_tree()
+
+
+def normalize_endpoint_path(path):
+    """把「文档里声明的端点路径」归一为服务树 / 服务策略使用的真实路由口径
+
+    文档声明可能带参数段（如 ``/api/seo/friend_links/<id>``），而服务树与
+    ``ApiServicePolicy.path_prefix`` 用的都是截断后的路径（``/api/seo/friend_links``）。
+    所有按路径挂载的数据（策略、公告）都必须用同一口径，否则前后台对不上。
+    """
+    return _truncate(path) or path
+
+
+def service_node(prefix):
+    """按服务前缀取服务树节点（找不到返回 None），供需要线路前缀的调用方复用"""
+    return next((svc for svc in service_tree() if svc['prefix'] == prefix), None)

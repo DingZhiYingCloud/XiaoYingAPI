@@ -1,9 +1,21 @@
 {% load i18n %}
-{% comment %}控制台消息提示（django.contrib.messages）。用法：页面里 {% include 'console/_messages.html' %}{% endcomment %}
+{% comment %}控制台消息提示（django.contrib.messages）。用法：页面里 {% include 'console/_messages.html' %}
+配色直接取 Django 的 message tags（success / warning / info / error 与 daisyUI 的 alert-* 同名），
+图标按级别给出；每条可关闭（挂 ui.js 的 data-dismiss 委托，见该文件说明）。{% endcomment %}
 {% if messages %}
-<div class="mt-3 space-y-2">
+<div class="mt-4 space-y-2">
   {% for message in messages %}
-  <div role="alert" class="alert py-2 text-sm {% if message.level_tag == 'success' %}alert-success{% elif message.level_tag == 'warning' %}alert-warning{% elif message.level_tag == 'info' %}alert-info{% else %}alert-error{% endif %}">{{ message }}</div>
+  <div role="alert" class="alert alert-{{ message.level_tag }} items-center py-2 text-sm" data-dismissable>
+    {% if message.level_tag == 'success' %}<i data-lucide="circle-check" class="h-4 w-4 shrink-0" aria-hidden="true"></i>
+    {% elif message.level_tag == 'warning' %}<i data-lucide="triangle-alert" class="h-4 w-4 shrink-0" aria-hidden="true"></i>
+    {% elif message.level_tag == 'info' %}<i data-lucide="info" class="h-4 w-4 shrink-0" aria-hidden="true"></i>
+    {% else %}<i data-lucide="circle-x" class="h-4 w-4 shrink-0" aria-hidden="true"></i>{% endif %}
+    <span class="min-w-0">{{ message }}</span>
+    <button type="button" class="btn btn-ghost btn-xs btn-circle shrink-0" data-dismiss
+            title="{% trans '关闭' %}" aria-label="{% trans '关闭' %}">
+      <i data-lucide="x" class="h-3.5 w-3.5" aria-hidden="true"></i>
+    </button>
+  </div>
   {% endfor %}
 </div>
 {% endif %}

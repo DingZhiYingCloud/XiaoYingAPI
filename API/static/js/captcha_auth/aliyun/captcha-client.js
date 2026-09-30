@@ -32,6 +32,9 @@
 (function (global) {
   'use strict';
 
+  // Django i18n 的全局函数（本文件也会被第三方页面加载，宿主没有 gettext 时退化为原文）
+  function _t(s) { return (typeof global.gettext === 'function') ? global.gettext(s) : s; }
+
   // ── 服务端点（与后端接口严格对应） ──
   var CONFIG_URL = '/api/captcha_auth/aliyun/config';        // 获取图形认证配置（appId）
   var VERIFY_URL = '/api/captcha_auth/aliyun/verify';        // 图形认证二次校验
@@ -55,7 +58,7 @@
     script.src = CT4_SRC;
     script.async = true;
     script.onload = function () { callback(); };
-    script.onerror = function () { _error('官方 SDK 加载失败，请检查静态资源: ' + CT4_SRC); };
+    script.onerror = function () { _error(_t('官方 SDK 加载失败，请检查静态资源: ') + CT4_SRC); };
     document.head.appendChild(script);
   }
 
@@ -82,13 +85,13 @@
           if (data && data.code === 10000) {
             _options.onResult(data.data || { result: 'fail', passed: false, reason: 'unknown', captcha_args: {} });
           } else {
-            _options.onResult({ result: 'fail', passed: false, reason: (data && data.msg) || '校验接口异常', captcha_args: {} });
+            _options.onResult({ result: 'fail', passed: false, reason: (data && data.msg) || _t('校验接口异常'), captcha_args: {} });
           }
         }
       })
       .catch(function () {
         if (_options && typeof _options.onResult === 'function') {
-          _options.onResult({ result: 'fail', passed: false, reason: '校验接口请求失败', captcha_args: {} });
+          _options.onResult({ result: 'fail', passed: false, reason: _t('校验接口请求失败'), captcha_args: {} });
         }
       });
   }
@@ -113,12 +116,12 @@
           if (_options && _options.autoVerify === false) return;
           _verify(validate);
         } else if (_options && typeof _options.onResult === 'function') {
-          _options.onResult({ result: 'fail', passed: false, reason: '验证参数获取失败', captcha_args: {} });
+          _options.onResult({ result: 'fail', passed: false, reason: _t('验证参数获取失败'), captcha_args: {} });
         }
       });
       obj.onFail(function () {
         if (_options && typeof _options.onResult === 'function') {
-          _options.onResult({ result: 'fail', passed: false, reason: '图形验证未通过', captcha_args: {} });
+          _options.onResult({ result: 'fail', passed: false, reason: _t('图形验证未通过'), captcha_args: {} });
         }
       });
       // 用户主动关闭验证弹层（可选通知接入方）
@@ -129,7 +132,7 @@
       }
       obj.onError(function () {
         if (_options && typeof _options.onResult === 'function') {
-          _options.onResult({ result: 'fail', passed: false, reason: '图形验证出错', captcha_args: {} });
+          _options.onResult({ result: 'fail', passed: false, reason: _t('图形验证出错'), captcha_args: {} });
         }
       });
     });

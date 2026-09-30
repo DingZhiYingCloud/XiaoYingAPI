@@ -41,6 +41,17 @@ def guide_view(request):
     return render(request, 'guide.html', {})
 
 
+def haijiao_post_view(request):
+    """海角社区发帖页
+
+    纯前端页面：板块 / 标签 / 正文与媒体上传都调本服务的海角接口（经 /docs/_call/ 服务端代签），
+    账号凭据由使用者在页面上填自己的海角「用户ID + Token」。
+    """
+    # 源站域名只有一个出处（海角域名不固定），从爬虫层取，注入模板供前端拼接帖子链接
+    from SpiderServices.haijiao.utils import BASE_URL
+    return render(request, 'post.html', {'haijiao_base_url': BASE_URL})
+
+
 # ==================== 多语言切换 ====================
 
 def set_language(request):
@@ -173,11 +184,24 @@ def _auth_page_context():
 # ==================== 页面 ====================
 
 def index(request):
-    """官网首页（服务能力卡片带对外状态徽标，状态见 service_status）"""
-    from .docs import all_docs as _all_docs
-    prefixes = {d.prefix for d in _all_docs()}
-    return render(request, 'index.html',
-                  {'services': _annotate_service_status(localize(SERVICES), lambda p: p in prefixes)})
+    """官网首页（服务能力卡片带对外状态徽标，状态见 service_status）
+
+    同时给「已接入文档且状态可用」的服务补上 slug，卡片即可直接跳到该服务的文档页
+    （不可用的服务 slug 置空，模板据它决定是链接还是灰卡片）；并给出接口总数，
+    供首页指标条展示（口径与文档中心一致，避免两处对不上）。
+    """
+    from API.common.middleware import is_docs_hidden
+    from .docs import ALL_ENDPOINTS, all_docs as _all_docs
+    by_prefix = {d.prefix: d for d in _all_docs() if not is_docs_hidden(d.prefix)}
+    services = []
+    for svc in _annotate_service_status(localize(SERVICES), lambda p: p in by_prefix):
+        doc = by_prefix.get(svc['url_prefix'])
+        linkable = doc is not None and svc['status'] not in ('offline', 'dev')
+        services.append({**svc, 'slug': doc.slug if linkable else ''})
+    return render(request, 'index.html', {
+        'services': services,
+        'endpoint_count': len(ALL_ENDPOINTS),
+    })
 
 
 def _safe_web_next(request, fallback='/'):

@@ -1,7 +1,7 @@
 {% load i18n %}
 {% comment %}调用统计：服务 × 时段矩阵（每个服务单独色阶，回答“什么时段哪个服务最多”）{% endcomment %}
-<div class="card mt-5 border border-base-300 bg-base-100">
-  <div class="card-body gap-3">
+<div class="con-panel mt-5">
+  <div class="con-panel-body gap-3">
     <div class="flex flex-wrap items-baseline justify-between gap-2">
       <h2 class="card-title text-base">{% trans "服务 × 时段矩阵" %}</h2>
       <span class="text-xs text-base-content/60">{% trans "各行按自身峰值配色，便于看出每个服务的高峰时段" %}</span>

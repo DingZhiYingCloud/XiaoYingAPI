@@ -3,13 +3,16 @@ from django.urls import path
 from django.views.generic import TemplateView
 from django.views.i18n import JavaScriptCatalog
 
-from . import console, console_users, docs_views, programs_views, views
+from . import (console, console_ai, console_announcements, console_appearance, console_dramas,
+               console_feedback, console_users, docs_views, feedback_views, programs_views, views)
 
 app_name = 'website'
 
 urlpatterns = [
     path('', views.index, name='index'),                       # 官网首页
     path('guide/', views.guide_view, name='guide'),            # 接入向导
+    # 服务配套工具页：按「/<服务>/post/」归到所属服务命名空间，避免各服务的工具页在根路径上撞车
+    path('haijiao/post/', views.haijiao_post_view, name='haijiao_post'),  # 海角社区发帖页
     path('login/', views.login_view, name='login'),            # 登录页 / 登录动作
     path('login/send-code/', views.login_send_code_view, name='login_send_code'),
     path('register/', views.register_view, name='register'),   # 注册页 / 两步注册第一步
@@ -28,6 +31,15 @@ urlpatterns = [
          name='robots_txt'),
     path('sitemap.xml', views.sitemap_view, name='sitemap'),
 
+    # 问题反馈中心（我们托管，子项目放链接 / iframe 即可接入；详见 feedback_views 模块说明）
+    # /feedback/ 是本站自用入口：重定向到官网接入项目那条反馈页（APPID 不写进模板）
+    path('feedback/', feedback_views.feedback_self, name='feedback_self'),
+    path('feedback/<str:app_id>/', feedback_views.feedback_home, name='feedback'),
+    path('feedback/<str:app_id>/public/', feedback_views.feedback_public, name='feedback_public'),
+    path('feedback/<str:app_id>/my/', feedback_views.feedback_mine, name='feedback_mine'),
+    path('feedback/<str:app_id>/detail/<uuid:feedback_id>/', feedback_views.feedback_detail,
+         name='feedback_detail'),
+
     # API 文档中心
     path('docs/', docs_views.index, name='docs_index'),        # 文档目录
     path('docs/_call/', docs_views.call, name='docs_call'),    # 在线调试代调（白名单）
@@ -45,6 +57,20 @@ urlpatterns = [
     path('console/projects/', console.projects_view, name='console_projects'),   # 接入项目管理
     path('console/services/', console.services_view, name='console_services'),   # API 服务策略（服务/线路/端点三级继承）
     path('console/stats/', console.stats_view, name='console_stats'),           # API 调用统计看板
+    # 接口公告（超管专属）：给服务 / 线路 / 端点三级发布公告，前台文档中心展示
+    path('console/announcements/', console_announcements.announcements_view,
+         name='console_announcements'),
+    # AI 模型（超管专属）：AI 厂商与模型维护，驱动 /api/ai/ 的模型切换
+    path('console/ai/models/', console_ai.ai_models_view, name='console_ai_models'),
+    # 官网外观（超管专属）：切换首页 / 文档中心的视觉气质与首页 Hero 文案
+    path('console/appearance/', console_appearance.appearance_view,
+         name='console_appearance'),
+    # 问题反馈中心（超管专属）：反馈处理（筛选/回复/AI 送审）与全局设置（含类型字典）
+    path('console/feedback/settings/', console_feedback.feedback_settings_view,
+         name='console_feedback_settings'),
+    path('console/feedback/', console_feedback.feedback_view, name='console_feedback'),
+    # 开发者联系方式（超管专属）：联系方式平台字典 + 各项目联系方式，供反馈页与 /api/feedback/contacts 使用
+    path('console/contacts/', console_feedback.contacts_view, name='console_contacts'),
     # 用户管理（超管专属）
     path('console/users/', console_users.users_view, name='console_users'),     # 用户列表（搜索/筛选/分页/写操作）
     path('console/users/<uuid:user_id>/', console_users.user_detail_view,
@@ -54,4 +80,9 @@ urlpatterns = [
          name='console_stats_service'),                                          # 单服务统计详情
     path('console/stats/app/<str:app_id>/', console.stats_app_view,
          name='console_stats_app'),                                              # 单项目统计详情
+    # 红果短剧（超管专属）：预处理导出 + 第 4 集及以后的外链登记管理
+    path('console/dramas/hongguo/', console_dramas.hongguo_view,
+         name='console_dramas_hongguo'),
+    path('console/dramas/hongguo/status/', console_dramas.hongguo_status_view,
+         name='console_dramas_hongguo_status'),
 ]

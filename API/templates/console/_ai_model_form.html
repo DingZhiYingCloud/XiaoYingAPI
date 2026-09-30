@@ -1,0 +1,175 @@
+{% load i18n %}
+{% comment %}AI 模型表单字段（新建 / 编辑弹窗共用）。用法：
+{% include 'console/_ai_model_form.html' with form_action='model_create' form_mode='create' %}
+{% include 'console/_ai_model_form.html' with form_action='model_edit' form_mode='edit' %}
+form_action 是提交给后端分发的动作名（见 console_ai._handle_post），form_mode 只用于本模板内判断
+新建 / 编辑；两者都不能省——只传 mode 会让后端收到无法识别的动作值。
+编辑弹窗由页面 JS 按行内 data-* 回填。上下文依赖：providers、prompts。
+
+布局约定：按「基础信息 / 能力 / 生成策略 / 状态」四段分组，段标题右侧接细分隔线；
+字段统一为「短标签 + 控件 + 说明行」——标签只留字段名便于扫读，括号里的补充说明下沉为说明行。{% endcomment %}
+<input type="hidden" name="action" value="{{ form_action }}" />
+{% if form_mode == 'edit' %}<input type="hidden" name="id" value="" />{% endif %}
+
+<div class="flex flex-col gap-5">
+
+  {# ==================== 基础信息 ==================== #}
+  <section class="flex flex-col gap-3">
+    <div class="flex items-center gap-3">
+      <span class="text-xs font-semibold text-base-content/70">{% trans "基础信息" %}</span>
+      <span class="h-px flex-1 bg-base-300"></span>
+    </div>
+
+    <div class="grid gap-x-4 gap-y-3 sm:grid-cols-2">
+      <div>
+        <label class="flex flex-col gap-1">
+          <span class="text-xs text-base-content/60">{% trans "模型标识" %} <span class="text-error">*</span></span>
+          <input type="text" name="key" maxlength="60" class="input input-sm font-mono" required
+                 placeholder="{% trans '如：deepseek-v4-flash / kimi-k2 / qwen-max' %}" />
+        </label>
+        <p class="mt-1 text-xs text-base-content/50">{% trans "请求参数 model 的取值，也是对外唯一标识" %}</p>
+      </div>
+      <div>
+        <label class="flex flex-col gap-1">
+          <span class="text-xs text-base-content/60">{% trans "模型名称" %} <span class="text-error">*</span></span>
+          <input type="text" name="name" maxlength="50" class="input input-sm" required
+                 placeholder="{% trans '如：DeepSeek 快速版' %}" />
+        </label>
+        <p class="mt-1 text-xs text-base-content/50">{% trans "后台与文档展示用" %}</p>
+      </div>
+
+      <div>
+        <label class="flex flex-col gap-1">
+          <span class="text-xs text-base-content/60">{% trans "所属厂商" %} <span class="text-error">*</span></span>
+          <select name="provider" class="select select-sm" required>
+            <option value="">{% trans "请选择厂商" %}</option>
+            {% for p in providers %}
+            <option value="{{ p.pk }}">{{ p.name }}（{{ p.code }}）</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+      <div>
+        <label class="flex flex-col gap-1">
+          <span class="text-xs text-base-content/60">{% trans "上游模型名" %}</span>
+          <input type="text" name="upstream_name" maxlength="100" class="input input-sm font-mono"
+                 placeholder="{% trans '上游换版本时只改这里，对外标识不变' %}" />
+        </label>
+        <p class="mt-1 text-xs text-base-content/50">{% trans "留空则与模型标识相同" %}</p>
+      </div>
+
+      <div>
+        <label class="flex flex-col gap-1">
+          <span class="text-xs text-base-content/60">{% trans "上下文长度" %}</span>
+          <input type="text" name="context_window" inputmode="numeric" class="input input-sm"
+                 placeholder="{% trans '如：128000' %}" />
+        </label>
+        <p class="mt-1 text-xs text-base-content/50">{% trans "仅展示，可留空" %}</p>
+      </div>
+      <div>
+        <label class="flex flex-col gap-1">
+          <span class="text-xs text-base-content/60">{% trans "排序" %}</span>
+          <input type="text" name="sort" inputmode="numeric" value="0" class="input input-sm" />
+        </label>
+        <p class="mt-1 text-xs text-base-content/50">{% trans "数字越小越靠前，决定文档下拉顺序" %}</p>
+      </div>
+
+      <div class="sm:col-span-2">
+        <label class="flex flex-col gap-1">
+          <span class="text-xs text-base-content/60">{% trans "备注" %}</span>
+          <input type="text" name="remark" maxlength="255" class="input input-sm" />
+        </label>
+      </div>
+    </div>
+  </section>
+
+  {# ==================== 能力 ==================== #}
+  <section class="flex flex-col gap-3">
+    <div class="flex items-center gap-3">
+      <span class="text-xs font-semibold text-base-content/70">{% trans "能力" %}</span>
+      <span class="h-px flex-1 bg-base-300"></span>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-x-8 gap-y-3">
+      <label class="flex items-center gap-2 text-sm">
+        <input type="checkbox" name="supports_vision" value="1" class="checkbox checkbox-sm" />
+        <span>{% trans "支持视觉（看图）" %}</span>
+      </label>
+      <label class="flex items-center gap-2 text-sm">
+        <span class="text-base-content/60">{% trans "最多图片数" %}</span>
+        <input type="text" name="max_images" inputmode="numeric" value="2" class="input input-sm w-20" required />
+      </label>
+    </div>
+    <p class="text-xs text-base-content/50">
+      {% trans "勾选后才允许请求携带 images；最多图片数仅对支持视觉的模型生效，超出会返回参数值非法。" %}
+    </p>
+  </section>
+
+  {# ==================== 生成策略 ==================== #}
+  <section class="flex flex-col gap-3">
+    <div class="flex items-center gap-3">
+      <span class="text-xs font-semibold text-base-content/70">{% trans "生成策略" %}</span>
+      <span class="h-px flex-1 bg-base-300"></span>
+    </div>
+
+    <label class="flex flex-col gap-1">
+      <span class="text-xs text-base-content/60">{% trans "系统提示词" %}</span>
+      <select name="prompt_choice" class="select select-sm">
+        <option value="inherit">{% trans "跟随全局共享" %}</option>
+        <option value="none">{% trans "不使用系统提示词" %}</option>
+        {% for s in prompts %}
+        <option value="prompt:{{ s.pk }}">{% blocktrans with n=s.name %}指定：{{ n }}{% endblocktrans %}{% if not s.enabled %}{% trans "（已停用）" %}{% endif %}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <p class="text-xs text-base-content/50">
+      {% trans "调用方自带 system_prompt 时以调用方为准，本项只在调用方没带时生效。提示词在下方「系统提示词」区维护。" %}
+    </p>
+
+    <div class="mt-1 grid gap-3 sm:grid-cols-3">
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/60">{% trans "采样温度" %}</span>
+        <input type="text" name="temperature" class="input input-sm" placeholder="0 ~ 2" />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/60">{% trans "最大回复长度" %}</span>
+        <input type="text" name="max_tokens" inputmode="numeric" class="input input-sm" placeholder="1 ~ 32768" />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/60">{% trans "停止词" %}</span>
+        <input type="text" name="stop" maxlength="255" class="input input-sm"
+               placeholder="{% trans '多个用逗号分隔，如 END,STOP' %}" />
+      </label>
+    </div>
+    <p class="text-xs text-base-content/50">
+      {% trans "采样参数（可选）：留空表示不下发该参数、由上游默认值决定。调用方无法自定义，要调整只能改这里。" %}
+    </p>
+  </section>
+
+  {# ==================== 状态 ==================== #}
+  <section class="flex flex-col gap-3">
+    <div class="flex items-center gap-3">
+      <span class="text-xs font-semibold text-base-content/70">{% trans "状态" %}</span>
+      <span class="h-px flex-1 bg-base-300"></span>
+    </div>
+
+    <div class="grid gap-x-4 gap-y-3 sm:grid-cols-2">
+      <div>
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="enabled" value="1" class="checkbox checkbox-sm"
+                 {% if form_mode == 'create' %}checked{% endif %} />
+          <span>{% trans "上架" %}</span>
+        </label>
+        <p class="mt-1 text-xs text-base-content/50">{% trans "下架后不在模型清单与文档下拉中出现" %}</p>
+      </div>
+      <div>
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="is_default" value="1" class="checkbox checkbox-sm" />
+          <span>{% trans "设为默认模型" %}</span>
+        </label>
+        <p class="mt-1 text-xs text-base-content/50">{% trans "请求不传 model 时使用，全局只保留一个" %}</p>
+      </div>
+    </div>
+  </section>
+
+</div>

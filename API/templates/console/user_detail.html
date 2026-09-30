@@ -56,8 +56,8 @@
 <div class="mt-5 grid gap-5 lg:grid-cols-3">
   <div class="space-y-5 lg:col-span-2">
     {# ===== 基本资料 ===== #}
-    <div class="card border border-base-300 bg-base-100">
-      <div class="card-body gap-3">
+    <div class="con-panel">
+      <div class="con-panel-body gap-3">
         <h2 class="card-title text-base">{% trans "基本资料" %}</h2>
         <dl class="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
           <div>
@@ -121,8 +121,8 @@
     </div>
 
     {# ===== 注册信息 ===== #}
-    <div class="card border border-base-300 bg-base-100">
-      <div class="card-body gap-3">
+    <div class="con-panel">
+      <div class="con-panel-body gap-3">
         <h2 class="card-title text-base">{% trans "注册信息" %}</h2>
         <dl class="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
           <div>
@@ -143,8 +143,8 @@
   </div>
 
   {# ===== 账号操作 ===== #}
-  <div class="card h-fit border border-base-300 bg-base-100">
-    <div class="card-body gap-3">
+  <div class="con-panel h-fit">
+    <div class="con-panel-body gap-3">
       <h2 class="card-title text-base">{% trans "账号操作" %}</h2>
       <button type="button" class="btn btn-sm justify-start" onclick="user_edit_modal.showModal()">
         <i data-lucide="pencil" class="h-4 w-4"></i>{% trans "编辑资料" %}
@@ -171,8 +171,8 @@
 </div>
 
 {# ===== 按项目登录明细 ===== #}
-<div class="card mt-5 border border-base-300 bg-base-100">
-  <div class="card-body gap-3">
+<div class="con-panel mt-5">
+  <div class="con-panel-body gap-3">
     <h2 class="card-title text-base">{% trans "按项目登录明细" %}</h2>
     {% if logs_by_app %}
     <div class="overflow-x-auto">
@@ -224,8 +224,8 @@
 </div>
 
 {# ===== 最近登录记录 ===== #}
-<div class="card mt-5 border border-base-300 bg-base-100">
-  <div class="card-body gap-3">
+<div class="con-panel mt-5">
+  <div class="con-panel-body gap-3">
     <h2 class="card-title text-base">{% trans "最近登录记录" %}</h2>
     {% if recent_logs %}
     <div class="overflow-x-auto">
@@ -259,8 +259,8 @@
 </div>
 
 {# ===== Token 明细 ===== #}
-<div class="card mt-5 border border-base-300 bg-base-100">
-  <div class="card-body gap-3">
+<div class="con-panel mt-5">
+  <div class="con-panel-body gap-3">
     <h2 class="card-title text-base">{% trans "登录凭证（Token）明细" %}</h2>
     {% if tokens %}
     <div class="overflow-x-auto">
@@ -310,8 +310,8 @@
 </div>
 
 {# ===== 验证记录时间线 ===== #}
-<div class="card mt-5 border border-base-300 bg-base-100">
-  <div class="card-body gap-3">
+<div class="con-panel mt-5">
+  <div class="con-panel-body gap-3">
     <div class="flex flex-wrap items-baseline justify-between gap-2">
       <h2 class="card-title text-base">{% trans "验证记录" %}</h2>
       <span class="text-xs text-base-content/60">{% blocktrans with n=verify_limit %}最多展示最近 {{ n }} 条{% endblocktrans %}</span>

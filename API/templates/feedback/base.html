@@ -1,0 +1,73 @@
+{% extends 'template.html' %}
+{% load static i18n %}
+
+{# 问题反馈中心 · 对外反馈页公共骨架（三个页签 + 结果提示 + 开发者联系方式） #}
+
+{% block title %}{{ fb_app.name }} · {% trans "问题反馈" %}{% endblock %}
+{% block description %}{% trans "提交你的功能建议、升级需求、使用问题或 BUG，查看处理进度与开发者联系方式。" %}{% endblock %}
+
+{% block content %}
+<section class="mx-auto w-full max-w-4xl px-3 py-6 sm:px-4 sm:py-8">
+
+  <header class="mb-5">
+    <h1 class="text-xl font-bold sm:text-2xl">{{ fb_app.name }}</h1>
+    <p class="mt-1 text-sm text-base-content/60">{% trans "问题反馈中心" %}</p>
+  </header>
+
+  <div role="tablist" class="tabs tabs-box mb-5 w-full">
+    <a role="tab" href="{% url 'website:feedback' fb_app.app_id %}"
+       class="tab flex-1 {% if fb_tab == 'submit' %}tab-active{% endif %}">{% trans "提交反馈" %}</a>
+    <a role="tab" href="{% url 'website:feedback_public' fb_app.app_id %}"
+       class="tab flex-1 {% if fb_tab == 'public' %}tab-active{% endif %}">{% trans "公开区" %}</a>
+    <a role="tab" href="{% url 'website:feedback_mine' fb_app.app_id %}"
+       class="tab flex-1 {% if fb_tab == 'mine' %}tab-active{% endif %}">{% trans "我的反馈" %}</a>
+  </div>
+
+  {% if messages %}
+  <div class="mb-5 flex flex-col gap-2">
+    {% for message in messages %}
+    <div role="alert" class="alert py-2 text-sm {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-error{% else %}alert-info{% endif %}">
+      <span>{{ message }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% block feedback_content %}{% endblock %}
+
+  {# 开发者联系方式：接入反馈中心后必须有的展示位置（内容由超管在后台按项目维护） #}
+  {% if contacts %}
+  <section class="card mt-8 border border-base-300 bg-base-100">
+    <div class="card-body gap-3 p-5 sm:p-6">
+      <div class="flex items-center gap-3">
+        <i data-lucide="headset" class="h-4 w-4 text-primary"></i>
+        <span class="text-sm font-semibold">{% trans "开发者联系方式" %}</span>
+        <span class="h-px flex-1 bg-base-300"></span>
+      </div>
+      <ul class="flex flex-wrap gap-2">
+        {% for contact in contacts %}
+        <li>
+          {% if contact.url %}
+          <a href="{{ contact.url }}" target="_blank" rel="noopener noreferrer"
+             class="btn btn-outline btn-sm gap-1.5">
+            {% if contact.icon %}<i data-lucide="{{ contact.icon }}" class="h-3.5 w-3.5"></i>{% endif %}
+            <span>{{ contact.name }}</span>
+            <span class="font-mono text-xs opacity-80">{{ contact.value }}</span>
+          </a>
+          {% else %}
+          <span class="btn btn-outline btn-sm gap-1.5 no-animation cursor-default">
+            {% if contact.icon %}<i data-lucide="{{ contact.icon }}" class="h-3.5 w-3.5"></i>{% endif %}
+            <span>{{ contact.name }}</span>
+            <span class="font-mono text-xs opacity-80">{{ contact.value }}</span>
+          </span>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      <p class="text-xs text-base-content/50">{% trans "遇到紧急问题，可直接通过以上方式联系开发者。" %}</p>
+    </div>
+  </section>
+  {% endif %}
+
+</section>
+{% endblock %}

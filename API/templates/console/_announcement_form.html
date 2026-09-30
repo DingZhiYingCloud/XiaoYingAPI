@@ -1,0 +1,70 @@
+{% load i18n %}
+{% comment %}接口公告表单字段（新建 / 编辑弹窗共用）。用法：
+{% include 'console/_announcement_form.html' with form_action='create' %}
+{% include 'console/_announcement_form.html' with form_action='edit' %}
+编辑弹窗由页面 JS 按行数据（announcement_items 内联 JSON）回填字段与三级下拉。
+上下文依赖：level_choices / scope_choices（由 announcements_view 提供）。
+层级与 path_prefix 由「服务 → 线路 → 端点」三级选择自动推导，不手输。{% endcomment %}
+<input type="hidden" name="action" value="{{ form_action }}" />
+{% if form_action == 'edit' %}<input type="hidden" name="id" value="" />{% endif %}
+
+<label class="flex flex-col gap-1">
+  <span class="text-xs text-base-content/60">{% trans "标题" %}</span>
+  <input type="text" name="title" maxlength="100" class="input input-sm" required />
+</label>
+
+<div class="grid gap-3 sm:grid-cols-3">
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-base-content/60">{% trans "服务" %}</span>
+    <select name="service" class="select select-sm" data-tree-service required></select>
+  </label>
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-base-content/60">{% trans "线路（留空=服务级）" %}</span>
+    <select name="channel" class="select select-sm" data-tree-channel></select>
+  </label>
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-base-content/60">{% trans "端点（留空=线路级）" %}</span>
+    <select name="endpoint" class="select select-sm" data-tree-endpoint></select>
+  </label>
+</div>
+<p class="rounded-box bg-base-200 px-3 py-2 text-xs text-base-content/70">
+  {% trans "挂载层级：" %}<span class="font-medium" data-tree-level></span>
+  <span class="mx-1 opacity-40">·</span>
+  {% trans "URL 前缀：" %}<code class="font-mono" data-tree-prefix></code>
+</p>
+
+<div class="grid gap-3 sm:grid-cols-2">
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-base-content/60">{% trans "级别（决定配色与图标）" %}</span>
+    <select name="level" class="select select-sm">
+      {% for value, label in level_choices %}
+      <option value="{{ value }}"{% if form_action == 'create' and forloop.first %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-base-content/60">{% trans "排序（数字越小越靠前）" %}</span>
+    <input type="text" name="sort" inputmode="numeric" value="0" class="input input-sm" />
+  </label>
+</div>
+
+<label class="flex flex-col gap-1">
+  <span class="text-xs text-base-content/60">{% trans "正文（原样展示，保留换行；填什么语言就显示什么语言，不做翻译）" %}</span>
+  <textarea name="content" rows="4" class="textarea textarea-sm w-full" required></textarea>
+</label>
+
+<div class="grid gap-3 sm:grid-cols-2">
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-base-content/60">{% trans "生效开始（留空=立即生效）" %}</span>
+    <input type="datetime-local" name="start_time" class="input input-sm" />
+  </label>
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-base-content/60">{% trans "生效结束（留空=长期有效）" %}</span>
+    <input type="datetime-local" name="end_time" class="input input-sm" />
+  </label>
+</div>
+
+<label class="flex flex-col gap-1">
+  <span class="text-xs text-base-content/60">{% trans "备注（仅后台可见）" %}</span>
+  <input type="text" name="remark" maxlength="255" class="input input-sm" />
+</label>

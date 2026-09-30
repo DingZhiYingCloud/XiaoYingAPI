@@ -1,0 +1,42 @@
+{% load i18n %}
+{% comment %}
+接口公告渲染片段（服务 / 线路 / 端点三级共用）。
+
+入参 announcements：由 API/website/docs_views._attach_announcements 挂到文档对象上的
+公告列表（已按 sort 排序），每一项是 Announcement 实例。
+
+级别配色 / 结构 / 交互样式见 API/static/css/input.css 的 .announce 组件（配色取自
+daisyUI 主题变量，随主题切换）；「展开全部 / 收起」与「关闭」由
+API/static/js/site/docs_announcements.js 渐进增强 —— 脚本未加载时控件不显示，正文按
+CSS 限制行数，页面依然完整可读。
+
+公告是超管在后台填写的动态文本，填什么语言就显示什么语言，不做翻译。
+{% endcomment %}
+{% if announcements %}
+<div class="space-y-2" data-announcements>
+  {% for a in announcements %}
+  <aside class="announce announce-{{ a.level }} text-sm" data-announcement="{{ a.pk }}">
+    <span class="announce-icon" aria-hidden="true">
+      <i data-lucide="{{ a.level_def.icon }}" class="h-4 w-4"></i>
+    </span>
+    <div class="min-w-0 flex-1">
+      <p class="announce-title">{{ a.title }}</p>
+      {% if a.content %}
+      <p class="announce-body" data-announce-body>{{ a.content }}</p>
+      {% endif %}
+      <button type="button" class="announce-toggle" data-announce-toggle aria-expanded="false">
+        <span data-announce-more>{% trans "展开全部" %}</span>
+        <span data-announce-less class="hidden">{% trans "收起" %}</span>
+        <span class="announce-chevron" aria-hidden="true">
+          <i data-lucide="chevron-down" class="h-3.5 w-3.5"></i>
+        </span>
+      </button>
+    </div>
+    <button type="button" class="announce-close" data-announce-close
+            title="{% trans '本条不再提示（仅限本机浏览器）' %}" aria-label="{% trans '关闭公告' %}">
+      <i data-lucide="x" class="h-3.5 w-3.5"></i>
+    </button>
+  </aside>
+  {% endfor %}
+</div>
+{% endif %}

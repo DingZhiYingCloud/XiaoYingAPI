@@ -1,0 +1,276 @@
+{% extends 'console/base.html' %}
+{% load static i18n %}
+
+{# 开发者联系方式：联系方式平台字典（渠道 / 填写项 / 跳转链接模板）+ 各接入项目的具体值；这两块原先在「反馈中心设置」页里，因用途不限于反馈中心而独立成模块页（拆分说明见 console_feedback.py 的模块 docstring） #}
+
+{% block title %}{% trans "开发者联系方式 - 超级管理员 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,开发者联系方式,联系方式平台" %}{% endblock %}
+{% block description %}{% trans "小影API 超级管理员：维护开发者联系方式的平台字典（渠道、填写项、跳转链接模板）与各接入项目的联系方式，展示在对应项目的反馈页与公开区。" %}{% endblock %}
+
+{% block console_content %}
+{% trans "维护联系方式平台字典与各接入项目的具体值；这些内容展示在对应项目的反馈页与公开区底部。" as ph_desc %}
+{% include 'console/_page_header.html' with icon='headset' title='开发者联系方式' desc=ph_desc %}
+
+{% include 'console/_messages.html' %}
+
+<div class="mt-3 flex flex-wrap items-center gap-2">
+  <a href="{% url 'website:console_feedback' %}" class="btn btn-ghost btn-sm gap-1.5">
+    <i data-lucide="arrow-left" class="h-4 w-4"></i>{% trans "返回反馈管理" %}
+  </a>
+  <a href="{% url 'website:console_feedback_settings' %}" class="btn btn-ghost btn-sm gap-1.5">
+    <i data-lucide="settings" class="h-4 w-4"></i>{% trans "反馈中心设置" %}
+  </a>
+</div>
+
+{# ==================== 一、联系方式平台 ==================== #}
+<div class="con-panel mt-4">
+  <div class="con-panel-head">
+    <span class="con-panel-icon"><i data-lucide="link" class="h-4 w-4"></i></span>
+    <h2 class="text-sm font-semibold">{% trans "联系方式平台" %}</h2>
+    <button type="button" class="btn btn-primary btn-sm ml-auto" id="platform-create">
+      <i data-lucide="plus" class="h-4 w-4"></i>{% trans "新增平台" %}
+    </button>
+  </div>
+  <div class="con-panel-body gap-3">
+    <p class="text-xs text-base-content/50">
+      {% trans "跳转链接模板用 {value} 占位，把值拼成可点击链接，例如 https://t.me/{value}、mailto:{value}；留空则在前台按纯文本展示。" %}
+    </p>
+
+    {% if platforms %}
+    <div class="con-table-wrap">
+      <table class="table table-sm min-w-[60rem]">
+        <thead>
+          <tr>
+            <th class="whitespace-nowrap">{% trans "排序" %}</th>
+            <th class="whitespace-nowrap">{% trans "标识" %}</th>
+            <th class="whitespace-nowrap">{% trans "平台名称" %}</th>
+            <th class="whitespace-nowrap">{% trans "填写项名称" %}</th>
+            <th class="whitespace-nowrap">{% trans "跳转模板" %}</th>
+            <th class="whitespace-nowrap">{% trans "启用" %}</th>
+            <th class="whitespace-nowrap text-right">{% trans "操作" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for platform in platforms %}
+          <tr>
+            <td class="text-xs">{{ platform.sort }}</td>
+            <td class="font-mono text-xs">{{ platform.code }}</td>
+            <td class="text-sm">{{ platform.name }}</td>
+            <td class="text-xs">{{ platform.item_label }}</td>
+            <td class="max-w-[20rem] truncate font-mono text-xs text-base-content/70">{{ platform.url_template|default:'—' }}</td>
+            <td>
+              <span class="badge badge-sm {% if platform.enabled %}badge-success{% else %}badge-ghost{% endif %}">
+                {% if platform.enabled %}{% trans "启用" %}{% else %}{% trans "停用" %}{% endif %}
+              </span>
+            </td>
+            <td class="whitespace-nowrap text-right">
+              <button type="button" class="btn btn-ghost btn-xs"
+                      data-platform-edit="1"
+                      data-id="{{ platform.pk }}" data-code="{{ platform.code }}" data-name="{{ platform.name }}"
+                      data-icon="{{ platform.icon }}" data-value-label="{{ platform.value_label }}"
+                      data-url-template="{{ platform.url_template }}" data-sort="{{ platform.sort }}"
+                      data-enabled="{{ platform.enabled|yesno:'1,0' }}" data-remark="{{ platform.remark }}">{% trans "编辑" %}</button>
+              <form method="post" class="inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="platform_toggle" />
+                <input type="hidden" name="id" value="{{ platform.pk }}" />
+                <button type="submit" class="btn btn-ghost btn-xs">{% if platform.enabled %}{% trans "停用" %}{% else %}{% trans "启用" %}{% endif %}</button>
+              </form>
+              <form method="post" class="inline"
+                    data-confirm="{% trans '确认删除该联系方式平台？' %}"
+                    data-confirm-danger="1">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="platform_delete" />
+                <input type="hidden" name="id" value="{{ platform.pk }}" />
+                <button type="submit" class="btn btn-ghost btn-xs text-error">{% trans "删除" %}</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="con-empty">
+      <i data-lucide="link" class="h-5 w-5 opacity-50"></i>
+      {% trans "还没有联系方式平台，点右上角「新增平台」建一个。" %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{# ==================== 二、各项目联系方式 ==================== #}
+<div class="con-panel mt-4">
+  <div class="con-panel-head">
+    <span class="con-panel-icon"><i data-lucide="headset" class="h-4 w-4"></i></span>
+    <h2 class="text-sm font-semibold">{% trans "各项目开发者联系方式" %}</h2>
+    <form method="get" class="ml-auto flex items-end gap-2">
+      <label class="con-field">
+        <span class="con-field-label">{% trans "选择项目" %}</span>
+        <select name="capp" class="select select-sm w-full sm:w-52" onchange="this.form.submit()">
+          {% for app in apps %}
+          <option value="{{ app.app_id }}"{% if contact_app and contact_app.pk == app.pk %} selected{% endif %}>{{ app.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <noscript><button type="submit" class="btn btn-sm">{% trans "切换" %}</button></noscript>
+    </form>
+  </div>
+
+  <div class="con-panel-body gap-3">
+    {% if contact_app %}
+    <p class="text-xs text-base-content/50">
+      {% blocktrans with name=contact_app.name %}这些联系方式会展示在「{{ name }}」的反馈页与公开区，用户提交前即可看到；留空表示该平台不展示。{% endblocktrans %}
+    </p>
+    {% if platforms %}
+    <form method="post" class="flex flex-col gap-3">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="contact_save" />
+      <input type="hidden" name="app_id" value="{{ contact_app.app_id }}" />
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {% for platform, value in contact_rows %}
+        <label class="flex flex-col gap-1">
+          <span class="text-xs text-base-content/70">
+            {{ platform.name }}
+            {% if not platform.enabled %}<span class="badge badge-ghost badge-xs">{% trans "平台已停用" %}</span>{% endif %}
+          </span>
+          <input type="text" name="contact_{{ platform.pk }}" maxlength="200" value="{{ value }}"
+                 class="input input-sm input-bordered w-full"
+                 placeholder="{{ platform.item_label }}" />
+        </label>
+        {% endfor %}
+      </div>
+      <div class="flex justify-end">
+        <button type="submit" class="btn btn-primary btn-sm">{% trans "保存联系方式" %}</button>
+      </div>
+    </form>
+    {% else %}
+    <div class="con-empty">
+      <i data-lucide="link" class="h-5 w-5 opacity-50"></i>
+      {% trans "请先在上面新增至少一个联系方式平台，再回来填各项目的值。" %}
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="con-empty">
+      <i data-lucide="boxes" class="h-5 w-5 opacity-50"></i>
+      {% trans "还没有接入项目。" %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{# ==================== 平台编辑弹窗 ==================== #}
+<dialog id="platform-modal" class="modal">
+  <div class="modal-box max-w-lg">
+    <h3 class="text-base font-bold" id="platform-modal-title">{% trans "新增联系方式平台" %}</h3>
+    <form method="post" id="platform-form" class="mt-3 flex flex-col gap-3">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="platform_create" />
+      <input type="hidden" name="id" value="" />
+      <div class="grid gap-3 sm:grid-cols-2">
+        <label class="flex flex-col gap-1">
+          <span class="text-xs text-base-content/70">{% trans "平台标识 *" %}</span>
+          <input type="text" name="code" maxlength="30" class="input input-sm input-bordered" placeholder="telegram" />
+        </label>
+        <label class="flex flex-col gap-1">
+          <span class="text-xs text-base-content/70">{% trans "平台名称 *" %}</span>
+          <input type="text" name="name" maxlength="30" class="input input-sm input-bordered" placeholder="Telegram" />
+        </label>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <label class="flex flex-col gap-1">
+          <span class="text-xs text-base-content/70">{% trans "填写项名称" %}</span>
+          <input type="text" name="value_label" maxlength="30" class="input input-sm input-bordered" placeholder="{% trans '用户名' %}" />
+        </label>
+        <label class="flex flex-col gap-1">
+          <span class="text-xs text-base-content/70">{% trans "图标（lucide 名称）" %}</span>
+          <span class="flex w-full items-center gap-1">
+            <input type="text" name="icon" maxlength="30" class="input input-sm input-bordered min-w-0 flex-1" placeholder="send" />
+            {# 按钮左侧那个小图标就是当前图标名的预览（由 console_forms.js 按输入框内容实时渲染） #}
+            <button type="button" class="btn btn-sm btn-outline shrink-0 gap-1 px-2" data-icon-open="1"
+                    title="{% trans '从图标集里挑一个' %}">
+              <span class="flex h-4 w-4 items-center justify-center" data-icon-preview></span>
+              {% trans "图标集" %}
+            </button>
+          </span>
+        </label>
+      </div>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/70">{% trans "跳转链接模板" %}</span>
+        <input type="text" name="url_template" maxlength="200" class="input input-sm input-bordered"
+               placeholder="https://t.me/{value}" />
+      </label>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <label class="flex flex-col gap-1">
+          <span class="text-xs text-base-content/70">{% trans "排序（越小越前）" %}</span>
+          <input type="number" name="sort" value="0" class="input input-sm input-bordered" />
+        </label>
+        <label class="flex cursor-pointer items-center gap-2 self-end pb-2">
+          <input type="checkbox" name="enabled" value="1" class="toggle toggle-sm" checked />
+          <span class="text-sm">{% trans "启用" %}</span>
+        </label>
+      </div>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/70">{% trans "备注" %}</span>
+        <input type="text" name="remark" maxlength="255" class="input input-sm input-bordered" />
+      </label>
+      <div class="modal-action">
+        <button type="button" class="btn btn-ghost btn-sm" data-modal-close="platform-modal">{% trans "取消" %}</button>
+        <button type="submit" class="btn btn-primary btn-sm">{% trans "保存" %}</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>{% trans "关闭" %}</button></form>
+</dialog>
+
+{# ==================== 图标集（与「反馈类型」共用同一套交互） ==================== #}
+<dialog id="icon-picker-modal" class="modal">
+  <div class="modal-box max-w-3xl">
+    <h3 class="text-base font-bold">{% trans "图标集" %}</h3>
+    <p class="mt-1 text-xs text-base-content/60">
+      {% trans "点一下即填入「图标」输入框。下面是按用途分组的常用图标；找不到想要的，就在搜索框里输英文名（如 mail、chart、user），会从全部 lucide 图标里找。" %}
+    </p>
+    <label class="input input-sm input-bordered mt-3 flex w-full items-center gap-2">
+      <i data-lucide="search" class="h-4 w-4 opacity-60"></i>
+      <input type="search" id="icon-picker-search" class="min-w-0 grow" autocomplete="off"
+             placeholder="{% trans '搜索图标名（英文，如 mail / chat / chart）' %}" />
+    </label>
+    <div id="icon-picker-grid" class="mt-3 max-h-[55vh] overflow-y-auto pr-1"></div>
+    <p id="icon-picker-empty" class="hidden py-8 text-center text-sm text-base-content/50">
+      {% trans "没有匹配的图标，换个英文关键词试试。" %}
+    </p>
+    <div class="modal-action">
+      <button type="button" class="btn btn-ghost btn-sm" id="icon-picker-clear">{% trans "清空图标" %}</button>
+      <form method="dialog"><button class="btn btn-sm">{% trans "关闭" %}</button></form>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>{% trans "关闭" %}</button></form>
+</dialog>
+{% endblock %}
+
+{% block js %}
+{# 新增 / 编辑弹窗与图标集是「反馈类型 / 联系方式平台」两页共用的交互，见 console_forms.js #}
+<script src="{% static 'js/site/console_forms.js' %}?v=20260930b"></script>
+<script>
+(function () {
+  var FIELDS = ['code', 'name', 'value_label', 'icon', 'url_template', 'sort', 'remark'];
+  var OPEN = {
+    modalId: 'platform-modal', formId: 'platform-form', titleId: 'platform-modal-title',
+    fields: FIELDS, prefix: 'platform',
+    createTitle: gettext('新增联系方式平台'), editTitle: gettext('编辑联系方式平台')
+  };
+
+  var create = document.getElementById('platform-create');
+  if (create) {
+    create.addEventListener('click', function () {
+      XYConsoleForm.open(Object.assign({}, OPEN, { source: null }));
+    });
+    document.querySelectorAll('[data-platform-edit]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        XYConsoleForm.open(Object.assign({}, OPEN, { source: btn }));
+      });
+    });
+  }
+})();
+</script>
+{% endblock %}

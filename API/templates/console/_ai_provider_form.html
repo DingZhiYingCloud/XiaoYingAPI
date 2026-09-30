@@ -1,0 +1,61 @@
+{% load i18n %}
+{% comment %}AI 厂商表单字段（新建 / 编辑弹窗共用）。用法：
+{% include 'console/_ai_provider_form.html' with form_action='provider_create' form_mode='create' %}
+{% include 'console/_ai_provider_form.html' with form_action='provider_edit' form_mode='edit' %}
+form_action 是提交给后端分发的动作名（见 console_ai._handle_post），form_mode 只用于本模板内判断
+新建 / 编辑；两者都不能省——只传 mode 会让后端收到无法识别的动作值。
+编辑弹窗由页面 JS 按行内 data-* 回填。上下文依赖：无。
+Key 的三态：留空=不修改；填写=覆盖；勾选「清除」=清空。页面永不回显 Key 原文。{% endcomment %}
+<input type="hidden" name="action" value="{{ form_action }}" />
+{% if form_mode == 'edit' %}<input type="hidden" name="id" value="" />{% endif %}
+
+<div class="grid gap-3 sm:grid-cols-2">
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-base-content/60">{% trans "厂商名称" %}</span>
+    <input type="text" name="name" maxlength="50" class="input input-sm" required
+           placeholder="{% trans '如：深度求索 DeepSeek' %}" />
+  </label>
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-base-content/60">{% trans "厂商标识（英文小写，仅内部使用，不对外暴露）" %}</span>
+    <input type="text" name="code" maxlength="30" class="input input-sm font-mono" required
+           placeholder="{% trans '如：deepseek / moonshot / ark / dashscope' %}" />
+  </label>
+</div>
+
+<label class="flex flex-col gap-1">
+  <span class="text-xs text-base-content/60">{% trans "上游根地址（填到版本段为止，本服务会在其后拼 /chat/completions）" %}</span>
+  <input type="text" name="base_url" maxlength="200" class="input input-sm font-mono" required
+         placeholder="{% trans '如：https://api.deepseek.com 或 https://api.moonshot.cn/v1' %}" />
+</label>
+
+<div class="rounded-box border border-base-300 bg-base-200/40 p-3">
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-base-content/60">{% trans "平台 API Key（留空表示不修改）" %}</span>
+    <input type="password" name="api_key" class="input input-sm font-mono" autocomplete="new-password"
+           placeholder="{% trans '输入新 Key 即覆盖，留空不动' %}" />
+  </label>
+  <p class="mt-2 text-xs text-base-content/60">
+    {% trans "密钥落库为 AES-256-GCM 密文，页面只显示掩码，永不回显原文。" %}
+  </p>
+  <label class="mt-2 flex items-center gap-2 text-sm">
+    <input type="checkbox" name="clear_key" value="1" class="checkbox checkbox-sm" />
+    <span>{% trans "清除已配置的 Key（清除后该厂商下模型不可用）" %}</span>
+  </label>
+</div>
+
+<div class="grid gap-3 sm:grid-cols-2">
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-base-content/60">{% trans "排序（数字越小越靠前）" %}</span>
+    <input type="text" name="sort" inputmode="numeric" value="0" class="input input-sm" />
+  </label>
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-base-content/60">{% trans "备注" %}</span>
+    <input type="text" name="remark" maxlength="255" class="input input-sm" />
+  </label>
+</div>
+
+<label class="flex items-center gap-2 text-sm">
+  <input type="checkbox" name="enabled" value="1" class="checkbox checkbox-sm"
+         {% if form_mode == 'create' %}checked{% endif %} />
+  <span>{% trans "启用（停用后该厂商下所有模型立即不可用）" %}</span>
+</label>

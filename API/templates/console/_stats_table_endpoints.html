@@ -2,8 +2,8 @@
 {% comment %}调用统计：接口排行表。用法：
 {% include 'console/_stats_table_endpoints.html' with title='接口调用排行 Top 20' rows=endpoints show_service=True %}
 title 传中文源语言（内部翻译）；show_service 为真时额外显示所属服务名。{% endcomment %}
-<div class="card mt-5 border border-base-300 bg-base-100">
-  <div class="card-body gap-3">
+<div class="con-panel mt-5">
+  <div class="con-panel-body gap-3">
     <h2 class="card-title text-base">{% trans title %}</h2>
     {% if rows %}
     <div class="overflow-x-auto">

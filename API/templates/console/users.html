@@ -12,24 +12,24 @@
 {% include 'console/_messages.html' %}
 
 {# ===== 搜索 / 筛选 / 新建 ===== #}
-<div class="mt-5 flex flex-wrap items-end justify-between gap-3">
-  <form method="get" class="flex flex-wrap items-end gap-2">
-    <label class="flex flex-col gap-1">
-      <span class="text-xs text-base-content/60">{% trans "关键词" %}</span>
+<div class="con-toolbar mt-5 justify-between">
+  <form method="get" class="flex flex-wrap items-end gap-3">
+    <label class="con-field">
+      <span class="con-field-label">{% trans "关键词" %}</span>
       <input type="search" name="q" value="{{ keyword }}" autocomplete="off"
              placeholder="{% trans '账号 / 用户名 / 邮箱 / 手机号' %}"
              class="input input-sm w-full sm:w-56" />
     </label>
-    <label class="flex flex-col gap-1">
-      <span class="text-xs text-base-content/60">{% trans "状态" %}</span>
+    <label class="con-field">
+      <span class="con-field-label">{% trans "状态" %}</span>
       <select name="status" class="select select-sm w-full sm:w-28">
         <option value="">{% trans "全部" %}</option>
         <option value="normal"{% if status_filter == 'normal' %} selected{% endif %}>{% trans "正常" %}</option>
         <option value="banned"{% if status_filter == 'banned' %} selected{% endif %}>{% trans "已封禁" %}</option>
       </select>
     </label>
-    <label class="flex flex-col gap-1">
-      <span class="text-xs text-base-content/60">{% trans "注册方式" %}</span>
+    <label class="con-field">
+      <span class="con-field-label">{% trans "注册方式" %}</span>
       <select name="register_type" class="select select-sm w-full sm:w-32">
         <option value="">{% trans "全部" %}</option>
         {% for value, label in register_type_options %}
@@ -37,8 +37,8 @@
         {% endfor %}
       </select>
     </label>
-    <label class="flex flex-col gap-1">
-      <span class="text-xs text-base-content/60">{% trans "登录过项目" %}</span>
+    <label class="con-field">
+      <span class="con-field-label">{% trans "登录过项目" %}</span>
       <select name="app_id" class="select select-sm w-full sm:w-44">
         <option value="">{% trans "全部" %}</option>
         {% for app in apps %}
@@ -46,8 +46,8 @@
         {% endfor %}
       </select>
     </label>
-    <label class="flex flex-col gap-1">
-      <span class="text-xs text-base-content/60">{% trans "每页" %}</span>
+    <label class="con-field">
+      <span class="con-field-label">{% trans "每页" %}</span>
       <select name="size" class="select select-sm w-full sm:w-20">
         {% for size in size_choices %}
         <option value="{{ size }}"{% if size == page_size %} selected{% endif %}>{{ size }}</option>
@@ -66,8 +66,8 @@
 </div>
 
 {# ===== 用户列表 ===== #}
-<div class="card mt-3 border border-base-300 bg-base-100">
-  <div class="card-body gap-3">
+<div class="con-panel mt-3">
+  <div class="con-panel-body gap-3">
     {% if page_obj.object_list %}
     <div class="overflow-x-auto">
       <table class="table table-sm min-w-[64rem]">

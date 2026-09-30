@@ -1,102 +1,222 @@
-"""DeepSeek AI 对话 API 调用封装
+"""AI 服务 · 厂商无关的对话调用门面
 
-本模块封装对 DeepSeek Chat API 的调用，支持：
-- 流式与非流式两种模式
-- 前缀续写（Prefix Completion，Beta 功能）
+对外只暴露「统一对话」能力：调用方用请求参数 `model` 选模型，本模块负责
+查模型注册表（`ai_provider` / `ai_model` / `ai_system_prompt` 三张表）→ 解开该厂商的
+平台 Key → 组装 OpenAI 兼容请求（系统提示词与采样参数由后台按模型配置）→
+把响应与流归一化成统一结构。
 
-API Key 优先级：用户传入 > .env 配置的默认密钥。
+为什么一套客户端就能覆盖多家厂商：DeepSeek / 月之暗面（Kimi）/ 火山方舟（豆包）/
+阿里云百炼（千问）都提供 **OpenAI 兼容**的 `/chat/completions`，请求体、响应体、
+SSE 分片格式一致；厂商差异只体现在「地址 + Key + 模型名」三项，全部由数据库驱动。
+真出现非 OpenAI 兼容的厂商时，再在这一层加分支或抽出适配器。
+
+模型清单带进程内 TTL 缓存（默认 60 秒，与 API 服务策略缓存的风格一致）；
+后台增删改厂商 / 模型 / 系统提示词后由 API/apps.py 的信号调用 `invalidate_models_cache()`
+立即失效，改动即时生效、无需等 TTL。**缓存的只有模型元信息与提示词正文，不含任何 Key**
+——平台 Key 在每次调用时按需查库并解密，避免密钥长期驻留在进程缓存里。
 """
 import json
-import os
+import re
 import time
 
 import requests
 
-# 从 .env 读取 DeepSeek API 根地址，兼容末尾带 /beta 的情况
-# 标准接口与 Beta 接口共用同一域名根，仅路径前缀不同
-_BASE_URL = os.getenv('DEEPSEEK_API_URL', 'https://api.deepseek.com').rstrip('/')
-# 去掉可能的 /beta 后缀，得到根 URL（用于派生标准/Beta 两条 URL）
-_API_ROOT = _BASE_URL[:-5] if _BASE_URL.endswith('/beta') else _BASE_URL
-# 标准 Chat API URL（用于普通对话）
-DEEPSEEK_CHAT_URL = f"{_API_ROOT}/chat/completions"
-# Beta Chat API URL（用于前缀续写等 Beta 功能）
-DEEPSEEK_BETA_CHAT_URL = f"{_API_ROOT}/beta/chat/completions"
-# 默认模型（2026-07 起 DeepSeek 弃用 deepseek-chat，改用 v4 系列）
-DEFAULT_MODEL = "deepseek-v4-flash"
+from API.common import StatusCode
+from API.common.url_safety import check_public_http_url
 
-# ==================== 系统提示词 ====================
-# 当用户未提供自定义 system_prompt 时，使用此默认值
-# 用于在对话开始时设定 AI 的角色与行为边界
-DEFAULT_SYSTEM_PROMPT = "你正在被 XiaoYingAPI 调用，当前用户为 API 的调用方。请提供准确、简洁、有用的回答。在涉及代码、配置等内容时，以清晰的结构化方式输出。"
+# ==================== 模型清单缓存 ====================
+MODELS_CACHE_TTL = 60
+"""模型清单进程内缓存时长（秒）；后台改动由信号即时失效，故 TTL 只用于兜底"""
+
+_cache = {'at': 0.0, 'items': None}
 
 
-def _get_api_key(user_key=None):
+def invalidate_models_cache():
+    """清空模型清单缓存（后台保存 / 删除厂商与模型后由信号调用）"""
+    _cache['at'] = 0.0
+    _cache['items'] = None
+
+
+def _platform_prompt(mode, content, prompt_enabled, global_prompt):
+    """按模型的三态选择解析平台系统提示词（调用方没自带 system_prompt 时使用）
+
+    - none                            → 不使用
+    - custom 且指定的那条仍启用        → 用指定的那条
+    - inherit / 指定的那条已停用或已删除 → 回落「全局共享」那条（可能也是空）
     """
-    获取 API Key。
-    优先级: 用户传入 > .env 环境变量。
+    if mode == 'none':
+        return ''
+    if mode == 'custom' and prompt_enabled:
+        return (content or '').strip()
+    return (global_prompt or '').strip()
 
-    :param user_key: 用户提供的 API Key，可选
-    :return: API Key 字符串；未配置时返回空字符串
+
+def _catalog():
+    """可用模型清单（上架模型 + 启用厂商），带 TTL 缓存；不含密钥
+
+    顺带把「这次调用要用的系统提示词」、采样参数与图片张数上限一并解析好，调用侧不必再查库：
+    这几项都是超管在后台按模型维护的，调用方无法干预。
     """
-    return (user_key or os.getenv('DEEPSEEK_API_KEY', '')).strip()
+    now = time.monotonic()
+    if _cache['items'] is not None and now - _cache['at'] < MODELS_CACHE_TTL:
+        return _cache['items']
+
+    from API.models import AiModel, AiSystemPrompt
+    from API.models.AI.provider import parse_stop
+    # 「全局共享」那条：全库只保留一条，所有 prompt_mode='inherit' 的模型都用它
+    global_prompt = (AiSystemPrompt.objects
+                     .filter(is_global=True, enabled=True)
+                     .values_list('content', flat=True).first() or '')
+    rows = (AiModel.objects
+            .filter(enabled=True, provider__enabled=True)
+            .order_by('sort', 'key')
+            .values('key', 'name', 'upstream_name', 'supports_vision', 'max_images',
+                    'context_window', 'is_default', 'provider_id', 'provider__base_url',
+                    'prompt_mode', 'temperature', 'max_tokens', 'stop',
+                    'system_prompt__content', 'system_prompt__enabled'))
+    items = []
+    for r in rows:
+        base_url = (r['provider__base_url'] or '').strip().rstrip('/')
+        items.append({
+            'key': r['key'],
+            'name': r['name'],
+            'upstream': (r['upstream_name'] or r['key'] or '').strip(),
+            'supports_vision': r['supports_vision'],
+            'max_images': r['max_images'],
+            'context_window': r['context_window'],
+            'is_default': r['is_default'],
+            'provider_id': r['provider_id'],
+            'url': f'{base_url}/chat/completions',
+            'platform_prompt': _platform_prompt(r['prompt_mode'], r['system_prompt__content'],
+                                                r['system_prompt__enabled'], global_prompt),
+            'temperature': r['temperature'],
+            'max_tokens': r['max_tokens'],
+            'stop_list': parse_stop(r['stop']),
+        })
+    _cache['items'] = items
+    _cache['at'] = now
+    return items
 
 
-def _build_messages(content, messages_json=None, system_prompt=None):
+def public_models():
+    """对外暴露的模型清单（白名单字段）
+
+    只给「选模型」需要的信息：字段名刻意用 `model` 与请求参数 `model` 对齐。
+    不含上游地址、厂商标识与密钥——真正的敏感项一个都不出网。
     """
-    构建 messages 参数，自动在首位插入系统消息。
+    return [{
+        'model': m['key'],
+        'name': m['name'],
+        'supports_vision': m['supports_vision'],
+        'context_window': m['context_window'],
+        'is_default': m['is_default'],
+    } for m in _catalog()]
 
-    系统提示词逻辑:
-        - 若传入了 system_prompt 且为合法的 JSON 数组，使用该数组
-        - 若未传入(None)，使用 DEFAULT_SYSTEM_PROMPT
-        - 若传入空字符串("")，不使用系统提示词
-        - system_prompt 数组中每项 role 必须为 "system"，否则抛出 ValueError
 
-    :param content: 单条用户消息内容
-    :param messages_json: 完整对话消息的 JSON 字符串，可选
-    :param system_prompt: 系统消息的 JSON 数组字符串，可选
-                          - None/不传 → 使用默认 DEFAULT_SYSTEM_PROMPT
-                          - "[{"role":"system","content":"..."}]" → 使用用户自定义
-                          - ""(空字符串) → 不使用系统提示词
-    :return: messages 列表
-    :raises ValueError: JSON 格式错误或 role 校验失败时抛出
+def _provider_key(provider_id):
+    """按需取厂商平台 Key（查库即解密；不进缓存，避免密钥常驻内存）"""
+    from API.models import AiProvider
+    value = AiProvider.objects.filter(pk=provider_id).values_list('api_key', flat=True).first()
+    return (value or '').strip()
+
+
+def resolve_target(model_key=None, user_key=None):
+    """解析一次对话调用的目标。
+
+    :param model_key: 请求里的 model（留空取后台设置的默认模型）
+    :param user_key:  调用方自带的 API Key（留空则用后台配置的平台 Key）
+    :return: (target, None) 成功；target 含 key/name/upstream/url/supports_vision/
+             max_images（后台按模型配置的图片张数上限）/ platform_prompt（后台配置的
+             系统提示词）/ temperature / max_tokens / stop_list / api_key；
+             (None, (状态码, 错误文案)) 失败
     """
-    if messages_json:
-        # 用户提供了完整 messages，优先使用
-        messages = json.loads(messages_json)
-        if not isinstance(messages, list):
-            raise ValueError("messages 必须为 JSON 数组")
-        if not messages:
-            raise ValueError("messages 不能为空")
+    items = _catalog()
+    if not items:
+        return None, (StatusCode.SERVICE_UNAVAILABLE,
+                      '平台尚未配置可用的 AI 模型（超管可在 /console/ai/models/ 添加）')
+
+    wanted = (model_key or '').strip()
+    if wanted:
+        target = next((m for m in items if m['key'] == wanted), None)
+        if target is None:
+            return None, (StatusCode.PARAM_VALUE_INVALID,
+                          f'参数值非法: 模型「{wanted}」不存在或未上架')
     else:
-        # 退回到单条 content
-        if not content:
-            raise ValueError("content 或 messages 至少提供一个")
-        messages = [{"role": "user", "content": content}]
+        target = next((m for m in items if m['is_default']), None)
+        if target is None:
+            # 不传 model 且没有默认模型：明确报错，绝不静默挑一个（避免调用方拿到意料之外的模型）
+            return None, (StatusCode.SERVICE_UNAVAILABLE,
+                          '平台未设置默认 AI 模型（超管可在 /console/ai/models/ 设为默认）')
 
-    # 在首位插入系统消息
-    system_msgs = _resolve_system_messages(system_prompt)
-    if system_msgs:
-        messages = system_msgs + messages
+    key = (user_key or '').strip() or _provider_key(target['provider_id'])
+    if not key:
+        return None, (StatusCode.EXTERNAL_API_FAILED,
+                      f'模型「{target["key"]}」所属厂商尚未配置 API Key，'
+                      '请在后台补填，或在请求时传入 api_key')
+    return {**target, 'api_key': key}, None
 
-    return messages
+
+# ==================== 参数辅助 ====================
+MAX_IMAGE_URL_LEN = 2048
+"""单张图片地址的最大长度"""
 
 
-def _resolve_system_messages(system_prompt):
+def parse_images(raw):
+    """解析并校验 images 参数（张数上限由调用方按模型配置校验，见 request._handle_chat）。
+
+    接受 JSON 数组字符串（``["https://…/a.jpg"]``）或纯文本（按换行 / 逗号拆分）。
+    每个地址都必须是可安全访问的 http/https 公网地址——复用 ``url_safety`` 的判定，
+    拒绝内网 / 回环 / 保留地址（避免有人拿本接口当内网探测的跳板）。
+
+    :return: (urls, error_msg)；error_msg 非空表示参数非法
     """
-    解析最终使用的系统消息列表。
+    raw = (raw or '').strip()
+    if not raw:
+        return [], None
 
-    :param system_prompt: 用户传入的 system_prompt 值
+    urls = None
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        parsed = None
+    if isinstance(parsed, list):
+        urls = [str(u).strip() for u in parsed if str(u).strip()]
+    elif isinstance(parsed, str) and parsed.strip():
+        urls = [parsed.strip()]
+    elif parsed is None:
+        urls = [u.strip() for u in re.split(r'[\n,]+', raw) if u.strip()]
+
+    if not urls:
+        return [], '参数格式错误: images 不能为空'
+
+    for url in urls:
+        if len(url) > MAX_IMAGE_URL_LEN:
+            return [], f'参数值非法: 单张图片地址不得超过 {MAX_IMAGE_URL_LEN} 个字符'
+        ok, err = check_public_http_url(url)
+        if not ok:
+            return [], f'参数值非法: 图片地址不可用（{err}）'
+    return urls, None
+
+
+def _resolve_system_messages(system_prompt, platform_prompt):
+    """解析最终使用的系统消息列表
+
+    :param system_prompt: 调用方传入的 system_prompt
+                          - None（没传） → 用平台配置（platform_prompt）
+                          - ''（显式空串）→ 不使用系统提示词
+                          - JSON 数组字符串 → 用调用方自己的
+    :param platform_prompt: 后台按模型解析出的系统提示词正文（可为空）
     :return: list[dict] 系统消息列表；若无需插入则返回 None
     :raises ValueError: JSON 解析失败或含非 system role 时抛出
     """
     if system_prompt is None:
-        # 未传入 → 使用默认
-        return [{"role": "system", "content": DEFAULT_SYSTEM_PROMPT}]
+        # 调用方没表态 → 用超管在后台配置的提示词；后台没配就不插系统消息
+        text = (platform_prompt or '').strip()
+        return [{"role": "system", "content": text}] if text else None
     if system_prompt == '':
         # 显式传入空字符串 → 不使用系统提示词
         return None
 
-    # 解析用户传入的 JSON 数组
     try:
         msgs = json.loads(system_prompt)
     except json.JSONDecodeError:
@@ -107,32 +227,73 @@ def _resolve_system_messages(system_prompt):
     if not msgs:
         raise ValueError("system_prompt 不能为空数组")
 
-    # 校验每项 role 必须为 "system"
     for item in msgs:
         if not isinstance(item, dict) or item.get("role") != "system":
             raise ValueError(
                 f'system_prompt 仅支持 role 为 "system" 的消息, 不支持 role="{item.get("role")}"'
             )
-
     return msgs
 
 
-def _handle_api_error(resp):
-    """
-    处理 DeepSeek API 的错误响应，提取可读的错误信息。
+def _attach_images(messages, images):
+    """把图片挂到最后一条 user 消息上（OpenAI 多模态 content 数组格式）
 
-    :param resp: requests.Response 对象
-    :return: 错误信息字符串
+    :raises ValueError: messages 里没有 user 消息时
     """
-    try:
-        data = resp.json()
-        error = data.get("error", {})
-        if isinstance(error, dict):
-            return error.get("message", str(data))
-        return str(data)
-    except (ValueError, AttributeError):
-        return resp.text or f"HTTP {resp.status_code}"
+    for msg in reversed(messages):
+        if msg.get('role') != 'user':
+            continue
+        original = msg.get('content')
+        parts = list(original) if isinstance(original, list) else []
+        if isinstance(original, str) and original.strip():
+            parts.insert(0, {'type': 'text', 'text': original})
+        for url in images:
+            parts.append({'type': 'image_url', 'image_url': {'url': url}})
+        msg['content'] = parts
+        return
+    raise ValueError('传 images 时，messages 中必须有一条 user 消息')
 
+
+def build_messages(content, messages_json=None, system_prompt=None, images=None,
+                   platform_prompt=None):
+    """构建发给上游的 messages，自动在首位插入系统消息。
+
+    :param content: 单条用户消息内容
+    :param messages_json: 完整对话消息的 JSON 字符串，可选（优先级高于 content）
+    :param system_prompt: 调用方传入的系统提示词（JSON 数组字符串）
+                          - None/不传 → 用后台按模型配置的 platform_prompt
+                          - '"[{...}]"' → 使用调用方自定义
+                          - ''（空字符串） → 不使用系统提示词
+    :param images: 图片地址列表（仅视觉模型），挂到最后一条 user 消息上
+    :param platform_prompt: 后台解析出的系统提示词正文（见 resolve_target 的返回值）
+    :return: messages 列表
+    :raises ValueError: JSON 格式错误、role 校验失败或没有 user 消息时抛出
+    """
+    if messages_json:
+        messages = json.loads(messages_json)
+        if not isinstance(messages, list):
+            raise ValueError("messages 必须为 JSON 数组")
+        if not messages:
+            raise ValueError("messages 不能为空")
+    else:
+        if not content:
+            raise ValueError("content 或 messages 至少提供一个")
+        messages = [{"role": "user", "content": content}]
+
+    system_msgs = _resolve_system_messages(system_prompt, platform_prompt)
+    if system_msgs:
+        messages = system_msgs + messages
+
+    if images:
+        _attach_images(messages, images)
+    return messages
+
+
+# ==================== HTTP 调用 ====================
+REQUEST_TIMEOUT = 120
+"""对话请求超时（秒）；AI 生成本就慢"""
+TEST_TIMEOUT = 20
+"""后台「测试连通性」的超时（秒），只发一条极短请求"""
 
 # ── 重试配置 ──
 _MAX_RETRIES = 3
@@ -143,22 +304,29 @@ _RETRYABLE_STATUSES = {502, 503, 504}
 """可重试的 HTTP 状态码（网关/服务暂时不可用）"""
 
 
+def _handle_api_error(resp):
+    """提取上游错误响应里的可读信息（各家的错误体都兼容 OpenAI 的 {error:{message}}）"""
+    try:
+        data = resp.json()
+        error = data.get("error", {})
+        if isinstance(error, dict):
+            return error.get("message", str(data))
+        return str(data)
+    except (ValueError, AttributeError):
+        return resp.text or f"HTTP {resp.status_code}"
+
+
 def _request_with_retry(method, url, **kwargs):
     """带指数退避重试的 HTTP 请求
 
-    仅在以下情况重试:
+    仅在以下情况重试：
         - 网络异常 (requests.RequestException)
         - 服务端 5xx 临时错误 (502/503/504)
     业务错误 (4xx) 不重试，直接返回。
 
-    :param method: 请求方法，如 'POST'
-    :param url: 请求 URL
-    :param kwargs: 传给 requests.request 的额外参数
-    :return: (requests.Response|None, str|None)
-        - (resp, None) — 请求成功或拿到非可重试状态码
-        - (None, error_msg) — 所有重试耗尽
+    :return: (resp, None) — 拿到响应；(None, error_msg) — 所有重试耗尽
     """
-    last_error = None
+    last_error, resp = None, None
     for attempt in range(_MAX_RETRIES):
         try:
             resp = requests.request(method, url, **kwargs)
@@ -175,152 +343,149 @@ def _request_with_retry(method, url, **kwargs):
     return resp, last_error
 
 
-def chat_completion(messages, api_key=None, model=DEFAULT_MODEL, timeout=120,
-                    prefix=False, stop=None):
-    """
-    非流式调用 DeepSeek Chat API，返回完整响应。
-
-    :param messages: 消息列表 [{"role": "user", "content": "..."}]
-    :param api_key: 用户自定义 API Key，可选
-    :param model: 模型名称，默认 deepseek-chat
-    :param timeout: 请求超时时间（秒），默认 120（AI 生成较慢）
-    :param prefix: 是否启用前缀续写模式，默认 False
-                   开启后自动切换到 Beta 接口 URL
-                   注意: messages 末尾应由调用方放置
-                   {"role":"assistant","content":"前缀内容","prefix":True}
-    :param stop: 停止词列表，可选。前缀续写常用 stop 避免模型多余输出
-                 例如 ["```"] 让模型输出到代码块结束符即停止
-    :return: tuple[bool, Any]
-        - 成功: (True, {"reply": str, "model": str, "usage": dict})
-        - 失败: (False, 错误信息str)
-    """
-    key = _get_api_key(api_key)
-    if not key:
-        return False, 'DeepSeek API Key 未配置，请在 .env 中设置 DEEPSEEK_API_KEY 或在请求时传入 api_key'
-
-    # 前缀续写模式使用 Beta 接口地址
-    url = DEEPSEEK_BETA_CHAT_URL if prefix else DEEPSEEK_CHAT_URL
-    headers = {
-        "Authorization": f"Bearer {key}",
-        "Content-Type": "application/json",
+def _headers(target):
+    return {
+        'Authorization': f'Bearer {target["api_key"]}',
+        'Content-Type': 'application/json',
     }
+
+
+def _build_payload(target, messages, stream, temperature=None, max_tokens=None, stop=None):
+    """组装 OpenAI 兼容的请求体"""
     payload = {
-        "model": model,
-        "messages": messages,
-        "stream": False,
+        'model': target['upstream'],
+        'messages': messages,
+        'stream': stream,
     }
-    # 前缀续写场景常配合 stop 参数避免模型输出额外内容
     if stop:
-        payload["stop"] = stop
+        payload['stop'] = stop
+    if temperature is not None:
+        payload['temperature'] = temperature
+    if max_tokens is not None:
+        payload['max_tokens'] = max_tokens
+    return payload
 
-    # _request_with_retry 内部已捕获 requests.RequestException，失败时返回 (None, err)
-    resp, err = _request_with_retry(
-        'POST', url, json=payload, headers=headers, timeout=timeout
-    )
 
+def chat_completion(target, messages, timeout=REQUEST_TIMEOUT,
+                    temperature=None, max_tokens=None, stop=None):
+    """非流式对话，返回完整回复。
+
+    :param target: resolve_target() 的返回值
+    :param messages: build_messages() 的返回值
+    :return: (True, {'reply', 'model', 'usage', 'finish_reason'}) / (False, 错误信息)
+    """
+    payload = _build_payload(target, messages, False, temperature, max_tokens, stop)
+    resp, err = _request_with_retry('POST', target['url'], json=payload,
+                                   headers=_headers(target), timeout=timeout)
     if resp is None:
-        return False, f'DeepSeek API 请求失败（重试 {_MAX_RETRIES} 次后放弃）: {err}'
-
+        return False, f'上游请求失败（重试 {_MAX_RETRIES} 次后放弃）: {err}'
     if resp.status_code != 200:
-        return False, f'DeepSeek API 返回错误 ({resp.status_code}): {_handle_api_error(resp)}'
+        return False, f'上游返回错误 ({resp.status_code}): {_handle_api_error(resp)}'
 
     try:
         data = resp.json()
     except ValueError as e:
-        return False, f'解析 DeepSeek API 响应失败: {e}'
+        return False, f'解析上游响应失败: {e}'
 
-    # 提取助手回复
-    choices = data.get("choices", [])
+    choices = data.get('choices') or []
     if not choices:
-        return False, 'DeepSeek API 返回异常: choices 为空'
-
-    reply = choices[0].get("message", {}).get("content", "")
+        return False, '上游返回异常: choices 为空'
+    first = choices[0]
     return True, {
-        "reply": reply,
-        "model": data.get("model", model),
-        "usage": data.get("usage"),
+        'reply': (first.get('message') or {}).get('content', ''),
+        # 回给调用方的一律是「对外模型标识」，不透出上游真实模型名
+        'model': target['key'],
+        'usage': data.get('usage'),
+        'finish_reason': first.get('finish_reason'),
     }
 
 
-def stream_chat_completion(messages, api_key=None, model=DEFAULT_MODEL, timeout=120,
-                           prefix=False, stop=None):
-    """
-    流式调用 DeepSeek Chat API，生成器逐块 yield SSE 格式数据。
+def stream_chat_completion(target, messages, timeout=REQUEST_TIMEOUT,
+                           temperature=None, max_tokens=None, stop=None):
+    """流式对话，生成器逐块 yield SSE 数据行。
 
-    每个 yield 输出一条 SSE 格式的文本行:
-        data: {"content": "部分回复内容"}
-
-    流结束标记:
+    每个 yield 输出一条 SSE 格式文本::
+        data: {"content": "部分回复内容"}       # 答案正文
+        data: {"reasoning": "思考过程片段"}     # 仅推理模型有，思考过程，与答案分开
+    结束标记::
         data: [DONE]
 
-    错误处理:
-        首次 yield 前出错 → 抛出异常（由调用方处理）
-        流中出错 → yield 错误 SSE 行后结束
+    两个字段互不重叠：只关心答案的调用方只取 content（忽略 reasoning 即可）；
+    推理模型在吐出答案前会先流一串 reasoning，这段时间里 content 一帧都没有。
 
-    :param messages: 消息列表
-    :param api_key: 用户自定义 API Key，可选
-    :param model: 模型名称，默认 deepseek-chat
-    :param timeout: 请求超时时间（秒），默认 120
-    :param prefix: 是否启用前缀续写模式，默认 False
-    :param stop: 停止词列表，可选
-    :yield: SSE 格式字符串
-    :raises ValueError: API Key 未配置时抛出
+    错误处理：首次 yield 前出错 → 抛 ValueError（由视图转成错误 SSE 行）；
+    流中出错 → 记录后结束。
+
+    :raises ValueError: 上游请求失败或返回非 200
     """
-    key = _get_api_key(api_key)
-    if not key:
-        raise ValueError('DeepSeek API Key 未配置')
-
-    # 前缀续写模式使用 Beta 接口地址
-    url = DEEPSEEK_BETA_CHAT_URL if prefix else DEEPSEEK_CHAT_URL
-    headers = {
-        "Authorization": f"Bearer {key}",
-        "Content-Type": "application/json",
-    }
-    payload = {
-        "model": model,
-        "messages": messages,
-        "stream": True,
-    }
-    if stop:
-        payload["stop"] = stop
-
-    # _request_with_retry 内部已捕获 requests.RequestException，失败时返回 (None, err)
-    resp, err = _request_with_retry(
-        'POST', url,
-        json=payload, headers=headers,
-        stream=True, timeout=timeout,
-    )
-
+    payload = _build_payload(target, messages, True, temperature, max_tokens, stop)
+    resp, err = _request_with_retry('POST', target['url'], json=payload,
+                                   headers=_headers(target), stream=True, timeout=timeout)
     if resp is None:
-        raise ValueError(f'DeepSeek API 请求失败（重试 {_MAX_RETRIES} 次后放弃）: {err}')
-
+        raise ValueError(f'上游请求失败（重试 {_MAX_RETRIES} 次后放弃）: {err}')
     if resp.status_code != 200:
-        error_msg = _handle_api_error(resp)
-        raise ValueError(f'DeepSeek API 返回错误 ({resp.status_code}): {error_msg}')
+        raise ValueError(f'上游返回错误 ({resp.status_code}): {_handle_api_error(resp)}')
 
-    # 逐行读取 SSE 流
     for line in resp.iter_lines(decode_unicode=True):
         if not line:
             continue
-        # SSE 格式: "data: {...}"
-        if line.startswith("data: "):
-            chunk_data = line[6:]  # 去掉 "data: " 前缀
+        if not line.startswith("data: "):
+            continue
+        chunk_data = line[6:]
+        if chunk_data == "[DONE]":
+            yield "data: [DONE]\n\n"
+            return
+        try:
+            chunk = json.loads(chunk_data)
+        except json.JSONDecodeError:
+            # 非 JSON 行直接透传（极少发生，做安全兜底）
+            yield f"data: {chunk_data}\n\n"
+            continue
+        choices = chunk.get("choices") or []
+        if not choices:
+            continue
+        delta = choices[0].get("delta") or {}
+        # 推理模型（DeepSeek 的 flash 等）会先流思考过程、再流答案；两者分字段下发，
+        # 调用方要展示思考过程就取 reasoning，只关心答案就只取 content。
+        reasoning = delta.get("reasoning_content")
+        if reasoning:
+            yield f"data: {json.dumps({'reasoning': reasoning}, ensure_ascii=False)}\n\n"
+        piece = delta.get("content")
+        if piece:
+            yield f"data: {json.dumps({'content': piece}, ensure_ascii=False)}\n\n"
 
-            # 流结束标记
-            if chunk_data == "[DONE]":
-                yield "data: [DONE]\n\n"
-                return
 
-            # 解析 delta 内容
-            try:
-                chunk = json.loads(chunk_data)
-                choices = chunk.get("choices", [])
-                if not choices:
-                    continue
-                delta = choices[0].get("delta", {})
-                content = delta.get("content", "")
-                if content:
-                    yield f"data: {json.dumps({'content': content}, ensure_ascii=False)}\n\n"
-            except json.JSONDecodeError:
-                # 非 JSON 行直接透传（极少发生，做安全兜底）
-                yield f"data: {chunk_data}\n\n"
+def test_provider(provider, timeout=TEST_TIMEOUT):
+    """后台「测试连通性」：用该厂商的地址与 Key 发一条极短请求。
+
+    目的：Key 写错 / 地址写错 / 额度用尽，在后台当场就能发现，不必等到线上调用失败。
+
+    :param provider: AiProvider 实例
+    :return: (ok, 说明文案)
+    """
+    if not provider.has_key:
+        return False, '未配置 API Key'
+    first = (provider.models.order_by('sort', 'key')
+             .values_list('upstream_name', 'key').first())
+    if not first:
+        return False, '该厂商下还没有模型，请先添加模型再测试'
+    upstream = (first[0] or first[1]).strip()
+
+    started = time.monotonic()
+    try:
+        resp = requests.post(
+            provider.chat_url,
+            json={'model': upstream,
+                  'messages': [{'role': 'user', 'content': 'ping'}],
+                  'stream': False, 'max_tokens': 1},
+            headers={'Authorization': f'Bearer {provider.api_key}',
+                     'Content-Type': 'application/json'},
+            timeout=timeout,
+        )
+    except requests.RequestException as e:
+        return False, f'请求失败: {e}'
+    cost_ms = int((time.monotonic() - started) * 1000)
+
+    if resp.status_code != 200:
+        return False, f'HTTP {resp.status_code}（{cost_ms} ms）: {_handle_api_error(resp)}'
+    return True, f'连接正常（{cost_ms} ms，测试模型 {upstream}）'

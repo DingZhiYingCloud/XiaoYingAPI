@@ -1,0 +1,114 @@
+{% extends 'feedback/base.html' %}
+{% load static i18n %}
+
+{# 反馈详情：正文 + 附件 + 全部回复；本人可跟帖（公开区访客只看正文与回复，不看附件） #}
+
+{% block robots %}{% if is_owner %}noindex, nofollow{% else %}index, follow{% endif %}{% endblock %}
+
+{% block feedback_content %}
+<article class="card border border-base-300 bg-base-100">
+  <div class="card-body gap-4 p-5 sm:p-6">
+
+    <div class="flex flex-wrap items-center gap-2 text-xs text-base-content/60">
+      <span class="badge badge-ghost badge-sm">{{ fb.type_name }}</span>
+      <span class="badge badge-sm badge-soft {% if fb.status == 'replied' %}badge-success{% elif fb.status == 'rejected' %}badge-error{% elif fb.status == 'pending' %}badge-warning{% elif fb.status == 'closed' %}badge-ghost{% else %}badge-info{% endif %}">{{ fb.get_status_display }}</span>
+      <span class="ml-auto">{{ fb.create_time|date:'Y-m-d H:i' }}</span>
+    </div>
+
+    <p class="text-sm leading-relaxed whitespace-pre-line">{{ fb.content }}</p>
+
+    {% if show_attachments and fb.attachments.exists %}
+    <div class="grid gap-2 sm:grid-cols-3">
+      {% for att in fb.attachments.all %}
+      {% if att.is_image %}
+      <a href="{{ att.url }}" target="_blank" rel="noopener noreferrer">
+        <img src="{{ att.url }}" alt="{{ att.original_name }}" loading="lazy"
+             class="h-32 w-full rounded-box border border-base-300 object-cover" />
+      </a>
+      {% else %}
+      <video src="{{ att.url }}" controls preload="metadata"
+             class="h-32 w-full rounded-box border border-base-300 bg-base-200"></video>
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <p class="text-xs text-base-content/50">
+      {% if is_owner %}
+        {% trans "你提交的反馈" %}
+      {% else %}
+        {% blocktrans with name=fb.submitter_name %}由 {{ name }} 提交{% endblocktrans %}
+      {% endif %}
+    </p>
+  </div>
+</article>
+
+<section class="mt-5 flex flex-col gap-2.5">
+  <div class="flex items-center gap-3">
+    <span class="text-sm font-semibold">{% trans "回复" %}</span>
+    <span class="h-px flex-1 bg-base-300"></span>
+  </div>
+
+  {% for reply in replies %}
+  <div class="card border border-base-300 {% if reply.author_role == 'admin' %}bg-primary/5{% else %}bg-base-100{% endif %}">
+    <div class="card-body gap-2 p-4 sm:p-5">
+      <div class="flex flex-wrap items-center gap-2 text-xs text-base-content/60">
+        <span class="font-medium text-base-content/80">{{ reply.author_name }}</span>
+        {% if reply.author_role == 'admin' %}<span class="badge badge-primary badge-xs">{% trans "官方" %}</span>{% endif %}
+        {% if reply.author_role == 'ai' %}<span class="badge badge-warning badge-xs">{% trans "自动" %}</span>{% endif %}
+        <span class="ml-auto">{{ reply.create_time|date:'Y-m-d H:i' }}</span>
+      </div>
+      <p class="text-sm leading-relaxed whitespace-pre-line">{{ reply.content }}</p>
+
+      {% if show_attachments and reply.attachments.exists %}
+      <div class="grid gap-2 sm:grid-cols-3">
+        {% for att in reply.attachments.all %}
+        {% if att.is_image %}
+        <a href="{{ att.url }}" target="_blank" rel="noopener noreferrer">
+          <img src="{{ att.url }}" alt="{{ att.original_name }}" loading="lazy"
+               class="h-32 w-full rounded-box border border-base-300 object-cover" />
+        </a>
+        {% else %}
+        <video src="{{ att.url }}" controls preload="metadata"
+               class="h-32 w-full rounded-box border border-base-300 bg-base-200"></video>
+        {% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% empty %}
+  <p class="rounded-box border border-dashed border-base-300 px-4 py-6 text-center text-sm text-base-content/50">
+    {% trans "还没有回复。" %}
+  </p>
+  {% endfor %}
+</section>
+
+{% if can_reply %}
+<form method="post" class="mt-5 flex flex-col gap-2">
+  {% csrf_token %}
+  <textarea name="content" rows="3" maxlength="5000" required
+            class="textarea textarea-bordered w-full leading-relaxed"
+            placeholder="{% trans '补充信息，或继续追问…' %}"></textarea>
+  <div class="flex justify-end">
+    <button type="submit" class="btn btn-primary btn-sm">{% trans "提交" %}</button>
+  </div>
+</form>
+{% elif is_owner %}
+<p class="mt-5 text-center text-xs text-base-content/50">
+  {% trans "当前状态不支持继续追问。" %}
+</p>
+{% endif %}
+
+<div class="mt-6 flex justify-center">
+  {% if is_owner %}
+  <a href="{% url 'website:feedback_mine' fb_app.app_id %}" class="btn btn-ghost btn-sm gap-1.5">
+    <i data-lucide="arrow-left" class="h-4 w-4"></i>{% trans "返回我的反馈" %}
+  </a>
+  {% else %}
+  <a href="{% url 'website:feedback_public' fb_app.app_id %}" class="btn btn-ghost btn-sm gap-1.5">
+    <i data-lucide="arrow-left" class="h-4 w-4"></i>{% trans "返回公开区" %}
+  </a>
+  {% endif %}
+</div>
+{% endblock %}

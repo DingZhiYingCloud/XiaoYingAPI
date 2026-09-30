@@ -1,0 +1,560 @@
+{% extends 'console/base.html' %}
+{% load i18n static %}
+
+{% block title %}{% trans "AI 模型 - 超级管理员 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,AI 模型,厂商,大模型,系统提示词,模型能力,视觉" %}{% endblock %}
+{% block description %}{% trans "小影API 超级管理员：维护 AI 厂商、模型与系统提示词（上游地址、平台密钥、模型能力、采样参数），供 /api/ai/ 统一调用。" %}{% endblock %}
+
+{% block console_content %}
+{% blocktrans with p=providers|length m=models|length s=prompts|length asvar ph_desc %}共 {{ p }} 个厂商、{{ m }} 个模型、{{ s }} 套系统提示词；调用方只需选 model，其余（地址、密钥、提示词、采样参数）由这里驱动。{% endblocktrans %}
+{% include 'console/_page_header.html' with icon='bot' title='AI 模型' desc=ph_desc %}
+
+  {% include 'console/_messages.html' %}
+
+  {# 规则说明 #}
+  <div role="alert" class="alert alert-soft bg-base-200 mt-4 items-start py-3 text-sm">
+    <div class="space-y-1">
+      <p>
+        {% trans "调用链：请求 model → 查模型记录 → 取所属厂商的地址与密钥 → 按 OpenAI 兼容协议调用上游。因此新增一个模型只要在这里加一条记录，不用改代码、不用重启。" %}
+      </p>
+      <p class="text-xs opacity-80">
+        {% trans "地址填到版本段为止（如 https://api.deepseek.com 或 https://api.moonshot.cn/v1），本服务会在其后拼 /chat/completions。" %}
+      </p>
+      <p class="text-xs opacity-80">
+        {% trans "密钥以 AES-256-GCM 密文落库，页面只显示掩码、永不回显原文；密钥由 SECRET_KEY 派生加密，更换 SECRET_KEY 会导致已存密钥无法解密。" %}
+      </p>
+      <p class="text-xs opacity-80">
+        {% trans "模型标识就是请求参数 model 的取值，也是对外唯一标识；对外接口不会暴露厂商标识与上游地址。" %}
+      </p>
+      <p class="text-xs opacity-80">
+        {% trans "「支持视觉」决定该模型能否带 images 参数；未勾选时传图片会返回参数值非法（20003）。" %}
+      </p>
+      <p class="text-xs opacity-80">
+        {% trans "默认模型：请求不传 model 时使用，全局应保持恰好一个；没有默认模型时不传 model 会报错。" %}
+      </p>
+      <p class="text-xs opacity-80">
+        {% trans "系统提示词：可在下方提示词区建多套，其中一套勾「全局共享」；每个模型可单独选择「跟随全局 / 不使用 / 指定某一条」。调用方自带 system_prompt 时以调用方为准。" %}
+      </p>
+      <p class="text-xs opacity-80">
+        {% trans "采样参数（温度 / 最大回复长度 / 停止词）按模型配置，留空即不下发该参数；调用方无法自定义，请求里带了会被拒绝。" %}
+      </p>
+    </div>
+  </div>
+
+  {# ==================== 厂商 ==================== #}
+  <section class="mt-6">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <h2 class="text-lg font-semibold">{% trans "厂商" %}</h2>
+      <button type="button" class="btn btn-sm btn-primary" onclick="ai_provider_create_modal.showModal()">
+        <i data-lucide="plus" class="h-4 w-4"></i>{% trans "新建厂商" %}
+      </button>
+    </div>
+
+    <div class="con-table-wrap mt-3">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th class="whitespace-nowrap">{% trans "厂商名称" %}</th>
+            <th class="whitespace-nowrap">{% trans "标识" %}</th>
+            <th class="whitespace-nowrap">{% trans "上游地址" %}</th>
+            <th class="whitespace-nowrap">{% trans "API Key" %}</th>
+            <th class="whitespace-nowrap">{% trans "状态" %}</th>
+            <th class="whitespace-nowrap">{% trans "排序" %}</th>
+            <th class="whitespace-nowrap text-right">{% trans "操作" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in providers %}
+          <tr>
+            <td>
+              <div class="text-sm font-medium">{{ p.name }}</div>
+              {% if p.remark %}<div class="text-xs text-base-content/60">{{ p.remark }}</div>{% endif %}
+            </td>
+            <td><code class="font-mono text-xs">{{ p.code }}</code></td>
+            <td><code class="break-all font-mono text-xs text-base-content/70">{{ p.base_url }}</code></td>
+            <td>
+              {% if p.has_key %}
+              <code class="font-mono text-xs">{{ p.key_hint }}</code>
+              {% else %}
+              <span class="badge badge-soft badge-warning badge-sm">{% trans "未配置" %}</span>
+              {% endif %}
+            </td>
+            <td class="whitespace-nowrap">
+              {% if p.enabled %}
+              <span class="badge badge-soft badge-success badge-sm">{% trans "启用" %}</span>
+              {% else %}
+              <span class="badge badge-soft badge-ghost badge-sm">{% trans "停用" %}</span>
+              {% endif %}
+            </td>
+            <td class="whitespace-nowrap text-sm">{{ p.sort }}</td>
+            <td class="whitespace-nowrap text-right">
+              <div class="flex items-center justify-end gap-1">
+                <button type="button" class="btn btn-xs btn-ghost" data-edit-provider
+                        data-id="{{ p.pk }}" data-code="{{ p.code }}" data-name="{{ p.name }}"
+                        data-base-url="{{ p.base_url }}" data-sort="{{ p.sort }}"
+                        data-remark="{{ p.remark }}" data-enabled="{% if p.enabled %}1{% else %}0{% endif %}">
+                  {% trans "编辑" %}
+                </button>
+                <form method="post" action="{% url 'website:console_ai_models' %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="provider_test" />
+                  <input type="hidden" name="id" value="{{ p.pk }}" />
+                  <button type="submit" class="btn btn-xs btn-ghost"
+                          title="{% trans '用该厂商的地址与密钥发一条极短请求，验证是否可用' %}">
+                    {% trans "测试" %}
+                  </button>
+                </form>
+                <form method="post" action="{% url 'website:console_ai_models' %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="provider_toggle" />
+                  <input type="hidden" name="id" value="{{ p.pk }}" />
+                  <button type="submit" class="btn btn-xs btn-ghost{% if p.enabled %} text-error{% else %} text-success{% endif %}">
+                    {% if p.enabled %}{% trans "停用" %}{% else %}{% trans "启用" %}{% endif %}
+                  </button>
+                </form>
+                <form method="post" action="{% url 'website:console_ai_models' %}"
+                      data-confirm="{% trans '删除厂商会同时删除其下所有模型，且不可恢复；确认删除？' %}"
+                      data-confirm-title="{% trans '删除厂商' %}"
+                      data-confirm-ok="{% trans '删除' %}" data-confirm-danger="1">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="provider_delete" />
+                  <input type="hidden" name="id" value="{{ p.pk }}" />
+                  <button type="submit" class="btn btn-xs btn-error btn-outline">{% trans "删除" %}</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" class="py-6 text-center text-sm text-base-content/60">
+              {% trans "暂无厂商；先新建一个厂商并填入上游地址与密钥，再添加模型。" %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  {# ==================== 模型 ==================== #}
+  <section class="mt-8">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <h2 class="text-lg font-semibold">{% trans "模型列表" %}</h2>
+      <button type="button" class="btn btn-sm btn-primary" onclick="ai_model_create_modal.showModal()">
+        <i data-lucide="plus" class="h-4 w-4"></i>{% trans "新建模型" %}
+      </button>
+    </div>
+
+    <div class="con-table-wrap mt-3">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th class="whitespace-nowrap">{% trans "模型标识" %}</th>
+            <th class="whitespace-nowrap">{% trans "名称" %}</th>
+            <th class="whitespace-nowrap">{% trans "厂商" %}</th>
+            <th class="whitespace-nowrap">{% trans "上游模型名" %}</th>
+            <th class="whitespace-nowrap">{% trans "能力" %}</th>
+            <th class="whitespace-nowrap">{% trans "提示词 / 采样" %}</th>
+            <th class="whitespace-nowrap">{% trans "默认" %}</th>
+            <th class="whitespace-nowrap">{% trans "状态" %}</th>
+            <th class="whitespace-nowrap">{% trans "排序" %}</th>
+            <th class="whitespace-nowrap text-right">{% trans "操作" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in models %}
+          <tr>
+            <td><code class="font-mono text-xs">{{ m.key }}</code></td>
+            <td>
+              <div class="text-sm font-medium">{{ m.name }}</div>
+              {% if m.remark %}<div class="text-xs text-base-content/60">{{ m.remark }}</div>{% endif %}
+            </td>
+            <td class="whitespace-nowrap text-sm">{{ m.provider.name }}</td>
+            <td>
+              <code class="font-mono text-xs text-base-content/70">{{ m.request_name }}</code>
+              {% if m.upstream_name and m.upstream_name != m.key %}
+              <div class="text-xs text-base-content/50">{% trans "与标识不同" %}</div>
+              {% endif %}
+            </td>
+            <td class="whitespace-nowrap">
+              {% if m.supports_vision %}
+              <span class="badge badge-soft badge-info badge-sm gap-1">
+                <i data-lucide="image" class="h-3 w-3"></i>{% trans "视觉" %}
+              </span>
+              <div class="mt-1 text-xs text-base-content/50">{% blocktrans with v=m.max_images %}最多 {{ v }} 张{% endblocktrans %}</div>
+              {% else %}
+              <span class="text-xs text-base-content/50">{% trans "纯文本" %}</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="text-xs">
+                {% if m.prompt_mode == 'none' %}
+                <span class="text-base-content/50">{% trans "不使用提示词" %}</span>
+                {% elif m.prompt_mode == 'custom' and m.system_prompt %}
+                <span class="badge badge-soft badge-info badge-sm">{{ m.system_prompt.name }}</span>
+                {% else %}
+                <span class="text-base-content/50">{% trans "跟随全局共享" %}</span>
+                {% endif %}
+              </div>
+              {% if m.temperature is not None or m.max_tokens or m.stop %}
+              <div class="mt-1 flex flex-wrap gap-1">
+                {% if m.temperature is not None %}
+                <span class="badge badge-ghost badge-sm">{% blocktrans with v=m.temperature %}温度 {{ v }}{% endblocktrans %}</span>
+                {% endif %}
+                {% if m.max_tokens %}
+                <span class="badge badge-ghost badge-sm">{% blocktrans with v=m.max_tokens %}上限 {{ v }}{% endblocktrans %}</span>
+                {% endif %}
+                {% if m.stop %}
+                <span class="badge badge-ghost badge-sm">{% trans "停止词" %}</span>
+                {% endif %}
+              </div>
+              {% endif %}
+            </td>
+            <td class="whitespace-nowrap">
+              {% if m.is_default %}
+              <span class="badge badge-soft badge-primary badge-sm">{% trans "默认" %}</span>
+              {% endif %}
+            </td>
+            <td class="whitespace-nowrap">
+              {% if m.enabled %}
+              <span class="badge badge-soft badge-success badge-sm">{% trans "上架" %}</span>
+              {% else %}
+              <span class="badge badge-soft badge-ghost badge-sm">{% trans "下架" %}</span>
+              {% endif %}
+            </td>
+            <td class="whitespace-nowrap text-sm">{{ m.sort }}</td>
+            <td class="whitespace-nowrap text-right">
+              <div class="flex items-center justify-end gap-1">
+                <button type="button" class="btn btn-xs btn-ghost" data-edit-model
+                        data-id="{{ m.pk }}" data-key="{{ m.key }}" data-name="{{ m.name }}"
+                        data-provider="{{ m.provider_id }}" data-upstream="{{ m.upstream_name }}"
+                        data-vision="{% if m.supports_vision %}1{% else %}0{% endif %}"
+                        data-maximg="{{ m.max_images }}"
+                        data-window="{{ m.context_window|default_if_none:'' }}"
+                        data-sort="{{ m.sort }}" data-remark="{{ m.remark }}"
+                        data-enabled="{% if m.enabled %}1{% else %}0{% endif %}"
+                        data-default="{% if m.is_default %}1{% else %}0{% endif %}"
+                        data-prompt="{% if m.prompt_mode == 'custom' and m.system_prompt %}prompt:{{ m.system_prompt_id }}{% else %}{{ m.prompt_mode }}{% endif %}"
+                        data-temp="{{ m.temperature|default_if_none:'' }}"
+                        data-maxtok="{{ m.max_tokens|default_if_none:'' }}"
+                        data-stop="{{ m.stop }}">
+                  {% trans "编辑" %}
+                </button>
+                {% if not m.is_default %}
+                <form method="post" action="{% url 'website:console_ai_models' %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="model_default" />
+                  <input type="hidden" name="id" value="{{ m.pk }}" />
+                  <button type="submit" class="btn btn-xs btn-ghost">{% trans "设为默认" %}</button>
+                </form>
+                {% endif %}
+                <form method="post" action="{% url 'website:console_ai_models' %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="model_toggle" />
+                  <input type="hidden" name="id" value="{{ m.pk }}" />
+                  <button type="submit" class="btn btn-xs btn-ghost{% if m.enabled %} text-error{% else %} text-success{% endif %}">
+                    {% if m.enabled %}{% trans "下架" %}{% else %}{% trans "上架" %}{% endif %}
+                  </button>
+                </form>
+                <form method="post" action="{% url 'website:console_ai_models' %}"
+                      data-confirm="{% trans '删除后不可恢复：该模型会立即从模型清单与文档下拉中消失，确认删除？' %}"
+                      data-confirm-title="{% trans '删除模型' %}"
+                      data-confirm-ok="{% trans '删除' %}" data-confirm-danger="1">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="model_delete" />
+                  <input type="hidden" name="id" value="{{ m.pk }}" />
+                  <button type="submit" class="btn btn-xs btn-error btn-outline">{% trans "删除" %}</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="10" class="py-6 text-center text-sm text-base-content/60">
+              {% trans "暂无模型；新建模型后，调用方即可用该模型标识发起对话。" %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  {# ==================== 系统提示词 ==================== #}
+  <section class="mt-6">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <h2 class="text-lg font-semibold">{% trans "系统提示词" %}</h2>
+      <button type="button" class="btn btn-sm btn-primary" onclick="ai_prompt_create_modal.showModal()">
+        <i data-lucide="plus" class="h-4 w-4"></i>{% trans "新建提示词" %}
+      </button>
+    </div>
+    <p class="mt-1 text-xs text-base-content/60">
+      {% trans "勾「全局共享」的那一条会被所有「跟随全局」的模型使用（全局只保留一条）；停用后视同不存在，指定它的模型会自动回落到全局那条。" %}
+    </p>
+
+    <div class="con-table-wrap mt-3">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th class="whitespace-nowrap">{% trans "名称" %}</th>
+            <th class="whitespace-nowrap">{% trans "正文预览" %}</th>
+            <th class="whitespace-nowrap">{% trans "全局共享" %}</th>
+            <th class="whitespace-nowrap">{% trans "状态" %}</th>
+            <th class="whitespace-nowrap">{% trans "使用它的模型" %}</th>
+            <th class="whitespace-nowrap">{% trans "排序" %}</th>
+            <th class="whitespace-nowrap text-right">{% trans "操作" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in prompts %}
+          <tr>
+            <td>
+              <div class="text-sm font-medium">{{ s.name }}</div>
+              {% if s.remark %}<div class="text-xs text-base-content/60">{{ s.remark }}</div>{% endif %}
+            </td>
+            <td class="max-w-md">
+              <div class="line-clamp-2 break-all text-xs text-base-content/70">{{ s.content }}</div>
+            </td>
+            <td class="whitespace-nowrap">
+              {% if s.is_global %}
+              <span class="badge badge-soft badge-primary badge-sm">{% trans "全局共享" %}</span>
+              {% endif %}
+            </td>
+            <td class="whitespace-nowrap">
+              {% if s.enabled %}
+              <span class="badge badge-soft badge-success badge-sm">{% trans "启用" %}</span>
+              {% else %}
+              <span class="badge badge-soft badge-ghost badge-sm">{% trans "停用" %}</span>
+              {% endif %}
+            </td>
+            <td class="whitespace-nowrap text-sm">{{ s.bound_models.count }}</td>
+            <td class="whitespace-nowrap text-sm">{{ s.sort }}</td>
+            <td class="whitespace-nowrap text-right">
+              <div class="flex items-center justify-end gap-1">
+                <button type="button" class="btn btn-xs btn-ghost" data-edit-prompt
+                        data-id="{{ s.pk }}" data-name="{{ s.name }}" data-content="{{ s.content }}"
+                        data-sort="{{ s.sort }}" data-remark="{{ s.remark }}"
+                        data-global="{% if s.is_global %}1{% else %}0{% endif %}"
+                        data-enabled="{% if s.enabled %}1{% else %}0{% endif %}">
+                  {% trans "编辑" %}
+                </button>
+                {% if not s.is_global %}
+                <form method="post" action="{% url 'website:console_ai_models' %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="prompt_global" />
+                  <input type="hidden" name="id" value="{{ s.pk }}" />
+                  <button type="submit" class="btn btn-xs btn-ghost">{% trans "设为全局共享" %}</button>
+                </form>
+                {% endif %}
+                <form method="post" action="{% url 'website:console_ai_models' %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="prompt_toggle" />
+                  <input type="hidden" name="id" value="{{ s.pk }}" />
+                  <button type="submit" class="btn btn-xs btn-ghost{% if s.enabled %} text-error{% else %} text-success{% endif %}">
+                    {% if s.enabled %}{% trans "停用" %}{% else %}{% trans "启用" %}{% endif %}
+                  </button>
+                </form>
+                <form method="post" action="{% url 'website:console_ai_models' %}"
+                      data-confirm="{% trans '删除后不可恢复；指定它的模型会自动回落到全局共享那条，确认删除？' %}"
+                      data-confirm-title="{% trans '删除提示词' %}"
+                      data-confirm-ok="{% trans '删除' %}" data-confirm-danger="1">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="prompt_delete" />
+                  <input type="hidden" name="id" value="{{ s.pk }}" />
+                  <button type="submit" class="btn btn-xs btn-error btn-outline">{% trans "删除" %}</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" class="py-6 text-center text-sm text-base-content/60">
+              {% trans "暂无系统提示词；不配置时请求不带 system 消息，模型按自身默认行为作答。" %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  {# ==================== 厂商弹窗 ==================== #}
+  <dialog id="ai_provider_create_modal" class="modal">
+    <div class="modal-box max-w-3xl">
+      <h3 class="text-lg font-bold">{% trans "新建厂商" %}</h3>
+      <form id="ai_provider_create_form" method="post" action="{% url 'website:console_ai_models' %}" class="mt-3 grid gap-3">
+        {% csrf_token %}
+        {% include 'console/_ai_provider_form.html' with form_action='provider_create' form_mode='create' %}
+        <div class="modal-action">
+          <button type="submit" class="btn btn-sm btn-primary">{% trans "创建" %}</button>
+          <button type="button" class="btn btn-sm btn-ghost" onclick="ai_provider_create_modal.close()">{% trans "取消" %}</button>
+        </div>
+      </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
+
+  <dialog id="ai_provider_edit_modal" class="modal">
+    <div class="modal-box max-w-3xl">
+      <h3 class="text-lg font-bold">{% trans "编辑厂商" %}</h3>
+      <form id="ai_provider_edit_form" method="post" action="{% url 'website:console_ai_models' %}" class="mt-3 grid gap-3">
+        {% csrf_token %}
+        {% include 'console/_ai_provider_form.html' with form_action='provider_edit' form_mode='edit' %}
+        <div class="modal-action">
+          <button type="submit" class="btn btn-sm btn-primary">{% trans "保存" %}</button>
+          <button type="button" class="btn btn-sm btn-ghost" onclick="ai_provider_edit_modal.close()">{% trans "取消" %}</button>
+        </div>
+      </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
+
+  {# ==================== 模型弹窗 ==================== #}
+  {% comment %}模型表单字段较多：弹窗固定高度（max-h-[90vh]），标题栏与操作栏常驻、中间字段区独立滚动，
+  打开后「保存 / 取消」始终可见，不用滚到底部才能提交。{% endcomment %}
+  <dialog id="ai_model_create_modal" class="modal">
+    <div class="modal-box flex max-h-[90vh] max-w-3xl flex-col overflow-hidden p-0">
+      <form id="ai_model_create_form" method="post" action="{% url 'website:console_ai_models' %}"
+            class="flex min-h-0 flex-1 flex-col">
+        {% csrf_token %}
+        <h3 class="border-b border-base-300 px-5 py-3 text-base font-bold">{% trans "新建模型" %}</h3>
+        <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+          {% include 'console/_ai_model_form.html' with form_action='model_create' form_mode='create' %}
+        </div>
+        <div class="flex items-center justify-end gap-2 border-t border-base-300 px-5 py-3">
+          <button type="submit" class="btn btn-sm btn-primary">{% trans "创建" %}</button>
+          <button type="button" class="btn btn-sm btn-ghost" onclick="ai_model_create_modal.close()">{% trans "取消" %}</button>
+        </div>
+      </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
+
+  <dialog id="ai_model_edit_modal" class="modal">
+    <div class="modal-box flex max-h-[90vh] max-w-3xl flex-col overflow-hidden p-0">
+      <form id="ai_model_edit_form" method="post" action="{% url 'website:console_ai_models' %}"
+            class="flex min-h-0 flex-1 flex-col">
+        {% csrf_token %}
+        <h3 class="border-b border-base-300 px-5 py-3 text-base font-bold">{% trans "编辑模型" %}</h3>
+        <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+          {% include 'console/_ai_model_form.html' with form_action='model_edit' form_mode='edit' %}
+        </div>
+        <div class="flex items-center justify-end gap-2 border-t border-base-300 px-5 py-3">
+          <button type="submit" class="btn btn-sm btn-primary">{% trans "保存" %}</button>
+          <button type="button" class="btn btn-sm btn-ghost" onclick="ai_model_edit_modal.close()">{% trans "取消" %}</button>
+        </div>
+      </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
+
+  {# ==================== 系统提示词弹窗 ==================== #}
+  <dialog id="ai_prompt_create_modal" class="modal">
+    <div class="modal-box max-w-3xl">
+      <h3 class="text-lg font-bold">{% trans "新建系统提示词" %}</h3>
+      <form id="ai_prompt_create_form" method="post" action="{% url 'website:console_ai_models' %}" class="mt-3 grid gap-3">
+        {% csrf_token %}
+        {% include 'console/_ai_prompt_form.html' with form_action='prompt_create' form_mode='create' %}
+        <div class="modal-action">
+          <button type="submit" class="btn btn-sm btn-primary">{% trans "创建" %}</button>
+          <button type="button" class="btn btn-sm btn-ghost" onclick="ai_prompt_create_modal.close()">{% trans "取消" %}</button>
+        </div>
+      </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
+
+  <dialog id="ai_prompt_edit_modal" class="modal">
+    <div class="modal-box max-w-3xl">
+      <h3 class="text-lg font-bold">{% trans "编辑系统提示词" %}</h3>
+      <form id="ai_prompt_edit_form" method="post" action="{% url 'website:console_ai_models' %}" class="mt-3 grid gap-3">
+        {% csrf_token %}
+        {% include 'console/_ai_prompt_form.html' with form_action='prompt_edit' form_mode='edit' %}
+        <div class="modal-action">
+          <button type="submit" class="btn btn-sm btn-primary">{% trans "保存" %}</button>
+          <button type="button" class="btn btn-sm btn-ghost" onclick="ai_prompt_edit_modal.close()">{% trans "取消" %}</button>
+        </div>
+      </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
+{% endblock %}
+
+{% block js %}
+<script>
+(function () {
+  'use strict';
+  // 编辑弹窗回填：把行内 data-* 写进表单（纯前端，无额外接口）
+  function setValue(form, name, value) {
+    var el = form.querySelector('[name=' + name + ']');
+    if (el) el.value = value === undefined || value === null ? '' : value;
+  }
+
+  function setChecked(form, name, checked) {
+    var el = form.querySelector('[name=' + name + ']');
+    if (el) el.checked = !!checked;
+  }
+
+  var providerForm = document.getElementById('ai_provider_edit_form');
+  document.querySelectorAll('[data-edit-provider]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var d = btn.dataset;
+      providerForm.reset();
+      setValue(providerForm, 'id', d.id);
+      setValue(providerForm, 'code', d.code);
+      setValue(providerForm, 'name', d.name);
+      setValue(providerForm, 'base_url', d.baseUrl);
+      setValue(providerForm, 'sort', d.sort);
+      setValue(providerForm, 'remark', d.remark);
+      setChecked(providerForm, 'enabled', d.enabled === '1');
+      setChecked(providerForm, 'clear_key', false);
+      document.getElementById('ai_provider_edit_modal').showModal();
+    });
+  });
+
+  var modelForm = document.getElementById('ai_model_edit_form');
+  document.querySelectorAll('[data-edit-model]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var d = btn.dataset;
+      modelForm.reset();
+      setValue(modelForm, 'id', d.id);
+      setValue(modelForm, 'key', d.key);
+      setValue(modelForm, 'name', d.name);
+      setValue(modelForm, 'provider', d.provider);
+      setValue(modelForm, 'upstream_name', d.upstream);
+      setValue(modelForm, 'context_window', d.window);
+      setValue(modelForm, 'sort', d.sort);
+      setValue(modelForm, 'remark', d.remark);
+      setValue(modelForm, 'temperature', d.temp);
+      setValue(modelForm, 'max_tokens', d.maxtok);
+      setValue(modelForm, 'stop', d.stop);
+      setChecked(modelForm, 'supports_vision', d.vision === '1');
+      setValue(modelForm, 'max_images', d.maximg);
+      setChecked(modelForm, 'enabled', d.enabled === '1');
+      setChecked(modelForm, 'is_default', d.default === '1');
+      // 提示词三态：值形如 inherit / none / prompt:<pk>；对不上（如指定的那条已被删）就回到「跟随全局」
+      var promptSelect = modelForm.querySelector('[name=prompt_choice]');
+      promptSelect.value = d.prompt;
+      if (promptSelect.selectedIndex < 0) promptSelect.value = 'inherit';
+      document.getElementById('ai_model_edit_modal').showModal();
+    });
+  });
+
+  var promptForm = document.getElementById('ai_prompt_edit_form');
+  document.querySelectorAll('[data-edit-prompt]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var d = btn.dataset;
+      promptForm.reset();
+      setValue(promptForm, 'id', d.id);
+      setValue(promptForm, 'name', d.name);
+      setValue(promptForm, 'content', d.content);
+      setValue(promptForm, 'sort', d.sort);
+      setValue(promptForm, 'remark', d.remark);
+      setChecked(promptForm, 'is_global', d.global === '1');
+      setChecked(promptForm, 'enabled', d.enabled === '1');
+      document.getElementById('ai_prompt_edit_modal').showModal();
+    });
+  });
+})();
+</script>
+{% endblock %}

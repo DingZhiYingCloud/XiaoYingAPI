@@ -3,94 +3,155 @@
 
 {% block title %}{% trans "控制台首页 - 超级管理员 - 小影API" %}{% endblock %}
 {% block keywords %}{% trans "超级管理员,控制台" %}{% endblock %}
-{% block description %}{% trans "小影API 超级管理员控制台：关键指标概览与各模块入口。" %}{% endblock %}
+{% block description %}{% trans "小影API 超级管理员控制台：关键指标概览、待关注事项与各模块入口。" %}{% endblock %}
 
 {% block console_content %}
-{% trans "关键指标概览与各模块入口；模块入口取自左侧菜单声明，新模块上线后自动出现。" as ph_desc %}
+{% trans "关键指标概览、待关注事项与各模块入口；入口取自左侧菜单声明，新模块上线后自动出现。" as ph_desc %}
 {% include 'console/_page_header.html' with icon='layout-dashboard' title='控制台首页' desc=ph_desc %}
 
-{# ===== 近 N 天调用概览（复用调用统计口径） ===== #}
-<div class="stats stats-vertical mt-5 w-full border border-base-300 bg-base-100 sm:stats-horizontal">
-  <div class="stat">
-    <div class="stat-figure text-primary"><i data-lucide="activity" class="h-6 w-6"></i></div>
-    <div class="stat-title">{% blocktrans with n=overview_days %}近 {{ n }} 天调用量{% endblocktrans %}</div>
-    <div class="stat-value text-2xl">{{ stats.calls }}</div>
-    <div class="stat-desc">{% trans "成功" %} {{ stats.success }} · {% trans "失败" %} {{ stats.failed }}</div>
+{% include 'console/_messages.html' %}
+
+{# ==================== 近 N 天调用概览（复用调用统计口径） ==================== #}
+<div class="mt-5 flex flex-wrap items-center justify-between gap-2">
+  <h2 class="flex items-center gap-2 text-sm font-bold text-base-content/70">
+    <i data-lucide="activity" class="h-4 w-4 text-primary" aria-hidden="true"></i>
+    {% blocktrans with n=overview_days %}近 {{ n }} 天调用概览{% endblocktrans %}
+  </h2>
+  <a href="{% url 'website:console_stats' %}" class="link link-hover text-xs text-primary">
+    {% trans "查看完整统计" %}
+  </a>
+</div>
+
+<div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+  <div class="con-metric">
+    <span class="con-metric-icon bg-primary/10 text-primary">
+      <i data-lucide="activity" class="h-5 w-5" aria-hidden="true"></i>
+    </span>
+    <div class="min-w-0">
+      <div class="con-metric-value">{{ stats.calls }}</div>
+      <div class="con-metric-label">{% trans "调用总量" %}</div>
+    </div>
   </div>
-  <div class="stat">
-    <div class="stat-figure text-success"><i data-lucide="circle-check" class="h-6 w-6"></i></div>
-    <div class="stat-title">{% trans "成功率" %}</div>
-    <div class="stat-value text-2xl">{{ stats.success_rate }}%</div>
-    <div class="stat-desc">{% trans "区间内产生过调用的接入项目" %} {{ stats.active_apps }}</div>
+
+  <div class="con-metric">
+    <span class="con-metric-icon bg-success/10 text-success">
+      <i data-lucide="circle-check" class="h-5 w-5" aria-hidden="true"></i>
+    </span>
+    <div class="min-w-0">
+      <div class="con-metric-value">{{ stats.success_rate }}%</div>
+      <div class="con-metric-label">{% trans "成功率" %}</div>
+      <div class="text-xs text-base-content/50">
+        {% blocktrans with ok=stats.success bad=stats.failed %}成功 {{ ok }} · 失败 {{ bad }}{% endblocktrans %}
+      </div>
+    </div>
   </div>
-  <div class="stat">
-    <div class="stat-figure text-info"><i data-lucide="timer" class="h-6 w-6"></i></div>
-    <div class="stat-title">{% trans "平均耗时" %}</div>
-    <div class="stat-value text-2xl">{{ stats.avg_ms }}<span class="text-base font-normal"> ms</span></div>
-    <div class="stat-desc">{% trans "最大" %} {{ stats.max_ms }} ms</div>
+
+  <div class="con-metric">
+    <span class="con-metric-icon bg-info/10 text-info">
+      <i data-lucide="timer" class="h-5 w-5" aria-hidden="true"></i>
+    </span>
+    <div class="min-w-0">
+      <div class="con-metric-value">{{ stats.avg_ms }}<span class="text-sm font-normal"> ms</span></div>
+      <div class="con-metric-label">{% trans "平均耗时" %}</div>
+      <div class="text-xs text-base-content/50">
+        {% blocktrans with max=stats.max_ms %}最大 {{ max }} ms{% endblocktrans %}
+      </div>
+    </div>
+  </div>
+
+  <div class="con-metric">
+    <span class="con-metric-icon bg-secondary/10 text-secondary">
+      <i data-lucide="plug-zap" class="h-5 w-5" aria-hidden="true"></i>
+    </span>
+    <div class="min-w-0">
+      <div class="con-metric-value">{{ stats.active_apps }}</div>
+      <div class="con-metric-label">{% trans "有调用的接入项目" %}</div>
+    </div>
   </div>
 </div>
 
-{# ===== 资源计数 ===== #}
-<div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-  <div class="card border border-base-300 bg-base-100 transition hover:border-primary/40">
-    <div class="card-body flex-row items-center gap-3 p-4">
-      <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-box bg-info/10 text-info">
-        <i data-lucide="boxes" class="h-5 w-5"></i>
-      </span>
-      <div class="min-w-0">
-        <p class="text-sm text-base-content/70">{% trans "接入项目" %}</p>
-        <p class="text-2xl font-bold leading-tight">{{ counts.apps }}</p>
-      </div>
-    </div>
-  </div>
-  <div class="card border border-base-300 bg-base-100 transition hover:border-primary/40">
-    <div class="card-body flex-row items-center gap-3 p-4">
-      <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-box bg-secondary/10 text-secondary">
-        <i data-lucide="users" class="h-5 w-5"></i>
-      </span>
-      <div class="min-w-0">
-        <p class="text-sm text-base-content/70">{% trans "用户总数" %}</p>
-        <p class="text-2xl font-bold leading-tight">{{ counts.users }}</p>
-      </div>
-    </div>
-  </div>
-  <div class="card border border-base-300 bg-base-100 transition hover:border-primary/40">
-    <div class="card-body flex-row items-center gap-3 p-4">
-      <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-box {% if counts.banned_users %}bg-error/10 text-error{% else %}bg-base-200 text-base-content/60{% endif %}">
-        <i data-lucide="user-x" class="h-5 w-5"></i>
-      </span>
-      <div class="min-w-0">
-        <p class="text-sm text-base-content/70">{% trans "已封禁用户" %}</p>
-        <p class="text-2xl font-bold leading-tight">{{ counts.banned_users }}</p>
-      </div>
-    </div>
-  </div>
-</div>
-
-{# ===== 模块入口（遍历菜单声明，未实现模块不在菜单里自然也不会出现） ===== #}
-<h2 class="mt-6 flex items-center gap-2 text-base font-bold">
-  <i data-lucide="layout-grid" class="h-4 w-4 text-primary"></i>{% trans "模块入口" %}
+{# ==================== 资源与待关注 ==================== #}
+<h2 class="mt-6 flex items-center gap-2 text-sm font-bold text-base-content/70">
+  <i data-lucide="clipboard-list" class="h-4 w-4 text-primary" aria-hidden="true"></i>
+  {% trans "资源与待关注" %}
 </h2>
-<div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-  {% for group in console_menu %}
-  {% for item in group.items %}
-  {% if item.key != 'console_home' %}
-  <a href="{% url item.url %}"
-     class="group card border border-base-300 bg-base-100 transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
-    <div class="card-body gap-2 p-4">
-      <div class="flex items-center gap-2">
-        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-field bg-primary/10 text-primary">
-          <i data-lucide="{{ item.icon }}" class="h-4 w-4"></i>
-        </span>
-        <span class="font-medium">{% trans item.name %}</span>
-        <i data-lucide="arrow-right" class="ml-auto h-4 w-4 -translate-x-1 opacity-0 transition group-hover:translate-x-0 group-hover:opacity-60"></i>
-      </div>
-      <p class="text-sm text-base-content/70">{% trans item.desc %}</p>
+
+<div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+  <a href="{% url 'website:console_projects' %}" class="con-metric">
+    <span class="con-metric-icon bg-info/10 text-info">
+      <i data-lucide="boxes" class="h-5 w-5" aria-hidden="true"></i>
+    </span>
+    <div class="min-w-0">
+      <div class="con-metric-value">{{ counts.apps }}</div>
+      <div class="con-metric-label">{% trans "接入项目" %}</div>
     </div>
   </a>
-  {% endif %}
-  {% endfor %}
+
+  <a href="{% url 'website:console_users' %}" class="con-metric">
+    <span class="con-metric-icon bg-secondary/10 text-secondary">
+      <i data-lucide="users" class="h-5 w-5" aria-hidden="true"></i>
+    </span>
+    <div class="min-w-0">
+      <div class="con-metric-value">{{ counts.users }}</div>
+      <div class="con-metric-label">{% trans "用户总数" %}</div>
+    </div>
+  </a>
+
+  <a href="{% url 'website:console_users' %}?status=banned" class="con-metric">
+    <span class="con-metric-icon {% if counts.banned_users %}bg-error/10 text-error{% else %}bg-base-200 text-base-content/60{% endif %}">
+      <i data-lucide="user-x" class="h-5 w-5" aria-hidden="true"></i>
+    </span>
+    <div class="min-w-0">
+      <div class="con-metric-value">{{ counts.banned_users }}</div>
+      <div class="con-metric-label">{% trans "已封禁用户" %}</div>
+    </div>
+  </a>
+
+  <a href="{% url 'website:console_feedback' %}" class="con-metric">
+    <span class="con-metric-icon {% if counts.feedback_open %}bg-warning/10 text-warning{% else %}bg-base-200 text-base-content/60{% endif %}">
+      <i data-lucide="messages-square" class="h-5 w-5" aria-hidden="true"></i>
+    </span>
+    <div class="min-w-0">
+      <div class="con-metric-value">{{ counts.feedback_open }}</div>
+      <div class="con-metric-label">{% trans "待跟进反馈" %}</div>
+      <div class="text-xs text-base-content/50">{% trans "待审核 / 待处理" %}</div>
+    </div>
+  </a>
+
+  <a href="{% url 'website:console_announcements' %}" class="con-metric">
+    <span class="con-metric-icon bg-accent/10 text-accent">
+      <i data-lucide="megaphone" class="h-5 w-5" aria-hidden="true"></i>
+    </span>
+    <div class="min-w-0">
+      <div class="con-metric-value">{{ counts.announcements }}</div>
+      <div class="con-metric-label">{% trans "生效中的公告" %}</div>
+    </div>
+  </a>
+</div>
+
+{# ==================== 模块入口（按菜单分组，未实现模块不在菜单里自然也不会出现） ==================== #}
+{% for group in console_menu %}
+{# 概览组只有「控制台首页」本身，不重复罗列 #}
+{% if group.items|length > 1 or group.items.0.key != 'console_home' %}
+<h2 class="mt-6 flex items-center gap-2 text-sm font-bold text-base-content/70">
+  {% if group.icon %}<i data-lucide="{{ group.icon }}" class="h-4 w-4 text-primary" aria-hidden="true"></i>{% endif %}
+  {% trans group.title %}
+</h2>
+<div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+  {% for item in group.items %}
+  <a href="{% url item.url %}"
+     class="con-panel group flex flex-col gap-2 p-4 transition hover:border-primary/40 hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+    <div class="flex items-center gap-2">
+      <span class="con-panel-icon h-8 w-8">
+        <i data-lucide="{{ item.icon }}" class="h-4 w-4" aria-hidden="true"></i>
+      </span>
+      <span class="font-medium">{% trans item.name %}</span>
+      <i data-lucide="arrow-right" class="ml-auto h-4 w-4 -translate-x-1 opacity-0 transition group-hover:translate-x-0 group-hover:opacity-60" aria-hidden="true"></i>
+    </div>
+    <p class="text-sm text-base-content/70">{% trans item.desc %}</p>
+  </a>
   {% endfor %}
 </div>
+{% endif %}
+{% endfor %}
 {% endblock %}

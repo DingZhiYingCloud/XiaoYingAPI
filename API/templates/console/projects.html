@@ -48,14 +48,14 @@
   {# 项目列表 #}
   <div class="mt-5 space-y-3">
     {% if not apps %}
-    <div class="rounded-box border border-dashed border-base-300 p-8 text-center text-sm text-base-content/60">
+    <div class="con-empty">
       {% trans "暂无接入项目" %}{% if keyword %}{% blocktrans %}（未找到与「{{ keyword }}」匹配的项目）{% endblocktrans %}{% endif %}
     </div>
     {% endif %}
 
     {% for app in apps %}
-    <article class="card border border-base-300 bg-base-100">
-      <div class="card-body gap-3 p-4">
+    <article class="con-panel">
+      <div class="con-panel-body gap-3 p-4">
         <div class="flex flex-wrap items-start justify-between gap-2">
           <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-2">

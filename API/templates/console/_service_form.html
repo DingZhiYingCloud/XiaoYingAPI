@@ -3,7 +3,7 @@
 {% include 'console/_service_form.html' with form_action='create' %}
 {% include 'console/_service_form.html' with form_action='edit' %}
 编辑弹窗的「服务 / 线路 / 端点」三级下拉由页面 JS（services.html）按行数据回填并显示。
-上下文依赖：status_choices / mode_choices / scope_choices / apps（均由 services_view 提供）。
+上下文依赖：status_choices / mode_choices / scope_choices / docs_visible_choices / audience_choices / apps（均由 services_view 提供）。
 层级与 path_prefix 由「服务 → 线路 → 端点」三级选择自动推导，不手输。{% endcomment %}
 <input type="hidden" name="action" value="{{ form_action }}" />
 {% if form_action == 'edit' %}<input type="hidden" name="id" value="{{ policy.id|default:'' }}" />{% endif %}
@@ -52,6 +52,24 @@
     <select name="app_scope" class="select select-sm">
       {% for value, label in scope_choices %}
       <option value="{{ value }}"{% if policy.app_scope == value %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+</div>
+<div class="grid gap-3 sm:grid-cols-2">
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-base-content/60">{% trans "文档可见性" %}</span>
+    <select name="docs_visible" class="select select-sm">
+      {% for value, label in docs_visible_choices %}
+      <option value="{{ value }}"{% if policy.docs_visible == value %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-base-content/60">{% trans "使用范围" %}</span>
+    <select name="audience" class="select select-sm">
+      {% for value, label in audience_choices %}
+      <option value="{{ value }}"{% if policy.audience == value %} selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
   </label>

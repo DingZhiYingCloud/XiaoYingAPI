@@ -1,11 +1,13 @@
-/* API 文档中心 - 在线播放器（m3u8 播放测试）
+/* API 文档中心 - 在线播放器（播放地址测试）
  *
  * 触发条件：端点在文档声明中标记 player=True 时，模板渲染 [data-player] 容器。
  * 功能：
- *   1) 点击「发送请求」成功后，自动取响应中的 data.m3u8 加载播放（监听 docs:result 事件）；
- *   2) 也可在输入框粘贴任意 m3u8 地址，点「加载播放」验证地址是否可用。
- * 实现：Chrome/Edge/Firefox 用 hls.js（懒加载 vendor 脚本）；
- *       Safari / iOS 原生支持 HLS，回退到 <video> 直接播放。
+ *   1) 点击「发送请求」成功后，自动取响应里的播放地址加载播放（监听 docs:result 事件）：
+ *      data.m3u8（HLS）优先，其次 data.url（MP4 直链，如短剧出流地址）；
+ *   2) 也可在输入框粘贴任意播放地址，点「加载播放」验证地址是否可用。
+ * 实现：m3u8 → Chrome/Edge/Firefox 用 hls.js（懒加载 vendor 脚本），
+ *       Safari / iOS 原生支持 HLS，回退到 <video> 直接播放；
+ *       非 m3u8（MP4 等）→ 直接交给 <video>，无需 hls.js。
  */
 (function () {
   'use strict';
@@ -49,6 +51,9 @@
     node.classList.toggle('text-base-content/60', !isError);
   }
 
+  /* m3u8 才需要 hls.js，其余（MP4 直链等）直接交给 <video> */
+  function isHls(url) { return /\.m3u8(\?|#|$)/i.test(url); }
+
   /* ---------- 加载并播放 ---------- */
   function play(container, url) {
     var video = container.querySelector('[data-player-video]');
@@ -63,6 +68,14 @@
     video.load();
 
     if (!url) { setStatus(container, _t('未获取到播放地址'), true); return; }
+
+    // 直链（MP4 等）：不需要 hls.js
+    if (!isHls(url)) {
+      video.src = url;
+      setStatus(container, _t('已加载直链，正在播放；支持拖动进度条'));
+      video.play().catch(function () { /* 自动播放被拦截时忽略 */ });
+      return;
+    }
 
     // Safari / iOS：原生支持 HLS
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
@@ -113,19 +126,26 @@
     if (loadBtn && urlInput) {
       loadBtn.addEventListener('click', function () {
         var url = urlInput.value.trim();
-        if (!url) { setStatus(container, _t('请先填写 m3u8 地址'), true); return; }
+        if (!url) { setStatus(container, _t('请先填写播放地址'), true); return; }
         play(container, url);
       });
     }
   });
 
-  // 调试响应返回后，若响应体含 m3u8 地址则自动加载播放
+  // 调试响应返回后，若响应体含播放地址则自动加载播放（HLS 优先，其次 MP4 直链）
   document.addEventListener('docs:result', function (ev) {
     var detail = ev.detail || {};
     var container = document.querySelector('[data-player][data-player-res="' + detail.resKey + '"]');
     if (!container) return;
-    var parsed = detail.parsed;
-    var url = parsed && parsed.data && parsed.data.m3u8;
-    if (url) play(container, url);
+    var data = (detail.parsed && detail.parsed.data) || {};
+    var url = data.m3u8 || data.url;
+    if (!url) return;
+    // 短剧「网页直出」：ready=false 表示该集首次被点播、服务端正在解密转码（约数十秒），
+    // 这时该地址还只返回 202，塞给 <video> 必然加载失败 —— 提示等一会儿重试，别假装能播。
+    if (data.ready === false) {
+      setStatus(container, _t('该集首次点播，服务端正在生成播放地址（约数十秒）；请稍后重新点「发送请求」，拿到 ready=true 再播。'), false);
+      return;
+    }
+    play(container, url);
   });
 })();

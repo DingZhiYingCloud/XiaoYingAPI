@@ -1,7 +1,7 @@
 {% load i18n %}
 {% comment %}调用统计：调用量最高的日期（按天表，含当日失败率）{% endcomment %}
-<div class="card mt-5 border border-base-300 bg-base-100">
-  <div class="card-body gap-3">
+<div class="con-panel mt-5">
+  <div class="con-panel-body gap-3">
     <h2 class="card-title text-base">{% trans "调用量最高的日期" %}</h2>
     {% if peak_days %}
     <div class="overflow-x-auto">

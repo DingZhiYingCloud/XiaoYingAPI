@@ -19,6 +19,8 @@
 | Python 路径 | `{PYTHON_BIN}` | 同左 |
 | uwsgi 路径 | `{UWSGI_BIN}` | 同左 |
 | 运行用户 | `www` | `www` |
+| Java | **无需安装**（红果短剧签名器用仓库内置的 `scripts/hongguo_sign/jre/`） | 同左 |
+| ffmpeg | 需在 PATH 上；**仅**红果短剧线路「第 4 集及以后」解密用（不部署该线路可忽略） | __________ |
 
 > 后续命令默认在**项目根目录**下执行：`cd {PROJECT_ROOT}`
 > 为简洁，用变量 `$PY` 代表 Python 路径，执行前先设：
@@ -32,9 +34,9 @@
 
 | # | 步骤 | 要点 | 完成 |
 |---|------|------|------|
-| 1 | 环境检查（Python / pip） | 版本正确、可执行 | ☐ |
+| 1 | 环境检查（Python / pip） | 版本正确、可执行；**短剧线路另需 `ffmpeg`，Java 无需安装** | ☐ |
 | 2 | 安装项目依赖 | `requirements.txt` 含构建期依赖 `zhconv` | ☐ |
-| 3 | 确认前端产物已随代码入库 | `output.css` / `locale/**/*.mo` / `migrations/*.py`；**线上不重新生成** | ☐ |
+| 3 | 确认前端产物已随代码入库 | `output.css` / `locale/**/*.mo` / `migrations/*.py` / `hongguo_sign/jre/`；**线上不重新生成** | ☐ |
 | 4 | 配置 `.env` 环境变量 | 至少 `SECRET_KEY`、`DEBUG=False`、`ALLOWED_HOSTS` | ☐ |
 | 5 | 收集静态文件 | `collectstatic --noinput` | ☐ |
 | 6 | 校验迁移文件已入库（A-05） | 线上只 `migrate`，禁止 `makemigrations` | ☐ |
@@ -60,7 +62,17 @@ $PY --version          # 应显示 Python 3.12.x
 $PY -m pip --version   # 应显示 pip 版本
 ```
 
-**验证**：两条命令都有正常输出，不报 command not found。
+红果短剧线路（可选）另需一个外部依赖与一个「无需安装」的说明：
+
+```bash
+ffmpeg -version        # 仅部署短剧线路时需要：第 4 集及以后的 CENC 解密用
+```
+
+- **Java 不需要安装**：红果取流签名器（unidbg）的运行时是仓库内置的 jlink 裁剪版 JRE（`scripts/hongguo_sign/jre/`，随代码入库）。需要签名时由 API 服务自动拉起该进程并复用，因此**线上只需跑小影 API 一个服务**。若想改用本机 JDK 17+，设环境变量 `HONGGUO_JAVA_BIN` 指向它即可。
+- **ffmpeg 必须可用**：默认取 PATH 上的 `ffmpeg`，也可用 `HONGGUO_FFMPEG_BIN` 指定绝对路径。**缺失时只有红果短剧「第 4 集及以后」会取流失败**（前 3 集是源站明链，不受影响）。
+- 同目录的 `sign/unidbg-sign.jar` 与 `capture/` 属**第三方二进制、不入库**，首次部署需按 `scripts/hongguo_sign/start_sign_service.bat` 顶部说明单独获取；`jre/` 已入库、无需处理。
+
+**验证**：三条命令都有正常输出，不报 command not found。
 
 ---
 
@@ -92,15 +104,18 @@ $PY manage.py check    # 应输出：System check identified no issues.
 
 ### 步骤 3：确认前端产物已随代码入库
 
-本项目有三类**生成产物**，都随代码提交、**线上不重新生成**（线上也没有生成条件）：
+本项目有以下**生成产物**，都随代码提交、**线上不重新生成**（线上也没有生成条件）：
 
 | 产物 | 生成方式 | 何时需要重新生成（都在本地做） |
 |------|----------|------------------------------|
 | `API/static/css/output.css` | `tailwindcss.exe` 编译 | 新增 / 修改了 daisyUI、Tailwind 类名 |
 | `locale/**/*.mo` | `python scripts/compile_locale.py` | 新增 / 修改了 `.po` 词条 |
 | `API/migrations/*.py` | `manage.py makemigrations` | 模型变更 |
+| `scripts/hongguo_sign/jre/` | `jlink`（命令见该目录 `start_sign_service.bat` 顶部） | 换机器 / 升级 Java / 需要调整模块集时 |
 
 > 本地生成命令见 README 第八章；**若这些文件缺失或过期，线上会出现「样式全乱」「语言切不动」等问题**。
+> 改过文案后，本地生成顺序是：`check_i18n.py`（自查漏包翻译 / 词条缺失 / 跨行 `{# #}` 注释）→ `make_zh_hant.py`（繁体）→ `compile_locale.py`（`.mo`），再把 `.mo` 随代码提交。
+> `jre/` 已随代码入库（红果短剧签名器的 Java 运行时，约 32MB），**故线上无需安装 Java**；同目录的 `sign/unidbg-sign.jar` 与 `capture/` 是第三方二进制、不入库，需单独获取（见步骤 1）。
 
 **验证**：
 
@@ -108,6 +123,7 @@ $PY manage.py check    # 应输出：System check identified no issues.
 ls API/static/css/output.css
 ls locale/en/LC_MESSAGES/ locale/zh_Hant/LC_MESSAGES/
 ls API/migrations/00*.py | tail -3
+ls scripts/hongguo_sign/jre/bin/          # 红果短剧线路需要；其它环境可忽略
 ```
 
 ---
@@ -126,7 +142,7 @@ ALLOWED_HOSTS=你的域名,www.你的域名   # 不要填 *
 
 ⚠️ **两个必须注意的点**：
 
-1. **`SECRET_KEY` 上线后不可再变更**：它还用于 `app_secret` 等凭据的密文派生，变更后已加密数据（接入项目的 APPSECRET）将无法解密，需要重新发放。请备份，且生产与开发用不同值。
+1. **`SECRET_KEY` 上线后不可再变更**：它还用于 `app_secret`、**AI 厂商的 API Key** 等凭据的密文派生，变更后已加密数据（接入项目的 APPSECRET、后台维护的 AI Key）将无法解密，需要重新发放 / 重新填写。请备份，且生产与开发用不同值。
 2. **`.env` 含中文 + 系统未生成 `zh_CN.UTF-8` locale** 会导致应用加载失败。
 
 关于第 2 点的细节：系统的 `LANG=zh_CN.UTF-8`，但实际**没生成**这个 locale（只有 `C.utf8` 和 `en_US.utf8`）。Python 启动时发现 locale 无效，退回 **ascii 编码**。`load_dotenv()` 把中文键或中文值写入 `os.environ` 时会报 `UnicodeEncodeError: 'ascii' codec can't encode characters`。
@@ -252,6 +268,7 @@ $PY manage.py createsuperuser
 1. 浏览器打开 `https://{DEPLOY_DOMAIN}/login/`；
 2. 用「账号 + 密码」方式输入刚才创建的超管账号；
 3. 服务端识别为超管后建立超管会话并回跳首页，页头随即出现「超级管理员」入口，点击进入 `/console/projects/` 管理接入项目。
+4. 若站点要用 AI 服务（`/api/ai/`）：进入 `/console/ai/models/` 维护厂商与模型。升级场景下迁移 `0038` 已把旧 `.env` 的 `DEEPSEEK_API_KEY` / `DEEPSEEK_API_URL` 自动搬进库，此处只需核对掩码、用行内「测试」按钮确认连通性；新增厂商（Kimi / 豆包 / 千问等）同样是加一条记录，**无需改代码、不用重启**。AI 的 Key 只以密文落库、页面不回显原文，编辑时留空即不修改（详见 README 第七章第 8 节）。
 
 **验证**：记住刚才创建的账号密码，步骤 14 登录测试。
 
@@ -359,6 +376,8 @@ curl -s -o /dev/null -w "%{http_code}\n" -H "Host: {DEPLOY_DOMAIN}" http://127.0
 # 重启（先 stop 再 start；改了 .env / 模板 / .mo 词条都必须完全重启，--reload 不生效）
 ```
 
+> **红果短剧线路（可选）**：取流签名服务是 API 进程**按需自动拉起的 Java 子进程**（运行时用仓库内置的 `scripts/hongguo_sign/jre/`），**无需单独守护、也不必写进 uWSGI 配置**——端口已监听则直接复用，进程退出后下次请求会自动重新拉起。首次签名需等 JVM + unidbg 初始化（端口约 2 秒就绪，首个签名请求会排队等初始化完成，实测 1~3 秒），等待上限由 `HONGGUO_SIGN_START_TIMEOUT` 控制（默认 90 秒）；该进程的日志在 `logs/hongguo_sign.log`。
+
 ---
 
 ### 步骤 12：配置 Nginx 反向代理
@@ -410,6 +429,9 @@ proxy_set_header Host $host;
 | 登录功能 | 输入错误密码 | 200 + 错误提示（不是 500） |
 | 超管入口 | 用超管账号登录 | 登录成功、回跳首页、页头出现「超级管理员」 |
 | 超管控制台 | 进入 `/console/projects/` | 200，可增删改查接入项目 |
+| 控制台首页 | 进入 `/console/` | 200，左侧导航「概览 / 接口治理 / 数据运营 / 用户支持」四组齐全 |
+| 反馈中心与联系方式 | 进入 `/console/feedback/`、`/console/contacts/` | 200，可筛选反馈；联系方式页可维护平台字典与各项目联系方式 |
+| 官网页脚「联系我们」 | 查看首页页脚 | 显示后台为「官网项目」（`WEB_APP_NAME`）配置的联系方式；一条都没配时整块隐藏（不报错） |
 | 文档中心 | `https://你的域名/docs/` | 200，左侧服务菜单完整 |
 | 在线调试 | `/docs/email/` 对开放端点发一次请求 | 返回真实响应 |
 | 多语言 | 页头「语言」切到 `English` / `繁體中文` | 页面文案随语言切换，刷新后保持 |
@@ -436,6 +458,8 @@ proxy_set_header Host $host;
 | 接口匿名调用返回 20011 | 该服务为「需要签名」（fail-closed 默认） | 到 `/console/services/` 的「服务策略」把对应服务/线路/端点设为「开放」或检查签名参数（原分类树与 `rebuild_category_tree` **已废弃**） |
 | 登录成功但立即跳回登录页 | 生产 Cookie 强制 Secure，但 Nginx 没透传 `X-Forwarded-Proto https`，浏览器拒写 Cookie | 按步骤 13 补协议头 + 确认 HTTPS 证书生效 |
 | uwsgi 进程在但请求 500 | 应用没加载成功（no app） | 重启 uwsgi；看日志是否 `ready` |
+| 页脚「联系我们」整块不见了 | 后台没给「官网项目」（`WEB_APP_NAME`）配任何联系方式；按设计一条都没配就整块隐藏 | 到 `/console/contacts/` 选中官网项目，逐条新增平台与值 |
+| 控制台页面样式错乱 / 弹窗打不开 | `output.css` 未重编译，或 `console_forms.js` 未 collectstatic / 引用处的 `?v=` 未 bump（浏览器仍在用旧缓存） | 本机重编译 `output.css`、确认 `console_forms.js` 的 `?v=` 已改 → 线上 collectstatic → 重启 uwsgi |
 
 ---
 
@@ -468,5 +492,5 @@ proxy_set_header Host $host;
    定时备份 `db.sqlite3` 时应先 `stop` 或用 sqlite `.backup`，对备份文件做加密（如 `openssl enc -aes-256-cbc`）后再异地存放。
 6. **管理入口收敛**：本项目**已无 `/admin/` 后台**（该路由不存在），管理入口是官网超管控制台 `/console/projects/`，其访问条件是「持有 Django `is_superuser` 账号并通过 `/login/` 登录」。建议额外限制：给超管账号设强密码 + 开启登录防爆破（系统已按 IP/账号锁定，见 S-03），必要时在 Nginx 层对 `/console/` 做 IP 白名单。
 7. **存量凭据回填**：若项目含 S-06 存储改造，上线后执行一次 `python manage.py security_backfill`（一次性，带迁移标记）。
-8. **A-01 fail-closed（重大行为变更）**：分类树默认「需要认证」——此前免签开放的能力型服务（upload/ddddocr/email/ai/ProxyIp/music/dlt/dlwz/seo/spider_verification 等）现在必须携带 app_id/timestamp/nonce/sign 签名才能调用；仅显式 `open` 分类（如 captcha_auth/aliyun）与公开 GET 路径（如 captcha config）可匿名。对接方需接入签名后再切流量。新部署执行 `rebuild_category_tree` 后，请在超管页面 **`/console/categories/`** 核对各分类的认证模式是否符合预期（可逐条调整，页面会显示真实「生效结果」，保存即时生效）。
+8. **A-01 fail-closed（重大行为变更）**：未命中任何策略的 `/api/` 路径默认「需要认证」——此前免签开放的能力型服务（upload/ddddocr/email/ai/ProxyIp/music/dlt/dlwz/seo/spider_verification 等）现在必须携带 app_id/timestamp/nonce/sign 签名才能调用；仅被显式设为「开放」的服务 / 线路 / 端点（如 captcha_auth/aliyun 与公开 GET 路径）可匿名。对接方需接入签名后再切流量。原「API 服务分类」分类树与 `rebuild_category_tree` **已废弃**，公开节点（图形验证码 / 调用统计）的开放策略由迁移 `0028` 自动写入；请在超管页面 **`/console/services/`** 的「服务策略」核对各服务 / 线路 / 端点的认证模式（服务→线路→端点三级继承，页面显示真实生效结果，保存即时生效）。
 9. **A-05 日志与迁移**：`logs/` 目录由应用自动创建（相对项目根），确保运行用户（www）对其可写；上线错误排查优先看 `logs/error.log`（带 request_id，可到 `logs/app.log` 按 request_id 关联整条请求链路）。迁移文件已随代码入库，部署只跑 `migrate`。

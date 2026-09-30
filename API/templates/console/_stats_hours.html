@@ -1,7 +1,7 @@
 {% load i18n %}
 {% comment %}调用统计：时段分布（0-23 柱状）+ 峰值时点 Top 5{% endcomment %}
-<div class="card border border-base-300 bg-base-100">
-  <div class="card-body gap-3">
+<div class="con-panel">
+  <div class="con-panel-body gap-3">
     <div class="flex flex-wrap items-baseline justify-between gap-2">
       <h2 class="card-title text-base">{% trans "时段分布（24 小时）" %}</h2>
       <span class="text-xs text-base-content/60">{% blocktrans with d=hours.hour_days %}仅统计最近 {{ d }} 天的小时数据{% endblocktrans %}</span>

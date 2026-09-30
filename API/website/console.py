@@ -22,7 +22,7 @@ from API.common import StatusCode
 from API.common import api_stats_query as stats_query
 from API.common.api_stats import UNMATCHED_PATH, purge_app, service_of
 from API.common.middleware import resolve_service_policy, requires_auth
-from API.models import ApiServicePolicy, User, UserApp
+from API.models import Announcement, ApiServicePolicy, Feedback, User, UserApp
 from API.models.Statistics.api_call_stat import NO_APP
 
 from .admin_auth import superadmin_required
@@ -36,7 +36,11 @@ HOME_OVERVIEW_DAYS = 7
 
 @superadmin_required
 def home_view(request):
-    """控制台首页：关键指标概览 + 各模块入口"""
+    """控制台首页：关键指标概览 + 待关注事项 + 各模块入口
+
+    待关注事项（待处理反馈 / 生效中的公告）只做计数，点进去由各自模块页处理 ——
+    首页只回答「有没有事情等着我」，不重复实现列表逻辑。
+    """
     return render(request, 'console/home.html', {
         'overview_days': HOME_OVERVIEW_DAYS,
         'stats': stats_query.overview(HOME_OVERVIEW_DAYS),
@@ -44,6 +48,9 @@ def home_view(request):
             'apps': UserApp.objects.count(),
             'users': User.objects.count(),
             'banned_users': User.objects.filter(status=False).count(),
+            'feedback_open': Feedback.objects.filter(
+                status__in=(Feedback.Status.PENDING, Feedback.Status.PROCESSING)).count(),
+            'announcements': Announcement.visible_queryset().count(),
         },
     })
 
@@ -183,6 +190,16 @@ def _policy_scope_labels():
     return {value: _(label) for value, label in ApiServicePolicy.APP_SCOPE_CHOICES}
 
 
+def _policy_docs_visible_labels():
+    """文档可见性：值 -> 已翻译文案"""
+    return {value: _(label) for value, label in ApiServicePolicy.DOCS_VISIBLE_CHOICES}
+
+
+def _policy_audience_labels():
+    """使用范围：值 -> 已翻译文案"""
+    return {value: _(label) for value, label in ApiServicePolicy.AUDIENCE_CHOICES}
+
+
 @superadmin_required
 def services_view(request):
     """超管：API 服务策略管理（服务 / 线路 / 端点三级继承）
@@ -218,6 +235,8 @@ def _render_services(request):
     status_labels = _policy_status_labels()
     mode_labels = _policy_mode_labels()
     scope_labels = _policy_scope_labels()
+    docs_visible_labels = _policy_docs_visible_labels()
+    audience_labels = _policy_audience_labels()
     tree = service_tree()
     lookup = _tree_lookup(tree)
     policies = []
@@ -239,12 +258,18 @@ def _render_services(request):
             'auth_mode_label': mode_labels[policy.auth_mode],
             'app_scope': policy.app_scope,
             'scope_label': scope_labels[policy.app_scope],
+            'docs_visible': policy.docs_visible,
+            'docs_visible_label': docs_visible_labels[policy.docs_visible],
+            'audience': policy.audience,
+            'audience_label': audience_labels[policy.audience],
             'whitelist_count': policy.whitelist_count,
             'remark': policy.remark,
             'effective_status_label': eff_status['label'],
             'effective_status_badge': eff_status['badge'],
             'effective_auth': requires_auth(policy.path_prefix),
             'effective_scope': effective['app_scope'],
+            'effective_docs_visible': effective['docs_visible'],
+            'effective_audience': effective['audience'],
             'app_ids': [str(pk) for pk in policy.apps.values_list('pk', flat=True)],
         })
     return render(request, 'console/services.html', {
@@ -254,6 +279,8 @@ def _render_services(request):
         'status_choices': list(status_labels.items()),
         'mode_choices': list(mode_labels.items()),
         'scope_choices': list(scope_labels.items()),
+        'docs_visible_choices': list(docs_visible_labels.items()),
+        'audience_choices': list(audience_labels.items()),
         'apps': UserApp.objects.order_by('name'),
     })
 
@@ -306,6 +333,8 @@ def _policy_form_data(request, policy=None):
     status = (request.POST.get('status') or '').strip()
     mode = (request.POST.get('auth_mode') or '').strip()
     scope = (request.POST.get('app_scope') or '').strip()
+    docs_visible = (request.POST.get('docs_visible') or '').strip()
+    audience = (request.POST.get('audience') or '').strip()
     remark = (request.POST.get('remark') or '').strip()
     if not name:
         return None, _('请填写策略名称')
@@ -319,6 +348,10 @@ def _policy_form_data(request, policy=None):
         return None, _('非法的认证模式')
     if scope not in _policy_scope_labels():
         return None, _('非法的项目范围')
+    if docs_visible not in _policy_docs_visible_labels():
+        return None, _('非法的文档可见性')
+    if audience not in _policy_audience_labels():
+        return None, _('非法的使用范围')
     duplicated = ApiServicePolicy.objects.filter(path_prefix=prefix)
     if policy is not None:
         duplicated = duplicated.exclude(pk=policy.pk)
@@ -336,7 +369,8 @@ def _policy_form_data(request, policy=None):
             continue
     return {
         'name': name, 'level': level, 'path_prefix': prefix, 'status': status,
-        'auth_mode': mode, 'app_scope': scope, 'remark': remark,
+        'auth_mode': mode, 'app_scope': scope,
+        'docs_visible': docs_visible, 'audience': audience, 'remark': remark,
         'apps': UserApp.objects.filter(pk__in=app_ids),
     }, None
 

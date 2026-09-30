@@ -31,6 +31,8 @@ from . import dlt as _dlt
 from . import dlwz as _dlwz
 from . import user_center as _user_center
 from . import movie as _movie
+from . import drama as _drama
+from . import haijiao as _haijiao
 from .schema import (ChannelSpec, EndpointSpec, ParamSpec, ServiceSpec)  # noqa: F401 便于外部引用
 
 # 已接入文档的服务（顺序即 /docs/ 目录展示顺序）
@@ -54,16 +56,47 @@ _SERVICES = [
     _dlwz.SERVICE,
     _user_center.SERVICE,
     _movie.SERVICE,
+    _drama.SERVICE,
+    _haijiao.SERVICE,
 ]
 
 ALL = {svc.slug: svc for svc in _SERVICES}
 
 # 调试代调白名单：路径 -> 允许的方法集合（同一路径可支持多方法），只允许转发已声明的端点
 ALL_ENDPOINTS = {}
+# 路径 -> 端点声明（同一路径多方法时取首个声明）：调试代调据此读取 path_params 等声明信息
+ALL_ENDPOINT_SPECS = {}
 for _svc in _SERVICES:
     for _channel in _svc.channels:
         for _ep in _channel.endpoints:
             ALL_ENDPOINTS.setdefault(_ep.path, set()).add(_ep.method)
+            ALL_ENDPOINT_SPECS.setdefault(_ep.path, _ep)
+
+
+def _ai_model_options():
+    """AI 模型下拉选项（来自 ai_model 表）
+
+    声明里只写 dynamic_options='ai_models'，渲染前由文档视图调用本函数取值。
+    首项空值表示「不传 model、使用默认模型」。
+    """
+    from API.apis.ai.BuiltInModel import utils as ai_utils
+
+    options = [{'value': '', 'label': _('不传（使用默认模型）')}]
+    for item in ai_utils.public_models():
+        label = f"{item['name']}（{item['model']}）"
+        if item['is_default']:
+            label += f" · {_('默认')}"
+        if item['supports_vision']:
+            label += f" · {_('支持视觉')}"
+        options.append({'value': item['model'], 'label': label})
+    return options
+
+
+# 动态下拉选项提供者：ParamSpec.dynamic_options 里写的名字 -> 取选项的函数
+# （用于「选项来自运行期数据」的场景；静态选项请直接写在 ParamSpec.options 里）
+OPTION_LOADERS = {
+    'ai_models': _ai_model_options,
+}
 
 
 def all_docs():
@@ -93,6 +126,7 @@ def localize(spec: ServiceSpec) -> ServiceSpec:
         for endpoint in channel.endpoints:
             endpoint.name, endpoint.summary = _(endpoint.name), _(endpoint.summary)
             endpoint.notes = [_(n) for n in endpoint.notes]
+            endpoint.tool_label = _(endpoint.tool_label)
             for param in endpoint.params:
                 param.label, param.desc = _(param.label), _(param.desc)
                 param.placeholder = _(param.placeholder)

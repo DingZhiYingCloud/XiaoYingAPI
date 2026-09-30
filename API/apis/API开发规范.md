@@ -73,12 +73,12 @@ urlpatterns = [
 服务下线或能力迁移后，若旧前缀已被对接方使用，**保留路由并返回统一占位响应**，避免调用方拿到 404 无法区分：
 
 ```python
-# API/apis/VideoAnalysis/urls.py
+# API/apis/<服务>/urls.py
 from django.urls import path
 from API.common.views import service_building_view
 
 urlpatterns = [
-    path('<path:rest>', service_building_view, name='video_analysis_building'),
+    path('<path:rest>', service_building_view, name='<服务>_building'),
 ]
 ```
 
@@ -120,7 +120,6 @@ urlpatterns = [
 | `feedback/urls.py` | 单体 | create/reply/list/detail/replies，共用 `_require_app`、`_fail_response` |
 | `musics/xiaoying/urls.py` | 聚合-线路 | Music + MusicSource 强关联聚合于同一三件套 |
 | `ProxyIp/ProxyIP_66daili/urls.py` | 聚合-线路 | 每个代理来源一条线路，结构完全一致 |
-| `VideoAnalysis/urls.py` | 占位 | 能力已迁移，仅返回「服务建设中」 |
 
 ---
 
@@ -276,6 +275,7 @@ path('upload/', include('API.apis.uploads.urls')),  # 文件上传
 
 - 新建 `API/website/docs/<服务>.py`，用 `ServiceSpec / ChannelSpec / EndpointSpec / ParamSpec` 描述「服务 → 线路 → 端点 → 参数」，`auth_note` 填 `open` / `auth` / `inherit`；
 - 在 `API/website/docs/__init__.py` 的 `_SERVICES` 注册一行，左侧导航、文档页、调试白名单自动生效。
+- 说明类字段（`intro` / `note` / `notes` / `desc`）**支持 Markdown**，渲染前自动转 HTML；原始 HTML 会被先转义，故 `<topic_id>` 这类占位符照原样显示。`image_help` 例外——它保留原文换行与缩进，用于写代码片段。
 
 ---
 

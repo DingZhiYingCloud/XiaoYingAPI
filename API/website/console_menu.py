@@ -4,10 +4,28 @@
 （与文档中心 /docs/* 的菜单思路一致，但这里是人工声明的固定菜单，
 不像文档菜单那样由服务注册表自动生成）。
 
+**分组口径（按「管什么」划分，而不是按「谁用」）**：
+
+| 分组 | 管的对象 | 成员 |
+| --- | --- | --- |
+| 概览 | 控制台自身 | 控制台首页 |
+| 接口治理 | 对外提供的 API 本身 | 服务策略、接口公告、AI 模型 |
+| 数据运营 | 接入方 / 流量 / 站点与内容 | 接入项目、调用统计、官网外观、红果短剧 |
+| 用户支持 | 用户体系与用户声音 | 用户管理、问题反馈 |
+
+判断一个模块该进哪组，先问「它管的对象是什么」：
+对外接口本身的认证 / 状态 / 公告 / 能力接入 → 接口治理；
+接入方、流量数据、站点外观与内容 → 数据运营；
+用户资料与用户反馈 → 用户支持。
+
 约定：
 - 分组（group）顺序 = 侧边栏显示顺序；分组内的项按声明顺序显示。
 - **未实现的功能不要提前放进菜单**，避免点进去是空链接；页面可用了再补一行。
 - 分组名与项名都写中文（源语言），由模板 {% trans %} 在渲染时翻译。
+
+group 字段：
+    title - 分组标题（中文源语言）
+    icon  - 分组图标（lucide 图标名，渲染在标题左侧）
 
 item 字段：
     key   - 唯一标识，同时用于 active 高亮判定
@@ -25,6 +43,7 @@ CONSOLE_HOME = '/console/'
 MENU = [
     {
         'title': '概览',
+        'icon': 'layout-dashboard',
         'items': [
             {
                 'key': 'console_home', 'name': '控制台首页', 'url': 'website:console_home',
@@ -33,28 +52,68 @@ MENU = [
         ],
     },
     {
-        'title': '运营',
+        'title': '接口治理',
+        'icon': 'shield-check',
+        'items': [
+            {
+                'key': 'console_services', 'name': '服务策略', 'url': 'website:console_services',
+                'icon': 'shield-check', 'desc': '按服务 / 线路 / 端点三级配置认证模式、对外状态与项目白名单，逐级继承。',
+            },
+            {
+                'key': 'console_announcements', 'name': '接口公告', 'url': 'website:console_announcements',
+                'icon': 'megaphone', 'desc': '给服务 / 线路 / 端点三级 API 对象发布公告，在官网文档中心对应位置展示。',
+            },
+            {
+                'key': 'console_ai_models', 'name': 'AI 模型', 'url': 'website:console_ai_models',
+                'icon': 'bot', 'desc': '维护 AI 厂商与模型（上游地址、平台密钥、模型能力），调用方只需选模型即可无缝切换。',
+            },
+        ],
+    },
+    {
+        'title': '数据运营',
+        'icon': 'chart-column',
         'items': [
             {
                 'key': 'console_projects', 'name': '接入项目', 'url': 'website:console_projects',
                 'icon': 'boxes', 'desc': '创建 / 编辑 / 启停 / 删除接入项目；APPID、APPSECRET 由系统自动生成。',
             },
             {
-                'key': 'console_services', 'name': '服务策略', 'url': 'website:console_services',
-                'icon': 'shield-check', 'desc': '按服务 / 线路 / 端点三级配置认证模式、对外状态与项目白名单，逐级继承。',
-            },
-            {
                 'key': 'console_stats', 'name': '调用统计', 'url': 'website:console_stats',
                 'icon': 'chart-column', 'desc': '按服务、接口、项目与结果查看调用量与耗时。',
+            },
+            {
+                'key': 'console_appearance', 'name': '官网外观', 'url': 'website:console_appearance',
+                'icon': 'swatch-book',
+                'desc': '切换官网首页与接口文档中心的视觉气质（多套预设可切换），并可覆盖首页头图文案；'
+                        '颜色仍由访客选择的主题决定，二者互不冲突。',
+            },
+            {
+                'key': 'console_dramas_hongguo', 'name': '红果短剧',
+                'url': 'website:console_dramas_hongguo',
+                'icon': 'clapperboard',
+                'desc': '预处理导出剧集（解密落盘，供上传外部平台）与第 4 集及以后的外链登记管理。',
             },
         ],
     },
     {
-        'title': '用户',
+        'title': '用户支持',
+        'icon': 'users',
         'items': [
             {
                 'key': 'console_users', 'name': '用户管理', 'url': 'website:console_users',
                 'icon': 'users', 'desc': '查看用户资料与登录明细（登录过的项目、次数、最后登录、剩余有效天数），支持建号、编辑、封禁、重置密码与删除。',
+            },
+            {
+                'key': 'console_feedback', 'name': '问题反馈', 'url': 'website:console_feedback',
+                'icon': 'messages-square',
+                'desc': '查看各接入项目提交的反馈（按项目 / 状态 / 类型 / AI 审核状态筛选），回复可带图与视频；'
+                        'AI 只提醒、管理员可强制发送；还可手动送审与维护反馈类型字典。',
+            },
+            {
+                'key': 'console_contacts', 'name': '联系方式', 'url': 'website:console_contacts',
+                'icon': 'headset',
+                'desc': '维护开发者联系方式的「平台字典」（渠道、填写项、跳转链接模板）与各接入项目的具体值；'
+                        '展示在对应项目的反馈页与公开区底部，子项目也可调 /api/feedback/contacts 自行渲染。',
             },
         ],
     },

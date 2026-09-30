@@ -5,11 +5,13 @@
 - 线路级  path_prefix 形如 ``/api/movies/movie_555/``
 - 端点级  path_prefix 形如 ``/api/movies/movie_555/list``（精确到单个接口路径）
 
-每级的三个配置项都可单独设「跟随上级」（inherit），未设置则向上一级继承，
+每级的配置项都可单独设「跟随上级」（inherit），未设置则向上一级继承，
 最终兜底：
-- status    -> normal（正常）
-- auth_mode -> auth（需要签名，全局 fail-closed）
-- app_scope -> all（不限项目）
+- status       -> normal（正常）
+- auth_mode    -> auth（需要签名，全局 fail-closed）
+- app_scope    -> all（不限项目）
+- docs_visible -> visible（展示在官网文档中心）
+- audience     -> normal（对外正常可用）
 
 生效顺序：请求路径按 path_prefix 命中「全部」策略，按前缀长度降序（最具体在前），
 逐字段取第一个非 inherit 的值。认证判定的唯一口径是
@@ -49,6 +51,16 @@ class ApiServicePolicy(BaseModel):
         ('all', '不限项目'),
         ('whitelist', '仅白名单项目'),
     ]
+    DOCS_VISIBLE_CHOICES = [
+        ('inherit', '跟随上级'),
+        ('visible', '文档展示'),
+        ('hidden', '文档隐藏'),
+    ]
+    AUDIENCE_CHOICES = [
+        ('inherit', '跟随上级'),
+        ('normal', '正常'),
+        ('admin_only', '仅专属管理员'),
+    ]
 
     name = models.CharField('策略名称', max_length=100)
     level = models.CharField('层级', max_length=10, choices=LEVEL_CHOICES, default='service',
@@ -65,6 +77,13 @@ class ApiServicePolicy(BaseModel):
     apps = models.ManyToManyField(UserApp, blank=True, related_name='service_policies',
                                   verbose_name='白名单项目',
                                   help_text='仅生效值 app_scope=whitelist 时生效：名单内的项目才可调用')
+    docs_visible = models.CharField('文档可见性', max_length=10, choices=DOCS_VISIBLE_CHOICES,
+                                    default='inherit',
+                                    help_text='inherit=跟随上级；visible=展示在官网文档中心；'
+                                              'hidden=在文档页与在线调试里隐藏（后台内部接口用）')
+    audience = models.CharField('使用范围', max_length=12, choices=AUDIENCE_CHOICES, default='inherit',
+                                help_text='inherit=跟随上级；normal=对外正常可用；'
+                                          'admin_only=仅专属管理员（仅后台内部使用，外部调用返回 20020）')
     remark = models.CharField('备注', max_length=255, blank=True)
 
     class Meta:

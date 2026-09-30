@@ -23,7 +23,7 @@
     </div>
     {% if intro_html %}
     <div class="mt-2 max-w-3xl">
-      {% include 'programs/_markdown.html' with content=intro_html %}
+      {% include 'common_html/_markdown.html' with content=intro_html %}
     </div>
     {% else %}
     <p class="mt-2 max-w-3xl text-sm text-base-content/70 sm:text-base">
@@ -56,7 +56,7 @@
     </div>
     {% if cat.desc_html %}
     <div class="mt-2 max-w-3xl">
-      {% include 'programs/_markdown.html' with content=cat.desc_html %}
+      {% include 'common_html/_markdown.html' with content=cat.desc_html %}
     </div>
     {% endif %}
 

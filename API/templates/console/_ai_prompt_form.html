@@ -1,0 +1,44 @@
+{% load i18n %}
+{% comment %}系统提示词表单字段（新建 / 编辑弹窗共用）。用法：
+{% include 'console/_ai_prompt_form.html' with form_action='prompt_create' form_mode='create' %}
+{% include 'console/_ai_prompt_form.html' with form_action='prompt_edit' form_mode='edit' %}
+form_action 是提交给后端分发的动作名（见 console_ai._handle_post），form_mode 只用于本模板内判断
+新建 / 编辑；两者都不能省——只传 mode 会让后端收到无法识别的动作值。
+编辑弹窗由页面 JS 按行内 data-* 回填。上下文依赖：无。{% endcomment %}
+<input type="hidden" name="action" value="{{ form_action }}" />
+{% if form_mode == 'edit' %}<input type="hidden" name="id" value="" />{% endif %}
+
+<div class="grid gap-3 sm:grid-cols-2">
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-base-content/60">{% trans "提示词名称" %}</span>
+    <input type="text" name="name" maxlength="50" class="input input-sm" required
+           placeholder="{% trans '如：通用助手 / 严格 JSON 输出' %}" />
+  </label>
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-base-content/60">{% trans "排序（数字越小越靠前）" %}</span>
+    <input type="text" name="sort" inputmode="numeric" value="0" class="input input-sm" />
+  </label>
+</div>
+
+<label class="flex flex-col gap-1">
+  <span class="text-xs text-base-content/60">{% trans "提示词正文（纯文本，会作为 system 消息发给模型）" %}</span>
+  <textarea name="content" rows="6" class="textarea font-mono text-sm" required
+            placeholder="{% trans '如：你是小影API 的 AI 助手，回答要准确、简洁；涉及代码时用 Markdown 代码块。' %}"></textarea>
+</label>
+
+<div class="flex flex-col gap-2">
+  <label class="flex items-center gap-2 text-sm">
+    <input type="checkbox" name="is_global" value="1" class="checkbox checkbox-sm" />
+    <span>{% trans "全局共享（所有「跟随全局」的模型都用它；全局只保留一条）" %}</span>
+  </label>
+  <label class="flex items-center gap-2 text-sm">
+    <input type="checkbox" name="enabled" value="1" class="checkbox checkbox-sm"
+           {% if form_mode == 'create' %}checked{% endif %} />
+    <span>{% trans "启用（停用后视同不存在，指定它的模型会回落到全局共享那条）" %}</span>
+  </label>
+</div>
+
+<label class="flex flex-col gap-1">
+  <span class="text-xs text-base-content/60">{% trans "备注" %}</span>
+  <input type="text" name="remark" maxlength="255" class="input input-sm" />
+</label>

@@ -23,3 +23,521 @@
     display: block;
   }
 }
+
+/* ===== 接口公告（文档中心 · 服务 / 线路 / 端点三级公告条） =====
+   配色全部取自 daisyUI 主题变量（--color-info / success / warning / error 与
+   --color-base-100 / --color-base-content），因此切换任意主题（含深色）都会自动跟随，
+   不写死任何色值。浅底用 color-mix 把级别色按比例混进卡片底色，描边用同色系半透明；
+   正文文字保持 base-content，避免浅色主题下 warning 这类高明度色当文字导致对比度不足。
+   交互（展开 / 收起、关闭）由 API/static/js/site/docs_announcements.js 增强：
+   脚本未加载时控件不显示，正文按 CSS 限制行数，页面依然可读可点。 */
+@layer components {
+  .announce {
+    --announce-color: var(--color-info);
+    --announce-on-color: var(--color-info-content);
+    position: relative;
+    display: flex;
+    gap: 0.625rem;
+    align-items: flex-start;
+    overflow: hidden;
+    padding: 0.6875rem 0.75rem 0.6875rem 1rem;
+    border: 1px solid color-mix(in oklab, var(--announce-color) 30%, transparent);
+    border-radius: var(--radius-box);
+    background: color-mix(in oklab, var(--announce-color) 8%, var(--color-base-100));
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  /* 左侧级别色条：3px，随级别色变化 */
+  .announce::before {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: 3px;
+    background: var(--announce-color);
+  }
+  .announce:hover {
+    border-color: color-mix(in oklab, var(--announce-color) 55%, transparent);
+    box-shadow: 0 1px 3px color-mix(in oklab, var(--announce-color) 20%, transparent);
+  }
+  .announce-info { --announce-color: var(--color-info); --announce-on-color: var(--color-info-content); }
+  .announce-success { --announce-color: var(--color-success); --announce-on-color: var(--color-success-content); }
+  .announce-warning { --announce-color: var(--color-warning); --announce-on-color: var(--color-warning-content); }
+  .announce-error { --announce-color: var(--color-error); --announce-on-color: var(--color-error-content); }
+
+  /* 级别图标：实心级别色圆盘 + 反色图标，小尺寸下也清晰 */
+  .announce-icon {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 1.625rem;
+    height: 1.625rem;
+    border-radius: 9999px;
+    background: var(--announce-color);
+    color: var(--announce-on-color);
+  }
+  .announce-title {
+    font-weight: 600;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+  }
+  /* 正文：原样保留换行（whitespace: pre-line），长 URL / 长单词不撑破卡片 */
+  .announce-body {
+    margin-top: 0.125rem;
+    white-space: pre-line;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+    color: color-mix(in oklab, var(--color-base-content) 80%, transparent);
+  }
+  /* 超长公告默认收起为 4 行，点「展开全部」看全文（是否溢出由脚本测量后决定） */
+  .announce.is-clamped .announce-body {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+    overflow: hidden;
+  }
+  .announce.is-clamped.is-open .announce-body {
+    display: block;
+    -webkit-line-clamp: unset;
+    line-clamp: unset;
+    overflow: visible;
+  }
+
+  /* 展开 / 收起按钮（仅 .is-clamped 时出现；未被脚本增强的页面不显示） */
+  .announce-toggle {
+    display: none;
+    margin-top: 0.25rem;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--announce-color);
+    cursor: pointer;
+  }
+  .announce.is-clamped .announce-toggle { display: inline-flex; }
+  .announce-toggle:hover { text-decoration: underline; }
+  .announce-chevron { display: flex; transition: transform 0.15s ease; }
+  .announce.is-open .announce-chevron { transform: rotate(180deg); }
+
+  /* 关闭按钮：由脚本加上 .is-ready 后才出现（无 JS 时不显示，避免点了没反应） */
+  .announce-close {
+    display: none;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 9999px;
+    color: color-mix(in oklab, var(--color-base-content) 45%, transparent);
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+  .announce.is-ready .announce-close { display: flex; }
+  .announce-close:hover {
+    background: color-mix(in oklab, var(--announce-color) 15%, transparent);
+    color: var(--announce-color);
+  }
+}
+
+/* ===== 官网视觉气质（preset，超管在 /console/appearance/ 切换） =====
+   四套预设只改「构图 / 装饰 / 卡片语言 / 字体层级」，颜色一律取 daisyUI 主题变量
+   （--color-primary / secondary / accent / base-*），因此配任意主题（含深色）都不打架。
+   所有规则都挂在 .feel-* 类名或 [data-feel] 上，未使用这些类名的页面（控制台等）不受影响。
+   预设与实现在 API/models/Website/appearance.py（PRESETS）与
+   API/templates/index.html、API/templates/docs/*.html 两处对应，改预设时三处一起改。 */
+@layer components {
+  /* ---------- 共用骨架 ---------- */
+  .feel-hero { position: relative; overflow: hidden; }
+  .feel-hero-inner { position: relative; z-index: 1; }
+  /* 装饰层：绝对定位铺满 Hero，纯装饰、不接收事件；各预设只改它的 background */
+  .feel-glow { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+
+  .feel-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.75rem;
+    border: 1px solid color-mix(in oklab, var(--color-primary) 35%, transparent);
+    border-radius: 9999px;
+    background: color-mix(in oklab, var(--color-primary) 10%, transparent);
+    color: color-mix(in oklab, var(--color-primary) 85%, var(--color-base-content));
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .feel-title { font-weight: 900; line-height: 1.08; letter-spacing: -0.02em; }
+  /* 标题里的高亮词：渐变文字（各预设可改写为其它处理） */
+  .feel-mark {
+    background-image: linear-gradient(100deg, var(--color-primary),
+      color-mix(in oklab, var(--color-secondary) 85%, var(--color-primary)), var(--color-accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .feel-sub { color: color-mix(in oklab, var(--color-base-content) 72%, transparent); }
+
+  /* 区块小标签：一条短横线 + 大写字距，替代重复的 badge */
+  .feel-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: color-mix(in oklab, var(--color-primary) 80%, var(--color-base-content));
+  }
+  .feel-kicker::before {
+    content: '';
+    width: 1.5rem;
+    height: 2px;
+    background: currentColor;
+    opacity: 0.7;
+  }
+
+  .feel-h2 { font-weight: 800; line-height: 1.15; letter-spacing: -0.015em; }
+
+  /* 卡片皮肤：背景 / 描边 / 圆角 / 阴影 / 悬浮态都在这里，模板不再叠加 bg- / border- 工具类 */
+  .feel-card {
+    border: 1px solid var(--color-base-300);
+    border-radius: var(--radius-box);
+    background: var(--color-base-100);
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  }
+
+  .feel-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.125rem 0.5rem;
+    border: 1px solid color-mix(in oklab, var(--color-base-content) 14%, transparent);
+    border-radius: 9999px;
+    background: color-mix(in oklab, var(--color-base-content) 5%, transparent);
+    color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+    font-size: 0.6875rem;
+    line-height: 1.6;
+  }
+
+  /* 代码 / 终端面板外框 */
+  .feel-artifact {
+    overflow: hidden;
+    border: 1px solid var(--color-base-300);
+    border-radius: var(--radius-box);
+    background: color-mix(in oklab, var(--color-base-100) 92%, transparent);
+    box-shadow: 0 24px 60px -34px color-mix(in oklab, var(--color-base-content) 60%, transparent);
+  }
+
+  /* 底部行动区 */
+  .feel-cta {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-box);
+    border: 1px solid color-mix(in oklab, var(--color-primary) 30%, transparent);
+    background: color-mix(in oklab, var(--color-primary) 10%, var(--color-base-100));
+  }
+
+  /* 入场动效：Hero 各块依次浮起（延迟由模板的 [animation-delay:*] 控制） */
+  @keyframes feel-rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: none; }
+  }
+  .feel-rise { animation: feel-rise 0.6s cubic-bezier(0.22, 0.68, 0.32, 1) both; }
+  @media (prefers-reduced-motion: reduce) {
+    .feel-rise { animation: none; }
+  }
+
+  /* ---------- 预设一：aurora 极光流彩 ---------- */
+  [data-feel='aurora'] .feel-hero {
+    background: color-mix(in oklab, var(--color-base-200) 55%, var(--color-base-100));
+  }
+  [data-feel='aurora'] .feel-glow {
+    background:
+      radial-gradient(48% 62% at 12% 6%, color-mix(in oklab, var(--color-primary) 32%, transparent), transparent 70%),
+      radial-gradient(42% 56% at 88% 2%, color-mix(in oklab, var(--color-secondary) 28%, transparent), transparent 72%),
+      radial-gradient(52% 62% at 62% 104%, color-mix(in oklab, var(--color-accent) 24%, transparent), transparent 70%);
+  }
+  [data-feel='aurora'] .feel-card {
+    border-color: color-mix(in oklab, var(--color-base-content) 10%, transparent);
+    border-radius: 1.25rem;
+    background: color-mix(in oklab, var(--color-base-100) 84%, transparent);
+    box-shadow: 0 14px 34px -24px color-mix(in oklab, var(--color-base-content) 50%, transparent);
+  }
+  [data-feel='aurora'] .feel-card:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in oklab, var(--color-primary) 45%, transparent);
+    box-shadow: 0 26px 52px -26px color-mix(in oklab, var(--color-primary) 55%, transparent);
+  }
+
+  /* ---------- 预设二：terminal 终端极客 ---------- */
+  [data-feel='terminal'] .feel-hero { background: var(--color-base-100); }
+  [data-feel='terminal'] .feel-glow {
+    background-image:
+      linear-gradient(color-mix(in oklab, var(--color-base-content) 9%, transparent) 1px, transparent 1px),
+      linear-gradient(90deg, color-mix(in oklab, var(--color-base-content) 9%, transparent) 1px, transparent 1px);
+    background-size: 2.25rem 2.25rem;
+    -webkit-mask-image: linear-gradient(to bottom, #000, transparent 88%);
+    mask-image: linear-gradient(to bottom, #000, transparent 88%);
+  }
+  [data-feel='terminal'] .feel-title,
+  [data-feel='terminal'] .feel-h2,
+  [data-feel='terminal'] .feel-eyebrow,
+  [data-feel='terminal'] .feel-chip,
+  [data-feel='terminal'] .feel-kicker {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Courier New', monospace;
+  }
+  [data-feel='terminal'] .feel-eyebrow { border-radius: 0.125rem; }
+  [data-feel='terminal'] .feel-chip {
+    border-radius: 0.125rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  [data-feel='terminal'] .feel-card { border-radius: 0.25rem; box-shadow: none; }
+  [data-feel='terminal'] .feel-card:hover {
+    transform: translate(2px, -2px);
+    border-color: color-mix(in oklab, var(--color-primary) 60%, transparent);
+  }
+  [data-feel='terminal'] .feel-artifact {
+    border-radius: 0.25rem;
+    box-shadow: 0 18px 40px -32px color-mix(in oklab, var(--color-base-content) 70%, transparent);
+  }
+
+  /* ---------- 预设三：editorial 编辑杂志 ---------- */
+  [data-feel='editorial'] .feel-hero { background: var(--color-base-100); }
+  [data-feel='editorial'] .feel-glow { display: none; }
+  [data-feel='editorial'] .feel-title,
+  [data-feel='editorial'] .feel-h2 {
+    font-family: ui-serif, Georgia, 'Songti SC', 'SimSun', 'Times New Roman', serif;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  /* 高亮词改为「斜体 + 主题色」，不做渐变（与衬线标题更协调） */
+  [data-feel='editorial'] .feel-mark {
+    background-image: none;
+    color: var(--color-primary);
+    font-style: italic;
+  }
+  [data-feel='editorial'] .feel-eyebrow {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  [data-feel='editorial'] .feel-chip {
+    padding: 0 0.1rem;
+    border: 0;
+    border-bottom: 1px solid currentColor;
+    border-radius: 0;
+    background: transparent;
+  }
+  /* 卡片退化为「一条顶部分隔线」，靠留白与字级区分层级，无阴影无圆角 */
+  [data-feel='editorial'] .feel-card {
+    padding-top: 1rem;
+    border: 0;
+    border-top: 1px solid var(--color-base-300);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  [data-feel='editorial'] .feel-card:hover { border-top-color: var(--color-primary); }
+  [data-feel='editorial'] .feel-artifact { border-radius: 0; box-shadow: none; }
+
+  /* ---------- 预设四：neon 霓虹赛博 ---------- */
+  [data-feel='neon'] .feel-hero {
+    background: linear-gradient(180deg,
+      color-mix(in oklab, var(--color-base-300) 65%, var(--color-base-100)), var(--color-base-100));
+  }
+  [data-feel='neon'] .feel-glow {
+    background:
+      repeating-linear-gradient(0deg, color-mix(in oklab, var(--color-primary) 13%, transparent) 0 1px, transparent 1px 4px),
+      radial-gradient(60% 84% at 50% 0%, color-mix(in oklab, var(--color-primary) 30%, transparent), transparent 72%),
+      radial-gradient(50% 70% at 100% 100%, color-mix(in oklab, var(--color-secondary) 24%, transparent), transparent 70%);
+  }
+  [data-feel='neon'] .feel-title,
+  [data-feel='neon'] .feel-h2 {
+    text-transform: uppercase;
+    text-shadow: 0 0 22px color-mix(in oklab, var(--color-primary) 45%, transparent);
+  }
+  [data-feel='neon'] .feel-card {
+    border-color: color-mix(in oklab, var(--color-primary) 35%, var(--color-base-300));
+    border-radius: 0.375rem;
+    background: color-mix(in oklab, var(--color-base-100) 92%, var(--color-primary) 6%);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-primary) 12%, transparent),
+      0 0 18px -8px color-mix(in oklab, var(--color-primary) 40%, transparent);
+  }
+  [data-feel='neon'] .feel-card:hover {
+    border-color: color-mix(in oklab, var(--color-primary) 70%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-primary) 30%, transparent),
+      0 0 30px -8px color-mix(in oklab, var(--color-primary) 65%, transparent);
+  }
+  [data-feel='neon'] .feel-artifact {
+    border-color: color-mix(in oklab, var(--color-primary) 45%, transparent);
+    box-shadow: 0 0 32px -12px color-mix(in oklab, var(--color-primary) 60%, transparent);
+  }
+
+  /* ---------- 后台「官网外观」预设缩略图（/console/appearance/） ----------
+     只画各预设的装饰母题，配色同样取主题变量，因此后台切换主题时缩略图也跟随。 */
+  .feel-swatch {
+    position: relative;
+    height: 3.5rem;
+    overflow: hidden;
+    border: 1px solid var(--color-base-300);
+    border-radius: 0.5rem;
+    background: var(--color-base-100);
+  }
+  .feel-swatch::after { content: ''; position: absolute; inset: 0; }
+  .feel-swatch-aurora::after {
+    background:
+      radial-gradient(60% 90% at 18% 18%, color-mix(in oklab, var(--color-primary) 55%, transparent), transparent 70%),
+      radial-gradient(50% 80% at 86% 26%, color-mix(in oklab, var(--color-secondary) 45%, transparent), transparent 72%),
+      radial-gradient(60% 70% at 60% 102%, color-mix(in oklab, var(--color-accent) 40%, transparent), transparent 70%);
+  }
+  .feel-swatch-terminal::after {
+    background-image:
+      linear-gradient(color-mix(in oklab, var(--color-base-content) 16%, transparent) 1px, transparent 1px),
+      linear-gradient(90deg, color-mix(in oklab, var(--color-base-content) 16%, transparent) 1px, transparent 1px);
+    background-size: 0.75rem 0.75rem;
+  }
+  .feel-swatch-editorial::after {
+    background:
+      linear-gradient(var(--color-primary), var(--color-primary)) 12% 30% / 42% 3px no-repeat,
+      linear-gradient(color-mix(in oklab, var(--color-base-content) 30%, transparent),
+        color-mix(in oklab, var(--color-base-content) 30%, transparent)) 12% 52% / 68% 1px no-repeat,
+      linear-gradient(color-mix(in oklab, var(--color-base-content) 20%, transparent),
+        color-mix(in oklab, var(--color-base-content) 20%, transparent)) 12% 68% / 54% 1px no-repeat;
+  }
+  .feel-swatch-neon::after {
+    background:
+      repeating-linear-gradient(0deg, color-mix(in oklab, var(--color-primary) 26%, transparent) 0 1px, transparent 1px 4px),
+      radial-gradient(72% 100% at 50% 0%, color-mix(in oklab, var(--color-primary) 45%, transparent), transparent 72%);
+  }
+}
+
+/* ===== 控制台工作台骨架（/console/* 专用，前缀 con-） =====
+   控制台面向「操作」而非「浏览」：信息密度更高、装饰更克制、面板与工具条统一。
+   与官网的 feel-* 气质层是两套互不影响的类名 —— 超管换官网气质不会动到后台，
+   后台也不参与首页 / 文档中心那套装饰。
+   颜色全部取 daisyUI 主题变量，因此访客换任何主题（含深色）后台都跟随。 */
+@layer components {
+  /* ---------- 面板 ---------- */
+  .con-panel {
+    border: 1px solid var(--color-base-300);
+    border-radius: var(--radius-box);
+    background: var(--color-base-100);
+  }
+  /* 面板头：小图标 + 标题 + 右侧操作，统一分隔线与内边距 */
+  .con-panel-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--color-base-300);
+  }
+  .con-panel-icon {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: var(--radius-field);
+    background: color-mix(in oklab, var(--color-primary) 12%, transparent);
+    color: var(--color-primary);
+  }
+  /* 面板体：竖排 + 统一间距与内边距。
+     font-size 与 daisyUI 原 .card-body 一致（0.875rem），保证换成 con-panel 后
+     面板内文字密度不变（控制台要的是「高密度但统一」，不是「变大」）。 */
+  .con-panel-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+    font-size: 0.875rem;
+  }
+  /* 让表格 / 列表贴满面板（行自己带内边距） */
+  .con-panel-flush > .con-panel-body { padding: 0; }
+
+  /* ---------- 筛选 / 操作工具条 ---------- */
+  .con-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--color-base-300);
+    border-radius: var(--radius-box);
+    background: color-mix(in oklab, var(--color-base-200) 45%, transparent);
+  }
+  /* 工具条里的一个字段：标签在上、控件在下 */
+  .con-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+  .con-field > .con-field-label {
+    font-size: 0.6875rem;
+    color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
+  }
+
+  /* ---------- 表格容器（页面级独立表格用；面板内的表格保持无边框） ---------- */
+  .con-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--color-base-300);
+    border-radius: var(--radius-box);
+    background: var(--color-base-100);
+  }
+
+  /* ---------- 空态 ---------- */
+  .con-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 2.5rem 1rem;
+    border: 1px dashed var(--color-base-300);
+    border-radius: var(--radius-box);
+    text-align: center;
+    font-size: 0.875rem;
+    color: color-mix(in oklab, var(--color-base-content) 55%, transparent);
+  }
+
+  /* ---------- 指标块 ---------- */
+  .con-metric {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    padding: 1rem;
+    border: 1px solid var(--color-base-300);
+    border-radius: var(--radius-box);
+    background: var(--color-base-100);
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  }
+  .con-metric:hover {
+    border-color: color-mix(in oklab, var(--color-primary) 40%, transparent);
+    box-shadow: 0 10px 26px -22px color-mix(in oklab, var(--color-base-content) 60%, transparent);
+  }
+  .con-metric-icon {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: var(--radius-box);
+  }
+  .con-metric-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+  }
+  .con-metric-label {
+    font-size: 0.75rem;
+    color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
+  }
+}
+

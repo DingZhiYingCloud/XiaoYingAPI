@@ -66,8 +66,7 @@ def handler500(request):
 def service_building_view(request, **kwargs):
     """服务建设中占位响应
 
-    用于「路由保留、服务暂时关闭」的旧前缀（如 /api/video_analysis/、/api/auto_comment/）：
-    其中的能力已迁移到新服务（/api/douyin/），旧地址不再提供功能，
+    用于「路由保留、服务暂时关闭」的旧前缀：其能力已迁移或下线，旧地址不再提供功能，
     但仍返回项目统一的 JSON 契约，方便调用方明确识别「服务不可用」而非「地址写错」。
     """
     return JsonResponse({

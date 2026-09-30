@@ -1,7 +1,7 @@
 {% load i18n %}
 {% comment %}调用统计：状态码分布（环形图 + 明细表）{% endcomment %}
-<div class="card border border-base-300 bg-base-100">
-  <div class="card-body gap-3">
+<div class="con-panel">
+  <div class="con-panel-body gap-3">
     <h2 class="card-title text-base">{% trans "状态码分布" %}</h2>
     {% if status_codes %}
     <div class="relative h-48"><canvas id="stats-status"></canvas></div>

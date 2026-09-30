@@ -45,7 +45,8 @@ def _policy_nodes():
         return _POLICY_CACHE['policies']
     from API.models.Auth.policy import ApiServicePolicy
     policies = list(ApiServicePolicy.objects
-                    .values('id', 'path_prefix', 'status', 'auth_mode', 'app_scope'))
+                    .values('id', 'path_prefix', 'status', 'auth_mode', 'app_scope',
+                            'docs_visible', 'audience'))
     apps = {}
     for policy_id, app_id in (ApiServicePolicy.objects.filter(app_scope='whitelist')
                               .values_list('id', 'apps__app_id')):
@@ -87,6 +88,8 @@ def policy_allows_app(policy_id, app_id):
 DEFAULT_STATUS = 'normal'
 DEFAULT_AUTH_MODE = 'auth'
 DEFAULT_APP_SCOPE = 'all'
+DEFAULT_DOCS_VISIBLE = 'visible'
+DEFAULT_AUDIENCE = 'normal'
 
 
 def resolve_service_policy(path):
@@ -95,10 +98,12 @@ def resolve_service_policy(path):
     在该路径命中的策略链上（最具体在前），每个字段取第一个非 inherit 的值；
     都没命中时用全局兜底：status=normal / auth_mode=auth（fail-closed）/ app_scope=all。
 
-    返回：{'status', 'auth_mode', 'app_scope', 'whitelist_policy_id', 'chain'}
+    返回：{'status', 'auth_mode', 'app_scope', 'docs_visible', 'audience',
+          'whitelist_policy_id', 'chain'}
     - whitelist_policy_id：生效值为 whitelist 时，那条策略的 id（白名单只认它自己的名单）
     """
     status = auth_mode = app_scope = None
+    docs_visible = audience = None
     whitelist_policy_id = None
     chain = _policy_chain(path)
     for policy in chain:
@@ -110,12 +115,19 @@ def resolve_service_policy(path):
             app_scope = policy['app_scope']
             if app_scope == 'whitelist':
                 whitelist_policy_id = policy['id']
-        if status is not None and auth_mode is not None and app_scope is not None:
+        if docs_visible is None and policy['docs_visible'] != 'inherit':
+            docs_visible = policy['docs_visible']
+        if audience is None and policy['audience'] != 'inherit':
+            audience = policy['audience']
+        if (status is not None and auth_mode is not None and app_scope is not None
+                and docs_visible is not None and audience is not None):
             break
     return {
         'status': status or DEFAULT_STATUS,
         'auth_mode': auth_mode or DEFAULT_AUTH_MODE,
         'app_scope': app_scope or DEFAULT_APP_SCOPE,
+        'docs_visible': docs_visible or DEFAULT_DOCS_VISIBLE,
+        'audience': audience or DEFAULT_AUDIENCE,
         'whitelist_policy_id': whitelist_policy_id,
         'chain': chain,
     }
@@ -130,6 +142,20 @@ def requires_auth(path):
     未命中任何策略时 fail-closed 落回 auth（需要签名）。
     """
     return resolve_service_policy(path)['auth_mode'] != 'open'
+
+
+def is_docs_hidden(path):
+    """该路径是否对官网文档中心隐藏（唯一口径，供文档页 / 在线调试过滤用）
+
+    「文档隐藏」同时作用于：/docs/ 文档页的端点列表、服务目录与左侧菜单、
+    以及 /docs/_call/ 在线调试白名单（该调试页是公开的，隐藏的接口不得可调试）。
+    """
+    return resolve_service_policy(path)['docs_visible'] == 'hidden'
+
+
+def is_admin_only(path):
+    """该路径是否「仅专属管理员」（仅后台内部使用，对外调用一律 20020）"""
+    return resolve_service_policy(path)['audience'] == 'admin_only'
 
 
 class ApiCsrfExemptMiddleware(CsrfViewMiddleware):
@@ -251,11 +277,13 @@ class ApiAuthMiddleware:
     1. **状态拦截（最优先）**：生效 status 为 maintenance（30004 服务维护中）或 offline
        （30005 服务已下线）时直接返回对应业务码，且**不做签名校验**（匿名请求同样收到）；
        normal / dev 只作前台展示标记，不拦截（开发中的服务需要能实际联调）。
-    2. **认证判定**：由 requires_auth() 统一给出（基于 resolve_service_policy()）。
+    2. **专属管理员拦截**：生效 audience=admin_only 的接口仅供后台内部使用，
+       对外一律返回 20020（无权限），不区分是否带签名。
+    3. **认证判定**：由 requires_auth() 统一给出（基于 resolve_service_policy()）。
        · 需要签名：校验签名（app_id/timestamp/nonce/sign），通过后把项目对象挂到
          request.auth_app 供视图直接使用；失败返回统一 20011
        · 开放：仅显式 open 的策略节点，以及 PUBLIC_GET_PATHS 列出的公开 GET 路径
-    3. **项目白名单（签名通过后）**：生效 app_scope=whitelist 且当前项目不在
+    4. **项目白名单（签名通过后）**：生效 app_scope=whitelist 且当前项目不在
        这条策略的名单内 → 返回 20020（FORBIDDEN）。open 模式不校验签名、拿不到调用项目，
        白名单对其无意义。
 
@@ -276,6 +304,13 @@ class ApiAuthMiddleware:
                     'msg': StatusCode.get_message(block_code),
                     'data': None,
                 })
+            # 2) 「仅专属管理员」的接口仅供后台内部使用：对外一律拒绝（不区分是否带签名）
+            if effective['audience'] == 'admin_only':
+                return JsonResponse({
+                    'code': StatusCode.FORBIDDEN,
+                    'msg': '该接口仅限后台内部使用，不对外开放',
+                    'data': None,
+                })
             # 公开 GET 路径（如邮件内激活链接、注册/登录方式配置）免签名
             is_public_get = request.method == 'GET' and request.path in PUBLIC_GET_PATHS
             if not is_public_get and requires_auth(request.path):
@@ -290,7 +325,7 @@ class ApiAuthMiddleware:
                         'data': None,
                     })
                 request.auth_app = result
-                # 2) 白名单：签名通过（已拿到调用项目）后再判；open 模式无签名，白名单不生效
+                # 3) 白名单：签名通过（已拿到调用项目）后再判；open 模式无签名，白名单不生效
                 if (effective['app_scope'] == 'whitelist'
                         and not policy_allows_app(effective['whitelist_policy_id'],
                                                   result.app_id)):

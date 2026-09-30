@@ -1,0 +1,98 @@
+{% extends 'console/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "官网外观 - 超级管理员 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,官网外观,视觉气质,首页设计" %}{% endblock %}
+{% block description %}{% trans "小影API 超级管理员：切换官网首页与接口文档中心的视觉气质，并覆盖首页头图文案。" %}{% endblock %}
+
+{% block console_content %}
+{% trans "切换官网首页与接口文档中心的视觉气质，并覆盖首页头图文案；保存后前台刷新即可生效。" as ph_desc %}
+{% include 'console/_page_header.html' with icon='swatch-book' title='官网外观' desc=ph_desc %}
+
+{% include 'console/_messages.html' %}
+
+{# 规则说明（纯提示，中性灰） #}
+<div role="alert" class="alert alert-soft bg-base-200 mt-4 items-start py-3 text-sm">
+  <div class="space-y-1">
+    <p>
+      {% trans "视觉气质只决定排版、装饰与卡片语言，颜色仍由访客在页头「主题」下拉里自选（站点内置 35 套主题，含明暗）。因此预设与主题互不冲突：换气质不会改颜色，换主题也不会破气质。" %}
+    </p>
+    <p class="text-xs opacity-80">
+      {% trans "生效范围：官网首页与接口文档中心（目录页 / 服务页）。控制台、登录注册、问题反馈等页面不受影响。" %}
+    </p>
+    <p class="text-xs opacity-80">
+      {% trans "「推荐主题」只是搭配建议，不做强制绑定；想快速看效果，可先按推荐主题切换再回前台预览。" %}
+    </p>
+  </div>
+</div>
+
+<div class="mt-5 flex justify-end">
+  <a href="/" target="_blank" rel="noopener" class="btn btn-outline btn-sm gap-1">
+    <i data-lucide="external-link" class="h-4 w-4"></i>{% trans "在新窗口打开首页预览" %}
+  </a>
+</div>
+
+<form method="post" action="{% url 'website:console_appearance' %}" class="mt-3 grid gap-5">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="save" />
+
+  {# ===== 视觉气质 ===== #}
+  <fieldset class="con-panel p-4">
+    <legend class="px-1 text-base font-bold">{% trans "视觉气质" %}</legend>
+    <p class="mt-1 text-xs text-base-content/60">
+      {% trans "下方缩略图只示意各预设的装饰母题，实际效果请到前台查看。" %}
+    </p>
+    <div class="mt-3 grid gap-3 sm:grid-cols-2">
+      {% for item in presets %}
+      <label class="cursor-pointer">
+        <input type="radio" name="preset" value="{{ item.key }}" class="peer sr-only"
+               {% if appearance.preset == item.key %}checked{% endif %} />
+        <span class="con-panel block p-3 transition hover:border-primary/50 peer-checked:border-primary peer-checked:ring-2 peer-checked:ring-primary/30 peer-focus-visible:ring-2 peer-focus-visible:ring-primary/30">
+          <span class="feel-swatch feel-swatch-{{ item.key }} block"></span>
+          <span class="mt-2 flex items-center gap-2">
+            <span class="font-semibold">{% trans item.label %}</span>
+            {% if appearance.preset == item.key %}
+            <span class="badge badge-soft badge-primary badge-sm">{% trans "当前使用" %}</span>
+            {% endif %}
+          </span>
+          <span class="mt-1 block text-xs text-base-content/70">{% trans item.desc %}</span>
+          <span class="mt-1 block text-xs opacity-60">{% trans "推荐主题：" %}{{ item.theme_hint }}</span>
+        </span>
+      </label>
+      {% endfor %}
+    </div>
+  </fieldset>
+
+  {# ===== 首页头图文案 ===== #}
+  <fieldset class="con-panel p-4">
+    <legend class="px-1 text-base font-bold">{% trans "首页头图文案" %}</legend>
+    <p class="mt-1 text-xs text-base-content/60">
+      {% trans "三项全部留空即使用内置的三语文案；标题与副标题里可以用 {n} 代表当前聚合服务数量。" %}
+    </p>
+    <div class="mt-3 grid gap-3">
+      <div>
+        <label class="fieldset-label" for="hero_badge">{% trans "徽标文案" %}</label>
+        <input id="hero_badge" name="hero_badge" type="text" maxlength="40"
+               class="input input-bordered w-full text-sm" value="{{ appearance.hero_badge }}"
+               placeholder="{% trans '通用 API 聚合服务平台' %}" autocomplete="off" />
+      </div>
+      <div>
+        <label class="fieldset-label" for="hero_title">{% trans "主标题" %}</label>
+        <input id="hero_title" name="hero_title" type="text" maxlength="60"
+               class="input input-bordered w-full text-sm" value="{{ appearance.hero_title }}"
+               placeholder="{% trans '一个平台，聚合 {n} 类服务能力' %}" autocomplete="off" />
+      </div>
+      <div>
+        <label class="fieldset-label" for="hero_subtitle">{% trans "副标题" %}</label>
+        <textarea id="hero_subtitle" name="hero_subtitle" rows="2" maxlength="300"
+                  class="textarea textarea-bordered w-full text-sm"
+                  placeholder="{% trans '把散落各处的爬虫、数据与验证能力统一成一套标准、签名安全、开箱即用的 HTTP 接口。' %}">{{ appearance.hero_subtitle }}</textarea>
+      </div>
+    </div>
+  </fieldset>
+
+  <div class="flex justify-end">
+    <button type="submit" class="btn btn-primary btn-sm">{% trans "保存" %}</button>
+  </div>
+</form>
+{% endblock %}
