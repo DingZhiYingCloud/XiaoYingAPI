@@ -9320,6 +9320,9 @@
       bottom: 0.4rem;
     }
   }
+  .bottom-0 {
+    bottom: 0px;
+  }
   .left-1 {
     left: var(--spacing);
   }
@@ -10949,6 +10952,9 @@
       }
     }
   }
+  .-mx-6 {
+    margin-inline: calc(var(--spacing) * -6);
+  }
   .mx-1 {
     margin-inline: var(--spacing);
   }
@@ -11346,6 +11352,9 @@
       display: none;
     }
   }
+  .mt-0 {
+    margin-top: 0px;
+  }
   .mt-0\.5 {
     margin-top: calc(var(--spacing) * 0.5);
   }
@@ -11389,6 +11398,9 @@
       opacity: 60%;
       font-weight: 600;
     }
+  }
+  .-mb-6 {
+    margin-bottom: calc(var(--spacing) * -6);
   }
   .mb-1 {
     margin-bottom: var(--spacing);
@@ -12355,6 +12367,9 @@
   .h-64 {
     height: calc(var(--spacing) * 64);
   }
+  .h-auto {
+    height: auto;
+  }
   .h-fit {
     height: fit-content;
   }
@@ -12366,6 +12381,9 @@
   }
   .max-h-12 {
     max-height: calc(var(--spacing) * 12);
+  }
+  .max-h-52 {
+    max-height: calc(var(--spacing) * 52);
   }
   .max-h-56 {
     max-height: calc(var(--spacing) * 56);
@@ -12393,6 +12411,9 @@
   }
   .min-h-0 {
     min-height: 0px;
+  }
+  .min-h-20 {
+    min-height: calc(var(--spacing) * 20);
   }
   .min-h-40 {
     min-height: calc(var(--spacing) * 40);
@@ -13050,6 +13071,9 @@
   }
   .list-disc {
     list-style-type: disc;
+  }
+  .list-none {
+    list-style-type: none;
   }
   @layer daisyui.l1.l2 {
     .alert-horizontal {
@@ -14363,8 +14387,14 @@
   .px-10 {
     padding-inline: calc(var(--spacing) * 10);
   }
+  .py-0\.5 {
+    padding-block: calc(var(--spacing) * 0.5);
+  }
   .py-1 {
     padding-block: var(--spacing);
+  }
+  .py-1\.5 {
+    padding-block: calc(var(--spacing) * 1.5);
   }
   .py-2 {
     padding-block: calc(var(--spacing) * 2);
@@ -15377,6 +15407,11 @@
     transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
     transition-duration: var(--tw-duration, var(--default-transition-duration));
   }
+  .transition-transform {
+    transition-property: transform, translate, scale, rotate;
+    transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+    transition-duration: var(--tw-duration, var(--default-transition-duration));
+  }
   .duration-1000 {
     --tw-duration: 1000ms;
     transition-duration: 1000ms;
@@ -16327,6 +16362,12 @@
       --badge-color: var(--color-warning);
       --badge-fg: var(--color-warning-content);
     }
+  }
+  .select-none {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  @layer daisyui.l1.l2 {
     .toggle-accent:checked {
       --input-color: var(--color-accent);
     }
@@ -16536,6 +16577,9 @@
     .aura:has( > .checkbox,  > .toggle,  > .badge) {
       --aura-radius: var(--radius-selector);
     }
+  }
+  .group-open\:rotate-180:is(:where(.group):is([open], :popover-open, :open) *) {
+    rotate: 180deg;
   }
   @media (hover: hover) {
     .group-hover\:translate-x-0:is(:where(.group):hover *) {

@@ -243,15 +243,19 @@ def _render_services(request):
     for policy in ApiServicePolicy.objects.annotate(whitelist_count=Count('apps')):
         effective = resolve_service_policy(policy.path_prefix)
         eff_status = status_def(effective['status'])
-        path_label, path_registered = lookup.get(policy.path_prefix, ('', False))
+        # 一条策略可覆盖多条线路：逐前缀给出中文路径标签（未登记的留空）
+        path_rows = []
+        for prefix in policy.all_prefixes:
+            label, registered = lookup.get(prefix, ('', False))
+            path_rows.append({'prefix': prefix, 'label': label, 'registered': registered})
         policies.append({
             'id': str(policy.pk),
             'name': policy.name,
             'level': policy.level,
             'level_label': level_labels[policy.level],
             'path_prefix': policy.path_prefix,
-            'path_label': path_label,
-            'path_registered': path_registered,
+            'path_prefixes': policy.all_prefixes,
+            'path_rows': path_rows,
             'status': policy.status,
             'status_label': status_labels[policy.status],
             'auth_mode': policy.auth_mode,
@@ -295,6 +299,8 @@ def _handle_service_action(request):
     action = (request.POST.get('action') or '').strip()
     if action == 'create':
         return _action_create_policy(request)
+    if action == 'delete_bulk':
+        return _action_delete_policies(request)
     policy = _policy_or_none(request.POST.get('id'))
     if policy is None:
         messages.error(request, _('服务策略不存在'))
@@ -310,7 +316,11 @@ def _handle_service_action(request):
 
 
 def _derive_prefix(request):
-    """由「服务 → 线路 → 端点」三级选择推导 (level, path_prefix)；非法返回 (None, 错误文案)"""
+    """由「服务 → 线路 → 端点」三级选择推导 (level, path_prefix)；非法返回 (None, 错误文案)
+
+    供「接口公告」等单选调用方使用（公告一条只挂一个前缀）；策略多选线路见
+    :func:`_derive_prefixes`。
+    """
     service = (request.POST.get('service') or '').strip()
     channel = (request.POST.get('channel') or '').strip()
     endpoint = (request.POST.get('endpoint') or '').strip()
@@ -327,7 +337,60 @@ def _derive_prefix(request):
     return ('service', service), None
 
 
-def _policy_form_data(request, policy=None):
+def _derive_prefixes(request):
+    """由「服务 → 线路（可多选）→ 端点」推导 (level, [前缀, ...])；非法返回 (None, 错误文案)
+
+    线路支持多选：同一服务下的多条线路可以共用一条策略（第一条作主前缀，其余进
+    ``extra_prefixes``）。端点仍为单选，且只在恰好选中一条线路时可填。
+    """
+    service = (request.POST.get('service') or '').strip()
+    channels = [c.strip() for c in request.POST.getlist('channels') if c.strip()]
+    channels = list(dict.fromkeys(channels))  # 去重保序
+    endpoint = (request.POST.get('endpoint') or '').strip()
+    if not service.startswith('/api/'):
+        return None, _('请选择 API 服务')
+    for channel in channels:
+        if not channel.startswith(service.rstrip('/') + '/'):
+            return None, _('线路与所选服务不匹配')
+    if endpoint:
+        if len(channels) != 1:
+            return None, _('端点只能归属一条线路，请只选择一条线路')
+        if not endpoint.startswith(channels[0].rstrip('/') + '/'):
+            return None, _('端点与所选线路不匹配')
+        return ('endpoint', [endpoint]), None
+    if channels:
+        return ('channel', channels), None
+    return ('service', [service]), None
+
+
+def _let_existing_yield(prefixes, keep_policy=None):
+    """让已占用这些前缀的原策略「让位」（新策略接管线路）
+
+    - 原策略的前缀全被接管 → 删除该策略（等同于被覆盖）；
+    - 只被接管一部分 → 原策略保留剩余线路（必要时把剩余的第一条提升为主前缀）。
+
+    :return: 被删除的策略名列表（供页面提示「原策略已让位」）
+    """
+    removed = []
+    others = ApiServicePolicy.objects.all()
+    if keep_policy is not None:
+        others = others.exclude(pk=keep_policy.pk)
+    for policy in list(others):
+        owned = policy.all_prefixes
+        remaining = [p for p in owned if p not in prefixes]
+        if len(remaining) == len(owned):
+            continue
+        if not remaining:
+            removed.append(policy.name)
+            policy.delete()
+            continue
+        policy.path_prefix = remaining[0]
+        policy.extra_prefixes = remaining[1:]
+        policy.save(update_fields=['path_prefix', 'extra_prefixes', 'updated_time'])
+    return removed
+
+
+def _policy_form_data(request):
     """读取并校验策略表单，返回 (data, error)；data['apps'] 为白名单项目查询集"""
     name = (request.POST.get('name') or '').strip()
     status = (request.POST.get('status') or '').strip()
@@ -338,10 +401,10 @@ def _policy_form_data(request, policy=None):
     remark = (request.POST.get('remark') or '').strip()
     if not name:
         return None, _('请填写策略名称')
-    derived, error = _derive_prefix(request)
+    derived, error = _derive_prefixes(request)
     if error:
         return None, error
-    level, prefix = derived
+    level, prefixes = derived
     if status not in _policy_status_labels():
         return None, _('非法的服务状态')
     if mode not in _policy_mode_labels():
@@ -352,13 +415,11 @@ def _policy_form_data(request, policy=None):
         return None, _('非法的文档可见性')
     if audience not in _policy_audience_labels():
         return None, _('非法的使用范围')
-    duplicated = ApiServicePolicy.objects.filter(path_prefix=prefix)
-    if policy is not None:
-        duplicated = duplicated.exclude(pk=policy.pk)
-    if duplicated.exists():
-        return None, _('该路径已存在策略，请更换')
+    # 选中的线路若已被其它策略占用，不报错：由 _let_existing_yield() 让原策略让位
+    path_prefix, extra_prefixes = prefixes[0], prefixes[1:]
     try:
-        ApiServicePolicy(name=name, level=level, path_prefix=prefix).clean()
+        ApiServicePolicy(name=name, level=level, path_prefix=path_prefix,
+                         extra_prefixes=extra_prefixes).clean()
     except ValidationError as exc:
         return None, '；'.join(exc.messages)
     app_ids = []
@@ -368,11 +429,19 @@ def _policy_form_data(request, policy=None):
         except (ValueError, TypeError):
             continue
     return {
-        'name': name, 'level': level, 'path_prefix': prefix, 'status': status,
+        'name': name, 'level': level, 'path_prefix': path_prefix,
+        'extra_prefixes': extra_prefixes, 'status': status,
         'auth_mode': mode, 'app_scope': scope,
         'docs_visible': docs_visible, 'audience': audience, 'remark': remark,
         'apps': UserApp.objects.filter(pk__in=app_ids),
     }, None
+
+
+def _notify_yielded(request, yielded):
+    """提示哪些原策略因线路被接管而让位"""
+    if yielded:
+        messages.info(request, _('原策略「%(names)s」的线路已被接管，该策略已让位')
+                      % {'names': '、'.join(yielded)})
 
 
 def _action_create_policy(request):
@@ -381,23 +450,28 @@ def _action_create_policy(request):
         messages.error(request, error)
         return redirect('website:console_services')
     apps = data.pop('apps')
+    yielded = _let_existing_yield({data['path_prefix'], *data['extra_prefixes']})
     policy = ApiServicePolicy.objects.create(**data)
     policy.apps.set(apps)
     messages.success(request, _('服务策略「%(name)s」已创建') % {'name': policy.name})
+    _notify_yielded(request, yielded)
     return redirect('website:console_services')
 
 
 def _action_edit_policy(request, policy):
-    data, error = _policy_form_data(request, policy)
+    data, error = _policy_form_data(request)
     if error:
         messages.error(request, error)
         return redirect('website:console_services')
     apps = data.pop('apps')
+    yielded = _let_existing_yield({data['path_prefix'], *data['extra_prefixes']},
+                                  keep_policy=policy)
     for field, value in data.items():
         setattr(policy, field, value)
     policy.save()  # post_save 信号自动使策略缓存失效，改动对接口鉴权立即生效
     policy.apps.set(apps)
     messages.success(request, _('服务策略「%(name)s」已更新') % {'name': policy.name})
+    _notify_yielded(request, yielded)
     return redirect('website:console_services')
 
 
@@ -418,6 +492,19 @@ def _action_delete_policy(request, policy):
     name = policy.name
     policy.delete()
     messages.success(request, _('服务策略「%(name)s」已删除') % {'name': name})
+    return redirect('website:console_services')
+
+
+def _action_delete_policies(request):
+    """批量删除：按列表页勾选的主键集合删除；一条都没勾或均为非法值则提示后返回"""
+    ids = [raw for raw in request.POST.getlist('ids') if str(raw).isdigit()]
+    if not ids:
+        messages.error(request, _('请先勾选要删除的服务策略'))
+        return redirect('website:console_services')
+    queryset = ApiServicePolicy.objects.filter(pk__in=ids)
+    deleted = queryset.count()
+    queryset.delete()
+    messages.success(request, _('已删除 %(n)s 条服务策略') % {'n': deleted})
     return redirect('website:console_services')
 
 

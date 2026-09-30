@@ -34,19 +34,26 @@ def invalidate_api_service_policy_cache():
 
 
 def _policy_nodes():
-    """读取全部服务策略（进程内 TTL 缓存）
+    """读取全部服务策略并展开为「一前缀一节点」（进程内 TTL 缓存）
 
     策略本身不分启用 / 停用：状态由 status 字段表达（normal/dev/maintenance/offline），
     故全部策略都参与匹配。
+
+    一条策略可覆盖多条线路（``extra_prefixes``），故这里把每条策略按其全部前缀
+    展开成多个节点——节点仍带同一个策略 id，白名单等按 id 归属的语义不受影响。
     """
     ttl = getattr(settings, 'API_SERVICE_POLICY_CACHE_TTL', 60)
     now = time.monotonic()
     if _POLICY_CACHE['policies'] and now - _POLICY_CACHE['ts'] < ttl:
         return _POLICY_CACHE['policies']
     from API.models.Auth.policy import ApiServicePolicy
-    policies = list(ApiServicePolicy.objects
-                    .values('id', 'path_prefix', 'status', 'auth_mode', 'app_scope',
-                            'docs_visible', 'audience'))
+    policies = []
+    for row in (ApiServicePolicy.objects
+                .values('id', 'path_prefix', 'extra_prefixes', 'status', 'auth_mode',
+                        'app_scope', 'docs_visible', 'audience')):
+        prefixes = [row['path_prefix'], *(row['extra_prefixes'] or [])]
+        for prefix in prefixes:
+            policies.append({**row, 'path_prefix': prefix})
     apps = {}
     for policy_id, app_id in (ApiServicePolicy.objects.filter(app_scope='whitelist')
                               .values_list('id', 'apps__app_id')):
@@ -262,8 +269,10 @@ PUBLIC_GET_PATHS = (
 
 
 # 会直接拦截请求的策略状态 -> 返回的业务码（命中即拦，不做签名校验）
-# 其余状态（normal / dev）只作前台展示标记、不拦截：开发中的服务仍需联调，放行更合理。
+# 口径：**只有 normal（正常）可调用**；dev / maintenance / offline 一律硬拦截，
+# 各自返回一个业务码，便于调用方分辨是「开发中」「维护中」还是「已下线」。
 _STATUS_BLOCK_CODES = {
+    'dev': StatusCode.SERVICE_DEVELOPING,
     'maintenance': StatusCode.SERVICE_MAINTENANCE,
     'offline': StatusCode.SERVICE_OFFLINE,
 }
@@ -274,9 +283,10 @@ class ApiAuthMiddleware:
 
     根据服务策略表（ApiServicePolicy，服务 / 线路 / 端点三级逐级继承）决定 /api/ 请求是否放行：
 
-    1. **状态拦截（最优先）**：生效 status 为 maintenance（30004 服务维护中）或 offline
-       （30005 服务已下线）时直接返回对应业务码，且**不做签名校验**（匿名请求同样收到）；
-       normal / dev 只作前台展示标记，不拦截（开发中的服务需要能实际联调）。
+    1. **状态拦截（最优先）**：口径是**只有 normal（正常）可调用** —— 生效 status 为
+       dev（30006 服务开发中）/ maintenance（30004 服务维护中）/ offline（30005 服务已下线）
+       时直接返回对应业务码，且**不做签名校验**（匿名请求同样收到）。
+       即：想让某个接口可调用，必须把生效状态配成「正常」。
     2. **专属管理员拦截**：生效 audience=admin_only 的接口仅供后台内部使用，
        对外一律返回 20020（无权限），不区分是否带签名。
     3. **认证判定**：由 requires_auth() 统一给出（基于 resolve_service_policy()）。

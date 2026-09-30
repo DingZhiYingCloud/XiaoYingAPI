@@ -5,6 +5,10 @@
 - 线路级  path_prefix 形如 ``/api/movies/movie_555/``
 - 端点级  path_prefix 形如 ``/api/movies/movie_555/list``（精确到单个接口路径）
 
+一条策略可覆盖**同一服务下的多条线路**：``path_prefix`` 存第一条（主前缀），
+其余线路存 ``extra_prefixes``，两者合起来由 ``all_prefixes`` 给出。
+该能力仅作用于线路级（服务级 / 端点级恒为单前缀）。
+
 每级的配置项都可单独设「跟随上级」（inherit），未设置则向上一级继承，
 最终兜底：
 - status       -> normal（正常）
@@ -68,6 +72,9 @@ class ApiServicePolicy(BaseModel):
     path_prefix = models.CharField('URL前缀', max_length=200, unique=True,
                                    help_text='服务级如 /api/movies/ ；线路级如 /api/movies/movie_555/ ；'
                                              '端点级如 /api/movies/movie_555/list')
+    extra_prefixes = models.JSONField('附加线路前缀', default=list, blank=True,
+                                      help_text='线路级多选时的其余线路前缀（须与主前缀同属一个服务）；'
+                                                '与主前缀共同构成本策略覆盖的全部线路')
     status = models.CharField('服务状态', max_length=12, choices=STATUS_CHOICES, default='inherit',
                               help_text='inherit=跟随上级；正常 / 开发中 / 维护中 / 已下线')
     auth_mode = models.CharField('认证模式', max_length=10, choices=AUTH_MODE_CHOICES, default='inherit',
@@ -95,20 +102,39 @@ class ApiServicePolicy(BaseModel):
         level_label = dict(self.LEVEL_CHOICES).get(self.level, self.level)
         return f'{self.name} ({self.path_prefix}) - {level_label}'
 
+    @property
+    def all_prefixes(self):
+        """本策略覆盖的全部 URL 前缀（主前缀在前）"""
+        return [self.path_prefix, *(self.extra_prefixes or [])]
+
     def clean(self):
-        """校验 level 与 path_prefix 的形状一致（不依赖 DB，纯字符串校验）"""
+        """校验 level 与全部前缀的形状一致（不依赖 DB，纯字符串校验）
+
+        一条策略可覆盖同一服务下的多条线路，故主前缀与附加前缀各自都要满足
+        该层级的前缀形状；多线路还必须同属一个服务。
+        """
         super().clean()
-        prefix = (self.path_prefix or '').strip()
-        if not prefix.startswith('/api/'):
-            raise ValidationError({'path_prefix': 'URL 前缀必须以 /api/ 开头'})
-        segments = [seg for seg in prefix.strip('/').split('/') if seg]  # ['api', ...]
-        depth = len(segments) - 1  # 去掉前导 'api'
-        trailing_slash = prefix.endswith('/')
-        if depth < 1:
-            raise ValidationError({'path_prefix': 'URL 前缀至少要到服务级，如 /api/movies/'})
-        if self.level == 'service' and (depth != 1 or not trailing_slash):
-            raise ValidationError({'path_prefix': '服务级前缀必须是 /api/xxx/ 形式'})
-        if self.level == 'channel' and depth != 2:
-            raise ValidationError({'path_prefix': '线路级前缀必须是 /api/xxx/yyy（可带结尾斜杠）形式'})
-        if self.level == 'endpoint' and (depth < 3 or trailing_slash):
-            raise ValidationError({'path_prefix': '端点级前缀必须是 /api/xxx/yyy/zzz 形式（不带结尾斜杠）'})
+        prefixes = [p.strip() for p in self.all_prefixes if (p or '').strip()]
+        if not prefixes:
+            raise ValidationError({'path_prefix': 'URL 前缀不能为空'})
+        if len(set(prefixes)) != len(prefixes):
+            raise ValidationError({'path_prefix': 'URL 前缀不能重复'})
+        services = set()
+        for prefix in prefixes:
+            if not prefix.startswith('/api/'):
+                raise ValidationError({'path_prefix': 'URL 前缀必须以 /api/ 开头'})
+            segments = [seg for seg in prefix.strip('/').split('/') if seg]  # ['api', ...]
+            depth = len(segments) - 1  # 去掉前导 'api'
+            trailing_slash = prefix.endswith('/')
+            if depth < 1:
+                raise ValidationError({'path_prefix': 'URL 前缀至少要到服务级，如 /api/movies/'})
+            if self.level == 'service' and (depth != 1 or not trailing_slash):
+                raise ValidationError({'path_prefix': '服务级前缀必须是 /api/xxx/ 形式'})
+            if self.level == 'channel':
+                if depth != 2:
+                    raise ValidationError({'path_prefix': '线路级前缀必须是 /api/xxx/yyy（可带结尾斜杠）形式'})
+                services.add('/' + '/'.join(segments[:2]) + '/')
+            if self.level == 'endpoint' and (depth < 3 or trailing_slash):
+                raise ValidationError({'path_prefix': '端点级前缀必须是 /api/xxx/yyy/zzz 形式（不带结尾斜杠）'})
+        if len(services) > 1:
+            raise ValidationError({'path_prefix': '一条策略只能覆盖同一个服务下的线路'})

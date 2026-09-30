@@ -18,10 +18,7 @@
         {% trans "逐级继承：服务 → 线路 → 端点，每一级都可单独设状态 / 认证模式 / 项目范围 / 文档可见性 / 使用范围；设为「跟随上级」则向上一级取，最终兜底为「正常 + 需要签名 + 不限项目 + 文档展示 + 正常」。" %}
       </p>
       <p class="text-xs opacity-80">
-        {% trans "维护态：生效状态为「维护中」时，命中路径的 /api/ 请求统一返回 30004「服务维护中」，且不做签名校验（匿名同样收到）。" %}
-      </p>
-      <p class="text-xs opacity-80">
-        {% trans "开发中 / 已下线只作前台展示标记，不拦截请求（便于排障与联调）。" %}
+        {% trans "状态拦截：只有生效状态为「正常」的接口可被调用。「开发中」返回 30006、「维护中」返回 30004、「已下线」返回 30005，命中即拦截且不做签名校验（匿名同样收到）。想让接口可调用，把生效状态配成「正常」。" %}
       </p>
       <p class="text-xs opacity-80">
         {% trans "项目白名单：仅在生效认证模式为「需要签名」时生效——签名通过后若当前项目不在名单内，返回 20020「无权限」；开放模式不校验签名，拿不到调用项目。" %}
@@ -38,18 +35,39 @@
     </div>
   </div>
 
-  {# 新建 #}
-  <div class="mt-5 flex justify-end">
-    <button type="button" class="btn btn-sm btn-primary" onclick="service_create_modal.showModal()">
+  {# 工具条：左侧批量删除（勾选后才可用），右侧新建 #}
+  <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+    <div class="flex items-center gap-2">
+      <span class="text-xs text-base-content/60" data-batch-tip>{% trans "勾选策略可批量删除" %}</span>
+      <button type="submit" form="service_batch_form" class="btn btn-xs btn-error btn-outline"
+              data-batch-delete disabled>
+        <i data-lucide="trash-2" class="h-3.5 w-3.5"></i>{% trans "批量删除" %}
+      </button>
+    </div>
+    <button type="button" class="btn btn-sm btn-primary" data-open-create>
       <i data-lucide="plus" class="h-4 w-4"></i>{% trans "新建策略" %}
     </button>
   </div>
+
+  {# 批量删除表单：行内勾选框用 form 属性关联（避免与行内启停 / 删除表单嵌套） #}
+  <form id="service_batch_form" method="post" action="{% url 'website:console_services' %}"
+        data-confirm="{% trans '删除后不可恢复：选中的策略立即失效，接口鉴权回落到上级 / 全局默认，确认删除？' %}"
+        data-confirm-title="{% trans '批量删除服务策略' %}"
+        data-confirm-ok="{% trans '删除' %}"
+        data-confirm-danger="1">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="delete_bulk" />
+  </form>
 
   {# 策略列表 #}
   <div class="con-table-wrap mt-3">
     <table class="table table-sm">
       <thead>
         <tr>
+          <th class="w-8">
+            <input type="checkbox" class="checkbox checkbox-sm" data-select-all
+                   aria-label="{% trans '全选' %}" />
+          </th>
           <th class="whitespace-nowrap">{% trans "层级" %}</th>
           <th class="whitespace-nowrap">{% trans "策略名称 / 路径" %}</th>
           <th class="whitespace-nowrap">{% trans "状态" %}</th>
@@ -63,11 +81,20 @@
       <tbody>
         {% for policy in policies %}
         <tr>
+          <td>
+            <input type="checkbox" class="checkbox checkbox-sm" form="service_batch_form"
+                   name="ids" value="{{ policy.id }}" data-row-check
+                   aria-label="{{ policy.name }}" />
+          </td>
           <td class="whitespace-nowrap"><span class="badge badge-ghost badge-sm">{{ policy.level_label }}</span></td>
           <td>
             <div class="text-sm font-medium">{{ policy.name }}</div>
-            {% if policy.path_label %}<div class="text-xs text-base-content/70">{{ policy.path_label }}{% if not policy.path_registered %}<span class="ml-1 text-warning">{% trans "（未在文档登记）" %}</span>{% endif %}</div>{% endif %}
-            <code class="font-mono text-xs text-base-content/60">{{ policy.path_prefix }}</code>
+            {% for row in policy.path_rows %}
+            <div class="text-xs">
+              {% if row.label %}<span class="text-base-content/70">{{ row.label }}{% if not row.registered %}<span class="ml-1 text-warning">{% trans "（未在文档登记）" %}</span>{% endif %}</span>{% endif %}
+              <code class="font-mono text-base-content/60">{{ row.prefix }}</code>
+            </div>
+            {% endfor %}
             {% if policy.remark %}<div class="text-xs text-base-content/60">{{ policy.remark }}</div>{% endif %}
           </td>
           <td class="whitespace-nowrap text-sm">{{ policy.status_label }}</td>
@@ -111,7 +138,7 @@
             <div class="flex items-center justify-end gap-1">
               <button type="button" class="btn btn-xs btn-ghost" data-edit-policy
                       data-id="{{ policy.id }}" data-name="{{ policy.name }}"
-                      data-prefix="{{ policy.path_prefix }}" data-status="{{ policy.status }}"
+                      data-prefixes="{{ policy.path_prefixes|join:',' }}" data-status="{{ policy.status }}"
                       data-mode="{{ policy.auth_mode }}" data-scope="{{ policy.app_scope }}"
                       data-docs-visible="{{ policy.docs_visible }}" data-audience="{{ policy.audience }}"
                       data-remark="{{ policy.remark }}" data-apps="{{ policy.app_ids|join:',' }}">{% trans "编辑" %}</button>
@@ -138,7 +165,7 @@
         </tr>
         {% empty %}
         <tr>
-          <td colspan="8" class="py-6 text-center text-sm text-base-content/60">{% trans "暂无服务策略" %}</td>
+          <td colspan="9" class="py-6 text-center text-sm text-base-content/60">{% trans "暂无服务策略" %}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -147,7 +174,7 @@
 
   {# ===== 新建策略 ===== #}
   <dialog id="service_create_modal" class="modal">
-    <div class="modal-box max-w-3xl">
+    <div class="modal-box max-w-4xl">
       <h3 class="text-lg font-bold">{% trans "新建策略" %}</h3>
       <p class="mt-1 text-xs text-base-content/60">
         {% trans "按「服务 → 线路 → 端点」三级选择，层级与 URL 前缀自动推导；命中后按最短路径优先在继承链上生效。" %}
@@ -155,7 +182,7 @@
       <form id="service_create_form" method="post" action="{% url 'website:console_services' %}" class="mt-3 grid gap-3">
         {% csrf_token %}
         {% include 'console/_service_form.html' with form_action='create' %}
-        <div class="modal-action">
+        <div class="modal-action sticky bottom-0 z-10 -mx-6 -mb-6 mt-0 border-t border-base-300 bg-base-100 px-6 py-3">
           <button type="submit" class="btn btn-sm btn-primary">{% trans "创建" %}</button>
           <button type="button" class="btn btn-sm btn-ghost" onclick="service_create_modal.close()">{% trans "取消" %}</button>
         </div>
@@ -166,7 +193,7 @@
 
   {# ===== 编辑策略（由行内「编辑」按钮填充字段后打开） ===== #}
   <dialog id="service_edit_modal" class="modal">
-    <div class="modal-box max-w-3xl">
+    <div class="modal-box max-w-4xl">
       <h3 class="text-lg font-bold">{% trans "编辑策略" %}</h3>
       <p class="mt-1 text-xs text-base-content/60">
         {% trans "启用 / 停用请使用列表中的按钮（停用即置为维护态）。" %}
@@ -174,7 +201,7 @@
       <form id="service_edit_form" method="post" action="{% url 'website:console_services' %}" class="mt-3 grid gap-3">
         {% csrf_token %}
         {% include 'console/_service_form.html' with form_action='edit' %}
-        <div class="modal-action">
+        <div class="modal-action sticky bottom-0 z-10 -mx-6 -mb-6 mt-0 border-t border-base-300 bg-base-100 px-6 py-3">
           <button type="submit" class="btn btn-sm btn-primary">{% trans "保存" %}</button>
           <button type="button" class="btn btn-sm btn-ghost" onclick="service_edit_modal.close()">{% trans "取消" %}</button>
         </div>
@@ -217,6 +244,30 @@
     });
   }
 
+  /* 多选下拉：无占位项（留空即「服务级」由不勾选任何线路表达） */
+  function fillSelectMulti(select, items) {
+    select.innerHTML = '';
+    items.forEach(function (it) {
+      var opt = document.createElement('option');
+      opt.value = it.value;
+      opt.textContent = it.label;
+      select.appendChild(opt);
+    });
+  }
+
+  function setMultiSelected(select, values) {
+    var wanted = values || [];
+    Array.prototype.forEach.call(select.options, function (opt) {
+      opt.selected = wanted.indexOf(opt.value) !== -1;
+    });
+  }
+
+  function selectedChannels(form) {
+    return Array.prototype.filter.call(channelSelect(form).options, function (opt) {
+      return opt.selected;
+    }).map(function (opt) { return opt.value; });
+  }
+
   function serviceSelect(form) { return form.querySelector('[data-tree-service]'); }
   function channelSelect(form) { return form.querySelector('[data-tree-channel]'); }
   function endpointSelect(form) { return form.querySelector('[data-tree-endpoint]'); }
@@ -248,8 +299,8 @@
     var items = svc ? svc.channels.map(function (ch) {
       return { value: ch.prefix, label: ch.name + (ch.registered ? '' : unregistered()) };
     }) : [];
-    fillSelect(channelSelect(form), items, gettext('（留空=服务级）'));
-    if (selected) channelSelect(form).value = selected;
+    fillSelectMulti(channelSelect(form), items);
+    setMultiSelected(channelSelect(form), selected);
   }
 
   function fillEndpoints(form, channelPrefix, selected) {
@@ -270,54 +321,150 @@
 
   function updatePreview(form) {
     var service = serviceSelect(form).value;
-    var channel = channelSelect(form).value;
-    var endpoint = endpointSelect(form).value;
+    var channels = selectedChannels(form);
+    var endpointBox = endpointSelect(form);
+    // 端点只能归属一条线路：多选线路时禁用并清空端点
+    endpointBox.disabled = channels.length > 1;
+    if (channels.length > 1) endpointBox.value = '';
+    var endpoint = endpointBox.value;
     var level = 'service';
-    var prefix = service;
-    if (endpoint) { level = 'endpoint'; prefix = endpoint; }
-    else if (channel) { level = 'channel'; prefix = channel; }
+    var prefixes = [service];
+    if (endpoint) { level = 'endpoint'; prefixes = [endpoint]; }
+    else if (channels.length) { level = 'channel'; prefixes = channels; }
     var levelBox = form.querySelector('[data-tree-level]');
     var prefixBox = form.querySelector('[data-tree-prefix]');
     if (levelBox) levelBox.textContent = LEVELS[level] || level;
-    if (prefixBox) prefixBox.textContent = prefix || '—';
+    if (prefixBox) prefixBox.textContent = prefixes.filter(Boolean).join('  ') || '—';
+  }
+
+  /* 线路下拉变化时：端点只在「恰好一条线路」时可填 */
+  function syncEndpoints(form, selected) {
+    var channels = selectedChannels(form);
+    fillEndpoints(form, channels.length === 1 ? channels[0] : '', selected || '');
   }
 
   function initForm(form) {
     if (!form) return;
     fillServices(form);
-    fillChannels(form, serviceSelect(form).value, '');
+    fillChannels(form, serviceSelect(form).value, []);
     fillEndpoints(form, '', '');
     updatePreview(form);
     serviceSelect(form).addEventListener('change', function () {
-      fillChannels(form, this.value, '');
+      fillChannels(form, this.value, []);
       fillEndpoints(form, '', '');
       updatePreview(form);
     });
     channelSelect(form).addEventListener('change', function () {
-      fillEndpoints(form, this.value, '');
+      syncEndpoints(form, '');
       updatePreview(form);
     });
     endpointSelect(form).addEventListener('change', updatePreview);
   }
 
-  /* 反查某 path_prefix 对应的三级选择 */
-  function locate(prefix) {
-    var svc = findService(prefix);
+  /* ---------- 白名单项目：按需展开 + 搜索 + 全选/清空 + 已选计数 ---------- */
+  function appsPanel(form) { return form.querySelector('[data-apps-panel]'); }
+  function appsItems(form) {
+    return Array.prototype.slice.call(form.querySelectorAll('[data-app-item]'));
+  }
+
+  function refreshAppsCount(form) {
+    var el = form.querySelector('[data-apps-count]');
+    if (!el) return;
+    var n = appsItems(form).filter(function (item) {
+      var box = item.querySelector('[name=apps]');
+      return box && box.checked;
+    }).length;
+    el.textContent = n ? interpolate(gettext('已选 %(n)s 个'), { n: n }, true) : gettext('未选');
+  }
+
+  /* 选「仅白名单项目」时自动展开（不强制收起，避免打断手动开合） */
+  function syncAppsPanel(form) {
+    var scope = form.querySelector('[data-app-scope]');
+    var panel = appsPanel(form);
+    if (panel && scope && scope.value === 'whitelist') panel.open = true;
+    refreshAppsCount(form);
+  }
+
+  function filterApps(form) {
+    var box = form.querySelector('[data-apps-search]');
+    var q = (box ? box.value : '').trim().toLowerCase();
+    var shown = 0;
+    appsItems(form).forEach(function (item) {
+      var hit = !q || (item.getAttribute('data-app-item') || '').toLowerCase().indexOf(q) !== -1;
+      item.hidden = !hit;
+      if (hit) shown += 1;
+    });
+    var empty = form.querySelector('[data-apps-empty]');
+    if (empty) empty.hidden = shown !== 0;
+  }
+
+  function setAppsAll(form, checked) {
+    appsItems(form).forEach(function (item) {
+      if (item.hidden) return;   // 只作用于当前搜索结果，便于「筛一批再全选」
+      var box = item.querySelector('[name=apps]');
+      if (box) box.checked = checked;
+    });
+    refreshAppsCount(form);
+  }
+
+  function bindAppsPanel(form) {
+    if (!form || !appsPanel(form)) return;
+    var scope = form.querySelector('[data-app-scope]');
+    if (scope) scope.addEventListener('change', function () { syncAppsPanel(form); });
+    form.addEventListener('change', function (e) {
+      if (e.target && e.target.name === 'apps') refreshAppsCount(form);
+    });
+    var search = form.querySelector('[data-apps-search]');
+    if (search) search.addEventListener('input', function () { filterApps(form); });
+    var all = form.querySelector('[data-apps-all]');
+    if (all) all.addEventListener('click', function () { setAppsAll(form, true); });
+    var none = form.querySelector('[data-apps-none]');
+    if (none) none.addEventListener('click', function () { setAppsAll(form, false); });
+  }
+
+  /* 每次打开弹窗前把白名单区恢复到干净状态（清搜索、按范围决定是否展开） */
+  function resetAppsPanel(form) {
+    var search = form.querySelector('[data-apps-search]');
+    if (search) search.value = '';
+    filterApps(form);
+    var panel = appsPanel(form);
+    if (panel) panel.open = false;
+    syncAppsPanel(form);
+  }
+
+  /* 反查一组 path_prefix 对应的三级选择（线路可能多条） */
+  function locate(prefixes) {
+    var svc = findService(prefixes[0]);
     if (!svc) return null;
-    var result = { service: svc.prefix, channel: '', endpoint: '' };
-    svc.channels.forEach(function (ch) {
-      if (ch.prefix === prefix) result.channel = ch.prefix;
-      ch.endpoints.forEach(function (ep) {
-        if (ep.path === prefix) { result.channel = ch.prefix; result.endpoint = ep.path; }
+    var result = { service: svc.prefix, channels: [], endpoint: '' };
+    var picked = {};
+    prefixes.forEach(function (prefix) {
+      svc.channels.forEach(function (ch) {
+        if (ch.prefix === prefix) picked[ch.prefix] = true;
+        ch.endpoints.forEach(function (ep) {
+          if (ep.path === prefix) { picked[ch.prefix] = true; result.endpoint = ep.path; }
+        });
       });
     });
+    result.channels = Object.keys(picked);
     return result;
   }
 
-  initForm(document.getElementById('service_create_form'));
+  var createForm = document.getElementById('service_create_form');
+  initForm(createForm);
+  bindAppsPanel(createForm);
+
+  document.querySelectorAll('[data-open-create]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      createForm.reset();
+      resetAppsPanel(createForm);
+      document.getElementById('service_create_modal').showModal();
+    });
+  });
 
   var editForm = document.getElementById('service_edit_form');
   initForm(editForm);
+  bindAppsPanel(editForm);
   document.querySelectorAll('[data-edit-policy]').forEach(function (btn) {
     btn.addEventListener('click', function () {
       if (!editForm) return;
@@ -333,18 +480,46 @@
       set('docs_visible', btn.dataset.docsVisible);
       set('audience', btn.dataset.audience);
       set('remark', btn.dataset.remark || '');
-      var loc = locate(btn.dataset.prefix) || { service: btn.dataset.prefix, channel: '', endpoint: '' };
+      var prefixes = (btn.dataset.prefixes || '').split(',').filter(Boolean);
+      var loc = locate(prefixes) || { service: prefixes[0] || '', channels: [], endpoint: '' };
       fillServices(editForm, loc.service);
-      fillChannels(editForm, loc.service, loc.channel);
-      fillEndpoints(editForm, loc.channel, loc.endpoint);
+      fillChannels(editForm, loc.service, loc.channels);
+      fillEndpoints(editForm, loc.channels.length === 1 ? loc.channels[0] : '', loc.endpoint);
       updatePreview(editForm);
       var apps = (btn.dataset.apps || '').split(',').filter(Boolean);
       editForm.querySelectorAll('[name=apps]').forEach(function (box) {
         box.checked = apps.indexOf(box.value) !== -1;
       });
+      resetAppsPanel(editForm);
       document.getElementById('service_edit_modal').showModal();
     });
   });
+
+  /* ---------- 列表批量选择 / 批量删除 ---------- */
+  var batchBtn = document.querySelector('[data-batch-delete]');
+  var batchTip = document.querySelector('[data-batch-tip]');
+  var selectAll = document.querySelector('[data-select-all]');
+  var rowChecks = Array.prototype.slice.call(document.querySelectorAll('[data-row-check]'));
+
+  function refreshBatch() {
+    var n = rowChecks.filter(function (box) { return box.checked; }).length;
+    if (batchBtn) batchBtn.disabled = n === 0;
+    if (selectAll) selectAll.checked = n > 0 && n === rowChecks.length;
+    if (batchTip) {
+      batchTip.textContent = n
+        ? interpolate(gettext('已选 %(n)s 条'), { n: n }, true)
+        : gettext('勾选策略可批量删除');
+    }
+  }
+
+  rowChecks.forEach(function (box) { box.addEventListener('change', refreshBatch); });
+  if (selectAll) {
+    selectAll.addEventListener('change', function () {
+      rowChecks.forEach(function (box) { box.checked = selectAll.checked; });
+      refreshBatch();
+    });
+  }
+  refreshBatch();
 })();
 </script>
 {% endblock %}

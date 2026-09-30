@@ -4,93 +4,140 @@
 {% include 'console/_service_form.html' with form_action='edit' %}
 编辑弹窗的「服务 / 线路 / 端点」三级下拉由页面 JS（services.html）按行数据回填并显示。
 上下文依赖：status_choices / mode_choices / scope_choices / docs_visible_choices / audience_choices / apps（均由 services_view 提供）。
-层级与 path_prefix 由「服务 → 线路 → 端点」三级选择自动推导，不手输。{% endcomment %}
+层级与 path_prefix 由「服务 → 线路 → 端点」三级选择自动推导，不手输；
+线路可多选（同一服务下的多条线路共用一条策略，见 ApiServicePolicy.extra_prefixes）。
+版面分三块：① 作用范围 ② 对外表现 ③ 白名单项目（默认折叠，仅「项目范围=仅白名单项目」时自动展开）。{% endcomment %}
 <input type="hidden" name="action" value="{{ form_action }}" />
 {% if form_action == 'edit' %}<input type="hidden" name="id" value="{{ policy.id|default:'' }}" />{% endif %}
-<label class="flex flex-col gap-1">
-  <span class="text-xs text-base-content/60">{% trans "策略名称" %}</span>
-  <input type="text" name="name" class="input input-sm" value="{{ policy.name|default:'' }}" required />
-</label>
-<div class="grid gap-3 sm:grid-cols-3">
-  <label class="flex flex-col gap-1">
-    <span class="text-xs text-base-content/60">{% trans "服务" %}</span>
-    <select name="service" class="select select-sm" data-tree-service required></select>
-  </label>
-  <label class="flex flex-col gap-1">
-    <span class="text-xs text-base-content/60">{% trans "线路（留空=服务级）" %}</span>
-    <select name="channel" class="select select-sm" data-tree-channel></select>
-  </label>
-  <label class="flex flex-col gap-1">
-    <span class="text-xs text-base-content/60">{% trans "端点（留空=线路级）" %}</span>
-    <select name="endpoint" class="select select-sm" data-tree-endpoint></select>
-  </label>
-</div>
-<p class="rounded-box bg-base-200 px-3 py-2 text-xs text-base-content/70">
-  {% trans "将生效的层级：" %}<span class="font-medium" data-tree-level></span>
-  <span class="mx-1 opacity-40">·</span>
-  {% trans "URL 前缀：" %}<code class="font-mono" data-tree-prefix></code>
-</p>
-<div class="grid gap-3 sm:grid-cols-3">
-  <label class="flex flex-col gap-1">
-    <span class="text-xs text-base-content/60">{% trans "服务状态" %}</span>
-    <select name="status" class="select select-sm">
-      {% for value, label in status_choices %}
-      <option value="{{ value }}"{% if policy.status == value %} selected{% endif %}>{{ label }}</option>
-      {% endfor %}
-    </select>
-  </label>
-  <label class="flex flex-col gap-1">
-    <span class="text-xs text-base-content/60">{% trans "认证模式" %}</span>
-    <select name="auth_mode" class="select select-sm">
-      {% for value, label in mode_choices %}
-      <option value="{{ value }}"{% if policy.auth_mode == value %} selected{% endif %}>{{ label }}</option>
-      {% endfor %}
-    </select>
-  </label>
-  <label class="flex flex-col gap-1">
-    <span class="text-xs text-base-content/60">{% trans "项目范围" %}</span>
-    <select name="app_scope" class="select select-sm">
-      {% for value, label in scope_choices %}
-      <option value="{{ value }}"{% if policy.app_scope == value %} selected{% endif %}>{{ label }}</option>
-      {% endfor %}
-    </select>
-  </label>
-</div>
-<div class="grid gap-3 sm:grid-cols-2">
-  <label class="flex flex-col gap-1">
-    <span class="text-xs text-base-content/60">{% trans "文档可见性" %}</span>
-    <select name="docs_visible" class="select select-sm">
-      {% for value, label in docs_visible_choices %}
-      <option value="{{ value }}"{% if policy.docs_visible == value %} selected{% endif %}>{{ label }}</option>
-      {% endfor %}
-    </select>
-  </label>
-  <label class="flex flex-col gap-1">
-    <span class="text-xs text-base-content/60">{% trans "使用范围" %}</span>
-    <select name="audience" class="select select-sm">
-      {% for value, label in audience_choices %}
-      <option value="{{ value }}"{% if policy.audience == value %} selected{% endif %}>{{ label }}</option>
-      {% endfor %}
-    </select>
-  </label>
-</div>
-<label class="flex flex-col gap-1">
-  <span class="text-xs text-base-content/60">{% trans "备注" %}</span>
-  <input type="text" name="remark" class="input input-sm" value="{{ policy.remark|default:'' }}" />
-</label>
-<fieldset class="rounded-box border border-base-300 p-3">
-  <legend class="px-1 text-xs text-base-content/60">{% trans "白名单项目（仅生效值「仅白名单项目」时生效）" %}</legend>
-  {% if apps %}
-  <div class="mt-1 grid gap-1 sm:grid-cols-2">
-    {% for app in apps %}
-    <label class="flex items-center gap-2 text-sm">
-      <input type="checkbox" name="apps" value="{{ app.pk }}" class="checkbox checkbox-sm"
-             {% if policy and app.pk|stringformat:'s' in policy.app_ids %}checked{% endif %} />
-      <span class="truncate">{{ app.name }}</span>
-    </label>
-    {% endfor %}
+
+{# ── ① 作用范围：这条策略作用在哪些接口上 ── #}
+<section class="con-panel">
+  <div class="con-panel-head">
+    <span class="con-panel-icon"><i data-lucide="crosshair" class="h-4 w-4"></i></span>
+    <h4 class="text-sm font-semibold">{% trans "作用范围" %}</h4>
+    <span class="text-xs text-base-content/50">{% trans "这条策略作用于哪些接口" %}</span>
   </div>
-  {% else %}
-  <p class="mt-1 text-xs text-base-content/60">{% trans "暂无接入项目，可先到「接入项目」页创建。" %}</p>
-  {% endif %}
-</fieldset>
+  <div class="con-panel-body">
+    <div class="grid gap-3 sm:grid-cols-2">
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/60">{% trans "策略名称" %}</span>
+        <input type="text" name="name" class="input input-sm" value="{{ policy.name|default:'' }}" required />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/60">{% trans "备注" %}</span>
+        <input type="text" name="remark" class="input input-sm" value="{{ policy.remark|default:'' }}" />
+      </label>
+    </div>
+    <div class="grid gap-3 sm:grid-cols-3">
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/60">{% trans "服务" %}</span>
+        <select name="service" class="select select-sm" data-tree-service required></select>
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/60">{% trans "线路（可多选，留空=服务级）" %}</span>
+        <select name="channels" class="select select-sm h-auto min-h-20 w-full" data-tree-channel multiple size="4"></select>
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/60">{% trans "端点（留空=线路级）" %}</span>
+        <select name="endpoint" class="select select-sm" data-tree-endpoint></select>
+      </label>
+    </div>
+    <p class="text-xs text-base-content/50">
+      {% trans "按住 Ctrl / Cmd 可多选：多条线路共用这一条策略" %} · {% trans "只选一条线路时才可指定端点" %}
+    </p>
+    <p class="rounded-box bg-base-200 px-3 py-1.5 text-xs text-base-content/70">
+      {% trans "将生效的层级：" %}<span class="font-medium" data-tree-level></span>
+      <span class="mx-1 opacity-40">·</span>
+      {% trans "URL 前缀：" %}<code class="font-mono" data-tree-prefix></code>
+    </p>
+  </div>
+</section>
+
+{# ── ② 对外表现：状态 / 认证 / 范围 / 可见性 / 使用范围 ── #}
+<section class="con-panel">
+  <div class="con-panel-head">
+    <span class="con-panel-icon"><i data-lucide="sliders-horizontal" class="h-4 w-4"></i></span>
+    <h4 class="text-sm font-semibold">{% trans "对外表现" %}</h4>
+    <span class="text-xs text-base-content/50">{% trans "设为「跟随上级」的项向上一级取" %}</span>
+  </div>
+  <div class="con-panel-body">
+    <div class="grid gap-3 sm:grid-cols-3">
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/60">{% trans "服务状态" %}</span>
+        <select name="status" class="select select-sm">
+          {% for value, label in status_choices %}
+          <option value="{{ value }}"{% if policy.status == value %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/60">{% trans "认证模式" %}</span>
+        <select name="auth_mode" class="select select-sm">
+          {% for value, label in mode_choices %}
+          <option value="{{ value }}"{% if policy.auth_mode == value %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/60">{% trans "项目范围" %}</span>
+        <select name="app_scope" class="select select-sm" data-app-scope>
+          {% for value, label in scope_choices %}
+          <option value="{{ value }}"{% if policy.app_scope == value %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/60">{% trans "文档可见性" %}</span>
+        <select name="docs_visible" class="select select-sm">
+          {% for value, label in docs_visible_choices %}
+          <option value="{{ value }}"{% if policy.docs_visible == value %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/60">{% trans "使用范围" %}</span>
+        <select name="audience" class="select select-sm">
+          {% for value, label in audience_choices %}
+          <option value="{{ value }}"{% if policy.audience == value %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+  </div>
+</section>
+
+{# ── ③ 白名单项目：默认折叠，选「仅白名单项目」时自动展开 ── #}
+<details class="con-panel group" data-apps-panel>
+  <summary class="con-panel-head cursor-pointer list-none select-none">
+    <span class="con-panel-icon"><i data-lucide="users" class="h-4 w-4"></i></span>
+    <h4 class="text-sm font-semibold">{% trans "白名单项目" %}</h4>
+    <span class="text-xs text-base-content/50">{% trans "仅在「项目范围 = 仅白名单项目」时生效" %}</span>
+    <span class="ml-auto flex items-center gap-1.5 text-xs text-base-content/60">
+      <span data-apps-count>{% trans "未选" %}</span>
+      <i data-lucide="chevron-down" class="h-4 w-4 transition-transform group-open:rotate-180"></i>
+    </span>
+  </summary>
+  <div class="con-panel-body border-t border-base-300">
+    {% if apps %}
+    <div class="flex flex-wrap items-center gap-2">
+      <input type="search" data-apps-search class="input input-sm w-full sm:w-64"
+             placeholder="{% trans '搜索项目名' %}" />
+      <button type="button" class="btn btn-xs btn-ghost" data-apps-all>{% trans "全选" %}</button>
+      <button type="button" class="btn btn-xs btn-ghost" data-apps-none>{% trans "清空" %}</button>
+      <span class="text-xs text-base-content/50" data-apps-empty hidden>{% trans "没有匹配的项目" %}</span>
+    </div>
+    <div class="grid max-h-52 gap-1 overflow-y-auto sm:grid-cols-2">
+      {% for app in apps %}
+      <label class="flex items-center gap-2 rounded-field px-1 py-0.5 text-sm hover:bg-base-200"
+             data-app-item="{{ app.name }}">
+        <input type="checkbox" name="apps" value="{{ app.pk }}" class="checkbox checkbox-sm"
+               {% if policy and app.pk|stringformat:'s' in policy.app_ids %}checked{% endif %} />
+        <span class="truncate">{{ app.name }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-xs text-base-content/60">{% trans "暂无接入项目，可先到「接入项目」页创建。" %}</p>
+    {% endif %}
+  </div>
+</details>

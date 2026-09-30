@@ -5706,6 +5706,68 @@ msgstr "Remark"
 msgid "线路（留空=服务级）"
 msgstr "Channel (empty = service level)"
 
+msgid "线路（可多选，留空=服务级）"
+msgstr "Channel (multi-select; empty = service level)"
+
+msgid "按住 Ctrl / Cmd 可多选：多条线路共用这一条策略"
+msgstr "Hold Ctrl / Cmd to select several channels that share this one policy"
+
+msgid "只选一条线路时才可指定端点"
+msgstr "An endpoint can be specified only when a single channel is selected"
+
+# 服务策略弹窗：分三块（作用范围 / 对外表现 / 白名单项目）
+msgid "作用范围"
+msgstr "Scope"
+
+msgid "这条策略作用于哪些接口"
+msgstr "Which endpoints this policy applies to"
+
+msgid "对外表现"
+msgstr "Behavior"
+
+msgid "设为「跟随上级」的项向上一级取"
+msgstr "Items set to \"Follow parent\" are taken from the level above"
+
+msgid "白名单项目"
+msgstr "Whitelist projects"
+
+msgid "仅在「项目范围 = 仅白名单项目」时生效"
+msgstr "Used only when Project scope is \"Whitelisted projects only\""
+
+msgid "未选"
+msgstr "None selected"
+
+msgid "搜索项目名"
+msgstr "Search project name"
+
+msgid "全选"
+msgstr "Select all"
+
+msgid "没有匹配的项目"
+msgstr "No matching projects"
+
+# 服务策略列表：多选批量删除
+msgid "勾选策略可批量删除"
+msgstr "Select policies to delete in bulk"
+
+msgid "批量删除"
+msgstr "Bulk delete"
+
+msgid "批量删除服务策略"
+msgstr "Bulk Delete Service Policies"
+
+msgid "删除后不可恢复：选中的策略立即失效，接口鉴权回落到上级 / 全局默认，确认删除？"
+msgstr "This cannot be undone: the selected policies stop working immediately and API authentication falls back to the parent level / global default. Delete anyway?"
+
+msgid "请先勾选要删除的服务策略"
+msgstr "Please select the service policies to delete first"
+
+msgid "已删除 %(n)s 条服务策略"
+msgstr "Deleted %(n)s service policies"
+
+msgid "状态拦截：只有生效状态为「正常」的接口可被调用。「开发中」返回 30006、「维护中」返回 30004、「已下线」返回 30005，命中即拦截且不做签名校验（匿名同样收到）。想让接口可调用，把生效状态配成「正常」。"
+msgstr "Status blocking: only endpoints whose effective status is Normal can be called. In Development returns 30006, Under Maintenance returns 30004, Offline returns 30005. Matched requests are blocked without signature verification (anonymous requests get the same response). To make an endpoint callable, set its effective status to Normal."
+
 msgid "端点（留空=线路级）"
 msgstr "Endpoint (empty = channel level)"
 
@@ -5754,6 +5816,9 @@ msgstr "The channel does not belong to the selected service"
 msgid "端点与所选线路不匹配"
 msgstr "The endpoint does not belong to the selected channel"
 
+msgid "端点只能归属一条线路，请只选择一条线路"
+msgstr "An endpoint belongs to exactly one channel — please select a single channel"
+
 msgid "非法的服务状态"
 msgstr "Invalid service status"
 
@@ -5783,6 +5848,9 @@ msgstr "Service policy \"%(name)s\" disabled; the service is now under maintenan
 
 msgid "服务策略「%(name)s」已删除"
 msgstr "Service policy \"%(name)s\" deleted"
+
+msgid "原策略「%(names)s」的线路已被接管，该策略已让位"
+msgstr "The channels of the original policy \"%(names)s\" were taken over, so that policy stepped aside"
 
 # 调用统计：统计表按 app_id 聚合且只追加，项目删除后历史行仍在但已查不到名字
 msgid "已删除项目"

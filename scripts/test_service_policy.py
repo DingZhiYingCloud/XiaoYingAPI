@@ -4,7 +4,8 @@
     第 1 轮 fail-closed：未命中任何策略的 /api/ 路径 → 需要签名，匿名 20011
     第 2 轮 开放节点：迁移写入的 /api/captcha_self/ 与 /api/captcha_auth/aliyun/ 仍开放
     第 3 轮 三级继承（认证）：服务级 open 向上继承；端点级 auth 覆盖服务级
-    第 4 轮 状态继承：服务级 maintenance 命中全部；端点级 normal 覆盖
+    第 4 轮 状态继承 + 「只有正常可调用」：maintenance→30004 / offline→30005 / dev→30006
+             一律硬拦截（含合法签名），端点级 normal 可覆盖上层状态恢复可调用
     第 5 轮 白名单继承：服务级 whitelist 只放行车名单项目；端点级 all 覆盖
     第 6 轮 前缀边界：/api/foo 的策略不得命中 /api/foobar/...
     第 7 轮 缓存失效：改 status / auth_mode / 白名单后立即生效，不必等 TTL
@@ -15,6 +16,9 @@
              渲染无空图标名、图例与文档页线路 Tab 均带图标
     第 12 轮 文档可见性 / 使用范围：两字段三级继承、admin_only 对外 20020（状态拦截优先）、
              docs_visible=hidden 从 /docs/ 目录、文档页、左侧菜单与在线调试中消失
+    第 13 轮 线路多选：一条策略覆盖多条线路（extra_prefixes）全部生效；编辑可增删线路；
+             线路被另一条策略接管时「让位」（部分让位保留其余、全部让位则删除）
+    第 14 轮 批量删除：列表页勾选框 + 批量删除表单；未勾选被拒、只删勾选项、非法 id 忽略
 
 隔离策略：测试数据用 MARK（xysvcpolicy<RUN>）标记，策略路径前缀一律包含 MARK，
 测试结束统一删除。仅第 12 轮为了验证「文档隐藏」在真实文档页 / 在线调试上的效果，
@@ -145,8 +149,10 @@ def superadmin_client():
 
 
 def cleanup():
-    """删除全部测试数据（策略路径前缀一律包含 MARK）"""
-    ApiServicePolicy.objects.filter(path_prefix__contains=MARK).delete()
+    """删除全部测试数据（策略的任一路径前缀包含 MARK 即删，含 extra_prefixes）"""
+    ids = [p.pk for p in ApiServicePolicy.objects.all()
+           if any(MARK in prefix for prefix in p.all_prefixes)]
+    ApiServicePolicy.objects.filter(pk__in=ids).delete()
     UserApp.objects.filter(name__contains=MARK).delete()
     invalidate_api_service_policy_cache()
 
@@ -212,7 +218,7 @@ def round3_auth_inherit():
 # ───────────────────────── 第 4 轮：状态继承 ─────────────────────────
 
 def round4_status_inherit():
-    section('第 4 轮 状态继承（服务 maintenance → 全部维护；端点 normal 覆盖）')
+    section('第 4 轮 状态继承与状态拦截（只有 normal 可调用）')
     _mk_policy(name=f'SvcMaint {MARK}', level='service', path_prefix=f'{BASE}maint/',
                status='maintenance', auth_mode='inherit', app_scope='inherit')
     check('服务级维护态生效', resolve_service_policy(f'{BASE}maint/x')['status'] == 'maintenance')
@@ -251,6 +257,23 @@ def round4_status_inherit():
                status='normal', auth_mode='inherit', app_scope='inherit')
     resp = anon.get(f'{BASE}offline/ok')
     check('端点级 normal 覆盖服务级已下线（落到 20011）',
+          _code(resp) == StatusCode.AUTH_FAILED, f'code={_code(resp)}')
+
+    # 「开发中」同样硬拦截（口径：只有 normal 可调用），用独立业务码 30006
+    _mk_policy(name=f'SvcDev {MARK}', level='service', path_prefix=f'{BASE}dev/',
+               status='dev', auth_mode='inherit', app_scope='inherit')
+    check('服务级开发中生效',
+          resolve_service_policy(f'{BASE}dev/x')['status'] == 'dev')
+    resp = anon.get(f'{BASE}dev/x')
+    check('开发中服务返回 30006（不是 20011）',
+          _code(resp) == StatusCode.SERVICE_DEVELOPING, f'code={_code(resp)}')
+    resp = anon.get(f'{BASE}dev/x', _signed(_mk_app('V')))
+    check('开发中：携带合法签名仍返回 30006（未做签名校验）',
+          _code(resp) == StatusCode.SERVICE_DEVELOPING, f'code={_code(resp)}')
+    _mk_policy(name=f'EpNormalDev {MARK}', level='endpoint', path_prefix=f'{BASE}dev/ok',
+               status='normal', auth_mode='inherit', app_scope='inherit')
+    resp = anon.get(f'{BASE}dev/ok')
+    check('端点级 normal 覆盖服务级开发中（恢复可调用，落到 20011）',
           _code(resp) == StatusCode.AUTH_FAILED, f'code={_code(resp)}')
 
 
@@ -352,6 +375,8 @@ def round8_console(client, app_a):
     check('三级下拉与自动推导控件存在',
           'data-tree-service' in body and 'data-tree-channel' in body
           and 'data-tree-endpoint' in body and 'data-tree-prefix' in body)
+    check('线路为多选下拉（name=channels 且 multiple）',
+          'name="channels"' in body and 'data-tree-channel multiple' in body)
     check('菜单高亮「服务策略」', 'menu-active' in body and url in body)
     bad = re.findall(r'onclick="[\w$]*-[\w$-]*\.(?:showModal|close)\(', body)
     check('无「连字符 id」的对话框入口', not bad, f'bad={bad}')
@@ -375,7 +400,7 @@ def round8_console(client, app_a):
     # 编辑（改为线路级 open）
     channel = f'{BASE}console/ch/'
     resp = client.post(url, {'action': 'edit', 'id': str(policy.pk), 'name': f'Console2 {MARK}',
-                             'service': prefix, 'channel': channel, 'status': 'normal',
+                             'service': prefix, 'channels': [channel], 'status': 'normal',
                              'auth_mode': 'open', 'app_scope': 'all', 'docs_visible': 'visible',
                              'audience': 'normal', 'remark': 'edited'})
     policy.refresh_from_db()
@@ -398,14 +423,24 @@ def round8_console(client, app_a):
                       'status': 'normal', 'auth_mode': 'auth', 'app_scope': 'all',
                       'docs_visible': 'inherit', 'audience': 'inherit'})
     check('非法服务被拒', not ApiServicePolicy.objects.filter(name='bad').exists())
-    client.post(url, {'action': 'create', 'name': 'dup', 'service': prefix, 'channel': channel,
-                      'status': 'normal', 'auth_mode': 'auth', 'app_scope': 'all',
-                      'docs_visible': 'inherit', 'audience': 'inherit'})
-    check('重复路径被拒', ApiServicePolicy.objects.filter(path_prefix=channel).count() == 1)
     client.post(url, {'action': 'create', 'name': 'badfield', 'service': f'{BASE}badfield/',
                       'status': 'normal', 'auth_mode': 'auth', 'app_scope': 'all',
                       'docs_visible': 'whatever', 'audience': 'inherit'})
     check('非法文档可见性被拒', not ApiServicePolicy.objects.filter(name='badfield').exists())
+
+    # 选中已被占用的线路：原策略让位，由新策略接管（不是报错拒绝）
+    old_pk = policy.pk
+    resp = client.post(url, {'action': 'create', 'name': f'Takeover {MARK}',
+                             'service': prefix, 'channels': [channel],
+                             'status': 'normal', 'auth_mode': 'auth', 'app_scope': 'all',
+                             'docs_visible': 'inherit', 'audience': 'inherit'})
+    policy = ApiServicePolicy.objects.filter(path_prefix=channel).first()
+    check('选中已占用线路 → 原策略让位、新策略接管',
+          resp.status_code == 302 and policy is not None
+          and policy.name == f'Takeover {MARK}'
+          and not ApiServicePolicy.objects.filter(pk=old_pk).exists())
+    check('接管后该线路按新策略生效（需要认证）',
+          requires_auth(f'{channel}probe') is True)
 
     # 启停切换（维护态）
     resp = client.post(url, {'action': 'toggle', 'id': str(policy.pk)})
@@ -433,8 +468,11 @@ def round9_i18n(client, admin):
     check('简体页面正常渲染且含「服务策略」',
           resp.status_code == 200 and '服务策略' in text)
 
-    for lang, must, extras in (('en', 'Service Policies', ('Docs Visibility', 'Audience')),
-                               ('zh-hant', '服務策略', ('文檔可見性', '使用範圍'))):
+    for lang, must, extras in (
+            ('en', 'Service Policies',
+             ('Docs Visibility', 'Audience', 'Channel (multi-select', 'Hold Ctrl / Cmd')),
+            ('zh-hant', '服務策略',
+             ('文檔可見性', '使用範圍', '線路（可多選', '按住 Ctrl / Cmd 可多選'))):
         lang_client = Client()
         lang_client.force_login(admin)
         lang_client.cookies[settings.LANGUAGE_COOKIE_NAME] = lang
@@ -655,6 +693,116 @@ def round12_docs_visible_audience():
     check('删除后真实端点恢复可见', is_docs_hidden(_REAL_ENDPOINT) is False)
 
 
+# ───────────────── 第 13 轮：线路多选（一条策略覆盖多条线路） ─────────────────
+
+def round13_multi_channel(client):
+    section('第 13 轮 线路多选（一条策略覆盖多条线路 / 接管让位）')
+    url = reverse('website:console_services')
+    svc = f'{BASE}multi/'
+    ch1, ch2, ch3 = f'{svc}one/', f'{svc}two/', f'{svc}three/'
+
+    resp = client.post(url, {'action': 'create', 'name': f'Multi {MARK}',
+                             'service': svc, 'channels': [ch1, ch2],
+                             'status': 'normal', 'auth_mode': 'open', 'app_scope': 'inherit',
+                             'docs_visible': 'inherit', 'audience': 'inherit'})
+    policy = ApiServicePolicy.objects.filter(path_prefix=ch1).first()
+    check('多选线路创建成功（一条策略两条线路）',
+          resp.status_code == 302 and policy is not None and policy.level == 'channel'
+          and policy.all_prefixes == [ch1, ch2], f'policy={policy!r}')
+    check('两条线路都按该策略生效', requires_auth(f'{ch1}x') is False
+          and requires_auth(f'{ch2}x') is False)
+    check('未选中的线路不受影响（仍需要签名）', requires_auth(f'{ch3}x') is True)
+
+    body = client.get(url).content.decode()
+    check('列表页展示该策略的全部线路前缀',
+          f'<code class="font-mono text-base-content/60">{ch1}</code>' in body
+          and f'<code class="font-mono text-base-content/60">{ch2}</code>' in body)
+    check('编辑按钮携带全部线路前缀（供多选回填）',
+          f'data-prefixes="{ch1},{ch2}"' in body)
+
+    # 编辑：改成三条线路
+    resp = client.post(url, {'action': 'edit', 'id': str(policy.pk), 'name': f'Multi2 {MARK}',
+                             'service': svc, 'channels': [ch3, ch1, ch2],
+                             'status': 'maintenance', 'auth_mode': 'open', 'app_scope': 'inherit',
+                             'docs_visible': 'inherit', 'audience': 'inherit'})
+    policy.refresh_from_db()
+    check('编辑可增删线路且三条均生效',
+          resp.status_code == 302 and set(policy.all_prefixes) == {ch1, ch2, ch3}
+          and resolve_service_policy(f'{ch2}x')['status'] == 'maintenance',
+          f'prefixes={policy.all_prefixes}')
+
+    # 让位：另一条策略只接管其中一条 → 原策略保留其余线路
+    client.post(url, {'action': 'create', 'name': f'Steal {MARK}',
+                      'service': svc, 'channels': [ch2],
+                      'status': 'normal', 'auth_mode': 'auth', 'app_scope': 'inherit',
+                      'docs_visible': 'inherit', 'audience': 'inherit'})
+    policy.refresh_from_db()
+    thief = ApiServicePolicy.objects.filter(name=f'Steal {MARK}').first()
+    check('部分线路被接管：原策略保留其余线路',
+          thief is not None and thief.all_prefixes == [ch2]
+          and set(policy.all_prefixes) == {ch1, ch3},
+          f'thief={thief!r} left={policy.all_prefixes}')
+    check('被接管线路改用新策略的配置',
+          resolve_service_policy(f'{ch2}x')['auth_mode'] == 'auth'
+          and resolve_service_policy(f'{ch1}x')['auth_mode'] == 'open')
+
+    # 全部让位：一条策略把原策略剩余线路全接管 → 原策略被删除
+    stolen = {ch1, ch3}
+    client.post(url, {'action': 'create', 'name': f'StealAll {MARK}',
+                      'service': svc, 'channels': [ch1, ch3],
+                      'status': 'normal', 'auth_mode': 'auth', 'app_scope': 'inherit',
+                      'docs_visible': 'inherit', 'audience': 'inherit'})
+    check('全部线路被接管 → 原策略让位删除',
+          not ApiServicePolicy.objects.filter(pk=policy.pk).exists()
+          and set(ApiServicePolicy.objects.get(name=f'StealAll {MARK}').all_prefixes) == stolen)
+
+
+# ───────────────── 第 14 轮：批量删除 + 弹窗版面 ─────────────────
+
+def round14_bulk_delete(client):
+    section('第 14 轮 批量删除与弹窗版面（/console/services/）')
+    url = reverse('website:console_services')
+
+    body = client.get(url).content.decode()
+    check('列表页含批量删除表单与勾选框',
+          'name="action" value="delete_bulk"' in body and 'service_batch_form' in body
+          and 'data-row-check' in body and 'data-select-all' in body and 'data-batch-delete' in body)
+    check('弹窗为三块分区 + 白名单默认可折叠',
+          'data-apps-panel' in body and 'data-app-scope' in body
+          and '作用范围' in body and '对外表现' in body and 'data-apps-search' in body)
+
+    svc = f'{BASE}bulk/'
+    prefixes = [f'{svc}a/', f'{svc}b/', f'{svc}c/']
+    for i, prefix in enumerate(prefixes):
+        client.post(url, {'action': 'create', 'name': f'Bulk{i} {MARK}',
+                          'service': svc, 'channels': [prefix],
+                          'status': 'normal', 'auth_mode': 'auth', 'app_scope': 'inherit',
+                          'docs_visible': 'inherit', 'audience': 'inherit'})
+    ids = [str(p.pk) for p in ApiServicePolicy.objects.filter(path_prefix__in=prefixes)]
+    check('三条策略已就绪（供批量删除）', len(ids) == 3, f'ids={ids}')
+
+    # 一条都没勾（或全是非法值）→ 不删
+    resp = client.post(url, {'action': 'delete_bulk'})
+    check('未勾选时批量删除被拒且不删除',
+          resp.status_code == 302
+          and ApiServicePolicy.objects.filter(pk__in=ids).count() == 3)
+    resp = client.post(url, {'action': 'delete_bulk', 'ids': ['abc', '']})
+    check('非法 id 被忽略（不误删）',
+          resp.status_code == 302
+          and ApiServicePolicy.objects.filter(pk__in=ids).count() == 3)
+
+    # 只勾两条 → 只删这两条，且立即失效
+    resp = client.post(url, {'action': 'delete_bulk', 'ids': ids[:2]})
+    check('只删除勾选的两条策略',
+          resp.status_code == 302
+          and ApiServicePolicy.objects.filter(pk__in=ids).count() == 1
+          and not ApiServicePolicy.objects.filter(pk=ids[0]).exists()
+          and not ApiServicePolicy.objects.filter(pk=ids[1]).exists())
+    check('被删策略立即失效（路径回到 fail-closed）',
+          requires_auth(f'{prefixes[0]}x') is True
+          and len(resolve_service_policy(f'{prefixes[0]}x')['chain']) == 0)
+
+
 def main():
     print('\nAPI 服务策略回归测试开始')
     print(f'标记：{MARK}（策略前缀统一含该标记，测试后自动清理）')
@@ -674,6 +822,8 @@ def main():
         round10_service_tree()
         round11_status_icons()
         round12_docs_visible_audience()
+        round13_multi_channel(client)
+        round14_bulk_delete(client)
     finally:
         cleanup()
         if created_admin:

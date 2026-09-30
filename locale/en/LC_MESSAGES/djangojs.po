@@ -456,6 +456,20 @@ msgstr "(empty = service level)"
 msgid "（留空=线路级）"
 msgstr "(empty = channel level)"
 
+# 服务策略弹窗 · 白名单项目区的计数文案
+msgid "未选"
+msgstr "None selected"
+
+msgid "已选 %(n)s 个"
+msgstr "%(n)s selected"
+
+# 服务策略列表 · 多选批量删除
+msgid "勾选策略可批量删除"
+msgstr "Select policies to delete in bulk"
+
+msgid "已选 %(n)s 条"
+msgstr "%(n)s selected"
+
 # ==================== 文档中心 · 注册辅助（docs_register.js） ====================
 msgid "生成中…"
 msgstr "Generating…"

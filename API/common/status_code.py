@@ -66,6 +66,9 @@ class StatusCode:
     # 服务已下线：策略状态为 offline 时命中路径的 /api/ 请求统一返回此码（同样不做签名校验）。
     # 与「维护中」区分开，便于调用方分辨「临时维护」与「已下线」。
     SERVICE_OFFLINE = 30005
+    # 服务开发中：策略状态为 dev 时命中路径的 /api/ 请求统一返回此码（同样不做签名校验）。
+    # 口径是「只有正常（normal）可调用」，故开发中与维护中 / 已下线一样硬拦截，各给一个码便于调用方分辨。
+    SERVICE_DEVELOPING = 30006
 
     # 资源不足 30010-30019
     INSUFFICIENT_BALANCE = 30010
@@ -129,6 +132,7 @@ class StatusCode:
         DATA_CONFLICT: '数据冲突',
         SERVICE_MAINTENANCE: '服务维护中',
         SERVICE_OFFLINE: '服务已下线',
+        SERVICE_DEVELOPING: '服务开发中',
 
         INSUFFICIENT_BALANCE: '余额不足',
         INSUFFICIENT_STOCK: '库存不足',
