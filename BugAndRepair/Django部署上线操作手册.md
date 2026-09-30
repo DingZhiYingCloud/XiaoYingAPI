@@ -135,7 +135,9 @@ ls scripts/hongguo_sign/jre/bin/          # 红果短剧线路需要；其它环
 ```dotenv
 SECRET_KEY=<生产环境重新生成，禁止使用开发值>
 DEBUG=False                         # 上线必须 False
-ALLOWED_HOSTS=你的域名,www.你的域名   # 不要填 *
+ALLOWED_HOSTS=你的域名,.你的域名,127.0.0.1,localhost   # 不要填 *
+# 要覆盖子域必须写成**前导点**形式 `.你的域名`（同时也覆盖主域本身）；
+# 写成 `*.你的域名` 不生效，Django 会直接返回 400 Bad Request（实测踩过）。
 # 生产环境不设置 XYAPI_COOKIE_ISOLATION（或设为 false）→ 自动进入生产安全模式：
 # 标准 Cookie 名 + 强制 HTTPS Cookie（SESSION_COOKIE_SECURE=True）
 ```
@@ -310,6 +312,13 @@ gid=www
 # 主进程
 master=true
 
+# 关键（SQLite + prefork 必加）：让每个 worker 各自加载应用
+# uwsgi 默认在 master 里加载应用再 fork。本应用的 AppConfig.ready() 会启动
+# 「反馈中心 AI 审核线程」并立刻读库，于是 master 先建好 SQLite 连接；fork 之后
+# 各 worker 共享同一个 fd，并发写 WAL 库即报 `sqlite3.OperationalError: disk I/O error`
+# （现象：页面正常，但凡需签名 / 写库的接口随机 500）。加上本项即可根治，详见第七节与第四节的排查表。
+lazy-apps=true
+
 # 缓冲区
 buffer-size=32768
 
@@ -326,7 +335,7 @@ unset-env=http_proxy,https_proxy,HTTP_PROXY,HTTPS_PROXY
 env=LANG=C.UTF-8
 ```
 
-⚠️ **四个高频坑**：
+⚠️ **五个高频坑**：
 
 | 坑 | 错误写法 | 正确写法 | 后果 |
 |----|----------|----------|------|
@@ -334,6 +343,7 @@ env=LANG=C.UTF-8
 | 代理继承 | 不写 unset-env | `unset-env=http_proxy,...` | 爬虫走 localhost:8888 失败 |
 | locale 编码 | 不写 env | `env=LANG=C.UTF-8` | .env 中文值导致应用加载失败 |
 | 缺 virtualenv | 只写 chdir | `virtualenv` + `pythonpath` | `No module named 'django'` |
+| **缺 lazy-apps** | 不写 lazy-apps | `lazy-apps = true` | 多 worker 共享 master 的数据库连接，**需签名 / 写库的接口随机 500**（`disk I/O error`） |
 
 ---
 
@@ -460,6 +470,7 @@ proxy_set_header Host $host;
 | uwsgi 进程在但请求 500 | 应用没加载成功（no app） | 重启 uwsgi；看日志是否 `ready` |
 | 页脚「联系我们」整块不见了 | 后台没给「官网项目」（`WEB_APP_NAME`）配任何联系方式；按设计一条都没配就整块隐藏 | 到 `/console/contacts/` 选中官网项目，逐条新增平台与值 |
 | 控制台页面样式错乱 / 弹窗打不开 | `output.css` 未重编译，或 `console_forms.js` 未 collectstatic / 引用处的 `?v=` 未 bump（浏览器仍在用旧缓存） | 本机重编译 `output.css`、确认 `console_forms.js` 的 `?v=` 已改 → 线上 collectstatic → 重启 uwsgi |
+| **页面能打开，但需签名 / 写库的接口随机 500**，日志 `sqlite3.OperationalError: disk I/O error` | uwsgi 默认在 master 加载应用；本应用 `AppConfig.ready()` 启动的「反馈中心 AI 审核线程」会立刻读库，于是 master 先建好 SQLite 连接，fork 后各 worker 共享同一 fd，并发写 WAL 即冲突 | uwsgi.ini 加 **`lazy-apps = true`**（每个 worker 各自加载应用与连接），完全重启。验证：`lsof 项目/db.sqlite3` 里 master 进程不应再出现 |
 
 ---
 
@@ -474,6 +485,7 @@ proxy_set_header Host $host;
 7. **用 www 用户操作文件**：migrate、collectstatic 用 `runuser -u www --` 执行，避免 root 产生的文件 www 读不了。
 8. **生成产物要在本地生成并提交**：`output.css`、`locale/**/*.mo`、`migrations/*.py` 线上都不重新生成。
 9. **改了 .env / 模板 / .mo 必须完全重启 uwsgi**：`--reload` 对这几类不生效。
+10. **SQLite + prefork 必须写 `lazy-apps = true`**：否则应用在 master 里加载、先建好数据库连接，fork 后各 worker 共享同一个 fd，并发写就 `disk I/O error` —— 而**页面还是好的**，只有接口随机 500，极易误判成「业务报错」。
 
 ---
 
@@ -494,3 +506,23 @@ proxy_set_header Host $host;
 7. **存量凭据回填**：若项目含 S-06 存储改造，上线后执行一次 `python manage.py security_backfill`（一次性，带迁移标记）。
 8. **A-01 fail-closed（重大行为变更）**：未命中任何策略的 `/api/` 路径默认「需要认证」——此前免签开放的能力型服务（upload/ddddocr/email/ai/ProxyIp/music/dlt/dlwz/seo/spider_verification 等）现在必须携带 app_id/timestamp/nonce/sign 签名才能调用；仅被显式设为「开放」的服务 / 线路 / 端点（如 captcha_auth/aliyun 与公开 GET 路径）可匿名。对接方需接入签名后再切流量。原「API 服务分类」分类树与 `rebuild_category_tree` **已废弃**，公开节点（图形验证码 / 调用统计）的开放策略由迁移 `0028` 自动写入；请在超管页面 **`/console/services/`** 的「服务策略」核对各服务 / 线路 / 端点的认证模式（服务→线路→端点三级继承，页面显示真实生效结果，保存即时生效）。
 9. **A-05 日志与迁移**：`logs/` 目录由应用自动创建（相对项目根），确保运行用户（www）对其可写；上线错误排查优先看 `logs/error.log`（带 request_id，可到 `logs/app.log` 按 request_id 关联整条请求链路）。迁移文件已随代码入库，部署只跑 `migrate`。
+
+---
+
+## 七、本地开发 与 生产 的环境差异（别把开发口径带上线）
+
+同一份代码，本机与线上的差别集中在下面几项上，**全是「宽松 vs 收紧」的关系**，而且基本都与安全相关。上线时逐项对照，**不要整体拷贝本机 `.env` 上去**（本机的 `DEBUG=True` / `ALLOWED_HOSTS=*` / 空的中转地址会直接把线上搞坏）。
+
+| 配置 | 本地开发（怎么宽松都行，不外网暴露） | 生产（必须收紧） | 为什么 |
+|------|--------------------------------------|------------------|--------|
+| `DEBUG` | `True`（报错页直观） | **`False`** | `True` 会把源码 / 设置 / SQL 暴露给任何访问者，静态文件也由 Django 托管 |
+| `ALLOWED_HOSTS` | `*`，或 `127.0.0.1,localhost` | 真实域名，如 `example.com,.example.com,127.0.0.1,localhost` | 生产填 `*` 等于关掉 Host 头校验（S-08）；**覆盖子域要用前导点 `.example.com`**，写成 `*.example.com` 不生效、会 400 |
+| `XYAPI_COOKIE_ISOLATION` | `true`（与其他本地项目共用域名时不打架、不强制 HTTPS） | **删除或 `false`** | 生产要标准 Cookie 名 + 强制 HTTPS Cookie；需 Nginx 透传 `X-Forwarded-Proto` |
+| uwsgi `http=` | 可以 `0.0.0.0:端口`（局域网 / 手机调试方便） | **`127.0.0.1:端口`** | `0.0.0.0` 会把应用端口裸暴露到公网，绕过 Nginx 的 HTTPS 与安全响应头（S-11） |
+| uwsgi `lazy-apps` | 无所谓（`runserver` 单进程，用不到） | **`true`** | 见本手册步骤 10 与第五节第 10 条：多 worker 共享库连接会 `disk I/O error` |
+| `SECRET_KEY` | 随意（可直接用 `django-insecure-` 开发值） | **与本地不同，且上线后固定不变** | 它参与库内 `app_secret` / AI Key 的密文派生，变更即这些数据无法解密 |
+| `PROXY_JULIANG_API_BASE` | 留空（直连官方） | 海外服务器填**国内中转地址** | 巨量代理的取 IP 接口只认国内来源 |
+| 静态文件 | `runserver` 直接读源码目录 | `collectstatic --clear` 后由 Nginx 的 `alias` 提供 | 线上不跑 Django 的静态托管；改过 JS/CSS 还要同步 bump 模板 `?v=` |
+
+> 一句话记法：**本地四项（`DEBUG` / `ALLOWED_HOSTS` / `XYAPI_COOKIE_ISOLATION` / uwsgi 监听地址）怎么宽松都行，生产一律反过来。**
+> `.env.example` 与本节是这两套口径的权威说明；本机 `.env` 里 `XYAPI_COOKIE_ISOLATION`、`PROXY_JULIANG_API_BASE` 的注释也标了两种取值，改 `.env` 前先读那几行。
