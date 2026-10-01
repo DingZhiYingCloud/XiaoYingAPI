@@ -123,7 +123,7 @@ XiaoYingAPI/
 | 代练丸子    | `/api/dlwz/`                | 代练丸子数据                       |
 | 验证码识别   | `/api/ddddocr/`             | ddddocr 验证码识别                |
 | 验证码识别(超级鹰) | `/api/chaojiying/`          | 超级鹰打码平台：图片识别 / 报错返分 / 查询题分（平台账号统一配置，按题分计费） |
-| 代理 IP   | `/api/ProxyIp/`             | 国内动态代理 IP：巨量代理 / 51代理  |
+| 代理 IP   | `/api/ProxyIp/`             | 国内动态代理 IP：巨量代理 / 51代理（51代理 的节点只在国内可达，返回里会额外给一个「经国内中转」的 `proxy` 字段，海外也能直接用）  |
 | SEO 服务  | `/api/seo/`                 | 友情链接等 SEO 相关                 |
 | 问题反馈    | `/api/feedback/`            | 统一问题反馈中心：子项目零代码接入（放链接 / iframe），AI 先审、管理员后台回复；`/api/` 下仅剩免签的 `ticket` 与 `contacts`（见第七章第 9 节） |
 | 用户中心    | `/api/user_center/`         | 统一认证中心（项目接入 / 用户注册登录）        |
@@ -307,7 +307,7 @@ python manage.py runserver 0.0.0.0:10000
 | `PROXY_51DAILI_PACKID`        | 否  | 51代理：套餐 ID                                                                              |
 | `PROXY_51DAILI_RID`           | 否  | 51代理：提取链接上的标识（可选）                                                                      |
 | `PROXY_51DAILI_API_BASE`      | 否  | 51代理提取接口地址，留空=直连官方 `http://bapi.51daili.com`；51代理只向国内 IP 提供提取服务，海外部署需指向国内中转（仅平台侧可配，不下发给调用方）                          |
-| `PROXY_RELAY_URL`             | 否  | 海角自动注册的「国内中转出口」地址（形如 `http://<国内IP>:17890`），留空则控制台「出口」里的 relay 不可用；部署见 `scripts/hj_relay/`                        |
+| `PROXY_RELAY_URL`             | 否  | 「国内中转出口」地址（形如 `http://<国内IP>:17890`），**海角自动注册与代理 IP 服务共用**；留空则控制台 relay 出口与 51代理 的 `proxy` 字段都不可用。部署见 `scripts/hj_relay/`                        |
 | `PROXY_RELAY_SECRET`          | 否  | 与中转机 `hj_relay.env` 的 `HJ_RELAY_SECRET` 保持一致（每次请求放在代理用户名里下发）                                  |
 | `HAIJIAO_REGISTER_PROXY`      | 否  | 自动注册页「出口」下拉的默认选中项：`direct` / `51daili` / `juliang` / `relay`（留空 = `51daili`；海外生产环境填 `relay`）              |
 | `HAIJIAO_NODE_BIN`            | 否  | `node` 可执行文件路径（生成海角视频播放列表要调 `node derive_key.js`）；留空 = 用 PATH 里的 `node`。Linux 服务器装在非默认位置时填绝对路径             |

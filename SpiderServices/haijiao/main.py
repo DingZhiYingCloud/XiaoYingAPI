@@ -56,27 +56,25 @@ import hashlib
 import mimetypes
 import os
 import re
-import secrets
 import shutil
 import subprocess
 import time
 from html import unescape
-from urllib.parse import quote, urljoin, urlsplit
+from urllib.parse import quote, urljoin
 
 import requests
 from django.conf import settings
+
+from SpiderServices import relay_proxy
 
 from . import utils as U
 from .cache import DATA_TTL, MEDIA_TTL, get_or_fetch
 
 # 注册可用的代理出口线路（控制台「出口」下拉的取值来源，加线路时只改这一处；
 # 直连不在此表内，用 None / 'direct' 表示）
+# 「relay」= 经国内中转：51代理 的节点只在国内可达，海外直连一律 TCP 超时，
+# 故由国内那台机器去连 51代理 再把数据回传（见 SpiderServices/relay_proxy.py）。
 PROXY_PROVIDERS = ('51daili', 'juliang', 'relay')
-
-# 「relay」= 经国内中转（scripts/hj_relay）：51代理 的代理 IP 只在国内可达，
-# 生产服务器（海外）直连一律 TCP 超时，故由国内那台机器去连 51代理 再回传数据。
-RELAY_URL = (os.getenv('PROXY_RELAY_URL', '') or '').strip()
-RELAY_SECRET = (os.getenv('PROXY_RELAY_SECRET', '') or '').strip()
 
 
 class HaijiaoSpider:
@@ -681,16 +679,9 @@ class HaijiaoSpider:
             return None, None
 
         if provider == 'relay':
-            if not (RELAY_URL and RELAY_SECRET):
-                raise RuntimeError(
-                    '未配置国内中转出口: 请在 .env 里设置 PROXY_RELAY_URL 与 PROXY_RELAY_SECRET')
-            host = urlsplit(RELAY_URL).netloc
-            if not host:
-                raise RuntimeError(
-                    f'PROXY_RELAY_URL 格式不对（应形如 http://ip:port）: {RELAY_URL!r}')
-            key = secrets.token_urlsafe(9)
-            url = f'http://{key}:{quote(RELAY_SECRET, safe="")}@{host}'
-            return f'{host}（经国内中转）', {'http': url, 'https': url}
+            # 会话键每次新生成：同一次「取码 → 提交注册」复用同一份 proxies，即粘在
+            # 同一个 51代理 出口上；换一次重试就换一个键，坏出口不会拖死整批。
+            return relay_proxy.describe(), relay_proxy.build_proxies()
 
         if provider == '51daili':
             # 懒导入：只有走代理注册时才依赖代理线路的实现

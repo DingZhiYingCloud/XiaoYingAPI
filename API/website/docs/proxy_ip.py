@@ -114,7 +114,8 @@ SERVICE = ServiceSpec(
                  '其余参数（qty / time / port / format / field / linePoolIndex）不传则用平台默认值。',
             endpoints=[
                 EndpointSpec('proxies', '获取动态代理', 'GET', '/api/ProxyIp/51daili/proxies',
-                             summary='提取 51代理动态 IP，返回解析好的 ip:port 列表（默认 JSON 格式）。',
+                             summary='提取 51代理动态 IP，返回解析好的 ip:port 列表（默认 JSON 格式），'
+                                     '每条另带一个 `proxy` 字段 —— 那是**经国内中转**、在任何网络下都能直接用的形态。',
                              params=[
                                  _num('qty', '数量', 1, desc='选填：单次提取数量，>=1，默认 1，最大 100'),
                                  ParamSpec('port', '代理协议', kind='select',
@@ -151,6 +152,19 @@ SERVICE = ServiceSpec(
                                     '平台 .env 未配置凭据时返回 40001（并说明缺哪些变量）。',
                                     '每条代理含 ip / port / protocol / region（地区名）/ region_code（地区码）'
                                     '/ isp（运营商）/ end_time（到期时间）。',
+                                    '⚠️ 51代理 的节点**只从中国内地网络可达**：海外服务器拿正确账密直连也是一律'
+                                    ' TCP 超时（实测 0/5）。因此平台尽量再给每条补一个 `proxy` 字段 ——'
+                                    ' 那是**经国内中转**的形态（`http://<会话键>:<密钥>@<中转机>:17890`），'
+                                    ' 可直接塞进 requests 的 proxies（`{"http": proxy, "https": proxy}`），'
+                                    ' 由国内中转机去连 51代理 节点并把数据回传，因此**任何网络环境都能用**。'
+                                    ' 平台未配置中转（`.env` 的 PROXY_RELAY_URL / PROXY_RELAY_SECRET 为空）时，'
+                                    ' 该字段不出现，返回与旧版一致。',
+                                    '`proxy` 与同条的 ip/port **不保证是同一条节点**：中转形态的出口由中转机从'
+                                    '同一个 51代理 账号实时取，ip/port/region 描述的是「直连形态会拿到什么」。',
+                                    '同一个 `proxy` 反复使用会**粘住同一个出口 IP**（中转机按会话键复用，TTL 10 分钟）；'
+                                    '换一条 `proxy` 就换一个出口。',
+                                    '中转形态只对中转机白名单内的来源 IP 可用（见中转机 `hj_relay.env` 的'
+                                    ' `HJ_RELAY_ALLOW_IPS`，目前是本机与备用出口两个 IP）；新机器接入需把它的出口 IP 加进去。',
                                     'format=txt 时上游改回文本行（ip:port|地区|到期时间|运营商），'
                                     '服务端同样会解析成结构化字段；该模式下拿不到上游错误码，'
                                     '解析不出 ip:port 时会把上游原文作为失败原因返回。',
