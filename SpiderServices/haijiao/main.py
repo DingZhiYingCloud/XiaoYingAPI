@@ -38,7 +38,9 @@
     不传则回退到 settings 里的默认凭据（.env 的 HAIJIAO_USER_ID / HAIJIAO_USER_TOKEN），
     两者都没有则匿名请求。注册走匿名会话，不带登录凭据。
 
-运行依赖：`get_video_playlist` 需本机有 node（调 derive_key.js 还原视频真密钥）。
+运行依赖：`get_video_playlist` 需本机有 node（调 derive_key.js 还原视频真密钥）；
+Linux 服务器要自行安装 Node.js（`derive_key.js` 只用 fs / path / Buffer / WebAssembly，
+无 npm 依赖，装个 node 二进制即可），装在非默认位置时用 `.env` 的 `HAIJIAO_NODE_BIN` 指定。
 
 使用示例:
     spider = HaijiaoSpider()
@@ -55,6 +57,7 @@ import mimetypes
 import os
 import re
 import secrets
+import shutil
 import subprocess
 import time
 from html import unescape
@@ -544,6 +547,14 @@ class HaijiaoSpider:
 
         :return: 真密钥十六进制字符串
         """
+        # 先把「node 不可用」与「node 跑起来后报错」分开报：PATH 里若混进了当前用户
+        # 不可访问的目录（如 root 启动 uwsgi 时带上的 /root/bin），Linux 会把「找不到」
+        # 误报成 `[Errno 13] Permission denied: 'node'` —— 照那条信息去「补可执行权限」
+        # 会查错方向（线上真踩过，见变更记录）。
+        if shutil.which(U.NODE_BIN) is None:
+            raise RuntimeError(
+                f'视频密钥派生失败: 未找到可执行的 node（NODE_BIN={U.NODE_BIN!r}）。'
+                f'请在服务器安装 Node.js，或用 .env 的 HAIJIAO_NODE_BIN 指定 node 的绝对路径')
         try:
             proc = subprocess.run(
                 [U.NODE_BIN, str(U.DERIVE_CLI), fake_key_hex, salt_hex],

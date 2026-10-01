@@ -21,6 +21,7 @@
 | 运行用户 | `www` | `www` |
 | Java | **Linux 服务器要装 JDK 17** 并设 `HONGGUO_JAVA_BIN`（仓库内置 `jre/` 是 Windows 版，Linux 用不了） | __________ |
 | ffmpeg | 需在 PATH 上；**仅**红果短剧线路「第 4 集及以后」解密用（不部署该线路可忽略） | __________ |
+| Node.js | **要装 Node.js（≥ 18）**：海角社区的视频播放列表要调 `node derive_key.js` 还原真密钥，抖音评论发布也要 node；内置脚本无 npm 依赖，装个 node 二进制即可，装在非默认位置时设 `HAIJIAO_NODE_BIN` | __________ |
 
 > 后续命令默认在**项目根目录**下执行：`cd {PROJECT_ROOT}`
 > 为简洁，用变量 `$PY` 代表 Python 路径，执行前先设：
@@ -34,7 +35,7 @@
 
 | # | 步骤 | 要点 | 完成 |
 |---|------|------|------|
-| 1 | 环境检查（Python / pip） | 版本正确、可执行；**短剧线路另需 `ffmpeg` 与 JDK 17**（内置 `jre/` 是 Windows 版，Linux 用不了） | ☐ |
+| 1 | 环境检查（Python / pip） | 版本正确、可执行；**短剧线路另需 `ffmpeg` 与 JDK 17**（内置 `jre/` 是 Windows 版，Linux 用不了）；**海角 / 抖音线路另需 Node.js（≥ 18）** | ☐ |
 | 2 | 安装项目依赖 | `requirements.txt` 含构建期依赖 `zhconv` | ☐ |
 | 3 | 确认前端产物已随代码入库 | `output.css` / `locale/**/*.mo` / `migrations/*.py` / `hongguo_sign/jre/`；**线上不重新生成** | ☐ |
 | 4 | 配置 `.env` 环境变量 | 至少 `SECRET_KEY`、`DEBUG=False`、`ALLOWED_HOSTS` | ☐ |
@@ -493,6 +494,7 @@ proxy_set_header Host $host;
 | **页面能打开，但需签名 / 写库的接口随机 500**，日志 `sqlite3.OperationalError: disk I/O error` | uwsgi 默认在 master 加载应用；本应用 `AppConfig.ready()` 启动的「反馈中心 AI 审核线程」会立刻读库，于是 master 先建好 SQLite 连接，fork 后各 worker 共享同一 fd，并发写 WAL 即冲突 | uwsgi.ini 加 **`lazy-apps = true`**（每个 worker 各自加载应用与连接），完全重启。验证：`lsof 项目/db.sqlite3` 里 master 进程不应再出现 |
 | 短剧**点播第 4 集**报「红果离线签名服务的运行物缺失」 | `sign/unidbg-sign.jar` 或 `capture/fq_oversea/*` 没放（**第三方二进制不入库，`git pull` 拿不到**）；前 3 集走源站明链所以不受影响 | 按步骤 1 补齐那 4 个文件，`sha256sum` 与开发机比对一致；无需重启（签名服务按需拉起） |
 | 短剧点播第 4 集报「找不到可用的 Java」 | Linux 线上没装 JDK 17，或 `.env` 没设 `HONGGUO_JAVA_BIN`（代码会先找内置 `jre/bin/java`，而那是 Windows 版） | `apt/dnf install` JDK 17，`.env` 设 `HONGGUO_JAVA_BIN=/usr/bin/java`，**完全重启 uwsgi** |
+| 海角「视频播放列表」报 `视频密钥派生失败（node 调用异常）: [Errno 13] Permission denied: 'node'` | **服务器压根没装 node**，不是权限问题 —— PATH 里混着当前用户不可访问的目录（root 启动 uwsgi 会带上 `/root/bin`）时，Linux 把「文件不存在」误报成 `Permission denied`，照这条信息去 chmod 会查错方向 | 装 Node.js（官方静态包即可），或 `.env` 设 `HAIJIAO_NODE_BIN=/usr/local/bin/node`，**完全重启 uwsgi**。验证：`runuser -u www -- node -v` 能打印版本 |
 | 短剧点播**长时间**停在「正在生成播放地址，请稍候重试」 | ① 确实在转（软编一集 30~40 秒，机器没有硬件编码器时更慢）；② **部署重启 uwsgi 打断转码留下的僵尸锁**；③ 上游取流卡住 | 先 `ps -ef | grep ffmpeg` + `tail logs/app.log \| grep hongguo`：**没有 ffmpeg 却一直 running = 状态卡死**。再看 `cache/dramas/hongguo_stream/*/*/*.lock` 里的属主 pid 是否还在（`ps -p <pid>`）——不在就删掉该锁，下一次点播自动重转（修复后此判断已内置，无需人工） |
 
 ---
@@ -510,6 +512,8 @@ proxy_set_header Host $host;
 9. **改了 .env / 模板 / .mo 必须完全重启 uwsgi**：`--reload` 对这几类不生效。
 10. **SQLite + prefork 必须写 `lazy-apps = true`**：否则应用在 master 里加载、先建好数据库连接，fork 后各 worker 共享同一个 fd，并发写就 `disk I/O error` —— 而**页面还是好的**，只有接口随机 500，极易误判成「业务报错」。
 11. **第三方二进制 `git pull` 拉不到**：红果签名器的 `sign/unidbg-sign.jar` 与 `capture/` 不入库，换机器 / 首次部署必须手工补齐；且内置 `jre/` 是 **Windows 版**，Linux 线上要另装 JDK 17 —— 文档里「Java 无需安装」只对 Windows 成立。**验证方式**：真跑一集第 4 集的转码（签 `app_api.get_episode_vids()` 能返回集数即说明签名通了）。
+12. **`[Errno 13] Permission denied: '<命令>'` 未必是权限问题**：`subprocess` 调一个 PATH 里**根本不存在**的命令时，只要 PATH 里还混着当前用户**不可访问的目录**（root 启动 uwsgi 就会把 `/root/bin` 带进进程 PATH，见 `uwsgi.ini` 的启动方式），Linux 会把「文件不存在(ENOENT)」报成「权限不足(EACCES)」—— glibc 的 `execvp` 在有 EACCES 时优先报 EACCES。于是「服务器没装 node」被写成 `Permission denied: 'node'`，照它去 chmod 会查错方向（线上真踩过，见变更记录）。**排查口诀：先 `runuser -u www -- which <命令>`，确认文件到底在不在。**
+13. **跑调试脚本要用运行用户**：以 root 跑探针 / 调试脚本会把 `cache/**`、`media/**` 下的文件写成 **root 属主**，而 Django 的文件缓存文件是 **0600** —— `www` 的 worker 立刻读不了，线上表现为接口随机 500（日志里是 `PermissionError: ... .djcache`）。统一用 `runuser -u www -- $PY <脚本>`；万一写脏了：`chown -R www:www cache media`。
 
 ---
 
@@ -545,6 +549,7 @@ proxy_set_header Host $host;
 | uwsgi `http=` | 可以 `0.0.0.0:端口`（局域网 / 手机调试方便） | **`127.0.0.1:端口`** | `0.0.0.0` 会把应用端口裸暴露到公网，绕过 Nginx 的 HTTPS 与安全响应头（S-11） |
 | uwsgi `lazy-apps` | 无所谓（`runserver` 单进程，用不到） | **`true`** | 见本手册步骤 10 与第五节第 10 条：多 worker 共享库连接会 `disk I/O error` |
 | Java / 签名器 | Windows 本机有内置 `jre/`，开箱可用 | 装 **JDK 17** + 设 `HONGGUO_JAVA_BIN=/usr/bin/java` | 内置 `jre/` 只有 `java.exe` / `.dll`，是 **Windows 版**，Linux 跑不了 |
+| Node.js | 开发机通常已装 | **必须自行安装 Node.js（≥ 18）**，装在非默认位置再设 `HAIJIAO_NODE_BIN` | 海角社区视频密钥派生（`node derive_key.js`）与抖音评论发布都靠 node；Linux 线上默认不带。少了它，海角取流会报「视频密钥派生失败（node 调用异常）」 |
 | 签名器运行物 | 本机已放好 `sign/` 与 `capture/` | 首次部署要**手工补齐**（不入库） | 第三方二进制，`git pull` 拿不到；漏了第 4 集点播会报「运行物缺失」 |
 | `SECRET_KEY` | 随意（可直接用 `django-insecure-` 开发值） | **与本地不同，且上线后固定不变** | 它参与库内 `app_secret` / AI Key 的密文派生，变更即这些数据无法解密 |
 | `PROXY_JULIANG_API_BASE` | 留空（直连官方） | 海外服务器填**国内中转地址** | 巨量代理的取 IP 接口只认国内来源 |

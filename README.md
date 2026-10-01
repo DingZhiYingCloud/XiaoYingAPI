@@ -251,7 +251,7 @@ python manage.py createsuperuser
 python manage.py runserver 0.0.0.0:10000
 ```
 
-> **Node.js 仅在用到抖音评论接口或海角视频播放时才需要**（`node -v` 确认 ≥ 18）；其余服务不依赖。
+> **Node.js 仅在用到抖音评论接口或海角视频播放时才需要**（`node -v` 确认 ≥ 18）；其余服务不依赖。⚠️ **Linux 服务器默认不带 node**，要靠海角取流或抖音评论就必须自行安装（官方静态包即可，脚本无 npm 依赖），装在非默认位置时用 `.env` 的 `HAIJIAO_NODE_BIN` 指定 —— 少了它的报错长得像权限问题（`[Errno 13] Permission denied: 'node'`），其实是「没装」，详见部署手册第五节第 12 条。
 > **红果短剧不需要安装 Java**（取流签名器用项目内置的裁剪版 JRE，随代码入库）；只有跑**预处理**（导出第 4 集及以后的明文视频）时才需要 **ffmpeg** 在 PATH 上（或由 `HONGGUO_FFMPEG_BIN` 指定）。
 > 前端样式产物 `API/static/css/output.css` 与多语言词条 `locale/**/*.mo` 均**随代码入库**，拉到代码直接跑即可；只有新增 daisyUI / Tailwind 类名或改动 `.po` 词条时才需本机重新编译（命令见第八章第 4 节）。
 
@@ -310,6 +310,7 @@ python manage.py runserver 0.0.0.0:10000
 | `PROXY_RELAY_URL`             | 否  | 海角自动注册的「国内中转出口」地址（形如 `http://<国内IP>:17890`），留空则控制台「出口」里的 relay 不可用；部署见 `scripts/hj_relay/`                        |
 | `PROXY_RELAY_SECRET`          | 否  | 与中转机 `hj_relay.env` 的 `HJ_RELAY_SECRET` 保持一致（每次请求放在代理用户名里下发）                                  |
 | `HAIJIAO_REGISTER_PROXY`      | 否  | 自动注册页「出口」下拉的默认选中项：`direct` / `51daili` / `juliang` / `relay`（留空 = `51daili`；海外生产环境填 `relay`）              |
+| `HAIJIAO_NODE_BIN`            | 否  | `node` 可执行文件路径（生成海角视频播放列表要调 `node derive_key.js`）；留空 = 用 PATH 里的 `node`。Linux 服务器装在非默认位置时填绝对路径             |
 | `MUSIC_SITE`                  | 否  | 音乐爬虫站点地址，默认 `https://www.aat.cx`（仅调试用）                                                  |
 
 ***

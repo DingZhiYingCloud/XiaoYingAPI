@@ -16,6 +16,7 @@ AES-128 密钥需用源站自带的 jquery.wasm 由 jquery_key(假key, 盐) 还�
 """
 import base64
 import json
+import os
 import re
 import time
 from pathlib import Path
@@ -338,7 +339,9 @@ MEDIA_IMAGE_MAX_BYTES = 10 * 1024 * 1024
 UPLOAD_TIMEOUT = 600
 
 # 视频密钥派生器（node + 源站 jquery.wasm，见 derive_key.js）
-NODE_BIN = 'node'
+# node 可执行文件：默认取 PATH 里的 node；服务器上若装在别处，用 .env 的
+# HAIJIAO_NODE_BIN 指定绝对路径（两种情况都由 shutil.which 统一判定可用性）。
+NODE_BIN = (os.getenv('HAIJIAO_NODE_BIN', '') or '').strip() or 'node'
 DERIVE_CLI = Path(__file__).resolve().parent / 'derive_key.js'
 DERIVE_TIMEOUT = 30   # 单次 node 调用超时（秒）
 
