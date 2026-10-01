@@ -253,6 +253,9 @@ HONGGUO_MEDIA_CACHE_TTL = int(os.getenv('HONGGUO_MEDIA_CACHE_TTL', '30'))
 HAIJIAO_DATA_CACHE_TTL = int(os.getenv('HAIJIAO_DATA_CACHE_TTL', '60'))
 # 海角社区 视频播放列表缓存过期时间（分钟）：派生真密钥开销较大（多次请求 + node），缓存稍长
 HAIJIAO_MEDIA_CACHE_TTL = int(os.getenv('HAIJIAO_MEDIA_CACHE_TTL', '30'))
+# 海角社区 今日域名缓存过期时间（分钟）：大陆可访问域名每日变动，
+# 爬虫据此自动跟随；缓存期内不再探测源站配置接口
+HAIJIAO_DOMAIN_CACHE_TTL = int(os.getenv('HAIJIAO_DOMAIN_CACHE_TTL', '30'))
 # 海角社区 默认登录凭据（x-user-id / x-user-token，可选）：用于取帖内视频等需登录态的内容；
 # 调用方可用请求参数 user_id / user_token 覆盖为自己的账号，留空则匿名请求。
 HAIJIAO_USER_ID = os.getenv('HAIJIAO_USER_ID', '')

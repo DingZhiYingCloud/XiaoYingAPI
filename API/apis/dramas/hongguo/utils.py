@@ -22,7 +22,11 @@ from django.db import transaction
 
 from API.models import HongguoEpisodeVideo
 from SpiderServices.dramas.hongguo.main import HongguoDramaSpider
-from SpiderServices.dramas.hongguo.utils import CATEGORIES, RANK_TYPES
+from SpiderServices.dramas.hongguo.utils import (
+    CATEGORY_OPTIONS,   # noqa: F401  （文档页下拉用，经本模块转出）
+    CATEGORY_VALUES,
+    RANK_TYPES,
+)
 
 # 「网页直出」播放地址的时效令牌：<video> 标签没法带项目签名，故用 Django 签名令牌自证，
 # 令牌里只放 series_id / ep / 画质，过期时间由 max_age 控制（见 settings.HONGGUO_STREAM_TOKEN_TTL）。
@@ -36,17 +40,17 @@ QUALITY_WIDTHS = (1080, 720, 540, 480, 360)
 # 默认画质（不传 q 时用）：可在 .env 用 HONGGUO_STREAM_QUALITY 覆盖
 DEFAULT_QUALITY = int(getattr(settings, 'HONGGUO_STREAM_QUALITY', 1080))
 
-# 榜单合法类型（与爬虫 RANK_TYPES 同步，供视图层做参数校验）
+# 参数白名单（均与爬虫同源，供视图层做参数校验）：
+#   榜单 RANK_TYPE_VALUES  —— hot-drama / hot-real-drama / hot-ai-drama / hot-comic-drama
+#   分类 CATEGORY_VALUES   —— 一级 slug（real-drama）或「一级/二级」（real-drama/romance）
 RANK_TYPE_VALUES = RANK_TYPES
-# 分类合法 slug（取自爬虫 CATEGORIES 的键，供视图层做参数校验）
-CATEGORY_VALUES = tuple(CATEGORIES)
 # 允许登记的外链类型（视图层校验用）
 URL_TYPES = ('mp4', 'm3u8')
 
 # get_play 的结果标记：调用方（视图层）据此选择状态码
-PLAY_OK = 'ok'                       # 可直接播放（前 3 集源站直链 / 第 4 集+ 已登记外链）
+PLAY_OK = 'ok'                       # 可直接播放（源站直链 / 已登记外链 / 本站网页直出）
 PLAY_OUT_OF_RANGE = 'out_of_range'   # 集号越界
-PLAY_NOT_LISTED = 'not_listed'       # 第 4 集及以后：尚未上架外链
+PLAY_NOT_LISTED = 'not_listed'       # 第 4 集及以后：既未登记外链、本站直出又不可用
 PLAY_ERROR = 'error'                 # 取数失败
 
 # 「尚未上架」时的提示文案
@@ -120,17 +124,20 @@ def _run(action, fn):
 
 
 def get_rank(rank_type='hot-drama', page=1):
-    """获取榜单（热播榜 / 真人剧榜 / AI剧榜，分页）"""
+    """获取榜单（热播榜 / 真人剧榜 / AI剧榜 / 漫剧榜，分页）"""
     return _run("获取榜单", lambda s: s.get_rank(rank_type, page=page))
 
 
 def get_categories():
-    """获取分类列表（slug -> 中文名）"""
+    """获取分类树（一级 -> 二级题材，每个节点都是一个可用的 category 取值）"""
     return _run("获取分类", lambda s: s.get_categories())
 
 
 def get_list(category, page=1):
-    """获取分类列表（分页）"""
+    """获取分类列表（分页）
+
+    :param category: 一级取值（real-drama）或「一级/二级」（real-drama/romance）
+    """
     return _run("获取列表", lambda s: s.get_list(category, page=page))
 
 
@@ -142,14 +149,21 @@ def get_search(keyword, page=1):
 def get_detail(series_id):
     """获取剧集详情（全量集号 + 可播集数）；剧集不存在时返回 None
 
-    第 4 集及以后能否播，取决于**是否已登记外部链接**（见 get_play），而爬虫层只认源站
-    H5 直链范围（playable_cnt 恒为前 3 集），所以在这里把登记表合并进每集的 playable。
-    少了这一步：调用方会把已上架的集当成未上架 —— 给出锁标记、点不进去，
-    接口新上线的能力等于接不住。
+    ``episodes[].playable`` 的口径与 :func:`get_play` **完全一致** —— 三条路任一可用即为
+    true，并额外用 ``source`` 标出走的哪条路：
 
-    返回的两个计数含义不同，别混用：
+        origin    源站明文直链（前若干集）
+        external  已登记的外部播放地址
+        stream    本站「网页直出」（按需解密 + 转 H.264）
+
+    爬虫层只认源站 H5 直链范围（前 3 集），所以这里要把登记表与直出能力补进去。少这一步
+    就会出现「detail 说不能播、play 说能播」的自相矛盾：调用方给该集打上锁标记、点不进去，
+    接口明明有能力，前端却接不住。
+
+    三个计数含义不同，别混用：
         playable_cnt  源站直链的**连续**范围（前 N 集），保持原义，避免影响既有调用方
-        listed_cnt    **实际可播集数**（源站直链 + 已登记外链，可能不连续）
+        listed_cnt    **实际可播集数**（= playable 为 true 的集数）
+        external_cnt  **已登记外部链接**的集数（人工上架的进度）
     """
     ok, data = _run("获取详情", lambda s: s.get_detail(series_id))
     if not ok or data is None:
@@ -157,17 +171,26 @@ def get_detail(series_id):
 
     listed = set(HongguoEpisodeVideo.objects.filter(
         series_id=str(series_id), enabled=True).values_list('ep', flat=True))
+    # 本站「网页直出」是否可用。settings 里 HONGGUO_STREAM_DIR 有默认值，正常部署恒为可用；
+    # 取不到目录（如测试环境显式清空）时不下发 stream，免得承诺一个给不出的地址。
+    stream_enabled = bool(getattr(settings, 'HONGGUO_STREAM_DIR', ''))
 
     # 重新构造而不是就地改：爬虫的返回值来自缓存，就地改可能把结果写回缓存对象
     episodes = []
     for item in data.get('episodes') or []:
         item = dict(item)
-        if item.get('ep') in listed:
-            item['playable'] = True
+        if item.get('playable'):
+            item['source'] = 'origin'
+        elif item.get('ep') in listed:
+            item['playable'], item['source'] = True, 'external'
+        elif stream_enabled:
+            item['playable'], item['source'] = True, 'stream'
         episodes.append(item)
 
     data = dict(data, episodes=episodes,
-                listed_cnt=sum(1 for item in episodes if item.get('playable')))
+                listed_cnt=sum(1 for item in episodes if item.get('playable')),
+                # 注册表口径：登记过（且启用）的集数，与它是否同时有源站直链无关
+                external_cnt=sum(1 for item in episodes if item.get('ep') in listed))
     return True, data
 
 
@@ -177,6 +200,9 @@ def get_play(series_id, ep, quality=None):
 
     前若干集（H5 可播范围）返回源站明文直链；第 4 集及以后返回已登记的外部播放地址，
     没登记则回落到本站「网页直出」（画质由 quality 指定，见 QUALITY_WIDTHS）。
+
+    payload 的 ``source`` 标注走的哪条路（取值与 detail 的 episodes[].source 一致）：
+    ``origin`` 源站直链 / ``external`` 已登记外链 / ``stream`` 本站直出。
 
     :return: (status, payload)
         - PLAY_OK           payload 为播放数据 dict
@@ -191,7 +217,8 @@ def get_play(series_id, ep, quality=None):
     if data is None:                      # 爬虫对超出总集数的集号返回 None
         return PLAY_OUT_OF_RANGE, None
     if data.get('playable'):              # 源站下发明文直链（前若干集）
-        return PLAY_OK, data
+        # source 与 detail 的 episodes[].source 同一套取值，调用方不必两处各判一套
+        return PLAY_OK, {**data, 'source': 'origin'}
 
     # 第 4 集及以后：源站只给 DRM 加密的 H.265
     # ① 已登记外部链接：优先返回（零成本，流量不经过本站）

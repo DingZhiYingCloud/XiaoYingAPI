@@ -55,20 +55,85 @@ RETRY_DELAY = 0.5
 # ==================== 榜单类型 ====================
 
 # 榜单类型（取值即 /rank/{type} 的路径段）
-# 注：站点另外还暴露 /rank/hot-comic-drama（漫剧热播榜），当前接口未纳入。
-RANK_TYPES = ("hot-drama", "hot-real-drama", "hot-ai-drama")
+RANK_TYPES = ("hot-drama", "hot-real-drama", "hot-ai-drama", "hot-comic-drama")
 
-# ==================== 分类映射 ====================
+# ==================== 分类树 ====================
 
-# 分类 slug -> 中文名
-# 由首页 https://hongguoduanju.com/ 导航/页脚的真实 /category/xxx 链接实际枚举所得，
-# 站点新增分类时需同步维护（首页「分类」下拉与页脚各出现一次）。
-CATEGORIES = {
-    "real-drama": "真人剧",
-    "comic-drama": "漫剧",
-    "ai-drama": "AI剧",
-    "comic": "漫画",
+# 漫剧 / AI剧 的题材筛选条完全一致，共用一份（改一处即可，不会两边写歪）
+_COMIC_AI_CHILDREN = {
+    "creative": "脑洞",
+    "fantasy": "玄幻",
+    "drama": "剧情",
+    "apocalypse": "末世",
+    "wealthy-family": "豪门",
+    "wonder": "奇幻",
+    "sci-fi": "科幻",
+    "adventure": "冒险",
 }
+
+# 两级分类树：一级 slug -> {name, children: {二级 slug -> 中文名}}
+#
+# 由站点各级 /category/* 页面的筛选条实际枚举所得（2026-10-01 核对）：
+#   一级 4 个（真人剧 / 漫剧 / AI剧 / 漫画）；二级共 40 个（真人剧 24 + 漫剧 8 + AI剧 8 + 漫画 0）。
+# 站点新增分类时需同步维护。
+#
+# 对外取值：一级直接给 slug（`real-drama`）；二级用「一级/二级」（`real-drama/romance`）——
+# 该值同样可直接拼进 /category/{slug} 的路径。
+# 二级页与一级页结构完全相同（同一个 SSR 键 recommendList），故 get_list 对两种取值走同一套解析。
+CATEGORIES = {
+    "real-drama": {
+        "name": "真人剧",
+        "children": {
+            "romance": "爱情",
+            "period": "年代",
+            "comeback": "逆袭",
+            "legend": "传奇",
+            "growth": "成长",
+            "family": "家庭",
+            "clan": "家族",
+            "cute-kids": "萌宝",
+            "suspense": "悬疑",
+            "thriller": "惊悚",
+            "horror": "恐怖",
+            "supernatural": "志怪",
+            "costume": "古装",
+            "fantasy": "玄幻",
+            "wonder": "奇幻",
+            "urban": "都市",
+            "youth": "青春",
+            "comedy": "喜剧",
+            "sci-fi": "科幻",
+            "disaster": "灾难",
+            "action-adventure": "动作冒险",
+            "war": "战争",
+            "variety": "综艺",
+            "drama": "剧情",
+        },
+    },
+    "comic-drama": {"name": "漫剧", "children": _COMIC_AI_CHILDREN},
+    "ai-drama": {"name": "AI剧", "children": _COMIC_AI_CHILDREN},
+    "comic": {"name": "漫画", "children": {}},
+}
+
+
+def _category_options():
+    """(取值, 显示名) 列表：一级用自身名，二级用「一级 · 二级」
+
+    二级之所以带一级前缀：`剧情` / `玄幻` / `奇幻` / `科幻` 在多个一级下同时存在，
+    只给二级名在文档页下拉里会分不清是哪个一级的。
+    """
+    options = []
+    for slug, node in CATEGORIES.items():
+        options.append((slug, node["name"]))
+        options.extend((f"{slug}/{child}", f'{node["name"]} · {child_name}')
+                       for child, child_name in node["children"].items())
+    return tuple(options)
+
+
+# 分类取值 -> 显示名（供文档页下拉与提示文案用）
+CATEGORY_OPTIONS = _category_options()
+# 全部合法 category 取值（一级 slug +「一级/二级」），供视图层做参数校验
+CATEGORY_VALUES = tuple(value for value, _ in CATEGORY_OPTIONS)
 
 # ==================== SSR 解析 ====================
 
@@ -91,8 +156,14 @@ PLAYABLE_LIMIT_FALLBACK = 3
 # ---- 榜单页 XPath 选择器 ----
 # 站点用 CSS Modules，类名形如 pc-title-LHxn_J（前缀稳定、hash 后缀随构建变动），
 # 故统一用 contains(@class,"pc-xxx") 匹配；站点换皮需在此维护。
-XP_RANK_LIST = '//ol[contains(@class,"pc-list")]/li'
-XP_RANK_LINK = './/a[contains(@href,"/detail?series_id=")]'
+#
+# 注意：榜单页头部的**面包屑**是 `<ol class="pc-list-…">`，也含 "pc-list" 前缀，
+# 只按 ol 的 class 取 li 会把面包屑的 2 个 <li>（首页 / 榜单名）当成第 1、2 名混进来
+# （它们没有详情链接，解析出来就是 rank=1/2 且字段全空）。
+# 故这里再限定「li 下必须有指向 /detail?series_id= 的链接」——榜单条目必有，面包屑必无。
+_HREF_DETAIL = 'contains(@href,"/detail?series_id=")'
+XP_RANK_LIST = f'//ol[contains(@class,"pc-list")]/li[.//a[{_HREF_DETAIL}]]'
+XP_RANK_LINK = f'.//a[{_HREF_DETAIL}]'
 XP_RANK_COVER = './/img[contains(@class,"pc-cover")]/@src'
 XP_RANK_TITLE = './/h2[contains(@class,"pc-title")]//text()'
 XP_RANK_HEAT = './/p[contains(@class,"pc-metrics")]//text()'
@@ -114,7 +185,10 @@ def build_rank_url(rank_type: str, page: int = 1) -> str:
 
 
 def build_category_url(slug: str, page: int = 1) -> str:
-    """构建分类列表页 URL；第 1 页省略 page 参数"""
+    """构建分类列表页 URL；第 1 页省略 page 参数
+
+    ``slug`` 既可是一级分类（``real-drama``），也可是「一级/二级」（``real-drama/romance``）。
+    """
     base = f"{BASE_URL}/category/{slug}"
     return base if not page or page <= 1 else f"{base}?page={page}"
 

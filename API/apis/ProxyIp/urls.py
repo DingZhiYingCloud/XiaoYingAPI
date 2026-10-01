@@ -1,13 +1,9 @@
 # API路由
-from django.urls import path, include
+from django.urls import include, path
 
 # 域名前缀: /api/ProxyIp/
+# 只保留两条线路：51代理 与 巨量代理
 urlpatterns = [
-    path('66daili/', include('API.apis.ProxyIp.ProxyIP_66daili.urls')),  # 66免费代理IP
-    path('qy/', include('API.apis.ProxyIp.ProxyIP_qy.urls')),            # 青雨动态代理IP
-    path('qy_res/', include('API.apis.ProxyIp.ProxyIP_qy_res.urls')),    # 青雨住宅长效代理
-    path('91http/', include('API.apis.ProxyIp.ProxyIP_91http.urls')),    # 91HTTP动态代理IP
     path('juliang/', include('API.apis.ProxyIp.ProxyIP_juliang.urls')),  # 巨量代理IP
-    path('static/', include('API.apis.ProxyIp.ProxyIP_Static.urls')),    # 静态代理IP
-    path('thordata/', include('API.apis.ProxyIp.ProxyIP_thordata.urls')),  # Thordata动态住宅代理
+    path('51daili/', include('API.apis.ProxyIp.ProxyIP_51daili.urls')),  # 51代理 动态代理IP
 ]

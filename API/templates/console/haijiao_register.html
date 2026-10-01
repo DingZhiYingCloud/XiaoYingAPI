@@ -1,0 +1,336 @@
+{% extends 'console/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "海角自动注册 - 超级管理员 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,海角社区,自动注册,超级鹰打码" %}{% endblock %}
+{% block description %}{% trans "小影API 超级管理员：海角社区账号自动注册（验证码交超级鹰打码识别）。" %}{% endblock %}
+
+{% block console_content %}
+{% trans "全自动注册海角社区账号：用户名 / 密码 / 邮箱服务端自动生成，验证码交超级鹰识别后自动提交并入库。" as ph_desc %}
+{% include 'console/_page_header.html' with icon='user-plus' title='海角自动注册' desc=ph_desc %}
+
+{% comment %}JS 文案统一走 data-* 下发（脚本里不写中文，含插值的用 %(x)s 占位由前端替换）{% endcomment %}
+<div id="hj-i18n" class="hidden"
+     data-start="{% trans '共 %(n)s 个账号' %}"
+     data-done="{% trans '完成：成功 %(ok)s / 失败 %(bad)s，打码 %(ocr)s 次、返分成功 %(refund)s 次、返分失败 %(refund_bad)s 次，耗时 %(sec)s 秒' %}"
+     data-stopped="{% trans '已手动停止（当前这一条会跑完）' %}"
+     data-broken="{% trans '连接中断' %}"
+     data-ticket-failed="{% trans '领取运行票据失败，请重试' %}"
+     data-refunded="{% trans '已返分' %}"
+     data-ok="{% trans '成功' %}" data-failed="{% trans '失败' %}"></div>
+
+{% comment %}运行设置 + 进度：注册动作走 SSE（页面只负责发起与展示）{% endcomment %}
+<article class="con-panel mt-5">
+  <div class="con-panel-body gap-3 p-4">
+    <h2 class="text-base font-semibold">{% trans "运行设置" %}</h2>
+
+    <form id="hj-auto-form" class="flex flex-wrap items-end gap-3" onsubmit="return false;">
+      <label class="flex flex-col gap-1 text-xs text-base-content/70">
+        {% trans "数量" %}
+        <input id="hj-count" type="number" min="1" max="{{ max_batch }}" value="1"
+               class="input input-bordered input-sm w-24 text-sm" />
+      </label>
+      <label class="flex flex-col gap-1 text-xs text-base-content/70">
+        {% trans "出口" %}
+        <select id="hj-proxy" class="select select-bordered select-sm w-full text-sm sm:w-40">
+          {% for item in proxies %}
+          <option value="{{ item.value }}"{% if item.value == default_proxy %} selected{% endif %}>{% trans item.label %}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="flex flex-col gap-1 text-xs text-base-content/70">
+        {% trans "识别类型" %}
+        <select id="hj-codetype" class="select select-bordered select-sm w-full text-sm sm:w-64">
+          {% for item in codetypes %}
+          <option value="{{ item.value }}"{% if item.value == ocr_codetype %} selected{% endif %}>{{ item.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="flex flex-col gap-1 text-xs text-base-content/70">
+        {% trans "验证码重试上限" %}
+        <input id="hj-retry" type="number" min="1" max="{{ max_retry_limit }}" value="{{ default_retry }}"
+               class="input input-bordered input-sm w-24 text-sm" />
+      </label>
+      <button type="button" id="hj-start" class="btn btn-primary btn-sm">{% trans "开始自动注册" %}</button>
+      <button type="button" id="hj-stop" class="btn btn-ghost btn-sm hidden">{% trans "停止" %}</button>
+      <span id="hj-status" class="badge badge-ghost"
+            data-idle="{% trans '等待开始' %}" data-running="{% trans '运行中' %}"
+            data-done="{% trans '已完成' %}" data-broken="{% trans '连接中断' %}">{% trans "等待开始" %}</span>
+    </form>
+
+    <p class="text-xs text-base-content/60">
+      {% blocktrans with code=ocr_codetype label=ocr_codetype_label %}识别类型默认 {{ code }}（{{ label }}），可在上方下拉里改；下拉项末尾的数字即该类型的题分单价。{% endblocktrans %}
+      {% trans "源站回「验证码错误」时会自动报错返分并换图重试。" %}
+      {% trans "直连模式下源站对注册有 IP 限制，被限时请改用代理出口。" %}
+      {% blocktrans with n=max_batch %}单次最多 {{ n }} 个账号。{% endblocktrans %}
+    </p>
+
+    <p class="alert alert-warning py-2 text-xs">
+      <i data-lucide="triangle-alert" class="h-4 w-4 shrink-0" aria-hidden="true"></i>
+      <span>{% trans "注册过程中请不要关闭浏览器窗口、不要关闭或刷新本页面，也不要切走太久——进度由本页面实时接收，页面一断这一批就中止了。" %}</span>
+    </p>
+
+    <div class="flex items-center gap-3">
+      <progress id="hj-progress" class="progress progress-primary w-full" value="0" max="{{ max_batch }}"></progress>
+      <span id="hj-progress-text" class="shrink-0 text-xs tabular-nums text-base-content/70">0 / 0</span>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div class="con-metric">
+        <span class="con-metric-icon bg-success/10 text-success">
+          <i data-lucide="circle-check" class="h-5 w-5" aria-hidden="true"></i>
+        </span>
+        <div class="min-w-0">
+          <div class="con-metric-value" id="hj-ok">0</div>
+          <div class="con-metric-label">{% trans "成功" %}</div>
+        </div>
+      </div>
+      <div class="con-metric">
+        <span class="con-metric-icon bg-error/10 text-error">
+          <i data-lucide="circle-x" class="h-5 w-5" aria-hidden="true"></i>
+        </span>
+        <div class="min-w-0">
+          <div class="con-metric-value" id="hj-fail">0</div>
+          <div class="con-metric-label">{% trans "失败" %}</div>
+        </div>
+      </div>
+      <div class="con-metric">
+        <span class="con-metric-icon bg-primary/10 text-primary">
+          <i data-lucide="scan-text" class="h-5 w-5" aria-hidden="true"></i>
+        </span>
+        <div class="min-w-0">
+          <div class="con-metric-value" id="hj-ocr">0</div>
+          <div class="con-metric-label">{% trans "打码次数" %}</div>
+        </div>
+      </div>
+      <div class="con-metric">
+        <span class="con-metric-icon bg-warning/10 text-warning">
+          <i data-lucide="undo-2" class="h-5 w-5" aria-hidden="true"></i>
+        </span>
+        <div class="min-w-0">
+          <div class="con-metric-value" id="hj-refund">0</div>
+          <div class="con-metric-label">{% trans "返分次数" %}</div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="text-sm font-semibold">{% trans "实时日志" %}</h3>
+    <pre id="hj-log" class="max-h-72 overflow-auto rounded-box bg-base-200 p-3 text-xs leading-relaxed"></pre>
+  </div>
+</article>
+
+{% comment %}结果表：逐条追加；成功的账号一并显示自动生成的密码，便于直接取用{% endcomment %}
+<article class="con-panel mt-5">
+  <div class="con-panel-body gap-3 p-4">
+    <h2 class="text-base font-semibold">{% trans "本次注册结果" %}</h2>
+    <div id="hj-empty" class="con-empty">{% trans "尚未开始" %}</div>
+    <div id="hj-result-wrap" class="hidden overflow-x-auto">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>{% trans "用户名" %}</th>
+            <th>{% trans "密码" %}</th>
+            <th>{% trans "邮箱" %}</th>
+            <th>{% trans "尝试" %}</th>
+            <th>{% trans "结果" %}</th>
+          </tr>
+        </thead>
+        <tbody id="hj-result"></tbody>
+      </table>
+    </div>
+  </div>
+</article>
+{% endblock %}
+
+{% block js %}
+<script>
+(function () {
+  var i18n = document.getElementById('hj-i18n').dataset;
+  var startBtn = document.getElementById('hj-start');
+  var stopBtn = document.getElementById('hj-stop');
+  var countInput = document.getElementById('hj-count');
+  var proxySelect = document.getElementById('hj-proxy');
+  var codetypeSelect = document.getElementById('hj-codetype');
+  var retryInput = document.getElementById('hj-retry');
+  var status = document.getElementById('hj-status');
+  var progress = document.getElementById('hj-progress');
+  var progressText = document.getElementById('hj-progress-text');
+  var log = document.getElementById('hj-log');
+  var empty = document.getElementById('hj-empty');
+  var wrap = document.getElementById('hj-result-wrap');
+  var tbody = document.getElementById('hj-result');
+  var metrics = {
+    ok: document.getElementById('hj-ok'),
+    fail: document.getElementById('hj-fail'),
+    ocr: document.getElementById('hj-ocr'),
+    refund: document.getElementById('hj-refund')
+  };
+
+  var STREAM_URL = '{% url "website:console_haijiao_register_stream" %}';
+  var TICKET_URL = '{% url "website:console_haijiao_register_ticket" %}';
+  var es = null;
+  var total = 0;
+  var finished = 0;
+
+  /** 按 %(name)s 占位替换文案 */
+  function t(template, vars) {
+    return String(template).replace(/%\((\w+)\)s/g, function (m, key) { return vars[key]; });
+  }
+
+  function append(text) {
+    log.textContent += text + '\n';
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function setStatus(state) {
+    status.textContent = status.dataset[state];
+    status.className = 'badge ' + (state === 'running' ? 'badge-info'
+      : state === 'done' ? 'badge-success'
+        : state === 'broken' ? 'badge-error' : 'badge-ghost');
+  }
+
+  function setProgress(value) {
+    progress.value = value;
+    progressText.textContent = value + ' / ' + total;
+  }
+
+  function reset() {
+    log.textContent = '';
+    tbody.textContent = '';
+    empty.classList.remove('hidden');
+    wrap.classList.add('hidden');
+    metrics.ok.textContent = '0';
+    metrics.fail.textContent = '0';
+    metrics.ocr.textContent = '0';
+    metrics.refund.textContent = '0';
+    finished = 0;
+    setProgress(0);
+  }
+
+  function addRow(frame) {
+    empty.classList.add('hidden');
+    wrap.classList.remove('hidden');
+
+    var tr = document.createElement('tr');
+    [String(frame.index), frame.username || '—',
+      frame.success ? frame.password : '—', frame.email || '—',
+      String(frame.attempts)].forEach(function (value, i) {
+      var td = document.createElement('td');
+      td.textContent = value;
+      td.className = (i === 1 || i === 2) ? 'font-mono text-xs' : 'text-xs';
+      tr.appendChild(td);
+    });
+
+    var td = document.createElement('td');
+    var badge = document.createElement('span');
+    badge.className = 'badge badge-sm ' + (frame.success ? 'badge-success' : 'badge-error');
+    badge.textContent = frame.success ? i18n.ok : i18n.failed;
+    td.appendChild(badge);
+
+    if (frame.refunded) {
+      var refundBadge = document.createElement('span');
+      refundBadge.className = 'badge badge-sm badge-warning ml-1';
+      refundBadge.textContent = i18n.refunded;
+      td.appendChild(refundBadge);
+    }
+    if (!frame.success && frame.message) {
+      var msg = document.createElement('span');
+      msg.className = 'ml-2 text-xs text-base-content/60';
+      msg.textContent = frame.message;
+      td.appendChild(msg);
+    }
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  }
+
+  function close() {
+    if (es) { es.close(); es = null; }
+    startBtn.disabled = false;
+    stopBtn.classList.add('hidden');
+  }
+
+  function onFrame(frame) {
+    if (frame.type === 'start') {
+      total = frame.total;
+      setProgress(0);
+      append(t(i18n.start, { n: total }));
+    } else if (frame.type === 'log') {
+      append('[' + frame.index + '/' + frame.total + '] ' + frame.text);
+    } else if (frame.type === 'result') {
+      finished += 1;
+      setProgress(finished);
+      metrics[frame.success ? 'ok' : 'fail'].textContent =
+        String(Number(metrics[frame.success ? 'ok' : 'fail'].textContent) + 1);
+      addRow(frame);
+      append('[' + frame.index + '/' + frame.total + '] '
+        + (frame.success ? i18n.ok : i18n.failed) + '：' + frame.message);
+    } else if (frame.type === 'done') {
+      metrics.ocr.textContent = String(frame.ocr_count);
+      metrics.refund.textContent = String(frame.refund_count);
+      append(t(i18n.done, { ok: frame.success_count, bad: frame.failed_count,
+        ocr: frame.ocr_count, refund: frame.refund_count,
+        refund_bad: frame.refund_failed_count, sec: frame.elapsed }));
+      setStatus('done');
+      close();
+    } else if (frame.type === 'error') {
+      append('!! ' + frame.msg);
+      setStatus('broken');
+    }
+  }
+
+  function openStream(query) {
+    es = new EventSource(STREAM_URL + '?' + query);
+    es.onmessage = function (event) {
+      if (event.data === '[DONE]') {
+        close();
+        if (status.textContent === status.dataset.running) setStatus('done');
+        return;
+      }
+      try {
+        onFrame(JSON.parse(event.data));
+      } catch (e) {
+        // 非法帧直接跳过，不打断整条进度
+      }
+    };
+    es.onerror = function () {
+      // EventSource 默认会自动重连，而票据是一次性的、重连只会拿到「票据无效」；
+      // 这里主动断开，需要继续跑时重新点「开始」即可（会现领一张新票据）
+      close();
+      append('!! ' + i18n.broken);
+      setStatus('broken');
+    };
+  }
+
+  startBtn.addEventListener('click', function () {
+    if (es) return;
+    reset();
+    setStatus('running');
+    startBtn.disabled = true;
+    stopBtn.classList.remove('hidden');
+
+    var params = '&count=' + encodeURIComponent(countInput.value)
+      + '&max_retry=' + encodeURIComponent(retryInput.value)
+      + '&codetype=' + encodeURIComponent(codetypeSelect.value)
+      + '&provider=' + encodeURIComponent(proxySelect.value);
+
+    // 每次运行现领一张一次性票据：跑完可接着再跑，无需刷新页面
+    fetch(TICKET_URL, { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        openStream('token=' + encodeURIComponent(data.ticket) + params);
+      })
+      .catch(function () {
+        append('!! ' + i18n.ticketFailed);
+        setStatus('broken');
+        close();
+      });
+  });
+
+  stopBtn.addEventListener('click', function () {
+    close();
+    append('--- ' + i18n.stopped + ' ---');
+  });
+})();
+</script>
+{% endblock %}

@@ -1,6 +1,7 @@
 """海角社区 API 请求处理视图
 
 提供接口:
+    GET    /api/haijiao/domain         今日域名（今日大陆可访问域名 / 备用 / 海外 / 影视站域名 + 客服邮箱）
     GET    /api/haijiao/topics         内容列表（tab 选模块：热帖/新闻/大事记/原创/精华/最新）
     GET    /api/haijiao/search         搜索（type 选范围，目前仅支持帖子）
     GET    /api/haijiao/topic/detail   帖子详情（正文 / 原图 / 视频附件 / 互动数据）
@@ -25,6 +26,14 @@
     POST   /api/haijiao/topic/like     给帖子点赞 / 取消点赞
     POST   /api/haijiao/topic/like/batch 批量点赞 / 取关（让库内全部账号都执行）
     GET    /api/haijiao/topic/liked    我点赞过的帖子（分页）
+    GET    /api/haijiao/favorite/folders 我的收藏夹列表（收藏页左侧）
+    GET    /api/haijiao/favorite/topics  我收藏的帖子（分页，可按收藏夹筛选）
+    POST   /api/haijiao/favorite/add     收藏帖子到收藏夹
+    POST   /api/haijiao/favorite/delete  取消收藏帖子
+    POST   /api/haijiao/favorite/delete/batch 批量取消收藏（逐条串行，单次最多 50 个）
+    POST   /api/haijiao/favorite/folder/add 新建收藏夹
+    POST   /api/haijiao/favorite/folder/rename 重命名收藏夹
+    POST   /api/haijiao/favorite/folder/delete 删除收藏夹（要求夹内为空）
     GET    /api/haijiao/image          图片解码（返回真实图片二进制，可直接 <img> 引用）
     GET    /api/haijiao/video/m3u8     视频播放列表（m3u8 文本，已还原真密钥，可直接播放）
     POST   /api/haijiao/register/captcha  取注册验证码（两步式注册第一步，可选走代理）
@@ -182,6 +191,55 @@ def _parse_page(request):
         return None, _json_response(StatusCode.PARAM_VALUE_INVALID,
                                     msg='参数值非法: page 必须 >= 1')
     return page, None
+
+
+def _parse_folder_id(raw, default=None):
+    """解析可选的 folder_id 参数（收藏夹 ID，不传取 default）
+
+    :return: (值, 错误响应)；正常时错误响应为 None
+    """
+    raw = (raw or '').strip()
+    if not raw:
+        return default, None
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return None, _json_response(StatusCode.PARAM_FORMAT_ERROR,
+                                    msg='参数格式错误: folder_id 必须为整数')
+    if value < 0:
+        return None, _json_response(StatusCode.PARAM_VALUE_INVALID,
+                                    msg='参数值非法: folder_id 必须 >= 0')
+    return value, None
+
+
+def _parse_folder_name(raw):
+    """解析收藏夹名称（必填；源站规则：1-12 位字符）
+
+    :return: (名称, 错误响应)；正常时错误响应为 None
+    """
+    name = (raw or '').strip()
+    if not name:
+        return None, _json_response(StatusCode.PARAM_MISSING,
+                                    msg='参数缺失: folder_name(收藏夹名称)')
+    if len(name) > utils.FAVORITE_FOLDER_NAME_MAX:
+        return None, _json_response(
+            StatusCode.PARAM_VALUE_INVALID,
+            msg=f'参数值非法: folder_name 最长为 {utils.FAVORITE_FOLDER_NAME_MAX} 位字符')
+    return name, None
+
+
+@require_http_methods(['GET'])
+def domain_view(request):
+    """
+    获取今日域名配置。
+
+    无参数：返回源站当日公布的可用域名与客服邮箱（源站首页弹窗「今日大陆直接访问网址为: xxx」
+    提示的就是其中的 domain）。
+    """
+    ok, data = utils.get_domain_config()
+    if not ok:
+        return _json_response(StatusCode.EXTERNAL_API_FAILED, msg=data)
+    return _json_response(StatusCode.SUCCESS, data=data)
 
 
 @require_http_methods(['GET'])
@@ -911,6 +969,220 @@ def topic_liked_view(request):
 
 
 @require_http_methods(['GET'])
+def topic_favorite_folders_view(request):
+    """
+    我的收藏夹列表（「我的收藏」页左侧的收藏夹）。
+
+    查询参数:
+        account_id / user_id + user_token（二选一，必填）
+
+    返回 data：total / results（folder_id / name / count）。
+    """
+    ok, data = utils.get_favorite_folders(**_credentials(request.GET))
+    if not ok:
+        return _error_response(data, fallback=StatusCode.EXTERNAL_API_FAILED)
+    return _json_response(StatusCode.SUCCESS, data=data)
+
+
+@require_http_methods(['GET'])
+def topic_favorite_view(request):
+    """
+    我收藏的帖子（分页，可按收藏夹筛选）。
+
+    查询参数:
+        page      (可选): 页码，从 1 开始，默认 1
+        folder_id (可选): 收藏夹 ID（取自「我的收藏夹」）；不传或传 0 = 全部收藏
+        account_id / user_id + user_token（二选一，必填）
+
+    返回 data：pagination / results（帖子数组，字段同「内容列表」）。
+    """
+    page, err = _parse_page(request)
+    if err:
+        return err
+
+    folder_id, err = _parse_folder_id(request.GET.get('folder_id'),
+                                      default=utils.FAVORITE_ALL_FOLDERS)
+    if err:
+        return err
+
+    ok, data = utils.get_favorite_topics(page=page, folder_id=folder_id,
+                                         **_credentials(request.GET))
+    if not ok:
+        return _error_response(data, fallback=StatusCode.EXTERNAL_API_FAILED)
+    return _json_response(StatusCode.SUCCESS, data=data)
+
+
+@require_http_methods(['POST'])
+def topic_favorite_add_view(request):
+    """
+    收藏帖子到收藏夹。
+
+    表单参数:
+        topic_id  (必填): 帖子 ID（取自内容列表 results[].topic_id）
+        folder_id (可选): 目标收藏夹 ID（取自「我的收藏夹」）；不传或传 0 = 默认收藏夹
+        account_id / user_id + user_token（二选一，必填）
+
+    返回 data：topic_id / folder_id / action（add）。
+    """
+    topic_id, err = _require_int(request.POST.get('topic_id', '').strip(),
+                                 'topic_id(帖子ID)', minimum=1)
+    if err:
+        return err
+    folder_id, err = _parse_folder_id(request.POST.get('folder_id'),
+                                      default=utils.FAVORITE_ALL_FOLDERS)
+    if err:
+        return err
+
+    ok, data = utils.add_favorite(topic_id, folder_id=folder_id,
+                                  **_credentials(request.POST))
+    if not ok:
+        return _error_response(data, fallback=StatusCode.EXTERNAL_API_FAILED)
+    return _json_response(StatusCode.SUCCESS, data=data, msg='收藏成功')
+
+
+@require_http_methods(['POST'])
+def topic_favorite_delete_view(request):
+    """
+    取消收藏帖子。
+
+    表单参数:
+        topic_id (必填): 帖子 ID
+        account_id / user_id + user_token（二选一，必填）
+
+    返回 data：topic_id / action（remove）。
+    """
+    topic_id, err = _require_int(request.POST.get('topic_id', '').strip(),
+                                 'topic_id(帖子ID)', minimum=1)
+    if err:
+        return err
+
+    ok, data = utils.remove_favorite(topic_id, **_credentials(request.POST))
+    if not ok:
+        return _error_response(data, fallback=StatusCode.EXTERNAL_API_FAILED)
+    return _json_response(StatusCode.SUCCESS, data=data, msg='已取消收藏')
+
+
+@require_http_methods(['POST'])
+def favorite_folder_create_view(request):
+    """
+    新建收藏夹。
+
+    表单参数:
+        folder_name (必填): 收藏夹名称（源站规则：1-12 位字符，同名会拒绝）
+        account_id / user_id + user_token（二选一，必填）
+
+    返回 data：folder_id / name / count（新建出来的收藏夹）。
+    """
+    folder_name, err = _parse_folder_name(request.POST.get('folder_name'))
+    if err:
+        return err
+
+    ok, data = utils.create_favorite_folder(folder_name, **_credentials(request.POST))
+    if not ok:
+        return _error_response(data, fallback=StatusCode.EXTERNAL_API_FAILED)
+    return _json_response(StatusCode.SUCCESS, data=data, msg='收藏夹已创建')
+
+
+@require_http_methods(['POST'])
+def favorite_folder_rename_view(request):
+    """
+    重命名收藏夹。
+
+    表单参数:
+        folder_id   (必填): 要重命名的收藏夹 ID（取自「我的收藏夹」）
+        folder_name (必填): 新名称（源站规则：1-12 位字符，不可与已有收藏夹同名）
+        account_id / user_id + user_token（二选一，必填）
+
+    返回 data：folder_id / name / action（rename）。
+    """
+    folder_id, err = _require_int(request.POST.get('folder_id', '').strip(),
+                                  'folder_id(收藏夹ID)', minimum=1)
+    if err:
+        return err
+    folder_name, err = _parse_folder_name(request.POST.get('folder_name'))
+    if err:
+        return err
+
+    ok, data = utils.rename_favorite_folder(folder_id, folder_name,
+                                            **_credentials(request.POST))
+    if not ok:
+        return _error_response(data, fallback=StatusCode.EXTERNAL_API_FAILED)
+    return _json_response(StatusCode.SUCCESS, data=data, msg='收藏夹已重命名')
+
+
+@require_http_methods(['POST'])
+def topic_favorite_delete_batch_view(request):
+    """
+    批量取消收藏（对同一账号逐条串行取消）。
+
+    表单参数:
+        topic_ids (必填): 帖子 ID，多个用逗号分隔（自动去重，单次最多 FAVORITE_BATCH_MAX 个）
+        account_id / user_id + user_token（二选一，必填）
+
+    返回 data：total / success_count / skipped_count / failed_count / items
+    （items[].state: done=已取消 / skipped=本来就没收藏 / failed=失败）。
+    """
+    raw = (request.POST.get('topic_ids') or '').strip()
+    if not raw:
+        return _json_response(StatusCode.PARAM_MISSING,
+                              msg='参数缺失: topic_ids(帖子ID，多个用逗号分隔)')
+
+    topic_ids, seen = [], set()
+    for part in raw.replace('，', ',').split(','):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            value = int(part)
+        except (TypeError, ValueError):
+            return _json_response(StatusCode.PARAM_FORMAT_ERROR,
+                                  msg=f'参数格式错误: topic_ids 含非整数项 {part}')
+        if value < 1:
+            return _json_response(StatusCode.PARAM_VALUE_INVALID,
+                                  msg=f'参数值非法: topic_ids 的每项必须 >= 1（收到 {value}）')
+        if value not in seen:
+            seen.add(value)
+            topic_ids.append(value)
+
+    if not topic_ids:
+        return _json_response(StatusCode.PARAM_MISSING,
+                              msg='参数缺失: topic_ids(帖子ID，多个用逗号分隔)')
+    if len(topic_ids) > utils.FAVORITE_BATCH_MAX:
+        return _json_response(StatusCode.PARAM_VALUE_INVALID,
+                              msg=f'参数值非法: topic_ids 单次最多 {utils.FAVORITE_BATCH_MAX} 个')
+
+    ok, data = utils.remove_favorite_batch(topic_ids, **_credentials(request.POST))
+    if not ok:
+        return _error_response(data, fallback=StatusCode.EXTERNAL_API_FAILED)
+    return _json_response(
+        StatusCode.SUCCESS, data=data,
+        msg=f'批量取消收藏完成：成功 {data["success_count"]} / 本来就没收藏 '
+            f'{data["skipped_count"]} / 失败 {data["failed_count"]}')
+
+
+@require_http_methods(['POST'])
+def favorite_folder_delete_view(request):
+    """
+    删除收藏夹（源站要求夹内为空，非空会拒绝）。
+
+    表单参数:
+        folder_id (必填): 收藏夹 ID（取自「我的收藏夹」）
+        account_id / user_id + user_token（二选一，必填）
+
+    返回 data：folder_id / action（delete）。
+    """
+    folder_id, err = _require_int(request.POST.get('folder_id', '').strip(),
+                                  'folder_id(收藏夹ID)', minimum=1)
+    if err:
+        return err
+
+    ok, data = utils.delete_favorite_folder(folder_id, **_credentials(request.POST))
+    if not ok:
+        return _error_response(data, fallback=StatusCode.EXTERNAL_API_FAILED)
+    return _json_response(StatusCode.SUCCESS, data=data, msg='收藏夹已删除')
+
+
+@require_http_methods(['GET'])
 def video_m3u8_view(request):
     """
     获取可直接播放的视频播放列表（m3u8 文本）。
@@ -977,7 +1249,7 @@ def register_captcha_view(request):
     （后续接入验证码识别后即可自动化）。
 
     表单参数:
-        use_proxy (可选): true=经巨量代理请求，false/不传=直连（默认 false）
+        use_proxy (可选): true=经 51代理 请求，false/不传=直连（默认 false）
     """
     use_proxy_raw = request.POST.get('use_proxy', '').strip().lower()
     if use_proxy_raw in ('',) + _FALSE_VALUES:

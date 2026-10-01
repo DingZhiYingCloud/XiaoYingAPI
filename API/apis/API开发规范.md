@@ -119,7 +119,7 @@ urlpatterns = [
 | `uploads/urls.py` | 单体 | 3 个上传端点，共用 `_handle_upload` |
 | `feedback/urls.py` | 单体 | create/reply/list/detail/replies，共用 `_require_app`、`_fail_response` |
 | `musics/xiaoying/urls.py` | 聚合-线路 | Music + MusicSource 强关联聚合于同一三件套 |
-| `ProxyIp/ProxyIP_66daili/urls.py` | 聚合-线路 | 每个代理来源一条线路，结构完全一致 |
+| `ProxyIp/ProxyIP_51daili/urls.py` | 聚合-线路 | 每个代理来源一条线路，结构完全一致 |
 
 ---
 
@@ -220,8 +220,9 @@ path('upload/', include('API.apis.uploads.urls')),  # 文件上传
 
 ### 5.3 匿名访问
 
-- 仅两类可免签名：服务策略中**显式 `open`** 的节点；`ApiAuthMiddleware.PUBLIC_GET_PATHS` 列出的公开 GET 路径（如邮箱激活链接）。
-- 新增服务需要匿名时，走 `/console/services/` 把对应服务/线路/端点设为「开放」（页面同时展示真实生效结果），**不要**在视图里绕过中间件。
+- 仅两类可免签名：服务策略中**显式 `open`** 的节点；`ApiAuthMiddleware.PUBLIC_PATHS` 列出的公开路径（GET / HEAD，如邮箱激活链接、红果短剧网页直出流）。
+- `PUBLIC_PATHS` 是**与 DB 解耦**的代码兜底：策略表是运营数据，会被误删、换环境也不会自动重建，而「浏览器直连、带不了签名」的接口丢了例外就会整片 20011，故必须在代码里再保一份。
+- 新增服务需要匿名时，走 `/console/services/` 把对应服务/线路/端点设为「开放」（页面同时展示真实生效结果），**不要**在视图里绕过中间件。散落的例外若属于「策略表必须有」的种子，另需登记到 `API/website/service_presets.py`（见 5.5）。
 
 ### 5.4 对外状态（只有「正常」可调用）
 
@@ -231,6 +232,14 @@ path('upload/', include('API.apis.uploads.urls')),  # 文件上传
   - 「已下线」（offline）→ `30005` 服务已下线
 - 拦截发生在认证之前（`ApiAuthMiddleware` 首段，见 `_STATUS_BLOCK_CODES`），因此想让接口可调用，必须把**生效状态**配成「正常」，而不是靠 `open`。
 - 服务对外状态与认证模式同表管理（`status` / `auth_mode`），三级可继承；**无需任何重建命令**。
+
+### 5.5 建议策略清单（策略表的最小例外集合）
+
+- 清单唯一出处：`API/website/service_presets.py`（表格式：路径前缀 / 名称 / 层级 / 认证模式 / 状态 / 为什么需要）。
+- 两处共用同一份清单与同一套语义：后台 `/console/services/` 的「一键新建建议策略」（**先预览、确认后执行**）、`python manage.py seed_service_policies [--dry-run]`。
+- 语义：**只新建缺失的**，已存在的一律跳过 —— 绝不覆盖后台里的自定义配置，故可反复执行。
+- 数据迁移标记为已执行后不会重跑，策略表被清空 / 换环境重建时数据不会自己回来（本清单就是为此而设）；增删改一律改该文件，且每条的值必须与对应数据迁移**逐字段一致**（含 `level`），否则「一键新建」与「跑迁移」会得到不同的鉴权结果。
+- 清单里另有已知的存量瑕疵：4 条 `level` 与迁移原文一致、但与服务树的真实归类不符（详见 `service_presets.py` 注释），仅影响列表里的层级徽标，编辑保存一次即自动纠正。
 
 ---
 

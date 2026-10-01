@@ -47,9 +47,10 @@ def haijiao_post_view(request):
     纯前端页面：板块 / 标签 / 正文与媒体上传都调本服务的海角接口（经 /docs/_call/ 服务端代签），
     账号凭据由使用者在页面上填自己的海角「用户ID + Token」。
     """
-    # 源站域名只有一个出处（海角域名不固定），从爬虫层取，注入模板供前端拼接帖子链接
-    from SpiderServices.haijiao.utils import BASE_URL
-    return render(request, 'post.html', {'haijiao_base_url': BASE_URL})
+    # 源站域名只有一个出处（海角域名每日变动，由爬虫自动跟随今日域名），
+    # 注入模板供前端拼接帖子链接
+    from SpiderServices.haijiao.utils import current_base_url
+    return render(request, 'post.html', {'haijiao_base_url': current_base_url()})
 
 
 # ==================== 多语言切换 ====================

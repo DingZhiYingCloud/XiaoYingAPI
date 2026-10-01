@@ -14,17 +14,24 @@
 
 金币签到：用账号表里存的 user_id + token 调源站签到接口（见 sign_in / sign_in_all），
 先查任务状态再提交，已签到不重复提交。
+
+自动注册：iter_auto_register() 把「取码 → 超级鹰打码 → 提交」串成一条流并逐帧报进度，
+源站回「验证码错误」时自动向超级鹰报错返分并换图重试（详见该函数说明）；
+仅供超管控制台的自动注册页使用，不提供对外接口。
 """
 import base64
 import logging
 import secrets
 import string
+import time
 
 from django.core.cache import caches
 from django.db.models import Q
 from django.utils.timezone import localdate
 
+from API.apis.chaojiying import utils as chaojiying_utils
 from API.models import HaijiaoAccount
+from SpiderServices.haijiao import utils as spider_utils
 from SpiderServices.haijiao.main import HaijiaoSpider
 
 logger = logging.getLogger(__name__)
@@ -62,6 +69,11 @@ def _run(action, fn, user_id=None, user_token=None):
 def get_topics(tab='hot', page=1):
     """获取内容列表（分页）"""
     return _run("获取内容列表", lambda s: s.get_topics(tab=tab, page=page))
+
+
+def get_domain_config():
+    """获取今日域名配置（今日大陆可访问域名 / 备用 / 海外 / 影视站域名 + 客服邮箱）"""
+    return _run("获取今日域名配置", lambda s: s.get_domain_config())
 
 
 def get_topic_detail(topic_id, user_id=None, user_token=None):
@@ -134,14 +146,16 @@ def generate_credentials() -> dict:
     return {'username': username, 'password': password, 'email': f'{username}@{domain}.com'}
 
 
-def create_register_captcha(use_proxy=False):
+def _fetch_one_captcha(provider=None):
     """
-    取注册验证码（两步式注册的第一步）。
+    取一张注册验证码，并把「验证码会话」写入缓存（人工注册与自动注册共用）。
 
-    :param use_proxy: 是否经巨量代理请求（源站注册有 IP 限制）
-    :return: (True, {captcha_token, captcha_image, expires_in, use_proxy, proxy}) 或 (False, msg)
+    源站要求取码与提交注册必须同一出口 IP，故代理不放请求参数、而是随会话缓存带回。
+
+    :param provider: 代理出口线路，取值见 PROXY_PROVIDERS；None / 'direct' = 直连
+    :return: (True, (captcha_token, 源站原始返回 dict)) 或 (False, msg)
     """
-    ok, result = _run("获取注册验证码", lambda s: s.register_captcha(use_proxy=use_proxy))
+    ok, result = _run("获取注册验证码", lambda s: s.register_captcha(provider=provider))
     if not ok:
         return False, result
 
@@ -152,12 +166,28 @@ def create_register_captcha(use_proxy=False):
         # 取码会话 Cookie：验证码若与会话绑定，提交时必须复用
         'cookies': result.get('cookies'),
     }, SESSION_TTL)
+    return True, (token, result)
+
+
+def create_register_captcha(use_proxy=False):
+    """
+    取注册验证码（两步式注册的第一步）。
+
+    :param use_proxy: 是否经代理请求（源站注册有 IP 限制）；true 时用默认代理线路
+                      DEFAULT_PROXY_PROVIDER，false = 直连
+    :return: (True, {captcha_token, captcha_image, expires_in, use_proxy, proxy}) 或 (False, msg)
+    """
+    ok, result = _fetch_one_captcha(
+        DEFAULT_PROXY_PROVIDER if use_proxy else None)
+    if not ok:
+        return False, result
+    token, raw = result
     return True, {
         'captcha_token': token,
-        'captcha_image': _image_data_uri(result.get('captcha_image') or b''),
+        'captcha_image': _image_data_uri(raw.get('captcha_image') or b''),
         'expires_in': SESSION_TTL,
         'use_proxy': bool(use_proxy),
-        'proxy': result.get('proxy'),
+        'proxy': raw.get('proxy'),
     }
 
 
@@ -263,6 +293,179 @@ def register_batch(items):
         'failed_count': len(results) - success_count,
         'items': results,
     }
+
+
+# ==================== 自动注册（超级鹰打码） ====================
+
+# 识别类型的**默认值**（按站点当前验证码形态定，控制台页面上可改，
+# 取值见 SpiderServices.Chaojiying.utils.CODETYPES：1902 = 4~6 位英文数字）。
+OCR_CODETYPE = '1902'
+
+# 代理出口的**默认线路**（控制台页面上可改；直连用 'direct' 表示）
+DEFAULT_PROXY_PROVIDER = '51daili'
+
+# 单个账号的验证码最多尝试几次（失败一次就换一张新图重新识别）
+MAX_CAPTCHA_RETRY = 3
+# 判定「源站因验证码拒绝」的关键词
+CAPTCHA_ERROR_KEYWORD = '验证码'
+# 报错返分的重试次数与退避基数（秒）
+REFUND_RETRIES = 3
+REFUND_RETRY_DELAY = 1.0
+# 平台的「确定性拒绝」错误码：重试没有意义，发一次就收手，免得反复打扰平台
+# （取值见 SpiderServices/Chaojiying/utils.py 的 ERROR_CODES / 官方错误码表）
+_REFUND_FATAL_CODES = (-1011, -1013, -10132, -10133)
+
+
+def _is_captcha_error(message) -> bool:
+    """源站的失败消息是否为「验证码」类错误（即打码没打对）
+
+    实测源站在验证码错误时返回 {"errorCode":1000,"message":"验证码错误"}，
+    按关键词而非整句匹配，源站换文案也能命中。
+    """
+    return CAPTCHA_ERROR_KEYWORD in str(message or '')
+
+
+def _report_ocr_error(pic_id):
+    """调超级鹰「报错返分」退回这次识别扣掉的题分
+
+    官方口径（https://www.chaojiying.com/api-5.html）：仅识别结果确实错误时才可调用，
+    且必须在拿到 pic_id 后 3 分钟内——本流程是秒级调用，天然满足。
+
+    失败会退避重试 REFUND_RETRIES 次（官方要求「识别错了就必须报错返分」，
+    所以这里尽力而为，不能一次失败就算了）；命中平台的确定性拒绝码则不再重试。
+
+    :return: (是否退分成功, 失败原因)
+    """
+    if not pic_id:
+        return False, '缺少 pic_id'
+    reason = ''
+    for attempt in range(1, REFUND_RETRIES + 1):
+        result = chaojiying_utils.report_error(pic_id)
+        code = result.get('code')
+        if code == 0:
+            return True, ''
+        reason = f'错误码 {code}: {result.get("message")}'
+        logger.warning('超级鹰报错返分失败（第 %s/%s 次）: pic_id=%s %s',
+                       attempt, REFUND_RETRIES, pic_id, reason)
+        if code in _REFUND_FATAL_CODES or attempt == REFUND_RETRIES:
+            break
+        time.sleep(REFUND_RETRY_DELAY * attempt)
+    return False, reason
+
+
+def iter_auto_register(count, provider=DEFAULT_PROXY_PROVIDER, max_retry=MAX_CAPTCHA_RETRY,
+                       codetype=OCR_CODETYPE):
+    """自动注册账号（取码 → 超级鹰打码 → 提交入库），逐帧 yield 进度
+
+    出口三选一（对应控制台页面上的「出口」下拉）：直连，或经 51代理 / 巨量代理
+    （源站对注册有 IP 限制）。
+
+    单个账号的流程：
+      ① 取一张注册验证码（用户名 / 密码 / 邮箱服务端自动生成）；
+      ② 上传超级鹰识别（识别类型 codetype，上传即扣题分）；
+      ③ 提交注册（与取码复用同一出口 IP）。若源站回「验证码错误」——打码没打对——
+         就调超级鹰「报错返分」退回这 15 题分，并换一张新验证码重试（最多 max_retry 次）；
+         其它失败（网络异常 / 用户名已存在 / 密码不合规 …）**不返分**：
+         那些情况超级鹰并没有识别错，恶意报错会被平台评估信用。
+
+    **重试口径**：只有源站明确给出「非验证码」的业务性拒绝（如用户名已存在）才直接判失败；
+    取码失败（源站偶尔把验证码图 302 到备用域名后 404）、打码平台失败、验证码错误
+    这几种都换一张重来 —— 前两种没花题分、第三种尝试返分，重试的边际成本很低。
+    每次重试都会**重新取一条代理**（换出口），坏出口不会拖死整批。
+
+    注册成功的账号由 submit_register 自动写入账号库（密码 AES 加密落库）。
+
+    :param count: 要注册的账号数（1 ~ MAX_BATCH_SIZE）
+    :param provider: 代理出口线路（见 SpiderServices.haijiao.main.PROXY_PROVIDERS），
+                     默认 DEFAULT_PROXY_PROVIDER；'direct' 或 None = 直连
+    :param max_retry: 单个账号最多尝试几次验证码（含首次）
+    :param codetype: 超级鹰识别类型（取值见 SpiderServices.Chaojiying.utils.CODETYPES），
+                     默认 OCR_CODETYPE；不同类型单价不同，由调用方选
+    :return: 生成器，逐帧 yield dict（字节由视图层序列化成 SSE 帧）：
+        {'type': 'start',  'total'}
+        {'type': 'log',    'index', 'total', 'text'}
+        {'type': 'result', 'index', 'total', 'success', 'username', 'password',
+                           'email', 'user_id', 'attempts', 'refunded', 'message'}
+        {'type': 'done',   'total', 'success_count', 'failed_count', 'ocr_count',
+                           'refund_count', 'refund_failed_count', 'elapsed'}
+    """
+    started = time.monotonic()
+    success_count = ocr_count = refund_count = refund_failed = 0
+    refunded = False
+
+    def refund(pic_id):
+        """报错返分并累计计数，返回给日志用的一句话
+
+        官方要求「识别错了就必须报错返分」，故失败要如实报出来（题分是真金白银），
+        不能静默吞掉；成功/失败次数都会进 done 帧的汇总。
+        """
+        nonlocal refunded, refund_count, refund_failed
+        ok, reason = _report_ocr_error(pic_id)
+        refunded = refunded or ok
+        refund_count += int(ok)
+        refund_failed += int(not ok)
+        return f'报错返分{"成功" if ok else f"失败（{reason}）"}'
+
+    yield {'type': 'start', 'total': count}
+
+    for index in range(1, count + 1):
+        # 凭据只生成一次：打码失败时源站并没有建号，重试沿用同一套凭据即可
+        creds = generate_credentials()
+        username, password, email = creds['username'], creds['password'], creds['email']
+        info, message, attempts = {}, '', 0
+        refunded = success = False
+
+        for attempt in range(1, max_retry + 1):
+            attempts = attempt
+            yield {'type': 'log', 'index': index, 'total': count,
+                   'text': f'第 {attempt} 次：获取注册验证码'}
+
+            got, captcha = _fetch_one_captcha(provider=provider)
+            if not got:
+                message = str(captcha)      # 取码失败（网络 / 源站把图片 302 到备用域名后 404）
+                continue
+            token, raw = captcha
+
+            yield {'type': 'log', 'index': index, 'total': count,
+                   'text': f'超级鹰识别中（{codetype}）'}
+            ocr = chaojiying_utils.recognize(raw.get('captcha_image') or b'', codetype)
+            ocr_data = ocr.get('data') or {}
+            if ocr.get('code') != 0:
+                message = f"打码失败: {ocr.get('message')}"
+                continue                    # 打码平台侧失败：没拿到识别结果，同样换一张重来
+            ocr_count += 1
+
+            code = (ocr_data.get('pic_str') or '').strip()
+            if not code:
+                # 识别成功但没回结果：等同于打码失败，同样报错返分再换一张
+                tip = refund(ocr_data.get('pic_id'))
+                message = f'打码结果为空（{tip}）'
+                continue
+
+            yield {'type': 'log', 'index': index, 'total': count,
+                   'text': f'识别结果 {code}，提交注册'}
+            ok, res = submit_register(token, code, username, password, email)
+            if ok:
+                success, info, message = True, res, '注册成功'
+                break
+
+            message = str(res)
+            if not _is_captcha_error(message):
+                break                       # 非验证码问题：不返分，也不重试
+            tip = refund(ocr_data.get('pic_id'))
+            yield {'type': 'log', 'index': index, 'total': count,
+                   'text': f'源站回「{message}」→ {tip}，换一张验证码重试'}
+
+        success_count += int(success)
+        yield {'type': 'result', 'index': index, 'total': count, 'success': success,
+               'username': username, 'password': password if success else '',
+               'email': email, 'user_id': info.get('user_id') if success else None,
+               'attempts': attempts, 'refunded': refunded, 'message': message}
+
+    yield {'type': 'done', 'total': count, 'success_count': success_count,
+           'failed_count': count - success_count, 'ocr_count': ocr_count,
+           'refund_count': refund_count, 'refund_failed_count': refund_failed,
+           'elapsed': round(time.monotonic() - started, 1)}
 
 
 # ==================== 登录 ====================
@@ -673,6 +876,131 @@ def get_liked_topics(page=1, account_id=None, user_id=None, user_token=None):
     if err:
         return False, err
     return _run("获取点赞过的帖子", lambda s: s.get_liked_topics(page=page),
+                user_id=uid, user_token=token)
+
+
+# ==================== 收藏 ====================
+
+# folder_id 取该值时表示「全部收藏」（跨收藏夹）；HTTP 层不传 folder_id 即用此默认值。
+# 收藏夹名长度上限同样是源站规则，二者都直接取自爬虫层，避免两处各写一份。
+FAVORITE_ALL_FOLDERS = spider_utils.FAVORITE_ALL_FOLDERS
+FAVORITE_FOLDER_NAME_MAX = spider_utils.FAVORITE_FOLDER_NAME_MAX
+FAVORITE_BATCH_MAX = spider_utils.FAVORITE_BATCH_MAX
+
+
+def get_favorite_folders(account_id=None, user_id=None, user_token=None):
+    """我的收藏夹列表（需登录态）"""
+    uid, token, _, err = _resolve_credentials(account_id, user_id, user_token)
+    if err:
+        return False, err
+    return _run("获取收藏夹列表", lambda s: s.get_favorite_folders(),
+                user_id=uid, user_token=token)
+
+
+def get_favorite_topics(page=1, folder_id=FAVORITE_ALL_FOLDERS,
+                        account_id=None, user_id=None, user_token=None):
+    """我收藏的帖子（分页，可按收藏夹筛选；需登录态）"""
+    uid, token, _, err = _resolve_credentials(account_id, user_id, user_token)
+    if err:
+        return False, err
+    return _run("获取收藏的帖子",
+                lambda s: s.get_favorite_topics(page=page, folder_id=folder_id),
+                user_id=uid, user_token=token)
+
+
+def add_favorite(topic_id, folder_id=FAVORITE_ALL_FOLDERS,
+                 account_id=None, user_id=None, user_token=None):
+    """收藏帖子到指定收藏夹（folder_id 默认 0 = 默认收藏夹；需登录态）"""
+    uid, token, _, err = _resolve_credentials(account_id, user_id, user_token)
+    if err:
+        return False, err
+    return _run("收藏帖子",
+                lambda s: s.add_favorite(topic_id, folder_id=folder_id),
+                user_id=uid, user_token=token)
+
+
+def remove_favorite(topic_id, account_id=None, user_id=None, user_token=None):
+    """取消收藏帖子（需登录态）"""
+    uid, token, _, err = _resolve_credentials(account_id, user_id, user_token)
+    if err:
+        return False, err
+    return _run("取消收藏", lambda s: s.remove_favorite(topic_id),
+                user_id=uid, user_token=token)
+
+
+# 源站对「取消一个本来就没收藏的帖子」的回执文案（批量时归入 skipped，不当成失败）
+FAVORITE_NOT_COLLECTED_HINTS = ('无法删除无效的数据',)
+
+
+def remove_favorite_batch(topic_ids, account_id=None, user_id=None, user_token=None):
+    """
+    批量取消收藏：对同一账号**逐条串行**取消给定的帖子。
+
+    为什么不用源站的原生批量（entityIds 逗号多值）：它是「按顺序删、遇到没收藏的就报错中止、
+    **已删的不回滚**」，实测会返回「失败但其实已删掉一半」的误导结果，调用方据此重试或放弃
+    都会出错。逐条串行后每条的结果都是确定的。
+
+    稳定性处理（与「批量点赞 / 批量关注」同一套口径）：
+    - 逐个**串行**执行（不并发），避免瞬时多请求被源站判定为异常批量行为；
+    - 每条单独 try，**单条失败不影响其它条目**；
+    - 取消收藏是写操作，爬虫层已关闭业务与网络重试，不会重复提交；
+    - 本来就没收藏的帖子（源站回「无法删除无效的数据」）计入 skipped，不算失败。
+
+    :param topic_ids: 帖子 ID 列表（调用方需保证已去重、且在 FAVORITE_BATCH_MAX 之内）
+    :return: (True, {total, success_count, skipped_count, failed_count, items})
+    """
+    uid, token, _, err = _resolve_credentials(account_id, user_id, user_token)
+    if err:
+        return False, err
+
+    results = []
+    for topic_id in topic_ids:
+        ok, res = _run("取消收藏",
+                       lambda s, tid=topic_id: s.remove_favorite(tid),
+                       user_id=uid, user_token=token)
+        item = {'topic_id': topic_id, 'state': 'done', 'message': ''}
+        if not ok:
+            if any(hint in res for hint in FAVORITE_NOT_COLLECTED_HINTS):
+                item.update(state='skipped', message='本来就没收藏')
+            else:
+                item.update(state='failed', message=res)
+        results.append(item)
+
+    counts = {state: sum(1 for r in results if r['state'] == state)
+              for state in ('done', 'skipped', 'failed')}
+    return True, {
+        'total': len(results),
+        'success_count': counts['done'],
+        'skipped_count': counts['skipped'],
+        'failed_count': counts['failed'],
+        'items': results,
+    }
+
+
+def rename_favorite_folder(folder_id, name, account_id=None, user_id=None, user_token=None):
+    """重命名收藏夹（源站复用「新建」接口；需登录态）"""
+    uid, token, _, err = _resolve_credentials(account_id, user_id, user_token)
+    if err:
+        return False, err
+    return _run("重命名收藏夹", lambda s: s.rename_favorite_folder(folder_id, name),
+                user_id=uid, user_token=token)
+
+
+def create_favorite_folder(name, account_id=None, user_id=None, user_token=None):
+    """新建收藏夹（需登录态）"""
+    uid, token, _, err = _resolve_credentials(account_id, user_id, user_token)
+    if err:
+        return False, err
+    return _run("新建收藏夹", lambda s: s.create_favorite_folder(name),
+                user_id=uid, user_token=token)
+
+
+def delete_favorite_folder(folder_id, account_id=None, user_id=None, user_token=None):
+    """删除收藏夹（源站要求夹内为空；需登录态）"""
+    uid, token, _, err = _resolve_credentials(account_id, user_id, user_token)
+    if err:
+        return False, err
+    return _run("删除收藏夹", lambda s: s.delete_favorite_folder(folder_id),
                 user_id=uid, user_token=token)
 
 

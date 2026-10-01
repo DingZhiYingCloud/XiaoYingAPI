@@ -17,13 +17,20 @@ AES-128 密钥需用源站自带的 jquery.wasm 由 jquery_key(假key, 盐) 还�
 import base64
 import json
 import re
+import time
 from pathlib import Path
 from urllib.parse import quote, urlencode
 
+import requests
+from django.conf import settings
+from django.core.cache import caches
+
 # 站点根地址（页面 {BASE_URL}/home，接口同域 /api/...）
-# ⚠️ 海角的域名**不固定**（大陆可访问的域名会变），全项目只在这里定义一次：
-#    换域名时**只改这一行**——爬虫的全部接口地址、请求头里的 origin / referer、
-#    头像与图片地址都由它拼出来；前端发帖页的帖子链接、文档里的地址示例也都从它取值。
+# ⚠️ 海角的大陆可访问域名**每日变动**，源站用配置接口公布当日可用域名。
+#    本值只作「探测失败时的兜底」：爬虫每次新建会话前会调 current_base_url() 自动跟随
+#    今日域名（见文件末尾「今日域名」一节），跟随成功后会一并改写下面 BASE_URL 与由它
+#    派生的全部地址常量、以及请求头里的 origin / referer。
+#    爬虫的全部接口地址、头像与图片地址都由它拼出来；前端发帖页的帖子链接也从它取值。
 BASE_URL = 'https://dbaa49fb2c7091.top'
 
 # 基础请求头：pcver 为 PC 端版本标记，缺省会按非 PC 端处理，故必须携带
@@ -167,6 +174,31 @@ FANS_URL = f'{BASE_URL}/api/user/fans'                   # 我的粉丝（分页
 LIKE_URL = f'{BASE_URL}/api/topic/like'                  # 点赞：GET 查状态 / POST <帖子ID> 点赞取关
 LIKED_TOPICS_URL = f'{BASE_URL}/api/topic/like/topics'   # 我点赞过的帖子（分页）
 
+# 收藏（源站 /post/collection 页，走 /api/favorite/v2/...，读写都需登录态）
+FAVORITE_FOLDER_LIST_URL = f'{BASE_URL}/api/favorite/v2/folderList'   # 我的收藏夹（含每个夹子的帖子数）
+FAVORITE_TOPICS_URL = f'{BASE_URL}/api/favorite/v2/topics'            # 收藏的帖子（可按收藏夹筛选）
+FAVORITE_ADD_URL = f'{BASE_URL}/api/favorite/v2/add'                  # 收藏帖子
+FAVORITE_DELETE_URL = f'{BASE_URL}/api/favorite/v2/delete'            # 取消收藏帖子
+FAVORITE_FOLDER_ADD_URL = f'{BASE_URL}/api/favorite/v2/folderAdd'     # 新建 / 编辑收藏夹
+FAVORITE_FOLDER_DEL_URL = f'{BASE_URL}/api/favorite/v2/folderDel'     # 删除收藏夹
+
+# 收藏对象类型：topic=帖子（源站另有 videoCenter=站内视频，本服务未开放）
+FAVORITE_ENTITY_TOPIC = 'topic'
+
+# folderId 取该值时表示「全部收藏」（跨所有收藏夹）。
+# 实测：不传 folderId 与传 0 返回结果完全一致（都跨夹返回），传具体夹 id 才只返回该夹。
+# 写操作里该值同样表示「默认收藏夹」（收藏时不传 folderId 与传 0 等效）。
+FAVORITE_ALL_FOLDERS = 0
+# 收藏列表每页条数（与源站默认一致）
+FAVORITE_PAGE_SIZE = 20
+# 收藏夹名称长度（源站校验文案：收藏夹名称为 1-12 位字符）
+FAVORITE_FOLDER_NAME_MAX = 12
+# 单次批量取消收藏的帖子数上限。
+# 源站的原生批量（entityIds 逗号多值）是「按顺序删、遇到没收藏的就报错中止、**已删的不回滚**」，
+# 会返回「失败但实际删了一半」的误导结果，故服务层改为逐条串行调用（见 API 层 remove_favorite_batch）；
+# 逐条串行每次约 1~2 秒，这里用上限挡住「一次传上千个」把请求长时间挂住。
+FAVORITE_BATCH_MAX = 50
+
 # 社交类列表每页条数（与源站默认一致）
 SOCIAL_PAGE_SIZE = 20
 # 点赞的 entityType（帖子；源站视频用 videoCenter，本服务未开放）
@@ -191,6 +223,47 @@ def build_fans_url(page: int, limit: int) -> str:
 def build_liked_topics_url(page: int, limit: int) -> str:
     """我点赞过的帖子接口地址"""
     return f'{LIKED_TOPICS_URL}?page={page}&limit={limit}'
+
+
+def build_favorite_topics_url(folder_id, page: int, limit: int) -> str:
+    """我收藏的帖子接口地址
+
+    :param folder_id: 收藏夹 ID；FAVORITE_ALL_FOLDERS（0）表示全部收藏（跨收藏夹）
+    """
+    return f'{FAVORITE_TOPICS_URL}?folderId={folder_id}&page={page}&limit={limit}'
+
+
+def build_favorite_add_url(folder_id, topic_id) -> str:
+    """收藏帖子接口地址（folder_id=FAVORITE_ALL_FOLDERS 表示默认收藏夹）
+
+    源站同一地址重复提交不会报错（收藏已收藏的帖子仍是成功），故调用方无需先查再收藏。
+    """
+    return (f'{FAVORITE_ADD_URL}?entityType={FAVORITE_ENTITY_TOPIC}'
+            f'&folderId={folder_id}&entityId={topic_id}')
+
+
+def build_favorite_delete_url(topic_id) -> str:
+    """取消收藏接口地址（entityIds 源站支持逗号分隔的多值，本服务只开放单个）"""
+    return (f'{FAVORITE_DELETE_URL}?entityType={FAVORITE_ENTITY_TOPIC}'
+            f'&entityIds={topic_id}')
+
+
+def build_favorite_folder_add_url(folder_name: str,
+                                  folder_id=FAVORITE_ALL_FOLDERS) -> str:
+    """新建 / 重命名收藏夹接口地址（源站两个操作复用同一地址）
+
+    folder_id 为 FAVORITE_ALL_FOLDERS（0）时是「新建」；传已有收藏夹 id 时是「重命名」。
+
+    注意：重命名成功时源站返回的是个**假对象**（id 恒为 0、createdAt 为 0001-01-01），
+    不能用它回传 folder_id，调用方按传入值回传即可。
+    """
+    return (f'{FAVORITE_FOLDER_ADD_URL}?folderId={folder_id}'
+            f'&folderName={quote(folder_name)}')
+
+
+def build_favorite_folder_delete_url(folder_id) -> str:
+    """删除收藏夹接口地址（源站要求夹内为空，非空会拒绝）"""
+    return f'{FAVORITE_FOLDER_DEL_URL}?folderId={folder_id}'
 
 
 def build_like_url(topic_id) -> str:
@@ -312,3 +385,135 @@ def decode_image(text: str) -> str:
         if d != 64:
             out.append((((c & 3) << 6) | d) & 0xFF)
     return out.decode('utf-8', 'replace')
+
+
+# ==================== 今日域名 ====================
+# 海角的大陆可访问域名**每日变动**，源站用配置接口公布当日可用域名。站点首页加载时就请求它：
+#     GET {任意海角域名}/api/login/conf
+# 返回的 domain 即「今日大陆直接访问网址」（源站首页弹窗提示取的就是这个字段），
+# 另有备用域名 / 海外永久域名 / 影视站域名与客服邮箱（域名失效时用客服邮箱取最新）。
+
+# 配置接口路径
+DOMAIN_CONF_PATH = '/api/login/conf'
+
+# 源站配置字段 -> 对外字段名（对外统一下划线命名，与项目其它接口风格一致）
+DOMAIN_FIELDS = {
+    'domain': 'domain',                      # 今日大陆可直接访问域名
+    'backupDomain': 'backup_domain',         # 备用域名
+    'domainAbroad': 'abroad_domain',         # 海外永久域名（需科学上网）
+    'hjMovie': 'movie_domain',               # 影视站域名
+    'customerService': 'customer_service',   # 客服邮箱
+}
+
+# 探测入口：先问当前 BASE_URL（多数时候它还能用），失败再依次问这些永久入口。
+# www.haijiao.com 是源站公布的海外永久域名，域名轮换期间通常仍可访问。
+DOMAIN_PROBE_FALLBACKS = ('https://www.haijiao.com',)
+
+# 今日域名缓存 TTL（秒，可由 .env 的 HAIJIAO_DOMAIN_CACHE_TTL 覆盖，默认 30 分钟）
+DOMAIN_TTL = int(getattr(settings, 'HAIJIAO_DOMAIN_CACHE_TTL', 30)) * 60
+# 探测失败后的重试间隔（秒）：源站抖动时避免每次请求都去探测
+DOMAIN_RETRY_TTL = 60
+# 探测请求超时（秒）：与常规请求分开，源站不通时也不至于把接口拖住
+DOMAIN_PROBE_TIMEOUT = 5
+
+# 探测请求头：不带 origin / referer——探测时新域名尚未确定，带上旧域名可能被源站拒绝
+_PROBE_HEADERS = {k: v for k, v in API_HEADERS.items() if k not in ('origin', 'referer')}
+
+_cache = caches['haijiao']
+_DOMAIN_CACHE_KEY = 'domain:config'
+# 进程内失败时间戳：仅用于失败后的短暂节流（成功即清零）
+_domain_failed_at = 0.0
+
+
+def _fetch_domain_config(entry: str) -> dict:
+    """从指定入口请求配置接口并解析出域名配置
+
+    :param entry: 入口站点根地址
+    :return: {domain, backup_domain, abroad_domain, movie_domain, customer_service}
+    """
+    resp = requests.get(f'{entry.rstrip("/")}{DOMAIN_CONF_PATH}',
+                        headers=_PROBE_HEADERS, timeout=DOMAIN_PROBE_TIMEOUT)
+    resp.raise_for_status()
+    envelope = resp.json()
+    if not envelope.get('success'):
+        raise RuntimeError(f'源站返回失败: {envelope.get("message") or envelope.get("errorCode")}')
+    payload = decode_payload(envelope['data'])
+    config = {out: str(payload.get(src) or '').strip() for src, out in DOMAIN_FIELDS.items()}
+    if not config['domain']:
+        raise RuntimeError('源站未返回今日域名（domain）')
+    return config
+
+
+def resolve_domain_config() -> dict:
+    """获取今日域名配置（成功结果缓存 DOMAIN_TTL）
+
+    缓存未命中时依次探测「当前 BASE_URL → DOMAIN_PROBE_FALLBACKS」；全部失败抛
+    RuntimeError，并在 DOMAIN_RETRY_TTL 内直接失败（不重复探测，避免拖慢接口）。
+
+    :return: {domain, backup_domain, abroad_domain, movie_domain, customer_service}
+    """
+    global _domain_failed_at
+    cached = _cache.get(_DOMAIN_CACHE_KEY)
+    if cached:
+        return cached
+
+    now = time.time()
+    if now - _domain_failed_at < DOMAIN_RETRY_TTL:
+        raise RuntimeError('今日域名探测失败（稍后自动重试）')
+
+    error = None
+    for entry in (BASE_URL,) + DOMAIN_PROBE_FALLBACKS:
+        try:
+            config = _fetch_domain_config(entry)
+        except Exception as e:      # noqa: BLE001 - 逐个入口尝试，全部失败才算失败
+            error = e
+            continue
+        _cache.set(_DOMAIN_CACHE_KEY, config, DOMAIN_TTL)
+        _domain_failed_at = 0.0
+        return config
+
+    _domain_failed_at = now
+    raise RuntimeError(f'今日域名探测失败: {error}')
+
+
+def set_base_url(base: str) -> None:
+    """把站点根地址切到 base，并改写由它派生的全部地址常量与请求头
+
+    海角域名每日变动，故 BASE_URL 不能只当模块级常量用——依赖它的 20 余个地址常量
+    在模块导入时就已求值，必须在这里一并换掉前缀，否则会出现「域名换了、地址还是旧的」。
+
+    :param base: 站点根地址（结尾斜杠可有可无）
+    """
+    global BASE_URL
+    base = base.rstrip('/')
+    old = BASE_URL
+    if not base or base == old:
+        return
+
+    BASE_URL = base
+    # 模块内所有「以旧域名开头」的字符串常量（含 WEALTH_LOG_URL 这类字典的值、
+    # 以及 API_HEADERS 里的 origin / referer）统一换前缀；不依赖它的常量不受影响。
+    for name, value in list(globals().items()):
+        if name.startswith('_'):
+            continue
+        if isinstance(value, str) and value.startswith(old):
+            globals()[name] = base + value[len(old):]
+        elif isinstance(value, dict):
+            for key, item in value.items():
+                if isinstance(item, str) and item.startswith(old):
+                    value[key] = base + item[len(old):]
+
+
+def current_base_url() -> str:
+    """当前应使用的站点根地址（爬虫每次新建会话前调用，自动跟随今日域名）
+
+    探测失败时沿用现有值（含模块加载时的兜底地址），保证接口不会因为「取不到新域名」而整体不可用。
+
+    :return: 站点根地址，形如 https://xxx.top
+    """
+    try:
+        config = resolve_domain_config()
+    except RuntimeError:
+        return BASE_URL
+    set_base_url(config['domain'])
+    return BASE_URL

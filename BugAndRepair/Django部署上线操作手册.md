@@ -458,7 +458,8 @@ proxy_set_header Host $host;
 | 登录功能 | 输入错误密码 | 200 + 错误提示（不是 500） |
 | 超管入口 | 用超管账号登录 | 登录成功、回跳首页、页头出现「超级管理员」 |
 | 超管控制台 | 进入 `/console/projects/` | 200，可增删改查接入项目 |
-| 控制台首页 | 进入 `/console/` | 200，左侧导航「概览 / 接口治理 / 数据运营 / 用户支持」四组齐全 |
+| 控制台首页 | 进入 `/console/` | 200，左侧导航「概览 / 安全 / 接口治理 / 数据运营 / 用户支持」五组齐全 |
+| 后台入口隐身 | 退出登录后访问 `/console/` | 404（默认开启，与访问不存在的地址一致，**不是** 302 跳登录页；可在 `/console/security/` 关掉） |
 | 反馈中心与联系方式 | 进入 `/console/feedback/`、`/console/contacts/` | 200，可筛选反馈；联系方式页可维护平台字典与各项目联系方式 |
 | 官网页脚「联系我们」 | 查看首页页脚 | 显示后台为「官网项目」（`WEB_APP_NAME`）配置的联系方式；一条都没配时整块隐藏（不报错） |
 | 文档中心 | `https://你的域名/docs/` | 200，左侧服务菜单完整 |
@@ -512,7 +513,7 @@ proxy_set_header Host $host;
 
 ---
 
-## 六、安全加固要点（S-07 ~ S-11）
+## 六、安全加固要点（S-07 ~ S-12）
 
 上线前对照以下清单逐项确认：
 
@@ -525,7 +526,7 @@ proxy_set_header Host $host;
    location ~* ^/(db\.sqlite3|\.env|uwsgi\.ini|.*\.py)$ { deny all; }
    ```
    定时备份 `db.sqlite3` 时应先 `stop` 或用 sqlite `.backup`，对备份文件做加密（如 `openssl enc -aes-256-cbc`）后再异地存放。
-6. **管理入口收敛**：本项目**已无 `/admin/` 后台**（该路由不存在），管理入口是官网超管控制台 `/console/projects/`，其访问条件是「持有 Django `is_superuser` 账号并通过 `/login/` 登录」。建议额外限制：给超管账号设强密码 + 开启登录防爆破（系统已按 IP/账号锁定，见 S-03），必要时在 Nginx 层对 `/console/` 做 IP 白名单。
+6. **管理入口收敛 + 后台入口隐身（S-12）**：本项目**已无 `/admin/` 后台**（该路由不存在），管理入口是官网超管控制台 `/console/projects/`，其访问条件是「持有 Django `is_superuser` 账号并通过 `/login/` 登录」。系统默认开启**后台入口隐身**（`SecuritySetting.hide_console`，控制台 `/console/security/` 可关）：未登录 / 非超管访问 `/console/**` **一律返回 404**（与访问不存在的地址完全一致），而不是 302 跳登录页 —— 避免后台入口被路径探测发现。**代价是超管本人也要先从 `/login/` 登录**再访问后台。建议额外限制：给超管账号设强密码 + 开启登录防爆破（系统已按 IP/账号锁定，见 S-03），必要时在 Nginx 层对 `/console/` 做 IP 白名单。
 7. **存量凭据回填**：若项目含 S-06 存储改造，上线后执行一次 `python manage.py security_backfill`（一次性，带迁移标记）。
 8. **A-01 fail-closed（重大行为变更）**：未命中任何策略的 `/api/` 路径默认「需要认证」——此前免签开放的能力型服务（upload/ddddocr/email/ai/ProxyIp/music/dlt/dlwz/seo/spider_verification 等）现在必须携带 app_id/timestamp/nonce/sign 签名才能调用；仅被显式设为「开放」的服务 / 线路 / 端点（如 captcha_auth/aliyun 与公开 GET 路径）可匿名。对接方需接入签名后再切流量。原「API 服务分类」分类树与 `rebuild_category_tree` **已废弃**，公开节点（图形验证码 / 调用统计）的开放策略由迁移 `0028` 自动写入；请在超管页面 **`/console/services/`** 的「服务策略」核对各服务 / 线路 / 端点的认证模式（服务→线路→端点三级继承，页面显示真实生效结果，保存即时生效）。
 9. **A-05 日志与迁移**：`logs/` 目录由应用自动创建（相对项目根），确保运行用户（www）对其可写；上线错误排查优先看 `logs/error.log`（带 request_id，可到 `logs/app.log` 按 request_id 关联整条请求链路）。迁移文件已随代码入库，部署只跑 `migrate`。

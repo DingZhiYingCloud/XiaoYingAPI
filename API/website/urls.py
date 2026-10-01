@@ -4,7 +4,8 @@ from django.views.generic import TemplateView
 from django.views.i18n import JavaScriptCatalog
 
 from . import (console, console_ai, console_announcements, console_appearance, console_dramas,
-               console_feedback, console_users, docs_views, feedback_views, programs_views, views)
+               console_feedback, console_haijiao, console_security, console_users, docs_views,
+               feedback_views, programs_views, views)
 
 app_name = 'website'
 
@@ -65,6 +66,8 @@ urlpatterns = [
     # 官网外观（超管专属）：切换首页 / 文档中心的视觉气质与首页 Hero 文案
     path('console/appearance/', console_appearance.appearance_view,
          name='console_appearance'),
+    # 安全设置（超管专属）：控制台自身的安全开关（后台入口隐身等）
+    path('console/security/', console_security.security_view, name='console_security'),
     # 问题反馈中心（超管专属）：反馈处理（筛选/回复/AI 送审）与全局设置（含类型字典）
     path('console/feedback/settings/', console_feedback.feedback_settings_view,
          name='console_feedback_settings'),
@@ -85,4 +88,10 @@ urlpatterns = [
          name='console_dramas_hongguo'),
     path('console/dramas/hongguo/status/', console_dramas.hongguo_status_view,
          name='console_dramas_hongguo_status'),
+    path('console/haijiao/register/', console_haijiao.haijiao_register_view,
+         name='console_haijiao_register'),                                       # 海角自动注册（超管）
+    path('console/haijiao/register/ticket/', console_haijiao.haijiao_register_ticket_view,
+         name='console_haijiao_register_ticket'),                                # 领一次性运行票据
+    path('console/haijiao/register/stream/', console_haijiao.haijiao_register_stream_view,
+         name='console_haijiao_register_stream'),                                # 自动注册进度流（SSE）
 ]

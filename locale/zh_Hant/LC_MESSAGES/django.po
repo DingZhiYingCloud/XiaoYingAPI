@@ -4403,8 +4403,8 @@ msgstr "外鏈登記"
 msgid "实时爬取源站 SSR 数据并缓存。剧集元数据/集列表缓存较久；播放直链缓存较短。"
 msgstr "實時爬取源站 SSR 數據並緩存。劇集元數據/集列表緩存較久；播放直鏈緩存較短。"
 
-msgid "必填：分类 slug（取值见「分类清单」接口）。"
-msgstr "必填：分類 slug（取值見「分類清單」接口）。"
+msgid "必填：分类取值 —— 一级 slug（如 real-drama）或「一级/二级」（如 real-drama/romance），完整取值见「分类清单」接口。"
+msgstr "必填：分類取值 —— 一級 slug（如 real-drama）或「一級/二級」（如 real-drama/romance），完整取值見「分類清單」接口。"
 
 msgid "必填：剧集 ID（取自列表/搜索结果）。"
 msgstr "必填：劇集 ID（取自列表/搜索結果）。"
@@ -4457,6 +4457,131 @@ msgstr "真人劇"
 msgid "真人剧热播榜"
 msgstr "真人劇熱播榜"
 
+msgid "漫剧热播榜"
+msgstr "漫劇熱播榜"
+
+# ---- 分类下拉：一级 · 二级题材（站点 /category/<一级>/<二级> 实际枚举所得）----
+
+msgid "真人剧 · 爱情"
+msgstr "真人劇 · 愛情"
+
+msgid "真人剧 · 年代"
+msgstr "真人劇 · 年代"
+
+msgid "真人剧 · 逆袭"
+msgstr "真人劇 · 逆襲"
+
+msgid "真人剧 · 传奇"
+msgstr "真人劇 · 傳奇"
+
+msgid "真人剧 · 成长"
+msgstr "真人劇 · 成長"
+
+msgid "真人剧 · 家庭"
+msgstr "真人劇 · 家庭"
+
+msgid "真人剧 · 家族"
+msgstr "真人劇 · 家族"
+
+msgid "真人剧 · 萌宝"
+msgstr "真人劇 · 萌寶"
+
+msgid "真人剧 · 悬疑"
+msgstr "真人劇 · 懸疑"
+
+msgid "真人剧 · 惊悚"
+msgstr "真人劇 · 驚悚"
+
+msgid "真人剧 · 恐怖"
+msgstr "真人劇 · 恐怖"
+
+msgid "真人剧 · 志怪"
+msgstr "真人劇 · 志怪"
+
+msgid "真人剧 · 古装"
+msgstr "真人劇 · 古裝"
+
+msgid "真人剧 · 玄幻"
+msgstr "真人劇 · 玄幻"
+
+msgid "真人剧 · 奇幻"
+msgstr "真人劇 · 奇幻"
+
+msgid "真人剧 · 都市"
+msgstr "真人劇 · 都市"
+
+msgid "真人剧 · 青春"
+msgstr "真人劇 · 青春"
+
+msgid "真人剧 · 喜剧"
+msgstr "真人劇 · 喜劇"
+
+msgid "真人剧 · 科幻"
+msgstr "真人劇 · 科幻"
+
+msgid "真人剧 · 灾难"
+msgstr "真人劇 · 災難"
+
+msgid "真人剧 · 动作冒险"
+msgstr "真人劇 · 動作冒險"
+
+msgid "真人剧 · 战争"
+msgstr "真人劇 · 戰爭"
+
+msgid "真人剧 · 综艺"
+msgstr "真人劇 · 綜藝"
+
+msgid "真人剧 · 剧情"
+msgstr "真人劇 · 劇情"
+
+msgid "漫剧 · 脑洞"
+msgstr "漫劇 · 腦洞"
+
+msgid "漫剧 · 玄幻"
+msgstr "漫劇 · 玄幻"
+
+msgid "漫剧 · 剧情"
+msgstr "漫劇 · 劇情"
+
+msgid "漫剧 · 末世"
+msgstr "漫劇 · 末世"
+
+msgid "漫剧 · 豪门"
+msgstr "漫劇 · 豪門"
+
+msgid "漫剧 · 奇幻"
+msgstr "漫劇 · 奇幻"
+
+msgid "漫剧 · 科幻"
+msgstr "漫劇 · 科幻"
+
+msgid "漫剧 · 冒险"
+msgstr "漫劇 · 冒險"
+
+msgid "AI剧 · 脑洞"
+msgstr "AI劇 · 腦洞"
+
+msgid "AI剧 · 玄幻"
+msgstr "AI劇 · 玄幻"
+
+msgid "AI剧 · 剧情"
+msgstr "AI劇 · 劇情"
+
+msgid "AI剧 · 末世"
+msgstr "AI劇 · 末世"
+
+msgid "AI剧 · 豪门"
+msgstr "AI劇 · 豪門"
+
+msgid "AI剧 · 奇幻"
+msgstr "AI劇 · 奇幻"
+
+msgid "AI剧 · 科幻"
+msgstr "AI劇 · 科幻"
+
+msgid "AI剧 · 冒险"
+msgstr "AI劇 · 冒險"
+
 msgid "短剧"
 msgstr "短劇"
 
@@ -4484,8 +4609,8 @@ msgstr "紅果短劇（hongguoduanju.com）網頁版"
 msgid "获取剧集详情与全量集列表。"
 msgstr "獲取劇集詳情與全量集列表。"
 
-msgid "获取可用分类清单（slug -> 中文名）。"
-msgstr "獲取可用分類清單（slug -> 中文名）。"
+msgid "获取分类树（一级 -> 二级题材）。"
+msgstr "獲取分類樹（一級 -> 二級題材）。"
 
 msgid "获取指定集的播放地址。"
 msgstr "獲取指定集的播放地址。"
@@ -4514,20 +4639,39 @@ msgstr "該地址由「播放地址」接口返回，供 <video> 標籤直接播
 msgid "支持 HTTP Range（206）：可拖动进度条、可断点续传。"
 msgstr "支持 HTTP Range（206）：可拖動進度條、可斷點續傳。"
 
-msgid "首次点播该集的某一画质时返回 202（Retry-After: 3），服务端在后台解密并转成 H.264（约数十秒），轮询到 200 即可播放；产物落盘永久复用，此后再播为即刻返回。"
-msgstr "首次點播該集的某一畫質時返回 202（Retry-After: 3），服務端在後臺解密並轉成 H.264（約數十秒），輪詢到 200 即可播放；產物落盤永久復用，此後再播為即刻返回。"
+msgid "首次点播该集的某一画质时返回 202（Retry-After: 3），服务端在后台解密并转成 H.264（约数十秒），200 / 206 才是可播放；生成失败返回 503（响应体里有失败原因），请勿只按 HTTP 200 判定。产物落盘永久复用，此后再播为即刻返回。"
+msgstr "首次點播該集的某一畫質時返回 202（Retry-After: 3），服務端在後臺解密並轉成 H.264（約數十秒），200 / 206 才是可播放；生成失敗返回 503（響應體裡有失敗原因），請勿只按 HTTP 200 判定。產物落盤永久復用，此後再播為即刻返回。"
 
 msgid "令牌无效或过期返回 403，需重新调用「播放地址」接口获取新地址。"
 msgstr "令牌無效或過期返回 403，需重新調用「播放地址」接口獲取新地址。"
 
-msgid "前 3 集返回源站明文 MP4 直链；第 4 集及以后源站只下发 DRM 加密的H.265（浏览器无法解码），改由本站出流，data.source 区分来源："
-msgstr "前 3 集返回源站明文 MP4 直鏈；第 4 集及以後源站只下發 DRM 加密的H.265（瀏覽器無法解碼），改由本站出流，data.source 區分來源："
+# ---- 短剧详情（detail）的 episodes[] 口径 ----
+
+msgid "返回 data.episodes 为全量集列表，每项含 ep / episode_id / playable / source。"
+msgstr "返回 data.episodes 為全量集列表，每項含 ep / episode_id / playable / source。"
+
+msgid "episodes[].playable 的口径与「播放地址」接口**完全一致**：源站直链 / 已登记外链 / 本站网页直出三条路任一可用即为 true；source 标出走的哪条路 —— origin（源站直链）/ external（已登记外链）/ stream（本站直出，首播需等数十秒生成）。本站直出默认可用，所以第 4 集及以后通常也是 playable=true。"
+msgstr "episodes[].playable 的口徑與「播放地址」接口**完全一致**：源站直鏈 / 已登記外鏈 / 本站網頁直出三條路任一可用即為 true；source 標出走的哪條路 —— origin（源站直鏈）/ external（已登記外鏈）/ stream（本站直出，首播需等數十秒生成）。本站直出默認可用，所以第 4 集及以後通常也是 playable=true。"
+
+msgid "data.playable_cnt 为源站直链的连续范围（前 N 集，保持原义）；data.listed_cnt 为实际可播集数（= playable 为 true 的集数）；data.external_cnt 为已登记外部链接的集数（人工上架进度）。需要判断「某集能不能播」请用 episodes[].playable，不要用 playable_cnt 推算。"
+msgstr "data.playable_cnt 為源站直鏈的連續範圍（前 N 集，保持原義）；data.listed_cnt 為實際可播集數（= playable 為 true 的集數）；data.external_cnt 為已登記外部鏈接的集數（人工上架進度）。需要判斷「某集能不能播」請用 episodes[].playable，不要用 playable_cnt 推算。"
+
+msgid "剧集不存在时返回 EXTERNAL_API_FAILED（外部API调用失败）。"
+msgstr "劇集不存在時返回 EXTERNAL_API_FAILED（外部API調用失敗）。"
+
+# ---- 短剧播放（play）的 data.source ----
+
+msgid "前 3 集返回源站明文 MP4 直链；第 4 集及以后源站只下发 DRM 加密的 H.265（浏览器无法解码），改由本站出流。data.source 区分来源（取值与「剧集详情」的 episodes[].source 一致）："
+msgstr "前 3 集返回源站明文 MP4 直鏈；第 4 集及以後源站只下發 DRM 加密的 H.265（瀏覽器無法解碼），改由本站出流。data.source 區分來源（取值與「劇集詳情」的 episodes[].source 一致）："
+
+msgid "· origin —— 源站明文直链（前若干集）；"
+msgstr "· origin —— 源站明文直鏈（前若干集）；"
 
 msgid "· external —— 已上架到外部平台的地址（data.url 为第三方地址）；"
 msgstr "· external —— 已上架到外部平臺的地址（data.url 為第三方地址）；"
 
-msgid "· stream —— 本站直出：data.url 为可直接交给 <video> 播放的地址（明文 H.264、支持 HTTP Range 拖动），画质见 data.quality，data.ready=false 表示该画质首次被点播、服务端正在生成（约数十秒），请轮询该地址，返回 200 即可播放。"
-msgstr "· stream —— 本站直出：data.url 為可直接交給 <video> 播放的地址（明文 H.264、支持 HTTP Range 拖動），畫質見 data.quality，data.ready=false 表示該畫質首次被點播、服務端正在生成（約數十秒），請輪詢該地址，返回 200 即可播放。"
+msgid "· stream —— 本站直出：data.url 为可直接交给 <video> 播放的地址（明文 H.264、支持 HTTP Range 拖动），画质见 data.quality，data.ready=false 表示该画质首次被点播、服务端正在生成（约数十秒），请轮询该地址：202=正在生成、503=生成失败（响应体里有原因）、200/206=可播放，别只按 HTTP 200 判定。"
+msgstr "· stream —— 本站直出：data.url 為可直接交給 <video> 播放的地址（明文 H.264、支持 HTTP Range 拖動），畫質見 data.quality，data.ready=false 表示該畫質首次被點播、服務端正在生成（約數十秒），請輪詢該地址：202=正在生成、503=生成失敗（響應體裡有原因）、200/206=可播放，別只按 HTTP 200 判定。"
 
 # ---- 短剧出流画质（play 的 q 参数） ----
 
@@ -4558,8 +4702,8 @@ msgstr "畫質由「播放地址」的 q 參數決定、已寫在令牌裡，本
 msgid "该地址的鉴权由 data.url 里的时效令牌承担（默认 2 小时），过期后重新调用本接口换取新地址。"
 msgstr "該地址的鑑權由 data.url 裡的時效令牌承擔（默認 2 小時），過期後重新調用本接口換取新地址。"
 
-msgid "获取短剧榜单，支持热播榜 / 真人剧热播榜 / AI剧热播榜与分页。"
-msgstr "獲取短劇榜單，支持熱播榜 / 真人劇熱播榜 / AI劇熱播榜與分頁。"
+msgid "获取短剧榜单，支持热播榜 / 真人剧热播榜 / AI剧热播榜 / 漫剧热播榜与分页。"
+msgstr "獲取短劇榜單，支持熱播榜 / 真人劇熱播榜 / AI劇熱播榜 / 漫劇熱播榜與分頁。"
 
 msgid "表单提交（application/x-www-form-urlencoded），需项目签名。"
 msgstr "表單提交（application/x-www-form-urlencoded），需項目簽名。"
@@ -4567,8 +4711,11 @@ msgstr "表單提交（application/x-www-form-urlencoded），需項目簽名。
 msgid "返回 data 为榜单剧集列表（字段与「分类列表」接口一致）。"
 msgstr "返回 data 為榜單劇集列表（字段與「分類列表」接口一致）。"
 
-msgid "返回的 slug 可直接传给「分类列表」接口的 category 参数。"
-msgstr "返回的 slug 可直接傳給「分類列表」接口的 category 參數。"
+msgid "分类是两级的：一级是内容形态（真人剧 / 漫剧 / AI剧 / 漫画），二级是题材（爱情 / 年代 / 逆袭 …）。"
+msgstr "分類是兩級的：一級是內容形態（真人劇 / 漫劇 / AI劇 / 漫畫），二級是題材（愛情 / 年代 / 逆襲 …）。"
+
+msgid "每个节点的 slug 都可直接传给「分类列表」接口的 category：一级取该一级全部，二级只取该题材（形如 real-drama/romance）；无二级的一级（漫画）children 为空数组。"
+msgstr "每個節點的 slug 都可直接傳給「分類列表」接口的 category：一級取該一級全部，二級只取該題材（形如 real-drama/romance）；無二級的一級（漫畫）children 為空數組。"
 
 msgid "链接类型"
 msgstr "鏈接類型"
@@ -5762,6 +5909,45 @@ msgstr "請先勾選要刪除的服務策略"
 
 msgid "已删除 %(n)s 条服务策略"
 msgstr "已刪除 %(n)s 條服務策略"
+
+msgid "一键新建建议策略"
+msgstr "一鍵新建建議策略"
+
+msgid "这些接口由浏览器或子项目前端直连，带不了项目签名，必须显式设为「开放」；策略表里缺了它们，验证码、图片、播放地址等功能会整片返回 20011。此处只新建缺失的，已存在的一律不动。"
+msgstr "這些接口由瀏覽器或子項目前端直連，帶不了項目簽名，必須顯式設為「開放」；策略表裡缺了它們，驗證碼、圖片、播放地址等功能會整片返回 20011。此處只新建缺失的，已存在的一律不動。"
+
+msgid "路径前缀"
+msgstr "路徑前綴"
+
+msgid "为什么需要"
+msgstr "為什麼需要"
+
+msgid "本次动作"
+msgstr "本次動作"
+
+msgid "已存在，跳过"
+msgstr "已存在，跳過"
+
+msgid "将新建"
+msgstr "將新建"
+
+msgid "新建 %(n)s 条"
+msgstr "新建 %(n)s 條"
+
+msgid "将补齐上表中标记为「将新建」的建议策略；已存在的一律不动。确认执行？"
+msgstr "將補齊上表中標記為「將新建」的建議策略；已存在的一律不動。確認執行？"
+
+msgid "执行"
+msgstr "執行"
+
+msgid "已新建 %(n)s 条建议策略"
+msgstr "已新建 %(n)s 條建議策略"
+
+msgid "另有 %(n)s 条建议策略已存在，未改动"
+msgstr "另有 %(n)s 條建議策略已存在，未改動"
+
+msgid "建议策略清单为空，无需新建"
+msgstr "建議策略清單為空，無需新建"
 
 msgid "状态拦截：只有生效状态为「正常」的接口可被调用。「开发中」返回 30006、「维护中」返回 30004、「已下线」返回 30005，命中即拦截且不做签名校验（匿名同样收到）。想让接口可调用，把生效状态配成「正常」。"
 msgstr "狀態攔截：只有生效狀態為「正常」的接口可被調用。「開發中」返回 30006、「維護中」返回 30004、「已下線」返回 30005，命中即攔截且不做簽名校驗（匿名同樣收到）。想讓接口可調用，把生效狀態配成「正常」。"
@@ -7909,3 +8095,187 @@ msgstr "登錄,小影API"
 
 msgid "邮箱验证,激活,小影API"
 msgstr "郵箱驗證,激活,小影API"
+
+
+# ===== 海角社区自动注册（超管控制台，2026-10-01） =====
+
+msgid "海角自动注册 - 超级管理员 - 小影API"
+msgstr "海角自動註冊 - 超級管理員 - 小影API"
+
+msgid "超级管理员,海角社区,自动注册,超级鹰打码"
+msgstr "超級管理員,海角社區,自動註冊,超級鷹打碼"
+
+msgid "小影API 超级管理员：海角社区账号自动注册（验证码交超级鹰打码识别）。"
+msgstr "小影API 超級管理員：海角社區賬號自動註冊（驗證碼交超級鷹打碼識別）。"
+
+msgid "全自动注册海角社区账号：用户名 / 密码 / 邮箱服务端自动生成，验证码交超级鹰识别后自动提交并入库。"
+msgstr "全自動註冊海角社區賬號：用戶名 / 密碼 / 郵箱服務端自動生成，驗證碼交超級鷹識別後自動提交併入庫。"
+
+msgid "海角自动注册"
+msgstr "海角自動註冊"
+
+msgid "全自动注册海角社区账号：选直连或代理出口，验证码交超级鹰打码识别（识别类型 1006），打码没打对时自动向超级鹰报错返分并换图重试，进度实时推送。"
+msgstr "全自動註冊海角社區賬號：選直連或代理出口，驗證碼交超級鷹打碼識別（識別類型 1006），打碼沒打對時自動向超級鷹報錯返分並換圖重試，進度實時推送。"
+
+msgid "运行设置"
+msgstr "運行設置"
+
+msgid "数量"
+msgstr "數量"
+
+msgid "出口"
+msgstr "出口"
+
+msgid "直连"
+msgstr "直連"
+
+msgid "代理（51代理）"
+msgstr "代理（51代理）"
+
+msgid "代理（巨量）"
+msgstr "代理（巨量）"
+
+msgid "注册过程中请不要关闭浏览器窗口、不要关闭或刷新本页面，也不要切走太久——进度由本页面实时接收，页面一断这一批就中止了。"
+msgstr "註冊過程中請不要關閉瀏覽器窗口、不要關閉或刷新本頁面，也不要切走太久——進度由本頁面實時接收，頁面一斷這一批就中止了。"
+
+msgid "验证码重试上限"
+msgstr "驗證碼重試上限"
+
+msgid "开始自动注册"
+msgstr "開始自動註冊"
+
+msgid "停止"
+msgstr "停止"
+
+msgid "等待开始"
+msgstr "等待開始"
+
+msgid "运行中"
+msgstr "運行中"
+
+msgid "已完成"
+msgstr "已完成"
+
+msgid "连接中断"
+msgstr "連接中斷"
+
+msgid "已返分"
+msgstr "已返分"
+
+msgid "尚未开始"
+msgstr "尚未開始"
+
+msgid "实时日志"
+msgstr "實時日誌"
+
+msgid "本次注册结果"
+msgstr "本次註冊結果"
+
+msgid "用户名"
+msgstr "用戶名"
+
+msgid "密码"
+msgstr "密碼"
+
+msgid "邮箱"
+msgstr "郵箱"
+
+msgid "尝试"
+msgstr "嘗試"
+
+msgid "结果"
+msgstr "結果"
+
+msgid "成功"
+msgstr "成功"
+
+msgid "失败"
+msgstr "失敗"
+
+msgid "打码次数"
+msgstr "打碼次數"
+
+msgid "返分次数"
+msgstr "返分次數"
+
+msgid "共 %(n)s 个账号"
+msgstr "共 %(n)s 個賬號"
+
+msgid "完成：成功 %(ok)s / 失败 %(bad)s，打码 %(ocr)s 次、返分成功 %(refund)s 次、返分失败 %(refund_bad)s 次，耗时 %(sec)s 秒"
+msgstr "完成：成功 %(ok)s / 失敗 %(bad)s，打碼 %(ocr)s 次、返分成功 %(refund)s 次、返分失敗 %(refund_bad)s 次，耗時 %(sec)s 秒"
+
+msgid "领取运行票据失败，请重试"
+msgstr "領取運行票據失敗，請重試"
+
+msgid "已手动停止（当前这一条会跑完）"
+msgstr "已手動停止（當前這一條會跑完）"
+
+msgid "识别类型默认 %(code)s（%(label)s），可在上方下拉里改；下拉项末尾的数字即该类型的题分单价。"
+msgstr "識別類型默認 %(code)s（%(label)s），可在上方下拉裡改；下拉項末尾的數字即該類型的題分單價。"
+
+msgid "识别类型"
+msgstr "識別類型"
+
+msgid "源站回「验证码错误」时会自动报错返分并换图重试。"
+msgstr "源站回「驗證碼錯誤」時會自動報錯返分並換圖重試。"
+
+msgid "直连模式下源站对注册有 IP 限制，被限时请改用代理出口。"
+msgstr "直連模式下源站對註冊有 IP 限制，被限時請改用代理出口。"
+
+msgid "单次最多 %(n)s 个账号。"
+msgstr "單次最多 %(n)s 個賬號。"
+
+
+# ===== 控制台安全页（2026-10-01 第三批次） =====
+
+msgid "安全"
+msgstr "安全"
+
+msgid "安全设置"
+msgstr "安全設置"
+
+msgid "安全设置 - 超级管理员 - 小影API"
+msgstr "安全設置 - 超級管理員 - 小影API"
+
+msgid "超级管理员,安全设置,后台入口隐身,路径探测"
+msgstr "超級管理員,安全設置,後臺入口隱身,路徑探測"
+
+msgid "小影API 超级管理员：控制台自身的安全开关，防止后台入口被路径探测发现。"
+msgstr "小影API 超級管理員：控制臺自身的安全開關，防止後臺入口被路徑探測發現。"
+
+msgid "控制台自身的安全开关：防止后台入口被路径探测发现。"
+msgstr "控制臺自身的安全開關：防止後臺入口被路徑探測發現。"
+
+msgid "控制台自身的安全开关：后台入口隐身（未登录访问后台一律返回 404，防止被路径探测发现入口）。"
+msgstr "控制臺自身的安全開關：後臺入口隱身（未登錄訪問後臺一律返回 404，防止被路徑探測發現入口）。"
+
+msgid "「后台入口隐身」开启后，未登录（或非超管）访问后台地址一律返回 404，与访问一个根本不存在的地址表现完全一致。"
+msgstr "「後臺入口隱身」開啟後，未登錄（或非超管）訪問後臺地址一律返回 404，與訪問一個根本不存在的地址表現完全一致。"
+
+msgid "为什么需要它：若未登录访问后台时跳转登录页，等于明确告诉探测者「这个地址存在」，对方据此就能把后台入口定位出来。"
+msgstr "為什麼需要它：若未登錄訪問後臺時跳轉登錄頁，等於明確告訴探測者「這個地址存在」，對方據此就能把後臺入口定位出來。"
+
+msgid "代价：开启后你自己也要先从 /login/ 登录，再访问后台才能进入（登录成功后首页有「超级管理员」入口）。"
+msgstr "代價：開啟後你自己也要先從 /login/ 登錄，再訪問後臺才能進入（登錄成功後首頁有「超級管理員」入口）。"
+
+msgid "边界：登录页本身仍然公开（任何站点都有登录页），本开关只隐藏后台，不隐藏登录页。"
+msgstr "邊界：登錄頁本身仍然公開（任何站點都有登錄頁），本開關只隱藏後臺，不隱藏登錄頁。"
+
+msgid "后台入口"
+msgstr "後臺入口"
+
+msgid "后台入口隐身"
+msgstr "後臺入口隱身"
+
+msgid "已开启"
+msgstr "已開啟"
+
+msgid "已关闭"
+msgstr "已關閉"
+
+msgid "未登录访问后台一律返回 404；关闭则退回「跳转登录页」的行为。"
+msgstr "未登錄訪問後臺一律返回 404；關閉則退回「跳轉登錄頁」的行為。"
+
+msgid "安全设置已保存"
+msgstr "安全設置已保存"
+

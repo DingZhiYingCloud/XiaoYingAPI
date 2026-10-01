@@ -5,18 +5,23 @@
 （详见 utils.py 顶部的实测结论）。需模拟浏览器 TLS 指纹（curl_cffi）访问。
 
 提供能力:
-    get_rank()       榜单（热播榜 / 真人剧榜 / AI剧榜，分页）
-    get_categories() 分类列表（slug -> 中文名）
-    get_list()       分类列表（分页）
+    get_rank()       榜单（热播榜 / 真人剧榜 / AI剧榜 / 漫剧榜，分页）
+    get_categories() 分类树（一级 -> 二级题材）
+    get_list()       分类列表（分页；一级取全部，二级取该题材）
     get_search()     关键词搜索（站点不支持分页，仅返回单页）
     get_detail()     详情（全量集号 vid_list + 可播集数）
     get_play()       播放直链（仅前 3 集可播，超过则返回 need_app 占位）
+
+注意：这里的「可播」只代表**源站 H5 直链**。对外接口在第 4 集及以后还有两条出路
+（已登记外链 / 本站网页直出），由服务层 `API/apis/dramas/hongguo/utils.py` 补齐 ——
+改本层时务必同步那里的 `get_detail()` / `get_play()`，别让「详情说不能播、播放说能播」重演。
 
 使用示例:
     spider = HongguoDramaSpider()
     spider.get_rank("hot-drama")
     spider.get_categories()
     spider.get_list("real-drama", page=2)
+    spider.get_list("real-drama/romance")        # 二级题材：爱情
     spider.get_search("保姆")
     spider.get_detail("7686894628578020414")
     spider.get_play("7686894628578020414", 2)
@@ -153,13 +158,15 @@ class HongguoDramaSpider:
         """
         获取榜单。
 
-        :param rank_type: 榜单类型，取值见 utils.RANK_TYPES
-                          （hot-drama 热播榜 / hot-real-drama 真人剧榜 / hot-ai-drama AI剧榜）
+        :param rank_type: 榜单类型，取值见 utils.RANK_TYPES（热播榜 / 真人剧榜 / AI剧榜 / 漫剧榜）
         :param page: 页码，从 1 开始（站点每页 20 条）
         :return: {type, page, total_page, results: [列表项]}
         """
         rank_type = rank_type or "hot-drama"
-        key = f"rank:{rank_type}:{page}"
+        # 缓存键带版本号：此前 XP_RANK_LIST 会连页面头部的面包屑一起选中，缓存里存的是
+        # 「前 2 条字段全空的脏数据 + 20 条真实榜单」。解析已修，但旧缓存默认留 24 小时
+        # （HONGGUO_DATA_CACHE_TTL），沿用旧键会继续下发脏数据 —— 换键即让旧缓存失效。
+        key = f"rank:v2:{rank_type}:{page}"
 
         def fetch():
             html = self._get_html(U.build_rank_url(rank_type, page=page))
@@ -176,25 +183,46 @@ class HongguoDramaSpider:
 
     def get_categories(self) -> dict:
         """
-        获取分类列表（slug -> 中文名，由首页实际枚举所得）。
+        获取分类树（一级 -> 二级，由站点各级 /category/* 页面实际枚举所得）。
 
-        :return: {categories: [{slug, name, url}]}
+        站点是两级分类：一级是内容形态（真人剧 / 漫剧 / AI剧 / 漫画），二级是题材
+        （爱情 / 年代 / 逆袭 …）。每个节点的 slug 都能直接传给 get_list ——
+        一级取该一级全部，二级只取该题材。
+
+        :return: {categories: [{slug, name, url, children: [{slug, name, url}]}]}
+                 无二级的一级（如漫画）children 为空列表。
         """
         def fetch():
             return {
                 "categories": [
-                    {"slug": slug, "name": name, "url": U.build_category_url(slug)}
-                    for slug, name in U.CATEGORIES.items()
+                    {
+                        "slug": slug,
+                        "name": node["name"],
+                        "url": U.build_category_url(slug),
+                        "children": [
+                            {
+                                "slug": f"{slug}/{child}",
+                                "name": child_name,
+                                "url": U.build_category_url(f"{slug}/{child}"),
+                            }
+                            for child, child_name in node["children"].items()
+                        ],
+                    }
+                    for slug, node in U.CATEGORIES.items()
                 ],
             }
 
-        return get_or_fetch("categories", fetch, DATA_TTL)
+        # 缓存键带版本号：返回体由「扁平 4 项」改为「两级嵌套」是**破坏性变更**，
+        # 而文件缓存默认保留 24 小时（HONGGUO_DATA_CACHE_TTL）—— 沿用旧键会在部署后
+        # 继续下发旧结构。换键让旧缓存自然失效（老键随 TTL 过期，不必手工清缓存目录）。
+        return get_or_fetch("categories:v2", fetch, DATA_TTL)
 
     def get_list(self, category: str, page: int = 1) -> dict:
         """
         获取分类列表（分页）。
 
-        :param category: 分类 slug（取值见 get_categories，如 real-drama）
+        :param category: 分类取值（取值见 get_categories）：一级如 real-drama，
+                         二级用「一级/二级」如 real-drama/romance
         :param page: 页码，从 1 开始
         :return: {category, page, results: [列表项], pagination: {current, total}}
         """

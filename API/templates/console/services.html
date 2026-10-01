@@ -44,9 +44,15 @@
         <i data-lucide="trash-2" class="h-3.5 w-3.5"></i>{% trans "批量删除" %}
       </button>
     </div>
-    <button type="button" class="btn btn-sm btn-primary" data-open-create>
-      <i data-lucide="plus" class="h-4 w-4"></i>{% trans "新建策略" %}
-    </button>
+    <div class="flex items-center gap-2">
+      <button type="button" class="btn btn-sm btn-outline" data-open-presets>
+        <i data-lucide="sparkles" class="h-4 w-4"></i>{% trans "一键新建建议策略" %}
+        {% if preset_missing %}<span class="badge badge-warning badge-sm">{{ preset_missing }}</span>{% endif %}
+      </button>
+      <button type="button" class="btn btn-sm btn-primary" data-open-create>
+        <i data-lucide="plus" class="h-4 w-4"></i>{% trans "新建策略" %}
+      </button>
+    </div>
   </div>
 
   {# 批量删除表单：行内勾选框用 form 属性关联（避免与行内启停 / 删除表单嵌套） #}
@@ -204,6 +210,64 @@
         <div class="modal-action sticky bottom-0 z-10 -mx-6 -mb-6 mt-0 border-t border-base-300 bg-base-100 px-6 py-3">
           <button type="submit" class="btn btn-sm btn-primary">{% trans "保存" %}</button>
           <button type="button" class="btn btn-sm btn-ghost" onclick="service_edit_modal.close()">{% trans "取消" %}</button>
+        </div>
+      </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
+
+  {# ===== 一键新建建议策略（先预览、确认后再落库） ===== #}
+  <dialog id="service_presets_modal" class="modal">
+    <div class="modal-box max-w-4xl">
+      <h3 class="text-lg font-bold">{% trans "一键新建建议策略" %}</h3>
+      <p class="mt-1 text-xs text-base-content/60">
+        {% trans "这些接口由浏览器或子项目前端直连，带不了项目签名，必须显式设为「开放」；策略表里缺了它们，验证码、图片、播放地址等功能会整片返回 20011。此处只新建缺失的，已存在的一律不动。" %}
+      </p>
+      <div class="con-table-wrap mt-3 max-h-80 overflow-y-auto">
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th class="whitespace-nowrap">{% trans "路径前缀" %}</th>
+              <th class="whitespace-nowrap">{% trans "名称" %}</th>
+              <th class="whitespace-nowrap">{% trans "层级" %}</th>
+              <th class="whitespace-nowrap">{% trans "认证模式" %}</th>
+              <th class="whitespace-nowrap">{% trans "状态" %}</th>
+              <th class="whitespace-nowrap">{% trans "为什么需要" %}</th>
+              <th class="whitespace-nowrap">{% trans "本次动作" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for preset in presets %}
+            <tr>
+              <td><code class="font-mono text-xs">{{ preset.prefix }}</code></td>
+              <td class="text-sm">{{ preset.name }}</td>
+              <td class="whitespace-nowrap"><span class="badge badge-ghost badge-sm">{{ preset.level_label }}</span></td>
+              <td class="whitespace-nowrap text-sm">{{ preset.auth_mode_label }}</td>
+              <td class="whitespace-nowrap text-sm">{{ preset.status_label }}</td>
+              <td class="text-xs text-base-content/70">{{ preset.reason }}</td>
+              <td class="whitespace-nowrap">
+                {% if preset.exists %}
+                <span class="badge badge-soft badge-ghost badge-sm">{% trans "已存在，跳过" %}</span>
+                {% else %}
+                <span class="badge badge-soft badge-warning badge-sm">{% trans "将新建" %}</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <form method="post" action="{% url 'website:console_services' %}"
+            data-confirm="{% trans '将补齐上表中标记为「将新建」的建议策略；已存在的一律不动。确认执行？' %}"
+            data-confirm-title="{% trans '一键新建建议策略' %}"
+            data-confirm-ok="{% trans '执行' %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="apply_presets" />
+        <div class="modal-action sticky bottom-0 z-10 -mx-6 -mb-6 mt-0 border-t border-base-300 bg-base-100 px-6 py-3">
+          <button type="submit" class="btn btn-sm btn-primary" {% if not preset_missing %}disabled{% endif %}>
+            {% blocktrans with n=preset_missing %}新建 {{ n }} 条{% endblocktrans %}
+          </button>
+          <button type="button" class="btn btn-sm btn-ghost" onclick="service_presets_modal.close()">{% trans "取消" %}</button>
         </div>
       </form>
     </div>
@@ -460,6 +524,12 @@
       resetAppsPanel(createForm);
       document.getElementById('service_create_modal').showModal();
     });
+  });
+
+  /* ---------- 一键新建建议策略：只打开预览面板，确认后才提交表单 ---------- */
+  var presetsModal = document.getElementById('service_presets_modal');
+  document.querySelectorAll('[data-open-presets]').forEach(function (btn) {
+    btn.addEventListener('click', function () { presetsModal.showModal(); });
   });
 
   var editForm = document.getElementById('service_edit_form');

@@ -7,7 +7,7 @@
 接入方拿到授权后，可按「榜单/分类 → 列表 → 详情 → 播放」跑通短剧站流程。
 后续接入更多线路（如其它短剧平台）时在 channels 追加即可。
 """
-from API.apis.dramas.hongguo.utils import DEFAULT_QUALITY, QUALITY_WIDTHS
+from API.apis.dramas.hongguo.utils import CATEGORY_OPTIONS, DEFAULT_QUALITY, QUALITY_WIDTHS
 
 from .schema import ChannelSpec, EndpointSpec, ParamSpec, ServiceSpec
 
@@ -19,6 +19,10 @@ _QUALITY_OPTIONS = [
     {'value': str(w), 'label': f'{w}p{_QUALITY_EXTRA_LABEL.get(w, "")}'}
     for w in QUALITY_WIDTHS
 ]
+
+# 分类下拉选项同理取后端分类树（4 个一级 + 40 个二级题材），不在这里另抄一份 ——
+# 站点加题材时只改爬虫 utils.py 的 CATEGORIES，文档页自动跟上。
+_CATEGORY_OPTIONS = [{'value': value, 'label': label} for value, label in CATEGORY_OPTIONS]
 
 SERVICE = ServiceSpec(
     slug='drama',
@@ -49,7 +53,8 @@ SERVICE = ServiceSpec(
             endpoints=[
                 EndpointSpec('rank', '榜单', 'GET',
                              '/api/dramas/hongguo/rank',
-                             summary='获取短剧榜单，支持热播榜 / 真人剧热播榜 / AI剧热播榜与分页。',
+                             summary='获取短剧榜单，支持热播榜 / 真人剧热播榜 / AI剧热播榜 / '
+                                     '漫剧热播榜与分页。',
                              params=[
                                  ParamSpec('type', '榜单类型', kind='select',
                                            default='hot-drama',
@@ -57,6 +62,7 @@ SERVICE = ServiceSpec(
                                                {'value': 'hot-drama', 'label': '热播榜'},
                                                {'value': 'hot-real-drama', 'label': '真人剧热播榜'},
                                                {'value': 'hot-ai-drama', 'label': 'AI剧热播榜'},
+                                               {'value': 'hot-comic-drama', 'label': '漫剧热播榜'},
                                            ],
                                            desc='可选：榜单类型，默认 hot-drama（热播榜）。'),
                                  ParamSpec('page', '页码', kind='number', default='1',
@@ -67,20 +73,21 @@ SERVICE = ServiceSpec(
                                     '返回 data 为榜单剧集列表（字段与「分类列表」接口一致）。']),
                 EndpointSpec('categories', '分类清单', 'GET',
                              '/api/dramas/hongguo/categories',
-                             summary='获取可用分类清单（slug -> 中文名）。',
-                             notes=['返回的 slug 可直接传给「分类列表」接口的 category 参数。']),
+                             summary='获取分类树（一级 -> 二级题材）。',
+                             notes=['分类是两级的：一级是内容形态（真人剧 / 漫剧 / AI剧 / 漫画），'
+                                    '二级是题材（爱情 / 年代 / 逆袭 …）。',
+                                    '每个节点的 slug 都可直接传给「分类列表」接口的 category：'
+                                    '一级取该一级全部，二级只取该题材（形如 real-drama/romance）；'
+                                    '无二级的一级（漫画）children 为空数组。']),
                 EndpointSpec('list', '分类列表', 'GET',
                              '/api/dramas/hongguo/list',
                              summary='按分类获取短剧列表，支持分页。',
                              params=[
                                  ParamSpec('category', '分类', kind='select', required=True,
-                                           options=[
-                                               {'value': 'real-drama', 'label': '真人剧'},
-                                               {'value': 'comic-drama', 'label': '漫剧'},
-                                               {'value': 'ai-drama', 'label': 'AI剧'},
-                                               {'value': 'comic', 'label': '漫画'},
-                                           ],
-                                           desc='必填：分类 slug（取值见「分类清单」接口）。'),
+                                           options=_CATEGORY_OPTIONS,
+                                           desc='必填：分类取值 —— 一级 slug（如 real-drama）'
+                                                '或「一级/二级」（如 real-drama/romance），'
+                                                '完整取值见「分类清单」接口。'),
                                  ParamSpec('page', '页码', kind='number', default='1',
                                            placeholder='1',
                                            desc='可选：页码，从 1 开始，默认 1。'),
@@ -106,11 +113,15 @@ SERVICE = ServiceSpec(
                                            placeholder='7686894628578020414',
                                            desc='必填：剧集 ID（取自列表/搜索结果）。'),
                              ],
-                             notes=['返回 data.episodes 为全量集列表，每项含 ep / episode_id / playable；'
-                                    'playable 已合并「已登记外链」——第 4 集及以后一旦登记了外部播放地址，'
-                                    '该集 playable 即为 true，与「播放地址」接口的可用性一致。',
-                                    'data.playable_cnt 为源站直链的连续范围（前 N 集）；'
-                                    'data.listed_cnt 为实际可播集数（源站直链 + 已登记外链，可能不连续）。'
+                             notes=['返回 data.episodes 为全量集列表，每项含 ep / episode_id / playable / source。',
+                                    'episodes[].playable 的口径与「播放地址」接口**完全一致**：'
+                                    '源站直链 / 已登记外链 / 本站网页直出三条路任一可用即为 true；'
+                                    'source 标出走的哪条路 —— origin（源站直链）/ external（已登记外链）'
+                                    '/ stream（本站直出，首播需等数十秒生成）。本站直出默认可用，'
+                                    '所以第 4 集及以后通常也是 playable=true。',
+                                    'data.playable_cnt 为源站直链的连续范围（前 N 集，保持原义）；'
+                                    'data.listed_cnt 为实际可播集数（= playable 为 true 的集数）；'
+                                    'data.external_cnt 为已登记外部链接的集数（人工上架进度）。'
                                     '需要判断「某集能不能播」请用 episodes[].playable，不要用 playable_cnt 推算。',
                                     '剧集不存在时返回 EXTERNAL_API_FAILED（外部API调用失败）。']),
                 EndpointSpec('play', '播放地址', 'GET',
@@ -129,12 +140,15 @@ SERVICE = ServiceSpec(
                                                 '每档产物各存一份；换画质要重新调本接口换地址。'),
                              ],
                              notes=['前 3 集返回源站明文 MP4 直链；第 4 集及以后源站只下发 DRM 加密的'
-                                    'H.265（浏览器无法解码），改由本站出流，data.source 区分来源：',
+                                    ' H.265（浏览器无法解码），改由本站出流。data.source 区分来源'
+                                    '（取值与「剧集详情」的 episodes[].source 一致）：',
+                                    '· origin —— 源站明文直链（前若干集）；',
                                     '· external —— 已上架到外部平台的地址（data.url 为第三方地址）；',
                                     '· stream —— 本站直出：data.url 为可直接交给 <video> 播放的地址'
                                     '（明文 H.264、支持 HTTP Range 拖动），画质见 data.quality，'
                                     'data.ready=false 表示该画质首次被点播、服务端正在生成（约数十秒），'
-                                    '请轮询该地址，返回 200 即可播放。',
+                                    '请轮询该地址：202=正在生成、503=生成失败（响应体里有原因）、'
+                                    '200/206=可播放，别只按 HTTP 200 判定。',
                                     '该地址的鉴权由 data.url 里的时效令牌承担（默认 2 小时），'
                                     '过期后重新调用本接口换取新地址。',
                                     'ep 越界（超出总集数）返回 PARAM_VALUE_INVALID。',
@@ -154,7 +168,8 @@ SERVICE = ServiceSpec(
                                     '同一集不同画质是不同的地址，各自独立缓存。',
                                     '支持 HTTP Range（206）：可拖动进度条、可断点续传。',
                                     '首次点播该集的某一画质时返回 202（Retry-After: 3），服务端在后台'
-                                    '解密并转成 H.264（约数十秒），轮询到 200 即可播放；'
+                                    '解密并转成 H.264（约数十秒），200 / 206 才是可播放；'
+                                    '生成失败返回 503（响应体里有失败原因），请勿只按 HTTP 200 判定。'
                                     '产物落盘永久复用，此后再播为即刻返回。',
                                     '令牌无效或过期返回 403，需重新调用「播放地址」接口获取新地址。']),
             ],

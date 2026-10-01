@@ -27,6 +27,9 @@ class ParamSpec:
     - dynamic_options 用于「下拉选项来自运行期数据」（如 AI 模型清单存在数据库里）：
       此处只写提供者的名字（见 docs/OPTION_LOADERS 注册表），渲染前由文档视图按名取值
       填进 options。静态选项（options 已写死）不要用它。
+    - kind='select' 时，options 的 label 要**短**（实测上限约 36 字符 ≈ 400px）：原生
+      `<select>` 的弹层宽度由**最长选项**决定，标签过长会在窄屏上溢出屏幕。需要展示
+      更长的说明时，放到 ParamSpec.desc，或服务 intro 的 Markdown 表格里。
     """
     name: str
     label: str

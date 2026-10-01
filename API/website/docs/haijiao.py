@@ -1,13 +1,15 @@
 """海角社区服务 - 接口文档与在线调试数据
 
 数据与 API/apis/haijiao/ 实际实现对齐（服务策略 /api/haijiao/ 默认需签名）：
+- 今日域名：源站当日公布的大陆可访问域名（源站域名每日变动，本服务自动跟随今日域名）
 - 内容列表：热帖 / 新闻 / 大事记 / 原创 / 精华 / 最新（源站接口实时爬取 + 文件缓存，无需登录）
 
 接入方拿到授权后可拉取各栏目内容；帖内配图为源站混淆地址，需按本页说明自行解密。
 """
 from .schema import ChannelSpec, EndpointSpec, ParamSpec, ServiceSpec
 
-# 站点域名只有一个出处：爬虫层的 utils.BASE_URL（海角域名不固定，换域名只改那里）
+# 站点域名只有一个出处：爬虫层的 utils（海角域名每日变动，运行时由 current_base_url() 自动跟随）。
+# 这里是模块导入时的兜底值，仅用于文档里的示例地址；真实域名以「今日域名」接口返回为准。
 from SpiderServices.haijiao.utils import BASE_URL as _SITE_BASE
 _SITE_HOST = _SITE_BASE.split('://', 1)[-1]
 
@@ -128,13 +130,17 @@ SERVICE = ServiceSpec(
     name='海角社区',
     prefix='/api/haijiao/',
     summary='海角社区服务：提供社区内容列表（热帖 / 新闻 / 大事记 / 原创 / 精华 / 最新）、帖子搜索、帖子详情与评论'
-            '（含二级评论）、发帖（板块 / 标签 / 图片视频）与我的帖子（审核状态）、给帖子送金币打赏（礼物清单可选）、'
+            '（含二级评论）、发帖（板块 / 标签 / 图片视频）与我的帖子（审核状态）、'
+            '我的收藏（收藏夹的增删改查 / 收藏与批量取消收藏）、'
+            '给帖子送金币打赏（礼物清单可选）、'
             '可直接播放的视频与图片解码，以及账号注册 / 登录、金币签到（含一键全签）与账号库管理；'
             '配图为源站混淆地址，需按文档说明解密。',
     keywords='海角社区API,海角社区热帖接口,海角帖子搜索接口,海角帖子详情接口,海角帖子评论接口,海角二级评论接口,'
              '海角视频播放接口,海角账号注册接口,海角登录接口,海角新闻接口,社区帖子接口,热帖API,'
              '海角金币签到接口,自动签到API,海角发帖接口,海角自动发帖,社区发帖API,海角我的帖子接口,帖子审核状态查询,'
-             '海角打赏接口,帖子送金币接口,海角礼物接口',
+             '海角打赏接口,帖子送金币接口,海角礼物接口,海角今日域名,海角最新域名,海角大陆访问域名,海角备用域名,'
+             '海角我的收藏接口,海角收藏夹接口,海角收藏的帖子,收藏列表查询API,'
+             '海角收藏帖子接口,海角取消收藏接口,批量取消收藏API,海角收藏夹重命名,新建收藏夹接口,',
     intro=[
         '海角社区服务提供社区内容数据：内容列表按栏目返回帖子标题、摘要、作者、所属板块、标签、'
         '浏览/评论/点赞等互动数据与配图（当前 6 个栏目：热帖 hot、新闻 news、大事记 events、'
@@ -152,7 +158,8 @@ SERVICE = ServiceSpec(
         '账号库提供增删改查接口；打赏能力则按「礼物清单 + 给帖子送金币」两步完成'
         '（礼物是现买现送，按单价扣金币 / 钻石）。',
         '本服务为公开数据实时爬取 + 文件缓存，无需登录；各栏目内容随时间变动，缓存时间较短'
-        '以便及时反映更新。本服务需项目签名。',
+        '以便及时反映更新。海角的大陆可访问域名每日变动，本服务会自动跟随当日可用域名'
+        '（所有接口都指向当天域名），并提供「今日域名」接口供外部系统查询。本服务需项目签名。',
         '注意：帖内配图为源站混淆地址（形如 …/<hash>_mini.jpg.txt，内容是自定义字母表 base64 编码的'
         ' data URI），需按各接口的说明自行解密后才能展示；帖内视频的播放地址需登录态，'
         '详情接口会用服务端配置的账号解析出 m3u8（匿名调用时为空）。',
@@ -167,6 +174,21 @@ SERVICE = ServiceSpec(
             auth_note='auth',
             note='实时爬取源站公开接口并缓存（无需登录）。各栏目内容随时间变动，缓存时间较短。',
             endpoints=[
+                EndpointSpec('domain', '今日域名', 'GET',
+                             '/api/haijiao/domain',
+                             summary='获取源站当日公布的大陆可访问域名（含备用 / 海外 / 影视站域名与客服邮箱）。',
+                             notes=[
+                                 '返回 data.domain（今日大陆可直接访问域名，即源站首页弹窗「今日大陆直接访问'
+                                 '网址为: xxx」提示的那个）、data.backup_domain（备用域名）、'
+                                 'data.abroad_domain（海外永久域名，需海外网络环境）、'
+                                 'data.movie_domain（影视站域名）与 data.customer_service（客服邮箱）'
+                                 '——手上的域名失效时可发邮件向客服索取最新域名。',
+                                 '源站的大陆可访问域名每日变动：本服务已自动跟随当日域名，'
+                                 '所有海角接口都指向当天可用的域名，调用方无需自行更换地址；'
+                                 '本接口供外部系统（自建反代 / 书签 / 公告）查询当前域名。',
+                                 '结果为服务端缓存值（默认 30 分钟），无需频繁调用；'
+                                 '源站全部入口都探测不到时返回 EXTERNAL_API_FAILED。',
+                             ]),
                 EndpointSpec('topics', '内容列表', 'GET',
                              '/api/haijiao/topics',
                              summary='按栏目获取社区内容列表，支持分页。',
@@ -749,6 +771,148 @@ SERVICE = ServiceSpec(
                                  '凭据缺失返回 PARAM_MISSING。',
                                  '配图解密（重要）：',
                              ] + _IMAGE_NOTES),
+                EndpointSpec('favorite_folders', '我的收藏夹', 'GET',
+                             '/api/haijiao/favorite/folders',
+                             summary='列出当前账号的收藏夹（「我的收藏」页左侧那一栏）。',
+                             params=_CRED_PARAMS,
+                             notes=[
+                                 '必须带登录态：用 account_id（库内账号），或直传 user_id + user_token。',
+                                 '返回 data：total / results（每个收藏夹含 folder_id / name / count）。',
+                                 'count 是该收藏夹里的帖子数（源站提供）。一个收藏都没有时 results 为空数组。',
+                                 'folder_id 可回填到「我收藏的帖子」按夹筛选。',
+                                 '凭据缺失返回 PARAM_MISSING；源站拒绝（如登录态失效）返回 EXTERNAL_API_FAILED。',
+                             ]),
+                EndpointSpec('favorite_topics', '我收藏的帖子', 'GET',
+                             '/api/haijiao/favorite/topics',
+                             summary='分页列出当前账号收藏的帖子，可按收藏夹筛选。',
+                             params=[
+                                 ParamSpec('page', '页码', kind='number', default='1',
+                                           desc='选填：从 1 开始，默认 1（源站每页 20 条）。'),
+                                 ParamSpec('folder_id', '收藏夹 ID', kind='number', default='0',
+                                           desc='选填：取自「我的收藏夹」的 folder_id；**不传或传 0 = 全部收藏**'
+                                                '（跨所有收藏夹，源站语义如此）。'),
+                             ] + _CRED_PARAMS,
+                             notes=[
+                                 '必须带登录态：用 account_id（库内账号），或直传 user_id + user_token。',
+                                 '返回 data：pagination / results（帖子数组，字段与「内容列表」一致）。',
+                                 'folder_id 不传或传 0 时返回**全部收藏**（跨收藏夹）；传具体收藏夹 ID 才只返回该夹。',
+                                 'page 非数字 / 小于 1 返回 PARAM_FORMAT_ERROR / PARAM_VALUE_INVALID；'
+                                 'folder_id 非数字返回 PARAM_FORMAT_ERROR、小于 0 返回 PARAM_VALUE_INVALID；'
+                                 '凭据缺失返回 PARAM_MISSING。',
+                                 '配图解密（重要）：',
+                             ] + _IMAGE_NOTES),
+                EndpointSpec('favorite_add', '收藏帖子', 'POST',
+                             '/api/haijiao/favorite/add',
+                             summary='把帖子收藏到指定收藏夹（不传 folder_id 即默认收藏夹）。',
+                             params=[
+                                 ParamSpec('topic_id', '帖子 ID', kind='number', required=True,
+                                           placeholder='2232393',
+                                           desc='必填：要收藏的帖子 ID（取自内容列表 results[].topic_id）。'),
+                                 ParamSpec('folder_id', '收藏夹 ID', kind='number', default='0',
+                                           desc='选填：目标收藏夹 ID（取自「我的收藏夹」）；**不传或传 0 = 默认收藏夹**。'),
+                             ] + _CRED_PARAMS,
+                             notes=[
+                                 '必须带登录态：用 account_id（库内账号），或直传 user_id + user_token。',
+                                 '返回 data：topic_id / folder_id / action（add）。',
+                                 '**重复收藏是安全的**：同一帖子重复调用源站仍回成功，无需先查再收藏。',
+                                 '帖子不存在时返回 EXTERNAL_API_FAILED（源站消息「收藏的内容不存在」）。',
+                                 'topic_id 缺失 / 非数字返回 PARAM_MISSING / PARAM_FORMAT_ERROR；'
+                                 'folder_id 非数字返回 PARAM_FORMAT_ERROR、小于 0 返回 PARAM_VALUE_INVALID。',
+                                 '收藏结果可用「我的收藏夹」（count 变化）与「我收藏的帖子」核对。',
+                             ]),
+                EndpointSpec('favorite_delete', '取消收藏帖子', 'POST',
+                             '/api/haijiao/favorite/delete',
+                             summary='取消对某篇帖子的收藏。',
+                             params=[
+                                 ParamSpec('topic_id', '帖子 ID', kind='number', required=True,
+                                           placeholder='2232393',
+                                           desc='必填：要取消收藏的帖子 ID。'),
+                             ] + _CRED_PARAMS,
+                             notes=[
+                                 '必须带登录态：用 account_id（库内账号），或直传 user_id + user_token。',
+                                 '返回 data：topic_id / action（remove）。',
+                                 '**取消未收藏的帖子源站会拒绝**（消息「无法删除无效的数据」），返回 EXTERNAL_API_FAILED。',
+                                 'topic_id 缺失 / 非数字返回 PARAM_MISSING / PARAM_FORMAT_ERROR。',
+                             ]),
+                EndpointSpec('favorite_delete_batch', '批量取消收藏', 'POST',
+                             '/api/haijiao/favorite/delete/batch',
+                             summary='一次取消多篇帖子的收藏（逐条串行，单次最多 50 个）。',
+                             params=[
+                                 ParamSpec('topic_ids', '帖子 ID 列表', required=True,
+                                           placeholder='2232393,2270962,2274377',
+                                           desc='必填：帖子 ID，多个用逗号分隔（中英文逗号都可以）；'
+                                                '自动去重，单次最多 50 个。'),
+                             ] + _CRED_PARAMS,
+                             notes=[
+                                 '必须带登录态：用 account_id（库内账号），或直传 user_id + user_token。',
+                                 '返回 data：total / success_count / skipped_count / failed_count / items'
+                                 '（items[].state：done=已取消 / skipped=本来就没收藏 / failed=失败）。',
+                                 '**服务端逐条串行取消**（不是源站的批量提交）：源站的原生批量是「按顺序删、'
+                                 '遇到没收藏的就报错中止、已删的不回滚」，会返回「失败但实际删了一半」的误导结果，'
+                                 '所以这里改为一条条调，每条结果都是确定的；本来就没收藏的计入 skipped、不算失败。',
+                                 '**耗时**：逐条串行，单条约 1~2 秒——50 条最坏约 1~2 分钟，'
+                                 '请把客户端超时留够；只取消几篇时和「取消收藏帖子」没有区别。',
+                                 'topic_ids 缺失 / 全为空返回 PARAM_MISSING；含非整数项返回 PARAM_FORMAT_ERROR；'
+                                 '含小于 1 的项、或超过 50 个返回 PARAM_VALUE_INVALID。',
+                             ]),
+                EndpointSpec('favorite_folder_add', '新建收藏夹', 'POST',
+                             '/api/haijiao/favorite/folder/add',
+                             summary='新建一个收藏夹（源站规则：名称 1-12 位字符、不可同名）。',
+                             params=[
+                                 ParamSpec('folder_name', '收藏夹名称', required=True,
+                                           placeholder='我的收藏',
+                                           desc='必填：1-12 位字符（源站限制）；重名会被源站拒绝。'),
+                             ] + _CRED_PARAMS,
+                             notes=[
+                                 '必须带登录态：用 account_id（库内账号），或直传 user_id + user_token。',
+                                 '返回 data：folder_id / name / count（新建出来的收藏夹，folder_id 可直接用于「收藏帖子」）。',
+                                 '源站限制：名称为 **1-12 位字符**、**不可与已有收藏夹同名**（重名返回 RESOURCE_ALREADY_EXISTS）。',
+                                 '⚠️ **源站的名字占用缺陷**：收藏夹被**删除或改名后，它的旧名字并不会释放**——'
+                                 '再用同一个名字新建会报「已存在!」。若确实要复用某个名字，请另换一个。',
+                                 'folder_name 缺失返回 PARAM_MISSING；超过 12 位返回 PARAM_VALUE_INVALID（不必等源站拒绝）。',
+                                 '本接口只做「新建」；重命名请用「重命名收藏夹」。',
+                             ]),
+                EndpointSpec('favorite_folder_rename', '重命名收藏夹', 'POST',
+                             '/api/haijiao/favorite/folder/rename',
+                             summary='给收藏夹改名（源站规则：名称 1-12 位字符、不可同名）。',
+                             params=[
+                                 ParamSpec('folder_id', '收藏夹 ID', kind='number', required=True,
+                                           placeholder='26918701',
+                                           desc='必填：要重命名的收藏夹 ID（取自「我的收藏夹」）。'),
+                                 ParamSpec('folder_name', '新名称', required=True,
+                                           placeholder='我的收藏',
+                                           desc='必填：1-12 位字符；不可与已有收藏夹同名（含它自己当前的名字）。'),
+                             ] + _CRED_PARAMS,
+                             notes=[
+                                 '必须带登录态：用 account_id（库内账号），或直传 user_id + user_token。',
+                                 '返回 data：folder_id / name / action（rename）——folder_id 与 name 都是'
+                                 '本次请求的值（源站成功后回的那个对象 id 恒为 0，不能拿来用，故不采用）。',
+                                 '**只改名字，不影响夹内的帖子**（收藏内容不变）。',
+                                 '源站限制：名称 **1-12 位字符**；与已有收藏夹重名会拒绝'
+                                 '（返回 RESOURCE_ALREADY_EXISTS，消息「收藏夹【x】已存在!」）；'
+                                 '不可改成保留名「默认收藏夹」（返回 EXTERNAL_API_FAILED）。',
+                                 '收藏夹不存在 / 不属于该账号时拒绝（消息「修改的收藏夹不存在」）。',
+                                 '⚠️ **改完名字不会释放旧名**（源站的名字占用缺陷）：改名后想用回旧名字会报「已存在!」。',
+                                 'folder_id 缺失 / 非数字 / 小于 1 返回 PARAM_MISSING / PARAM_FORMAT_ERROR /'
+                                 ' PARAM_VALUE_INVALID；folder_name 缺失返回 PARAM_MISSING、超过 12 位返回 PARAM_VALUE_INVALID。',
+                             ]),
+                EndpointSpec('favorite_folder_delete', '删除收藏夹', 'POST',
+                             '/api/haijiao/favorite/folder/delete',
+                             summary='删除一个收藏夹（源站要求夹内为空）。',
+                             params=[
+                                 ParamSpec('folder_id', '收藏夹 ID', kind='number', required=True,
+                                           placeholder='26918701',
+                                           desc='必填：要删除的收藏夹 ID（取自「我的收藏夹」）。'),
+                             ] + _CRED_PARAMS,
+                             notes=[
+                                 '必须带登录态：用 account_id（库内账号），或直传 user_id + user_token。',
+                                 '返回 data：folder_id / action（delete）。',
+                                 '**源站要求收藏夹为空**：夹内还有帖子时会拒绝（消息「不能删除非空收藏夹」），'
+                                 '返回 EXTERNAL_API_FAILED；请先用「取消收藏帖子」清空，或先移到别的夹。',
+                                 '收藏夹不存在或不属于该账号时同样拒绝（消息「无权限操作他人的收藏夹」）。',
+                                 '⚠️ **删掉的名字不会释放**（源站的名字占用缺陷）：删除后想再建同名收藏夹会报「已存在!」。',
+                                 'folder_id 缺失 / 非数字 / 小于 1 返回 PARAM_MISSING / PARAM_FORMAT_ERROR / PARAM_VALUE_INVALID。',
+                             ]),
                 EndpointSpec('image', '图片解码', 'GET',
                              '/api/haijiao/image',
                              summary='传入加密图片地址，服务端解码后返回真实图片，可直接用于 <img src>。',
@@ -796,14 +960,14 @@ SERVICE = ServiceSpec(
                              ]),
                 EndpointSpec('register_captcha', '取注册验证码', 'POST',
                              '/api/haijiao/register/captcha',
-                             summary='两步式注册的第一步：取注册验证码图片（供人工识别），可选经巨量代理请求。',
+                             summary='两步式注册的第一步：取注册验证码图片（供人工识别），可选经 51代理 请求。',
                              params=[
                                  ParamSpec('use_proxy', '是否使用代理', kind='select', default='false',
                                            options=[
                                                {'value': 'false', 'label': '直连（默认）'},
-                                               {'value': 'true', 'label': '经巨量代理'},
+                                               {'value': 'true', 'label': '经 51代理'},
                                            ],
-                                           desc='可选：源站对注册有 IP 限制。选 true 时经巨量代理请求，'
+                                           desc='可选：源站对注册有 IP 限制。选 true 时经 51代理 请求，'
                                                 '提交注册会自动复用同一次出口 IP。'),
                              ],
                              notes=[

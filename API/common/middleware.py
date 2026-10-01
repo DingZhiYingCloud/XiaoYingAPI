@@ -258,13 +258,21 @@ class ApiRequestLogMiddleware:
         return response
 
 
-# 公开 GET 路径（免签名）：邮箱激活链接位于验证邮件内，点击链接本身即一次性凭证，
-# 浏览器访问不带签名参数；注册/登录方式配置为客户端公开信息，均无需项目签名。
+# 公开路径（免签名，GET / HEAD）：这些请求由浏览器或第三方播放器**直连**，天然带不了
+# 项目签名，只能免签放行：
+#   - 邮箱激活链接：点击链接本身即一次性凭证，链接里带的是自己的 token；
+#   - 注册 / 登录方式配置：客户端公开信息；
+#   - 红果短剧网页直出流：<video> 标签直连，鉴权由 play 下发的时效令牌承担。
+# 为什么代码里还要列一遍（DB 里同样有对应的 open 策略）：策略表是运营数据，会被误删、
+# 换环境也不会自动重建（部分种子只存在于数据迁移里，迁移标记已执行就不会重跑）。
+# 这几个例外一旦丢失，登录 / 播放会直接整片挂掉，因此留一份**与 DB 解耦**的代码兜底，
+# DB 里那条 open 策略退化为「双保险」。
 # 注意：全局默认 fail-closed（未命中策略一律要求签名），
-# 仅此处列出的 GET 路径与显式 open 的策略节点可匿名访问。
-PUBLIC_GET_PATHS = (
+# 仅此处列出的路径与显式 open 的策略节点可匿名访问。
+PUBLIC_PATHS = (
     '/api/user_center/users/verify/email',
     '/api/user_center/users/methods',
+    '/api/dramas/hongguo/stream',
 )
 
 
@@ -292,7 +300,7 @@ class ApiAuthMiddleware:
     3. **认证判定**：由 requires_auth() 统一给出（基于 resolve_service_policy()）。
        · 需要签名：校验签名（app_id/timestamp/nonce/sign），通过后把项目对象挂到
          request.auth_app 供视图直接使用；失败返回统一 20011
-       · 开放：仅显式 open 的策略节点，以及 PUBLIC_GET_PATHS 列出的公开 GET 路径
+       · 开放：仅显式 open 的策略节点，以及 PUBLIC_PATHS 列出的公开路径（GET / HEAD）
     4. **项目白名单（签名通过后）**：生效 app_scope=whitelist 且当前项目不在
        这条策略的名单内 → 返回 20020（FORBIDDEN）。open 模式不校验签名、拿不到调用项目，
        白名单对其无意义。
@@ -321,9 +329,10 @@ class ApiAuthMiddleware:
                     'msg': '该接口仅限后台内部使用，不对外开放',
                     'data': None,
                 })
-            # 公开 GET 路径（如邮件内激活链接、注册/登录方式配置）免签名
-            is_public_get = request.method == 'GET' and request.path in PUBLIC_GET_PATHS
-            if not is_public_get and requires_auth(request.path):
+            # 公开路径（邮件内激活链接、注册/登录方式配置、红果直出流）免签名
+            is_public = (request.method in ('GET', 'HEAD')
+                         and request.path in PUBLIC_PATHS)
+            if not is_public and requires_auth(request.path):
                 params = request.POST.dict()
                 params.update({k: v for k, v in request.GET.items() if k not in params})
                 from API.apis.user_center.sign import verify_sign

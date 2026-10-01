@@ -4,6 +4,7 @@
 （见 utils.decode_payload）。
 
 提供能力:
+    get_domain_config()                      今日域名配置（大陆可访问域名 / 备用 / 海外 / 影视站 + 客服邮箱）
     get_topics(tab='hot', page=1)            内容列表（热帖 / 新闻 / 大事记 / 原创 / 精华 / 最新）
     search_topics(key, page=1, node_id=0)    搜索帖子（分页，按关键词）
     get_topic_detail(topic_id)               帖子详情（正文 / 原图 / 视频附件 / 互动数据）
@@ -11,7 +12,7 @@
     get_comment_replies(comment_id, page)    二级评论列表（某条主评论下的子评论，分页）
     fetch_image(url)                         解码混淆图片（返回 data URI）
     get_video_playlist(topic_id, attachment_id)  可直接播放的 m3u8（还原真密钥，标准播放器可播）
-    register_captcha(use_proxy)              取注册验证码（可选经巨量代理；源站注册有 IP 限制）
+    register_captcha(provider)               取注册验证码（可选经代理；源站注册有 IP 限制）
     submit_register(...)                     提交注册
     login(username, password)                账号登录（返回 token）
     get_sign_in_status()                     每日金币签到状态（是否已签到 / 可得金币）
@@ -26,6 +27,11 @@
     give_topic_gift(topic_id, item_id, ...)  给帖子打赏（买礼物送给帖子作者）
     set_follow(target_user_id, follow)       关注 / 取消关注某个用户
     get_ranking(key, type_value)             排行榜（粉丝 / 点赞 / 人气；总榜 / 月榜 / 周榜）
+
+今日域名（自动跟随）：
+    海角的大陆可访问域名每日变动，每次新建实例时会自动跟随当天的可用域名（见
+    utils.current_base_url）：命中缓存零开销，未命中则探测源站配置接口，探测失败
+    沿用现有域名（含 utils.BASE_URL 兜底），不会让调用方整体不可用。
 
 登录凭据（x-user-id / x-user-token）：
     取帖内视频等受限内容需要登录态。构造器可传 user_id / user_token（调用方自定义账号），
@@ -51,13 +57,17 @@ import re
 import subprocess
 import time
 from html import unescape
-from urllib.parse import urljoin
+from urllib.parse import quote, urljoin
 
 import requests
 from django.conf import settings
 
 from . import utils as U
 from .cache import DATA_TTL, MEDIA_TTL, get_or_fetch
+
+# 注册可用的代理出口线路（控制台「出口」下拉的取值来源，加线路时只改这一处；
+# 直连不在此表内，用 None / 'direct' 表示）
+PROXY_PROVIDERS = ('51daili', 'juliang')
 
 
 class HaijiaoSpider:
@@ -68,6 +78,9 @@ class HaijiaoSpider:
         :param user_id: 覆盖默认凭据的账号 ID（可选，需与 user_token 成对）
         :param user_token: 覆盖默认凭据的登录 token（可选）
         """
+        # 先跟随今日域名（海角大陆可访问域名每日变动）：缓存命中时零开销；
+        # 必须在建会话之前调用——接口地址常量与请求头 origin / referer 都由它决定。
+        U.current_base_url()
         self.session = requests.Session()
         headers = dict(U.API_HEADERS)
         # 调用方传入优先，其次 .env 默认凭据；都没有则匿名请求
@@ -77,6 +90,15 @@ class HaijiaoSpider:
             headers['x-user-id'] = uid
             headers['x-user-token'] = token
         self.session.headers.update(headers)
+
+    def get_domain_config(self) -> dict:
+        """获取今日域名配置
+
+        :return: {'domain'(今日大陆可直接访问域名), 'backup_domain'(备用域名),
+                  'abroad_domain'(海外永久域名), 'movie_domain'(影视站域名),
+                  'customer_service'(客服邮箱)}
+        """
+        return U.resolve_domain_config()
 
     # ==================== 基础请求 ====================
 
@@ -616,49 +638,104 @@ class HaijiaoSpider:
         return session
 
     @staticmethod
-    def _pick_proxy(use_proxy: bool):
+    def _pick_proxy(provider: str = None):
         """
-        按需取一条巨量代理（源站对注册有 IP 限制）。
+        按需取一条动态代理（源站对注册有 IP 限制）。
 
-        :param use_proxy: 是否使用代理
+        注意一个曾经误判的结论：早前观测到的「代理出口大量被 302 到备用域名后 404」，
+        并非平台差异，而是 register_captcha 下载图片时漏传请求级代理、导致**取码与取图走了
+        两个出口 IP**，源站按 captchaId 校验出口后把图片 302 走（详见该方法的注释）。
+        修好后两个平台取码都恢复正常：实测巨量 5/8、51代理 8/8，失败多为代理自身网络抖动。
+
+        51代理 的地址里带上账号密码：它支持「IP 白名单」与「账密」两种认证，本机出口 IP
+        恰好在白名单里（不带账密也能通），但线上服务器不一定——账密是真校验项
+        （实测故意传错密码，10/10 全部被网关拒绝）。
+
+        :param provider: 代理线路，取值见 PROXY_PROVIDERS；None / 'direct' = 直连
         :return: (代理描述, requests 的 proxies 参数)；不走代理时为 (None, None)
         """
-        if not use_proxy:
+        if not provider or provider == 'direct':
             return None, None
-        # 懒导入：只有走代理注册时才依赖代理线路的实现
-        from SpiderServices.ProxyIp.ProxyIP_juliang.home import ProxyIPJuliang
-        result = ProxyIPJuliang().get_proxies(num=1)
+
+        if provider == '51daili':
+            # 懒导入：只有走代理注册时才依赖代理线路的实现
+            from SpiderServices.ProxyIp.ProxyIP_51daili.home import ProxyIP51Daili
+            from SpiderServices.ProxyIp.ProxyIP_51daili.utils import (
+                DEFAULT_ACCESS_NAME, DEFAULT_ACCESS_PASSWORD)
+            entry = HaijiaoSpider._first_proxy_entry(
+                ProxyIP51Daili().get_proxies(qty=1), provider)
+            auth = ''
+            if DEFAULT_ACCESS_NAME and DEFAULT_ACCESS_PASSWORD:
+                auth = (f'{quote(DEFAULT_ACCESS_NAME, safe="")}:'
+                        f'{quote(DEFAULT_ACCESS_PASSWORD, safe="")}@')
+            url = f'http://{auth}{entry["ip"]}:{entry["port"]}'
+        elif provider == 'juliang':
+            from SpiderServices.ProxyIp.ProxyIP_juliang.home import ProxyIPJuliang
+            entry = HaijiaoSpider._first_proxy_entry(
+                ProxyIPJuliang().get_proxies(num=1), provider)
+            # 巨量的返回值自带拼好的 proxy（含账密）
+            url = entry.get('proxy') or f'http://{entry["ip"]}:{entry["port"]}'
+        else:
+            raise RuntimeError(
+                f'未知的代理线路: {provider!r}（可选 {" / ".join(PROXY_PROVIDERS)}）')
+
+        return f'{entry["ip"]}:{entry["port"]}', {'http': url, 'https': url}
+
+    @staticmethod
+    def _first_proxy_entry(result: dict, provider: str) -> dict:
+        """从代理线路的返回值里取第一条条目（无条目 / ip 端口不合法都直接报错）"""
         entries = ((result or {}).get('data') or {}).get('proxies') or []
         if not entries:
-            raise RuntimeError(f"取代理失败: {(result or {}).get('message') or '未返回可用代理'}")
+            raise RuntimeError(
+                f"取代理失败（{provider}）: {(result or {}).get('message') or '未返回可用代理'}")
+        entry = entries[0]
+        ip = str(entry.get('ip') or '').strip()
+        port = str(entry.get('port') or '').strip()
         # 代理接口偶尔会返回畸形条目（实测见过端口是负的 int64 溢出值），
-        # 取第一条 ip / 端口都合法的，避免下游拼出无效地址报 InvalidURL
-        entry = None
-        for candidate in entries:
-            port = str(candidate.get('port') or '')
-            if candidate.get('ip') and port.isdigit() and 0 < int(port) < 65536:
-                entry = candidate
-                break
-        if not entry:
-            raise RuntimeError('取代理失败: 返回的代理条目缺少合法的 ip / 端口')
-        url = entry.get('proxy') or f"http://{entry['ip']}:{entry['port']}"
-        return f"{entry.get('ip')}:{entry.get('port')}", {'http': url, 'https': url}
+        # 这里挡一道，避免下游拼出无效地址报 InvalidURL
+        if not ip or not port.isdigit() or not 0 < int(port) < 65536:
+            raise RuntimeError(f'取代理失败（{provider}）: 返回的代理条目缺少合法的 ip / 端口')
+        return entry
 
-    def register_captcha(self, use_proxy: bool = False) -> dict:
+    def register_captcha(self, provider: str = None) -> dict:
         """
         取注册验证码（图片交由人工识别；后续接入验证码识别后即可自动化）。
 
-        :param use_proxy: 是否经巨量代理请求（源站注册有 IP 限制）
+        :param provider: 代理线路，取值见 PROXY_PROVIDERS；None / 'direct' = 直连
         :return: {'captcha_id', 'captcha_image'(bytes), 'proxy'(代理描述或 None),
                   'proxies'(提交注册时复用的代理参数或 None), 'cookies'(取码会话 Cookie)}
         """
-        proxy, proxies = self._pick_proxy(use_proxy)
+        proxy, proxies = self._pick_proxy(provider)
         session = self._new_session(proxies)
         data = self._request_json('GET', U.CAPTCHA_URL, session=session)
         image_url = urljoin(U.BASE_URL, data.get('captchaUrl') or '')
-        resp = session.get(image_url, timeout=U.REQUEST_TIMEOUT)
-        resp.raise_for_status()
-        return {'captcha_id': data.get('captchaId'), 'captcha_image': resp.content,
+
+        # 下载验证码图片。
+        #
+        # 代理必须走**请求级**（同 _request_json，见 _new_session 的说明）：Windows 上 requests
+        # 会用注册表里的系统代理覆盖 session.proxies，只挂 session 会让「取码」与「取图」走成
+        # 两个不同的出口 IP —— 源站按 captchaId 绑定取码时的出口校验，IP 对不上就把图片 302 到
+        # 备用域名，而备用域名这条路由不稳定（实测大量 404）。之前这里的 404 大多源于此。
+        #
+        # 另一个已知现象：即便出口一致，源站边缘仍会偶发把图片地址 302 到备用域名。重发同一地址
+        # 多能正常返回，故这里仍重试几次再放弃。
+        req_proxies = dict(session.proxies) or None
+        image = None
+        last_err = None
+        for attempt in range(U.MAX_RETRIES):
+            try:
+                resp = session.get(image_url, timeout=U.REQUEST_TIMEOUT, proxies=req_proxies)
+                resp.raise_for_status()
+                image = resp.content
+                break
+            except Exception as e:      # noqa: BLE001 - 404 / 网络抖动都值得重取
+                last_err = e
+                if attempt < U.MAX_RETRIES - 1:
+                    time.sleep(U.RETRY_DELAY)
+        if image is None:
+            raise RuntimeError(f'获取验证码图片失败（已尝试 {U.MAX_RETRIES} 次）: {last_err}')
+
+        return {'captcha_id': data.get('captchaId'), 'captcha_image': image,
                 'proxy': proxy, 'proxies': proxies, 'cookies': session.cookies}
 
     def submit_register(self, username: str, password: str, email: str,
@@ -1259,6 +1336,124 @@ class HaijiaoSpider:
             'GET', U.build_liked_topics_url(page, U.SOCIAL_PAGE_SIZE)) or {}
         src = data.get('page') or {}
         limit = src.get('limit') or U.SOCIAL_PAGE_SIZE
+        total = src.get('total') or 0
+        return {
+            'pagination': {
+                'page': src.get('page', page),
+                'page_size': limit,
+                'total': total,
+                'total_page': (total + limit - 1) // limit if limit else 0,
+            },
+            'results': [self._parse_item(it) for it in (data.get('results') or [])],
+        }
+
+    # ==================== 收藏 ====================
+
+    def add_favorite(self, topic_id, folder_id: int = U.FAVORITE_ALL_FOLDERS) -> dict:
+        """
+        把帖子收藏到指定收藏夹（不传 folder_id 即默认收藏夹）。源站对应 /post/collection 的收藏按钮。
+
+        写操作：业务失败与网络异常都不重试（重复收藏虽幂等，但重试没有意义）。
+        重复收藏同一帖子源站仍回成功，故调用方无需先查再收藏。
+
+        :return: {topic_id, folder_id, action}
+        """
+        self._request_json('GET', U.build_favorite_add_url(folder_id, topic_id),
+                           retry_business=False, retry_network=False)
+        return {'topic_id': topic_id, 'folder_id': folder_id, 'action': 'add'}
+
+    def remove_favorite(self, topic_id) -> dict:
+        """
+        取消收藏帖子（未收藏的帖子源站会拒绝：「无法删除无效的数据」）。
+
+        写操作：业务失败与网络异常都不重试。
+
+        :return: {topic_id, action}
+        """
+        self._request_json('GET', U.build_favorite_delete_url(topic_id),
+                           retry_business=False, retry_network=False)
+        return {'topic_id': topic_id, 'action': 'remove'}
+
+    def create_favorite_folder(self, name: str) -> dict:
+        """
+        新建收藏夹（源站校验：名称 1-12 位字符、同名会拒绝）。
+
+        写操作：业务失败与网络异常都不重试（重试可能建出重复的夹子）。
+
+        :return: {folder_id, name, count}（新建出来的收藏夹）
+        """
+        data = self._request_json('GET', U.build_favorite_folder_add_url(name),
+                                  retry_business=False, retry_network=False) or {}
+        return self._parse_favorite_folder(data)
+
+    def rename_favorite_folder(self, folder_id, name: str) -> dict:
+        """
+        重命名收藏夹（源站复用「新建」接口，传已有 folder_id 即为重命名）。
+
+        源站校验：名称 1-12 位字符、不可与已有收藏夹同名（改成自己当前的名字同样会被拒）、
+        不可改成保留名「默认收藏夹」。
+
+        写操作：业务失败与网络异常都不重试。源站成功时返回的是假对象（id 恒为 0），
+        故这里按调用方传入的值回传，不回传源站那个对象。
+
+        :return: {folder_id, name, action}
+        """
+        self._request_json('GET', U.build_favorite_folder_add_url(name, folder_id),
+                           retry_business=False, retry_network=False)
+        return {'folder_id': folder_id, 'name': name, 'action': 'rename'}
+
+    def delete_favorite_folder(self, folder_id) -> dict:
+        """
+        删除收藏夹（源站要求夹内为空，非空会拒绝：「不能删除非空收藏夹」）。
+
+        写操作：业务失败与网络异常都不重试。
+
+        :return: {folder_id, action}
+        """
+        self._request_json('GET', U.build_favorite_folder_delete_url(folder_id),
+                           retry_business=False, retry_network=False)
+        return {'folder_id': folder_id, 'action': 'delete'}
+
+    @staticmethod
+    def _parse_favorite_folder(item: dict) -> dict:
+        """收藏夹条目：源站字段转对外契约（下划线命名）"""
+        return {
+            'folder_id': item.get('id'),
+            'name': item.get('name') or '',
+            # 该收藏夹里的帖子数（源站提供；「全部收藏」这个伪夹子的数值不可靠，忽略即可）
+            'count': item.get('count') or 0,
+        }
+
+    def get_favorite_folders(self) -> dict:
+        """
+        获取当前登录账号的收藏夹列表（「我的收藏」页左侧的收藏夹）。
+
+        源站对应 /post/collection 页；一个收藏都没有时源站回空（data 为 null），本方法归一为
+        空列表。必须带登录态。
+
+        :return: {total, results: [{folder_id, name, count}]}
+        """
+        data = self._request_json('GET', U.FAVORITE_FOLDER_LIST_URL) or []
+        return {
+            'total': len(data),
+            'results': [self._parse_favorite_folder(it) for it in data],
+        }
+
+    def get_favorite_topics(self, page: int = 1,
+                            folder_id: int = U.FAVORITE_ALL_FOLDERS) -> dict:
+        """
+        获取当前登录账号收藏的帖子（分页，可按收藏夹筛选）。
+
+        :param page: 页码，从 1 开始（源站每页 20 条）
+        :param folder_id: 收藏夹 ID（取自 get_favorite_folders 的 folder_id）；
+                          U.FAVORITE_ALL_FOLDERS（0）= 全部收藏（跨收藏夹）
+        :return: {pagination: {page, page_size, total, total_page}, results}
+                 （results 与「内容列表」的帖子结构一致）
+        """
+        data = self._request_json(
+            'GET', U.build_favorite_topics_url(folder_id, page, U.FAVORITE_PAGE_SIZE)) or {}
+        src = data.get('page') or {}
+        limit = src.get('limit') or U.FAVORITE_PAGE_SIZE
         total = src.get('total') or 0
         return {
             'pagination': {

@@ -121,8 +121,9 @@ def list_view(request):
     if not category:
         return _json_response(StatusCode.PARAM_MISSING, msg='参数缺失: category(分类)')
     if category not in utils.CATEGORY_VALUES:
+        # 取值有 44 个（4 个一级 + 40 个二级题材），不回显全量，指向「分类清单」接口自取
         return _json_response(StatusCode.PARAM_VALUE_INVALID,
-                              msg='参数值非法: category 仅支持 ' + ' / '.join(utils.CATEGORY_VALUES))
+                              msg='参数值非法: category 不是合法分类（取值见「分类清单」接口）')
 
     page_raw = request.GET.get('page', '').strip()
     if page_raw:
@@ -291,8 +292,11 @@ def stream_view(request):
 
     鉴权用 `play` 下发的时效令牌（<video> 标签带不了项目签名）。
     画质（输出宽度上限）写在令牌里，跟着令牌走，不用再传参。
-    该集该画质首次被点播时返回 202（服务端在后台解密 + 转码，约数十秒），
-    前端轮询本地址，返回 200 即可交给 <video> 播放。
+
+    HTTP 契约（三次请求各不相同，别只按 200 判「可以播了」）：
+        202  该集该画质首次点播，服务端正在后台解密 + 转码（约数十秒），带 Retry-After
+        503  转码失败，响应体 JSON 里有失败原因（此前误用 200 返回，会把失败态误判成可播）
+        200 / 206  产物就绪，响应体是 video/* 二进制（206 支持 Range 拖动）
     """
     payload, error = utils.parse_stream_token((request.GET.get('token') or '').strip())
     if payload is None:
@@ -309,7 +313,7 @@ def stream_view(request):
         if state.get('state') == 'failed':
             return JsonResponse({'code': StatusCode.SERVICE_UNAVAILABLE,
                                  'msg': f"该集播放地址生成失败: {state.get('error')}",
-                                 'data': state})
+                                 'data': state}, status=503)
         resp = JsonResponse({'code': StatusCode.SUCCESS,
                              'msg': '正在生成播放地址，请稍候重试',
                              'data': state}, status=202)

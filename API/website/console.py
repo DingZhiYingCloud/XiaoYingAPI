@@ -26,6 +26,7 @@ from API.models import Announcement, ApiServicePolicy, Feedback, User, UserApp
 from API.models.Statistics.api_call_stat import NO_APP
 
 from .admin_auth import superadmin_required
+from .service_presets import apply_presets, preset_rows
 from .service_status import status_def
 from .service_tree import service_tree
 from .services import SERVICES
@@ -205,7 +206,7 @@ def services_view(request):
     """超管：API 服务策略管理（服务 / 线路 / 端点三级继承）
 
     GET  ：按前缀顺序列出全部策略（含真实「生效结果」，复用 resolve_service_policy()）
-    POST ：action = create / edit / toggle / delete
+    POST ：action = create / edit / toggle / delete / delete_bulk / apply_presets
     """
     if request.method == 'POST':
         return _handle_service_action(request)
@@ -276,8 +277,21 @@ def _render_services(request):
             'effective_audience': effective['audience'],
             'app_ids': [str(pk) for pk in policy.apps.values_list('pk', flat=True)],
         })
+    # 建议策略预览（「一键新建建议策略」用）：逐条标注「新建 / 已存在」，
+    # 让操作前就能核对会补哪些、哪些已在了。清单见 API/website/service_presets.py。
+    presets = [{
+        'prefix': row['path_prefix'],
+        'name': row['name'],
+        'level_label': level_labels[row['level']],
+        'auth_mode_label': mode_labels[row['auth_mode']],
+        'status_label': status_labels[row['status']],
+        'reason': row['reason'],
+        'exists': row['exists'],
+    } for row in preset_rows()]
     return render(request, 'console/services.html', {
         'policies': policies,
+        'presets': presets,
+        'preset_missing': sum(1 for item in presets if not item['exists']),
         'tree': tree,
         'level_choices': list(level_labels.items()),
         'status_choices': list(status_labels.items()),
@@ -301,6 +315,8 @@ def _handle_service_action(request):
         return _action_create_policy(request)
     if action == 'delete_bulk':
         return _action_delete_policies(request)
+    if action == 'apply_presets':
+        return _action_apply_presets(request)
     policy = _policy_or_none(request.POST.get('id'))
     if policy is None:
         messages.error(request, _('服务策略不存在'))
@@ -505,6 +521,21 @@ def _action_delete_policies(request):
     deleted = queryset.count()
     queryset.delete()
     messages.success(request, _('已删除 %(n)s 条服务策略') % {'n': deleted})
+    return redirect('website:console_services')
+
+
+def _action_apply_presets(request):
+    """一键新建建议策略：只补齐清单里缺失的，已存在的一律跳过（不覆盖已有配置）
+
+    清单与语义见 API/website/service_presets.py；管理命令 seed_service_policies 同源。
+    """
+    created, existed = apply_presets()
+    if created:
+        messages.success(request, _('已新建 %(n)s 条建议策略') % {'n': len(created)})
+    if existed:
+        messages.info(request, _('另有 %(n)s 条建议策略已存在，未改动') % {'n': len(existed)})
+    if not created and not existed:
+        messages.info(request, _('建议策略清单为空，无需新建'))
     return redirect('website:console_services')
 
 

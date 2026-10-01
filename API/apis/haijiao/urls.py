@@ -4,6 +4,7 @@ from django.urls import path
 from . import request
 
 urlpatterns = [
+    path('domain', request.domain_view, name='haijiao_domain'),  # 今日域名（大陆可访问域名 / 备用 / 海外 / 影视站）
     path('topics', request.topics_view, name='haijiao_topics'),  # 内容列表（热帖/新闻/大事记/原创/精华/最新）
     path('search', request.search_view, name='haijiao_search'),  # 搜索（帖子）
     path('topic/detail', request.topic_detail_view, name='haijiao_topic_detail'),  # 帖子详情
@@ -35,6 +36,22 @@ urlpatterns = [
     path('topic/like/batch', request.like_batch_view,
          name='haijiao_topic_like_batch'),  # 批量点赞 / 取关（全部库内账号）
     path('topic/liked', request.topic_liked_view, name='haijiao_topic_liked'),  # 我点赞过的帖子
+    path('favorite/folders', request.topic_favorite_folders_view,
+         name='haijiao_favorite_folders'),  # 我的收藏夹列表
+    path('favorite/topics', request.topic_favorite_view,
+         name='haijiao_favorite_topics'),  # 我收藏的帖子（可按收藏夹筛选）
+    path('favorite/add', request.topic_favorite_add_view,
+         name='haijiao_favorite_add'),  # 收藏帖子
+    path('favorite/delete', request.topic_favorite_delete_view,
+         name='haijiao_favorite_delete'),  # 取消收藏帖子
+    path('favorite/delete/batch', request.topic_favorite_delete_batch_view,
+         name='haijiao_favorite_delete_batch'),  # 批量取消收藏（逐条串行）
+    path('favorite/folder/add', request.favorite_folder_create_view,
+         name='haijiao_favorite_folder_add'),  # 新建收藏夹
+    path('favorite/folder/rename', request.favorite_folder_rename_view,
+         name='haijiao_favorite_folder_rename'),  # 重命名收藏夹
+    path('favorite/folder/delete', request.favorite_folder_delete_view,
+         name='haijiao_favorite_folder_delete'),  # 删除收藏夹
     path('image', request.image_view, name='haijiao_image'),  # 图片解码（返回真实图片）
     path('register/captcha', request.register_captcha_view, name='haijiao_register_captcha'),  # 取注册验证码
     path('register/credentials', request.register_credentials_view,

@@ -1,0 +1,58 @@
+{% extends 'console/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "安全设置 - 超级管理员 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,安全设置,后台入口隐身,路径探测" %}{% endblock %}
+{% block description %}{% trans "小影API 超级管理员：控制台自身的安全开关，防止后台入口被路径探测发现。" %}{% endblock %}
+
+{% block console_content %}
+{% trans "控制台自身的安全开关：防止后台入口被路径探测发现。" as ph_desc %}
+{% include 'console/_page_header.html' with icon='shield' title='安全设置' desc=ph_desc %}
+
+{% include 'console/_messages.html' %}
+
+{# 规则说明（纯提示，中性灰） #}
+<div role="alert" class="alert alert-soft bg-base-200 mt-4 items-start py-3 text-sm">
+  <div class="space-y-1">
+    <p>{% trans "「后台入口隐身」开启后，未登录（或非超管）访问后台地址一律返回 404，与访问一个根本不存在的地址表现完全一致。" %}</p>
+    <p class="text-xs opacity-80">
+      {% trans "为什么需要它：若未登录访问后台时跳转登录页，等于明确告诉探测者「这个地址存在」，对方据此就能把后台入口定位出来。" %}
+    </p>
+    <p class="text-xs opacity-80">
+      {% trans "代价：开启后你自己也要先从 /login/ 登录，再访问后台才能进入（登录成功后首页有「超级管理员」入口）。" %}
+    </p>
+    <p class="text-xs opacity-80">
+      {% trans "边界：登录页本身仍然公开（任何站点都有登录页），本开关只隐藏后台，不隐藏登录页。" %}
+    </p>
+  </div>
+</div>
+
+<form method="post" action="{% url 'website:console_security' %}" class="mt-5 grid gap-5">
+  {% csrf_token %}
+  <fieldset class="con-panel p-4">
+    <legend class="px-1 text-base font-bold">{% trans "后台入口" %}</legend>
+
+    <label class="mt-2 flex cursor-pointer items-start justify-between gap-4">
+      <span class="min-w-0">
+        <span class="flex items-center gap-2">
+          <span class="font-semibold">{% trans "后台入口隐身" %}</span>
+          {% if setting.hide_console %}
+          <span class="badge badge-soft badge-success badge-sm">{% trans "已开启" %}</span>
+          {% else %}
+          <span class="badge badge-soft badge-warning badge-sm">{% trans "已关闭" %}</span>
+          {% endif %}
+        </span>
+        <span class="mt-1 block text-xs text-base-content/70">
+          {% trans "未登录访问后台一律返回 404；关闭则退回「跳转登录页」的行为。" %}
+        </span>
+      </span>
+      <input type="checkbox" name="hide_console" class="toggle toggle-primary shrink-0"
+             {% if setting.hide_console %}checked{% endif %} />
+    </label>
+  </fieldset>
+
+  <div class="flex justify-end">
+    <button type="submit" class="btn btn-primary btn-sm">{% trans "保存设置" %}</button>
+  </div>
+</form>
+{% endblock %}

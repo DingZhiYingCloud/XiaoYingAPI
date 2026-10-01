@@ -19,14 +19,19 @@
     第 13 轮 线路多选：一条策略覆盖多条线路（extra_prefixes）全部生效；编辑可增删线路；
              线路被另一条策略接管时「让位」（部分让位保留其余、全部让位则删除）
     第 14 轮 批量删除：列表页勾选框 + 批量删除表单；未勾选被拒、只删勾选项、非法 id 忽略
+    第 15 轮 建议策略：清单与迁移写入的 9 条逐条一致、后台「一键新建建议策略」预览面板、
+             只补缺失 / 可反复执行 / 不覆盖已有、管理命令 --dry-run、stream 免签代码兜底
 
 隔离策略：测试数据用 MARK（xysvcpolicy<RUN>）标记，策略路径前缀一律包含 MARK，
-测试结束统一删除。仅第 12 轮为了验证「文档隐藏」在真实文档页 / 在线调试上的效果，
-会临时给一个真实端点建策略（前置检查该前缀原本无策略，`finally` 里必删）。
+测试结束统一删除。另有两轮的例外，均不残留：
+- 第 12 轮为了验证「文档隐藏」在真实文档页 / 在线调试上的效果，会临时给一个真实端点
+  建策略（前置检查该前缀原本无策略，`finally` 里必删）；
+- 第 15 轮为了验证建议策略的新建 / 不覆盖语义，会在**事务里**改动真实策略，结束整体回滚。
 
 运行方式：
     .venv\\Scripts\\python.exe scripts\\test_service_policy.py
 """
+import io
 import json
 import os
 import re
@@ -43,6 +48,8 @@ django.setup()
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
+from django.db import transaction
 from django.test import Client
 from django.urls import resolve, reverse
 
@@ -57,6 +64,7 @@ from API.common.middleware import (
 )
 from API.models import ApiServicePolicy, UserApp
 from API.website.docs.menu import build_docs_menu
+from API.website.service_presets import apply_presets, preset_rows
 from API.website.service_status import (
     STATUS_DEFS,
     UNCLICKABLE_STATUSES,
@@ -64,6 +72,10 @@ from API.website.service_status import (
     worst_status,
 )
 from API.website.service_tree import service_tree
+
+# 建议策略清单里挑一条真实前缀做「新建 / 不覆盖 / 免签兜底」的验证对象。
+# 这些操作都在事务里做、结束整体回滚（见 round15），不改动库里的真实配置。
+PRESET_TARGET = '/api/dramas/hongguo/stream'
 
 RUN = str(int(time.time()))
 MARK = f'xysvcpolicy{RUN}'
@@ -803,6 +815,109 @@ def round14_bulk_delete(client):
           and len(resolve_service_policy(f'{prefixes[0]}x')['chain']) == 0)
 
 
+# ───────────────── 第 15 轮：建议策略（清单 / 一键新建 / 免签兜底） ─────────────────
+
+def round15_service_presets(client):
+    section('第 15 轮 建议策略清单与「一键新建」（预览面板 / 幂等 / 不覆盖 / 免签兜底）')
+    url = reverse('website:console_services')
+
+    # 1) 清单自证：必须与 0028 / 0031 / 0032 / 0035 / 0043 写入的 9 条逐条一致
+    #    （level 也照抄迁移原文，即便有几处与服务树归类不符 —— 见 service_presets.py 注释）
+    expected = {
+        '/api/captcha_self/': ('service', 'open'),
+        '/api/captcha_auth/aliyun/': ('service', 'open'),
+        '/api/statistics/': ('service', 'open'),
+        '/api/haijiao/video/m3u8': ('endpoint', 'open'),
+        '/api/haijiao/image': ('endpoint', 'open'),
+        '/api/dramas/hongguo/stream': ('endpoint', 'open'),
+        '/api/feedback/': ('service', 'auth'),
+        '/api/feedback/ticket': ('endpoint', 'open'),
+        '/api/feedback/contacts': ('endpoint', 'open'),
+    }
+    rows = preset_rows()
+    got = {row['path_prefix']: (row['level'], row['auth_mode']) for row in rows}
+    check('清单恰为迁移写入的 9 条建议策略（层级 / 认证模式一致）',
+          got == expected, f'got={got}')
+    check('每条都写明了「为什么需要」', all(row['reason'].strip() for row in rows))
+
+    # 每条前缀都必须是服务树里真实存在的服务 / 线路 / 端点，否则后台编辑弹窗反查不到，
+    # 保存时会被降级成服务级（这是比「前缀形状」更要紧的正确性约束）。
+    known = set()
+    for svc in service_tree():
+        known.add(svc['prefix'])
+        for channel in svc['channels']:
+            known.add(channel['prefix'])
+            known.update(ep['path'] for ep in channel['endpoints'])
+    unknown = [row['path_prefix'] for row in rows if row['path_prefix'] not in known]
+    check('每条前缀都能在服务树里反查到（编辑弹窗可回填）', not unknown, f'unknown={unknown}')
+
+    # 2) 页面：按钮 + 预览面板（列出全部建议前缀与「为什么需要」）
+    #    「将新建 / 已存在」的标注与库内实际状态有关，放到下面的事务里按受控状态断言
+    body = client.get(url).content.decode()
+    check('列表页含「一键新建建议策略」按钮与预览面板',
+          'data-open-presets' in body and 'service_presets_modal' in body
+          and 'value="apply_presets"' in body)
+    check('预览面板列出全部建议前缀与原因',
+          all(row['path_prefix'] in body for row in rows)
+          and rows[0]['reason'] in body)
+
+    # 3) 语义验证：补齐缺失 / 可反复执行 / 不覆盖已有 / 后台入口 / 免签兜底。
+    #    整段放在事务里，结束一律回滚 —— 不落任何真实改动。
+    with transaction.atomic():
+        ApiServicePolicy.objects.filter(path_prefix=PRESET_TARGET).delete()
+        invalidate_api_service_policy_cache()
+
+        # 预览面板必须按「当下库内状态」逐条标注：缺的那条标「将新建」，其余标「已存在，跳过」
+        row_html = client.get(url).content.decode().split(PRESET_TARGET, 1)[1].split('</tr>', 1)[0]
+        check('预览面板按当前库存逐条标注动作（缺失的标「将新建」）',
+              '将新建' in row_html, f'row={row_html[:200]!r}')
+
+        created, existed = apply_presets()
+        check('一键新建只补缺失的那条，其余按现状跳过',
+              created == [PRESET_TARGET] and PRESET_TARGET not in existed
+              and len(created) + len(existed) == len(rows),
+              f'created={created} existed={len(existed)}')
+
+        created2, existed2 = apply_presets()
+        check('可反复执行（第二次新建 0 条，全部按已存在跳过）',
+              created2 == [] and len(existed2) == len(rows),
+              f'created2={created2} existed2={len(existed2)}')
+
+        ApiServicePolicy.objects.filter(path_prefix=PRESET_TARGET).update(auth_mode='auth')
+        created3, _ = apply_presets()
+        check('已存在的策略不被覆盖（手工改成需签名后仍是需签名）',
+              created3 == []
+              and ApiServicePolicy.objects.get(path_prefix=PRESET_TARGET).auth_mode == 'auth')
+
+        out = io.StringIO()
+        call_command('seed_service_policies', '--dry-run', stdout=out)
+        text = out.getvalue()
+        check('管理命令 --dry-run 显示无需新建',
+              '新建 0 条' in text and '已存在跳过 9 条' in text, f'out={text.strip()}')
+
+        # 后台入口：删掉目标后再走一次真实按钮路径（POST action=apply_presets）
+        ApiServicePolicy.objects.filter(path_prefix=PRESET_TARGET).delete()
+        invalidate_api_service_policy_cache()
+        resp = client.post(url, {'action': 'apply_presets'})
+        check('后台「一键新建」按钮补齐缺失策略并跳回列表',
+              resp.status_code == 302
+              and ApiServicePolicy.objects.filter(path_prefix=PRESET_TARGET).exists())
+
+        # 免签兜底：DB 里没有这条 open 策略时，该路径仍不得被要求签名（代码内名单生效）
+        ApiServicePolicy.objects.filter(path_prefix=PRESET_TARGET).delete()
+        invalidate_api_service_policy_cache()
+        get_resp = client.get(PRESET_TARGET)
+        head_resp = client.head(PRESET_TARGET)
+        check('stream 免签兜底：GET 不被中间件拦成 20011（落到视图的 403 缺令牌）',
+              get_resp.status_code == 403 and _code(get_resp) != StatusCode.AUTH_FAILED,
+              f'status={get_resp.status_code} body={get_resp.content[:120]!r}')
+        check('stream 免签兜底：HEAD 同样放行',
+              head_resp.status_code == 403 and _code(head_resp) != StatusCode.AUTH_FAILED,
+              f'status={head_resp.status_code}')
+        transaction.set_rollback(True)
+    invalidate_api_service_policy_cache()
+
+
 def main():
     print('\nAPI 服务策略回归测试开始')
     print(f'标记：{MARK}（策略前缀统一含该标记，测试后自动清理）')
@@ -824,6 +939,7 @@ def main():
         round12_docs_visible_audience()
         round13_multi_channel(client)
         round14_bulk_delete(client)
+        round15_service_presets(client)
     finally:
         cleanup()
         if created_admin:

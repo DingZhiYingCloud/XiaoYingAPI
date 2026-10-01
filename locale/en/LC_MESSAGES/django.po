@@ -4405,8 +4405,8 @@ msgstr "External Link Registration"
 msgid "实时爬取源站 SSR 数据并缓存。剧集元数据/集列表缓存较久；播放直链缓存较短。"
 msgstr "Crawls the source site's SSR data in real time and caches it. Series metadata / episode lists are cached longer; playback links are cached briefly."
 
-msgid "必填：分类 slug（取值见「分类清单」接口）。"
-msgstr "Required: category slug (values come from the category list endpoint)."
+msgid "必填：分类取值 —— 一级 slug（如 real-drama）或「一级/二级」（如 real-drama/romance），完整取值见「分类清单」接口。"
+msgstr "Required: the category — a top-level slug (e.g. real-drama) or \"top-level/sub\" (e.g. real-drama/romance); see the category list endpoint for the full set."
 
 msgid "必填：剧集 ID（取自列表/搜索结果）。"
 msgstr "Required: series ID (from list / search results)."
@@ -4459,6 +4459,131 @@ msgstr "Live-Action Drama"
 msgid "真人剧热播榜"
 msgstr "Live-Action Hot Rankings"
 
+msgid "漫剧热播榜"
+msgstr "Comic-Drama Hot Rankings"
+
+# ---- 分类下拉：一级 · 二级题材（站点 /category/<一级>/<二级> 实际枚举所得）----
+
+msgid "真人剧 · 爱情"
+msgstr "Live-Action Drama · Romance"
+
+msgid "真人剧 · 年代"
+msgstr "Live-Action Drama · Period"
+
+msgid "真人剧 · 逆袭"
+msgstr "Live-Action Drama · Comeback"
+
+msgid "真人剧 · 传奇"
+msgstr "Live-Action Drama · Legend"
+
+msgid "真人剧 · 成长"
+msgstr "Live-Action Drama · Growth"
+
+msgid "真人剧 · 家庭"
+msgstr "Live-Action Drama · Family"
+
+msgid "真人剧 · 家族"
+msgstr "Live-Action Drama · Clan"
+
+msgid "真人剧 · 萌宝"
+msgstr "Live-Action Drama · Cute Kids"
+
+msgid "真人剧 · 悬疑"
+msgstr "Live-Action Drama · Suspense"
+
+msgid "真人剧 · 惊悚"
+msgstr "Live-Action Drama · Thriller"
+
+msgid "真人剧 · 恐怖"
+msgstr "Live-Action Drama · Horror"
+
+msgid "真人剧 · 志怪"
+msgstr "Live-Action Drama · Supernatural"
+
+msgid "真人剧 · 古装"
+msgstr "Live-Action Drama · Costume"
+
+msgid "真人剧 · 玄幻"
+msgstr "Live-Action Drama · Fantasy"
+
+msgid "真人剧 · 奇幻"
+msgstr "Live-Action Drama · Wonder"
+
+msgid "真人剧 · 都市"
+msgstr "Live-Action Drama · Urban"
+
+msgid "真人剧 · 青春"
+msgstr "Live-Action Drama · Youth"
+
+msgid "真人剧 · 喜剧"
+msgstr "Live-Action Drama · Comedy"
+
+msgid "真人剧 · 科幻"
+msgstr "Live-Action Drama · Sci-Fi"
+
+msgid "真人剧 · 灾难"
+msgstr "Live-Action Drama · Disaster"
+
+msgid "真人剧 · 动作冒险"
+msgstr "Live-Action Drama · Action & Adventure"
+
+msgid "真人剧 · 战争"
+msgstr "Live-Action Drama · War"
+
+msgid "真人剧 · 综艺"
+msgstr "Live-Action Drama · Variety"
+
+msgid "真人剧 · 剧情"
+msgstr "Live-Action Drama · Drama"
+
+msgid "漫剧 · 脑洞"
+msgstr "Comic Drama · Creative"
+
+msgid "漫剧 · 玄幻"
+msgstr "Comic Drama · Fantasy"
+
+msgid "漫剧 · 剧情"
+msgstr "Comic Drama · Drama"
+
+msgid "漫剧 · 末世"
+msgstr "Comic Drama · Apocalypse"
+
+msgid "漫剧 · 豪门"
+msgstr "Comic Drama · Wealthy Family"
+
+msgid "漫剧 · 奇幻"
+msgstr "Comic Drama · Wonder"
+
+msgid "漫剧 · 科幻"
+msgstr "Comic Drama · Sci-Fi"
+
+msgid "漫剧 · 冒险"
+msgstr "Comic Drama · Adventure"
+
+msgid "AI剧 · 脑洞"
+msgstr "AI Drama · Creative"
+
+msgid "AI剧 · 玄幻"
+msgstr "AI Drama · Fantasy"
+
+msgid "AI剧 · 剧情"
+msgstr "AI Drama · Drama"
+
+msgid "AI剧 · 末世"
+msgstr "AI Drama · Apocalypse"
+
+msgid "AI剧 · 豪门"
+msgstr "AI Drama · Wealthy Family"
+
+msgid "AI剧 · 奇幻"
+msgstr "AI Drama · Wonder"
+
+msgid "AI剧 · 科幻"
+msgstr "AI Drama · Sci-Fi"
+
+msgid "AI剧 · 冒险"
+msgstr "AI Drama · Adventure"
+
 msgid "短剧"
 msgstr "Short Dramas"
 
@@ -4486,8 +4611,8 @@ msgstr "Hongguo Short Dramas (hongguoduanju.com) website"
 msgid "获取剧集详情与全量集列表。"
 msgstr "Get series details and the full episode list."
 
-msgid "获取可用分类清单（slug -> 中文名）。"
-msgstr "Get the available category list (slug -> Chinese name)."
+msgid "获取分类树（一级 -> 二级题材）。"
+msgstr "Get the category tree (top level -> sub-genres)."
 
 msgid "获取指定集的播放地址。"
 msgstr "Get the playback URL of a given episode."
@@ -4516,20 +4641,39 @@ msgstr "This URL is returned by the playback endpoint and plays directly in a <v
 msgid "支持 HTTP Range（206）：可拖动进度条、可断点续传。"
 msgstr "Supports HTTP Range (206): seeking and resumable transfer work."
 
-msgid "首次点播该集的某一画质时返回 202（Retry-After: 3），服务端在后台解密并转成 H.264（约数十秒），轮询到 200 即可播放；产物落盘永久复用，此后再播为即刻返回。"
-msgstr "The first play of a given rendition returns 202 (Retry-After: 3) while the server decrypts and transcodes it to H.264 in the background (tens of seconds); poll until 200 and play. The result is cached on disk permanently, so later plays return immediately."
+msgid "首次点播该集的某一画质时返回 202（Retry-After: 3），服务端在后台解密并转成 H.264（约数十秒），200 / 206 才是可播放；生成失败返回 503（响应体里有失败原因），请勿只按 HTTP 200 判定。产物落盘永久复用，此后再播为即刻返回。"
+msgstr "The first play of a given rendition returns 202 (Retry-After: 3) while the server decrypts and transcodes it to H.264 in the background (tens of seconds); only 200 / 206 means it is playable. A failed transcode returns 503 (the response body explains why), so never judge by an HTTP 200 alone. The result is cached on disk permanently, so later plays return immediately."
 
 msgid "令牌无效或过期返回 403，需重新调用「播放地址」接口获取新地址。"
 msgstr "An invalid or expired token returns 403; call the playback endpoint again for a fresh URL."
 
-msgid "前 3 集返回源站明文 MP4 直链；第 4 集及以后源站只下发 DRM 加密的H.265（浏览器无法解码），改由本站出流，data.source 区分来源："
-msgstr "The first 3 episodes return plain source MP4 links; from episode 4 on the source only delivers DRM-encrypted H.265 (which browsers cannot decode), so this site streams it instead. data.source tells the two apart:"
+# ---- 短剧详情（detail）的 episodes[] 口径 ----
+
+msgid "返回 data.episodes 为全量集列表，每项含 ep / episode_id / playable / source。"
+msgstr "data.episodes is the full episode list; each item has ep / episode_id / playable / source."
+
+msgid "episodes[].playable 的口径与「播放地址」接口**完全一致**：源站直链 / 已登记外链 / 本站网页直出三条路任一可用即为 true；source 标出走的哪条路 —— origin（源站直链）/ external（已登记外链）/ stream（本站直出，首播需等数十秒生成）。本站直出默认可用，所以第 4 集及以后通常也是 playable=true。"
+msgstr "episodes[].playable follows exactly the same rule as the playback endpoint: an episode is playable when any of the three routes works — the source link, a registered external link, or this site's own stream. source says which one applies: origin (source link) / external (registered external link) / stream (site stream; the first play takes tens of seconds to generate). Site streaming is available by default, so episode 4 and later are usually playable=true too."
+
+msgid "data.playable_cnt 为源站直链的连续范围（前 N 集，保持原义）；data.listed_cnt 为实际可播集数（= playable 为 true 的集数）；data.external_cnt 为已登记外部链接的集数（人工上架进度）。需要判断「某集能不能播」请用 episodes[].playable，不要用 playable_cnt 推算。"
+msgstr "data.playable_cnt is the unbroken range of source links (the first N episodes, meaning unchanged); data.listed_cnt is how many episodes are actually playable (the count of playable=true); data.external_cnt is how many episodes have a registered external link (manual publishing progress). To tell whether a specific episode plays, use episodes[].playable — do not derive it from playable_cnt."
+
+msgid "剧集不存在时返回 EXTERNAL_API_FAILED（外部API调用失败）。"
+msgstr "Returns EXTERNAL_API_FAILED when the series does not exist."
+
+# ---- 短剧播放（play）的 data.source ----
+
+msgid "前 3 集返回源站明文 MP4 直链；第 4 集及以后源站只下发 DRM 加密的 H.265（浏览器无法解码），改由本站出流。data.source 区分来源（取值与「剧集详情」的 episodes[].source 一致）："
+msgstr "The first 3 episodes return plain source MP4 links; from episode 4 on the source only delivers DRM-encrypted H.265 (which browsers cannot decode), so this site streams it instead. data.source says which route was taken, using the same values as episodes[].source in the series-details endpoint:"
+
+msgid "· origin —— 源站明文直链（前若干集）；"
+msgstr "- origin: the plain source link (the first few episodes);"
 
 msgid "· external —— 已上架到外部平台的地址（data.url 为第三方地址）；"
 msgstr "- external: a URL published on an external platform (data.url points to a third party);"
 
-msgid "· stream —— 本站直出：data.url 为可直接交给 <video> 播放的地址（明文 H.264、支持 HTTP Range 拖动），画质见 data.quality，data.ready=false 表示该画质首次被点播、服务端正在生成（约数十秒），请轮询该地址，返回 200 即可播放。"
-msgstr "- stream: streamed by this site. data.url plays directly in a <video> tag (plain H.264, supports HTTP Range seeking); data.quality gives the rendition. data.ready=false means this is the first play of that rendition and the server is still generating it (tens of seconds) — poll that URL and play once it returns 200."
+msgid "· stream —— 本站直出：data.url 为可直接交给 <video> 播放的地址（明文 H.264、支持 HTTP Range 拖动），画质见 data.quality，data.ready=false 表示该画质首次被点播、服务端正在生成（约数十秒），请轮询该地址：202=正在生成、503=生成失败（响应体里有原因）、200/206=可播放，别只按 HTTP 200 判定。"
+msgstr "- stream: streamed by this site. data.url plays directly in a <video> tag (plain H.264, supports HTTP Range seeking); data.quality gives the rendition. data.ready=false means this is the first play of that rendition and the server is still generating it (tens of seconds). Poll that URL: 202 = still generating, 503 = generation failed (the body says why), 200 / 206 = playable — never judge by an HTTP 200 alone."
 
 # ---- 短剧出流画质（play 的 q 参数） ----
 
@@ -4560,8 +4704,8 @@ msgstr "The quality is chosen with the q parameter of the playback endpoint and 
 msgid "该地址的鉴权由 data.url 里的时效令牌承担（默认 2 小时），过期后重新调用本接口换取新地址。"
 msgstr "That URL is authenticated by the time-limited token it carries (2 hours by default); call this endpoint again for a fresh URL after it expires."
 
-msgid "获取短剧榜单，支持热播榜 / 真人剧热播榜 / AI剧热播榜与分页。"
-msgstr "Get short-drama rankings — hot, live-action hot and AI-drama hot — with pagination."
+msgid "获取短剧榜单，支持热播榜 / 真人剧热播榜 / AI剧热播榜 / 漫剧热播榜与分页。"
+msgstr "Get short-drama rankings — hot, live-action hot, AI-drama hot and comic-drama hot — with pagination."
 
 msgid "表单提交（application/x-www-form-urlencoded），需项目签名。"
 msgstr "Submitted as a form (application/x-www-form-urlencoded) and requires project signature."
@@ -4569,8 +4713,11 @@ msgstr "Submitted as a form (application/x-www-form-urlencoded) and requires pro
 msgid "返回 data 为榜单剧集列表（字段与「分类列表」接口一致）。"
 msgstr "data is the ranked series list (fields match the category list endpoint)."
 
-msgid "返回的 slug 可直接传给「分类列表」接口的 category 参数。"
-msgstr "The returned slug can be passed straight to the category parameter of the category list endpoint."
+msgid "分类是两级的：一级是内容形态（真人剧 / 漫剧 / AI剧 / 漫画），二级是题材（爱情 / 年代 / 逆袭 …）。"
+msgstr "Categories have two levels: the top level is the content form (live-action drama / comic drama / AI drama / comics) and the second level is the genre (romance / period / comeback ...)."
+
+msgid "每个节点的 slug 都可直接传给「分类列表」接口的 category：一级取该一级全部，二级只取该题材（形如 real-drama/romance）；无二级的一级（漫画）children 为空数组。"
+msgstr "Every node's slug can be passed straight to the category parameter of the category list endpoint: a top-level slug returns that whole top level, while a sub-genre returns only that genre (e.g. real-drama/romance). Top levels with no sub-genres (comics) have an empty children array."
 
 msgid "链接类型"
 msgstr "Link Type"
@@ -5764,6 +5911,45 @@ msgstr "Please select the service policies to delete first"
 
 msgid "已删除 %(n)s 条服务策略"
 msgstr "Deleted %(n)s service policies"
+
+msgid "一键新建建议策略"
+msgstr "Create Suggested Policies"
+
+msgid "这些接口由浏览器或子项目前端直连，带不了项目签名，必须显式设为「开放」；策略表里缺了它们，验证码、图片、播放地址等功能会整片返回 20011。此处只新建缺失的，已存在的一律不动。"
+msgstr "These endpoints are called directly by browsers or sub-project frontends and cannot carry a project signature, so they must be explicitly set to Open. If they are missing from the policy table, captchas, images and playback URLs all fail with 20011. Only the missing ones are created here; existing ones are left untouched."
+
+msgid "路径前缀"
+msgstr "URL prefix"
+
+msgid "为什么需要"
+msgstr "Why it is needed"
+
+msgid "本次动作"
+msgstr "Action"
+
+msgid "已存在，跳过"
+msgstr "Exists — skipped"
+
+msgid "将新建"
+msgstr "Will be created"
+
+msgid "新建 %(n)s 条"
+msgstr "Create %(n)s"
+
+msgid "将补齐上表中标记为「将新建」的建议策略；已存在的一律不动。确认执行？"
+msgstr "The suggested policies marked \"Will be created\" above will be added; existing ones are left untouched. Proceed?"
+
+msgid "执行"
+msgstr "Run"
+
+msgid "已新建 %(n)s 条建议策略"
+msgstr "Created %(n)s suggested policies"
+
+msgid "另有 %(n)s 条建议策略已存在，未改动"
+msgstr "%(n)s suggested policies already exist and were left untouched"
+
+msgid "建议策略清单为空，无需新建"
+msgstr "The suggested-policy list is empty — nothing to create"
 
 msgid "状态拦截：只有生效状态为「正常」的接口可被调用。「开发中」返回 30006、「维护中」返回 30004、「已下线」返回 30005，命中即拦截且不做签名校验（匿名同样收到）。想让接口可调用，把生效状态配成「正常」。"
 msgstr "Status blocking: only endpoints whose effective status is Normal can be called. In Development returns 30006, Under Maintenance returns 30004, Offline returns 30005. Matched requests are blocked without signature verification (anonymous requests get the same response). To make an endpoint callable, set its effective status to Normal."
@@ -7911,4 +8097,188 @@ msgstr "login,XiaoYingAPI"
 
 msgid "邮箱验证,激活,小影API"
 msgstr "email verification,activate,XiaoYingAPI"
+
+
+# ===== 海角社区自动注册（超管控制台，2026-10-01） =====
+
+msgid "海角自动注册 - 超级管理员 - 小影API"
+msgstr "Haijiao Auto Registration - Super Admin - XiaoYingAPI"
+
+msgid "超级管理员,海角社区,自动注册,超级鹰打码"
+msgstr "super admin,Haijiao community,auto registration,Chaojiying captcha solving"
+
+msgid "小影API 超级管理员：海角社区账号自动注册（验证码交超级鹰打码识别）。"
+msgstr "XiaoYingAPI super admin: automatic Haijiao community account registration (captchas are solved by Chaojiying)."
+
+msgid "全自动注册海角社区账号：用户名 / 密码 / 邮箱服务端自动生成，验证码交超级鹰识别后自动提交并入库。"
+msgstr "Fully automatic Haijiao community account registration: the username / password / email are generated on the server, and the captcha is solved by Chaojiying before the form is submitted and stored."
+
+msgid "海角自动注册"
+msgstr "Haijiao Auto Registration"
+
+msgid "全自动注册海角社区账号：选直连或代理出口，验证码交超级鹰打码识别（识别类型 1006），打码没打对时自动向超级鹰报错返分并换图重试，进度实时推送。"
+msgstr "Fully automatic Haijiao community account registration: choose the direct or proxy egress, captchas are solved by Chaojiying (type 1006); when a captcha is solved incorrectly the points are refunded automatically and a new image is retried, with live progress."
+
+msgid "运行设置"
+msgstr "Run Settings"
+
+msgid "数量"
+msgstr "Count"
+
+msgid "出口"
+msgstr "Egress"
+
+msgid "直连"
+msgstr "Direct"
+
+msgid "代理（51代理）"
+msgstr "Proxy (51daili)"
+
+msgid "代理（巨量）"
+msgstr "Proxy (Juliang)"
+
+msgid "注册过程中请不要关闭浏览器窗口、不要关闭或刷新本页面，也不要切走太久——进度由本页面实时接收，页面一断这一批就中止了。"
+msgstr "Do not close the browser window, close or refresh this page, or switch away for long while registration runs — progress is received live by this page, so a broken page aborts the batch."
+
+msgid "验证码重试上限"
+msgstr "Max Captcha Attempts"
+
+msgid "开始自动注册"
+msgstr "Start Auto Registration"
+
+msgid "停止"
+msgstr "Stop"
+
+msgid "等待开始"
+msgstr "Idle"
+
+msgid "运行中"
+msgstr "Running"
+
+msgid "已完成"
+msgstr "Finished"
+
+msgid "连接中断"
+msgstr "Connection Interrupted"
+
+msgid "已返分"
+msgstr "Refunded"
+
+msgid "尚未开始"
+msgstr "Not started yet"
+
+msgid "实时日志"
+msgstr "Live Log"
+
+msgid "本次注册结果"
+msgstr "Results of This Run"
+
+msgid "用户名"
+msgstr "Username"
+
+msgid "密码"
+msgstr "Password"
+
+msgid "邮箱"
+msgstr "Email"
+
+msgid "尝试"
+msgstr "Attempts"
+
+msgid "结果"
+msgstr "Result"
+
+msgid "成功"
+msgstr "Succeeded"
+
+msgid "失败"
+msgstr "Failed"
+
+msgid "打码次数"
+msgstr "Captcha Solves"
+
+msgid "返分次数"
+msgstr "Refunds"
+
+msgid "共 %(n)s 个账号"
+msgstr "%(n)s account(s) in total"
+
+msgid "完成：成功 %(ok)s / 失败 %(bad)s，打码 %(ocr)s 次、返分成功 %(refund)s 次、返分失败 %(refund_bad)s 次，耗时 %(sec)s 秒"
+msgstr "Finished: %(ok)s succeeded / %(bad)s failed, %(ocr)s captcha solves, %(refund)s refunds succeeded / %(refund_bad)s refunds failed, took %(sec)s s"
+
+msgid "领取运行票据失败，请重试"
+msgstr "Failed to get a run ticket, please retry"
+
+msgid "已手动停止（当前这一条会跑完）"
+msgstr "Stopped manually (the current account will finish)"
+
+msgid "识别类型默认 %(code)s（%(label)s），可在上方下拉里改；下拉项末尾的数字即该类型的题分单价。"
+msgstr "The captcha type defaults to %(code)s (%(label)s) and can be changed in the dropdown above; the number at the end of each option is that type's price in points."
+
+msgid "识别类型"
+msgstr "Captcha Type"
+
+msgid "源站回「验证码错误」时会自动报错返分并换图重试。"
+msgstr "When the source site replies \"invalid captcha\", the points are refunded automatically and a new image is retried."
+
+msgid "直连模式下源站对注册有 IP 限制，被限时请改用代理出口。"
+msgstr "In direct mode the source site rate-limits registration by IP; switch to the proxy egress when you get blocked."
+
+msgid "单次最多 %(n)s 个账号。"
+msgstr "Up to %(n)s accounts per run."
+
+
+# ===== 控制台安全页（2026-10-01 第三批次） =====
+
+msgid "安全"
+msgstr "Security"
+
+msgid "安全设置"
+msgstr "Security Settings"
+
+msgid "安全设置 - 超级管理员 - 小影API"
+msgstr "Security Settings - Super Admin - XiaoYingAPI"
+
+msgid "超级管理员,安全设置,后台入口隐身,路径探测"
+msgstr "Super Admin, security settings, hidden admin entry, path probing"
+
+msgid "小影API 超级管理员：控制台自身的安全开关，防止后台入口被路径探测发现。"
+msgstr "XiaoYingAPI Super Admin: the console's own security switches, preventing the admin entry from being discovered by path probing."
+
+msgid "控制台自身的安全开关：防止后台入口被路径探测发现。"
+msgstr "The console's own security switches: prevent the admin entry from being discovered by path probing."
+
+msgid "控制台自身的安全开关：后台入口隐身（未登录访问后台一律返回 404，防止被路径探测发现入口）。"
+msgstr "The console's own security switches: hidden admin entry (unauthenticated visits to the admin area always return 404, so path probing cannot discover the entry)."
+
+msgid "「后台入口隐身」开启后，未登录（或非超管）访问后台地址一律返回 404，与访问一个根本不存在的地址表现完全一致。"
+msgstr "When \"hidden admin entry\" is on, an unauthenticated (or non-superadmin) visit to any admin URL always returns 404 — exactly the same as visiting an address that does not exist at all."
+
+msgid "为什么需要它：若未登录访问后台时跳转登录页，等于明确告诉探测者「这个地址存在」，对方据此就能把后台入口定位出来。"
+msgstr "Why it is needed: if an unauthenticated visit to the admin area redirects to the login page, that plainly tells a prober \"this address exists\", which is enough for them to pin down the admin entry."
+
+msgid "代价：开启后你自己也要先从 /login/ 登录，再访问后台才能进入（登录成功后首页有「超级管理员」入口）。"
+msgstr "Trade-off: once it is on, you too must sign in at /login/ first before the admin area opens (the home page shows a \"Super Admin\" entry after signing in)."
+
+msgid "边界：登录页本身仍然公开（任何站点都有登录页），本开关只隐藏后台，不隐藏登录页。"
+msgstr "Scope: the login page itself stays public (every site has a login page); this switch only hides the admin area, not the login page."
+
+msgid "后台入口"
+msgstr "Admin Entry"
+
+msgid "后台入口隐身"
+msgstr "Hidden admin entry"
+
+msgid "已开启"
+msgstr "On"
+
+msgid "已关闭"
+msgstr "Off"
+
+msgid "未登录访问后台一律返回 404；关闭则退回「跳转登录页」的行为。"
+msgstr "Unauthenticated visits to the admin area always return 404; turning it off falls back to the \"redirect to login\" behaviour."
+
+msgid "安全设置已保存"
+msgstr "Security settings saved"
+
 

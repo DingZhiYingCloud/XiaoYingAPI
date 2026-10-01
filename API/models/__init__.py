@@ -25,6 +25,7 @@ from API.models.Haijiao.account import HaijiaoAccount
 from API.models.Docs.announcement import Announcement
 from API.models.AI.provider import AiModel, AiProvider, AiSystemPrompt
 from API.models.Website.appearance import SiteAppearance
+from API.models.Security.setting import SecuritySetting
 
 __all__ = [
     'BaseModel',
@@ -60,4 +61,5 @@ __all__ = [
     'AiSystemPrompt',
     'AiModel',
     'SiteAppearance',
+    'SecuritySetting',
 ]

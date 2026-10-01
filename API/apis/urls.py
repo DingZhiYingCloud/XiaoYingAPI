@@ -11,6 +11,7 @@ urlpatterns = [
     path('dlt/', include('API.apis.DaiLianTong.urls')), # 代练通服务路由
     path('dlwz/', include('API.apis.DaiLianWanZi.urls')), # 代练丸子服务路由
     path('ddddocr/', include('API.apis.DdddocrRecognizer.urls')), # ddddocr 验证码识别服务路由
+    path('chaojiying/', include('API.apis.chaojiying.urls')), # 验证码识别(超级鹰)服务路由
     path('ProxyIp/', include('API.apis.ProxyIp.urls')), # 代理IP服务路由
     path('seo/', include('API.apis.seo.urls')),         # SEO服务路由(友情链接等)
     path('user_center/', include('API.apis.user_center.urls')), # 用户中心服务路由
