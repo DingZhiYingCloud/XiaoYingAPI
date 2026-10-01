@@ -21,6 +21,7 @@
 """
 import base64
 import logging
+import os
 import secrets
 import string
 import time
@@ -301,8 +302,11 @@ def register_batch(items):
 # 取值见 SpiderServices.Chaojiying.utils.CODETYPES：1902 = 4~6 位英文数字）。
 OCR_CODETYPE = '1902'
 
-# 代理出口的**默认线路**（控制台页面上可改；直连用 'direct' 表示）
-DEFAULT_PROXY_PROVIDER = '51daili'
+# 代理出口的**默认线路**（控制台页面上可改；直连用 'direct' 表示）。
+# 生产服务器在海外，51代理 的代理 IP 从那边直连一律超时，故线上用 .env 的
+# HAIJIAO_REGISTER_PROXY 把默认改成 relay（经国内中转，见 scripts/hj_relay）；
+# 本地保持默认的 51daili 直连即可。
+DEFAULT_PROXY_PROVIDER = (os.getenv('HAIJIAO_REGISTER_PROXY', '') or '').strip() or '51daili'
 
 # 单个账号的验证码最多尝试几次（失败一次就换一张新图重新识别）
 MAX_CAPTCHA_RETRY = 3

@@ -548,6 +548,9 @@ proxy_set_header Host $host;
 | 签名器运行物 | 本机已放好 `sign/` 与 `capture/` | 首次部署要**手工补齐**（不入库） | 第三方二进制，`git pull` 拿不到；漏了第 4 集点播会报「运行物缺失」 |
 | `SECRET_KEY` | 随意（可直接用 `django-insecure-` 开发值） | **与本地不同，且上线后固定不变** | 它参与库内 `app_secret` / AI Key 的密文派生，变更即这些数据无法解密 |
 | `PROXY_JULIANG_API_BASE` | 留空（直连官方） | 海外服务器填**国内中转地址** | 巨量代理的取 IP 接口只认国内来源 |
+| `PROXY_51DAILI_API_BASE` | 留空（直连官方） | 海外服务器填**国内中转地址**（nginx 反代） | 51代理 的取 IP 接口只认国内来源 |
+| `PROXY_RELAY_URL`、`PROXY_RELAY_SECRET` | 留空 | 填**国内中转出口**地址与密钥 | 51代理 的**代理 IP 本身**也只在国内网络可达：海外服务器直连提取出来的 IP 一律 TCP 超时（实测 0/5）。中转机部署见 `scripts/hj_relay/hj_relay.py` 顶部说明 |
+| `HAIJIAO_REGISTER_PROXY` | 留空（默认 `51daili`） | `relay` | 让海角自动注册的默认出口走国内中转；不设的话默认仍是「51代理（直连）」，在海外**必然失败** |
 | 静态文件 | `runserver` 直接读源码目录 | `collectstatic --clear` 后由 Nginx 的 `alias` 提供 | 线上不跑 Django 的静态托管；改过 JS/CSS 还要同步 bump 模板 `?v=` |
 
 > 一句话记法：**本地四项（`DEBUG` / `ALLOWED_HOSTS` / `XYAPI_COOKIE_ISOLATION` / uwsgi 监听地址）怎么宽松都行，生产一律反过来。**

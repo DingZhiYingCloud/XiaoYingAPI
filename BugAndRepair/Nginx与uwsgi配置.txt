@@ -34,3 +34,37 @@ static-map = /static={XIAOYING_API_ROOT}/static
 env = LANG=C.UTF-8
 
 # ===================== UWSGI配置结束 =====================
+
+
+
+
+# ===================== SSE 长连接配置开始 =====================
+# 【放置位置与上面两段不同】这段不是贴进宝塔面板的站点配置，而是作为一个独立文件放到
+# 站点的「扩展目录」里（宝塔重生成站点配置时不会覆盖该目录）：
+#     /www/server/panel/vhost/nginx/extension/小影API/console_sse.conf
+# 站点配置里已有 `include /www/server/panel/vhost/nginx/extension/小影API/*.conf;`
+#
+# 用途：海角自动注册的 SSE 进度流，每一步（经代理取注册验证码 / 超级鹰打码）之间有
+# 一段无数据下发的时间，而 nginx 的 proxy_read_timeout 默认只有 60s —— 任一步超过
+# 60s，nginx 会直接断开连接，浏览器 EventSource 只触发 onerror，页面只能显示
+# 「连接中断」，服务端算出来的真实失败原因再也推不过来。
+# 实测：线上经 51代理 取码需 62s（代理 IP 从美服连不上，3 次重试各 20s），正好被默认
+# 的 60s 掐断。故对该路径单独放宽到 300s，其余 location 仍用 nginx 默认值。
+#
+# 该段与源码保持一致：{XIAOYING_API_ROOT} 即项目根目录，上游固定为 uwsgi 的 http 监听。
+#
+location ^~ /console/haijiao/register/stream/ {
+    proxy_pass http://127.0.0.1:10005;
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Real-Port $remote_port;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Port $server_port;
+    proxy_set_header Remote-Host $remote_addr;
+    proxy_read_timeout 300s;
+    proxy_send_timeout 300s;
+}
+
+# ===================== SSE 长连接配置结束 =====================

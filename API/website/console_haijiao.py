@@ -49,7 +49,12 @@ _TICKET_TTL = 3600
 MAX_RETRY_LIMIT = 5
 
 # 出口下拉的取值：直连 + 爬虫层支持的代理线路；label 由模板 {% trans %} 翻译
-_PROXY_LABELS = {'direct': '直连', '51daili': '代理（51代理）', 'juliang': '代理（巨量）'}
+_PROXY_LABELS = {
+    'direct': '直连',
+    '51daili': '代理（51代理）',
+    'juliang': '代理（巨量）',
+    'relay': '代理（51代理·经国内中转）',
+}
 _PROXY_VALUES = ('direct',) + tuple(PROXY_PROVIDERS)
 
 

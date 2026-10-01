@@ -1,0 +1,18 @@
+[Unit]
+Description=Haijiao auto-register domestic relay (HTTP CONNECT forwarder, 51daili exit)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/www/XiaoYing/hj-relay
+ExecStart=/usr/bin/python3 /www/XiaoYing/hj-relay/hj_relay.py
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

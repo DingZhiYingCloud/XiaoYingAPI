@@ -20,6 +20,10 @@ __pycache__
 # 敏感文件（实际敏感的配置）
 **/env.json
 
+# 海角自动注册「国内中转出口」的实配置：含 51代理 凭据与共享密钥，只在专用中转机上放一份，
+# 禁止入库；模板见 scripts/hj_relay/hj_relay.env.example（部署说明见 hj_relay.py 顶部）
+/scripts/hj_relay/hj_relay.env
+
 # 图床 Token 明细文件（一行一个真实 Token），仅本地保存，禁止入库
 tokens.txt
 toekns.txt

@@ -54,10 +54,11 @@ import hashlib
 import mimetypes
 import os
 import re
+import secrets
 import subprocess
 import time
 from html import unescape
-from urllib.parse import quote, urljoin
+from urllib.parse import quote, urljoin, urlsplit
 
 import requests
 from django.conf import settings
@@ -67,7 +68,12 @@ from .cache import DATA_TTL, MEDIA_TTL, get_or_fetch
 
 # 注册可用的代理出口线路（控制台「出口」下拉的取值来源，加线路时只改这一处；
 # 直连不在此表内，用 None / 'direct' 表示）
-PROXY_PROVIDERS = ('51daili', 'juliang')
+PROXY_PROVIDERS = ('51daili', 'juliang', 'relay')
+
+# 「relay」= 经国内中转（scripts/hj_relay）：51代理 的代理 IP 只在国内可达，
+# 生产服务器（海外）直连一律 TCP 超时，故由国内那台机器去连 51代理 再回传数据。
+RELAY_URL = (os.getenv('PROXY_RELAY_URL', '') or '').strip()
+RELAY_SECRET = (os.getenv('PROXY_RELAY_SECRET', '') or '').strip()
 
 
 class HaijiaoSpider:
@@ -651,11 +657,29 @@ class HaijiaoSpider:
         恰好在白名单里（不带账密也能通），但线上服务器不一定——账密是真校验项
         （实测故意传错密码，10/10 全部被网关拒绝）。
 
+        「relay」线路另有一套地址（.env 的 PROXY_RELAY_URL / PROXY_RELAY_SECRET）：
+        51代理 的**代理 IP 只在国内网络可达**，生产服务器（海外）直连它们一律 TCP 超时
+        （实测 0/5，而同一台机器上巨量 4/5 可用）。relay 由国内那台机器去连 51代理
+        （见 scripts/hj_relay），挂载时用一次性的「会话键」当代理用户名：同一次
+        「取码 → 提交注册」复用同一份 proxies、即同一个出口 IP，换重试则换键换出口。
+
         :param provider: 代理线路，取值见 PROXY_PROVIDERS；None / 'direct' = 直连
         :return: (代理描述, requests 的 proxies 参数)；不走代理时为 (None, None)
         """
         if not provider or provider == 'direct':
             return None, None
+
+        if provider == 'relay':
+            if not (RELAY_URL and RELAY_SECRET):
+                raise RuntimeError(
+                    '未配置国内中转出口: 请在 .env 里设置 PROXY_RELAY_URL 与 PROXY_RELAY_SECRET')
+            host = urlsplit(RELAY_URL).netloc
+            if not host:
+                raise RuntimeError(
+                    f'PROXY_RELAY_URL 格式不对（应形如 http://ip:port）: {RELAY_URL!r}')
+            key = secrets.token_urlsafe(9)
+            url = f'http://{key}:{quote(RELAY_SECRET, safe="")}@{host}'
+            return f'{host}（经国内中转）', {'http': url, 'https': url}
 
         if provider == '51daili':
             # 懒导入：只有走代理注册时才依赖代理线路的实现
@@ -668,18 +692,19 @@ class HaijiaoSpider:
             if DEFAULT_ACCESS_NAME and DEFAULT_ACCESS_PASSWORD:
                 auth = (f'{quote(DEFAULT_ACCESS_NAME, safe="")}:'
                         f'{quote(DEFAULT_ACCESS_PASSWORD, safe="")}@')
-            url = f'http://{auth}{entry["ip"]}:{entry["port"]}'
+            desc, url = f'{entry["ip"]}:{entry["port"]}', f'http://{auth}{entry["ip"]}:{entry["port"]}'
         elif provider == 'juliang':
             from SpiderServices.ProxyIp.ProxyIP_juliang.home import ProxyIPJuliang
             entry = HaijiaoSpider._first_proxy_entry(
                 ProxyIPJuliang().get_proxies(num=1), provider)
             # 巨量的返回值自带拼好的 proxy（含账密）
+            desc = f'{entry["ip"]}:{entry["port"]}'
             url = entry.get('proxy') or f'http://{entry["ip"]}:{entry["port"]}'
         else:
             raise RuntimeError(
                 f'未知的代理线路: {provider!r}（可选 {" / ".join(PROXY_PROVIDERS)}）')
 
-        return f'{entry["ip"]}:{entry["port"]}', {'http': url, 'https': url}
+        return desc, {'http': url, 'https': url}
 
     @staticmethod
     def _first_proxy_entry(result: dict, provider: str) -> dict:
