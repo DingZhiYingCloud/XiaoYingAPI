@@ -305,7 +305,7 @@ python manage.py runserver 0.0.0.0:10000
 | `PROXY_51DAILI_ACCESS_PASSWORD` | 否 | 51代理：账号密码                                                                              |
 | `PROXY_51DAILI_PACKID`        | 否  | 51代理：套餐 ID                                                                              |
 | `PROXY_51DAILI_RID`           | 否  | 51代理：提取链接上的标识（可选）                                                                      |
-| `PROXY_51DAILI_API_BASE`      | 否  | 51代理提取接口地址，留空=直连官方 `http://bapi.51daili.com`（仅平台侧可配，不下发给调用方）                          |
+| `PROXY_51DAILI_API_BASE`      | 否  | 51代理提取接口地址，留空=直连官方 `http://bapi.51daili.com`；51代理只向国内 IP 提供提取服务，海外部署需指向国内中转（仅平台侧可配，不下发给调用方）                          |
 | `MUSIC_SITE`                  | 否  | 音乐爬虫站点地址，默认 `https://www.aat.cx`（仅调试用）                                                  |
 
 ***

@@ -16,7 +16,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# 提取接口（getapi2）
+# 提取接口（getapi2）。
+# 51代理对「提取」会校验调用方 IP 的地区：海外 IP 会被直接拒绝
+#（{"code":501,"message":"当前ip:xxx,地区为美国,请更换为内地ip"}），
+# 此时可用 .env 的 PROXY_51DAILI_API_BASE 指向国内中转（如 nginx 反代），路径与参数保持不变。
+# 该地址只允许平台侧配置，不开放给调用方（避免被当作任意请求跳板 / SSRF）。
 API_BASE = ((os.getenv('PROXY_51DAILI_API_BASE', '') or '').strip()
             or 'http://bapi.51daili.com').rstrip('/')
 API_PATH = '/getapi2'

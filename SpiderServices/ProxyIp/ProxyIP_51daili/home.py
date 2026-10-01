@@ -51,6 +51,9 @@ _EMPTY = {"proxies": [], "total": 0, "fetched": 0}
 # txt 格式中的「地区码+地区名」，如 "530300曲靖市" → 码 530300 / 名 曲靖市
 _TEXT_REGION_RE = re.compile(r'^(\d*)(.*)$')
 
+# 合法 IPv4（txt 每行首段必须是 ip:port，用来挡掉「平台其实回的是 JSON 错误体」那种情况）
+_IPV4_RE = re.compile(r'^\d{1,3}(?:\.\d{1,3}){3}$')
+
 
 class ProxyIP51Daili:
     """51代理（getapi2 提取接口）动态 IP 提取"""
@@ -175,10 +178,14 @@ class ProxyIP51Daili:
         protocol = PROTOCOL_MAP[port]
         if fmt in TEXT_FORMATS:
             proxies = self._parse_text_items(text, protocol)
-            # 文本模式拿不到结构化错误码，解析不出 ip:port 时把原文当失败原因返回
+            # 文本模式拿不到结构化错误码；平台在参数 / 地域 / 频率出错时**即使 format=txt 也回 JSON**，
+            # 故解析不出代理时先按 JSON 信封取原因（否则调用方只会看到一句无信息量的「未返回可解析的代理」）
             if not proxies:
                 return response_dict(
-                    code=1, message=text or '51代理接口未返回可解析的代理', data=dict(_EMPTY)
+                    code=1,
+                    message=(self._json_error(text, access_name) or text
+                             or '51代理接口未返回可解析的代理'),
+                    data=dict(_EMPTY),
                 )
         else:
             proxies, error = self._parse_json_payload(text, protocol, access_name)
@@ -192,14 +199,42 @@ class ProxyIP51Daili:
         )
 
     @staticmethod
+    def _envelope_error(payload: dict, access_name: str) -> str:
+        """从失败信封里取可读原因
+
+        平台两种字段名都用过：常见为 ``msg``，但「地域不符」这类错误用的是 ``message``
+        （``{"code":501,"message":"当前ip:x.x.x.x,地区为美国,请更换为内地ip"}``），
+        只认 msg 会让调用方看到无信息量的「返回错误码 501」，故两个都取。
+        失败 msg 常带 ``<accessName>:`` 前缀（会暴露账号名），这里按已知的账号名剥掉。
+        """
+        message = str(payload.get('msg') or payload.get('message') or '').strip()
+        prefix = f'{access_name}:'
+        if message.startswith(prefix):
+            message = message[len(prefix):].strip()
+        return message or f'51代理接口返回错误码 {payload.get("code")}'
+
+    @staticmethod
+    def _json_error(text: str, access_name: str) -> str:
+        """文本模式下，若平台实际回的是 JSON 失败信封则取出原因；不是则返回空串"""
+        try:
+            payload = json.loads(text)
+        except ValueError:
+            return ''
+        if not isinstance(payload, dict):
+            return ''
+        if payload.get('code') == 0 and str(payload.get('success')).lower() == 'true':
+            return ''
+        return ProxyIP51Daili._envelope_error(payload, access_name)
+
+    @staticmethod
     def _parse_json_payload(text: str, protocol: str, access_name: str) -> tuple:
         """解析 JSON 响应
 
         成功：``{"code":0,"success":"true","data":[...]}``
         失败：``{"code":10102,"msg":"<账号>:账号密码验证失败!","data":""}``
+              ``{"code":501,"message":"当前ip:x.x.x.x,地区为美国,请更换为内地ip"}``
 
-        平台未给中文说明时不能让调用方只看到「获取失败」，故一律把 msg 带出去；
-        失败 msg 常带 ``<accessName>:`` 前缀（会暴露账号名），这里按已知的账号名剥掉。
+        平台未给中文说明时不能让调用方只看到「获取失败」，故一律把原因带出去。
 
         :return: (代理条目列表, 错误信息)；错误信息非空表示失败
         """
@@ -212,13 +247,8 @@ class ProxyIP51Daili:
 
         # success 是字符串 "true"/"false"，不能直接用真值判断（"false" 也是真）
         success = str(payload.get('success')).lower() == 'true'
-        code = payload.get('code')
-        if code != 0 or not success:
-            message = str(payload.get('msg') or '').strip()
-            prefix = f'{access_name}:'
-            if message.startswith(prefix):
-                message = message[len(prefix):].strip()
-            return [], message or f'51代理接口返回错误码 {code}'
+        if payload.get('code') != 0 or not success:
+            return [], ProxyIP51Daili._envelope_error(payload, access_name)
 
         items = payload.get('data')
         if not isinstance(items, list):
@@ -267,6 +297,10 @@ class ProxyIP51Daili:
 
         分隔符与字段集由上游 ``field`` 决定，故除第一段外都按「有则取、无则空」处理。
 
+        **首段必须是合法的 IPv4:port**：平台在出错时即使 format=txt 也回 JSON，
+        而 JSON 文本里到处是冒号，若不做校验就会被解析成 `ip={"code"` 这种假条目、
+        并当成「成功获取 N 条」返回给调用方（静默给垃圾数据）。
+
         :return: 同 _parse_json_items
         """
         proxies = []
@@ -277,7 +311,7 @@ class ProxyIP51Daili:
             parts = [p.strip() for p in line.split('|')]
             ip, _, port = parts[0].partition(':')
             ip, port = ip.strip(), port.strip()
-            if not ip or not port:
+            if not _IPV4_RE.match(ip) or not port.isdigit() or not 0 < int(port) < 65536:
                 continue
             region_code = region = ''
             if len(parts) > 1:
