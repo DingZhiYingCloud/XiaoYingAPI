@@ -10,6 +10,10 @@
 {% include 'console/_page_header.html' with icon='user-plus' title='海角自动注册' desc=ph_desc %}
 
 {% comment %}JS 文案统一走 data-* 下发（脚本里不写中文，含插值的用 %(x)s 占位由前端替换）{% endcomment %}
+{# 本页没有原生表单，但「更新今日域名」按钮要 POST —— 隐藏 csrf_token 让页面渲染即下发 #}
+{# CSRF cookie：登录会轮换 CSRF cookie，新值只在带 token 的响应里种回浏览器， #}
+{# 缺了它直达本页后的第一次 POST 会被 CSRF 中间件 403 #}
+<form class="hidden" aria-hidden="true">{% csrf_token %}</form>
 <div id="hj-i18n" class="hidden"
      data-start="{% trans '共 %(n)s 个账号' %}"
      data-done="{% trans '完成：成功 %(ok)s / 失败 %(bad)s，打码 %(ocr)s 次、返分成功 %(refund)s 次、返分失败 %(refund_bad)s 次，耗时 %(sec)s 秒' %}"
@@ -355,6 +359,10 @@
   var domainStatus = document.getElementById('hj-domain-status');
 
   function getCsrfToken() {
+    /* 优先取本页隐藏域的 token（与本次响应种下的 cookie 一定配对），cookie 兜底；
+       两个 cookie 名分别对应本地隔离(xyapi_csrftoken)与生产标准(csrftoken) */
+    var input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    if (input && input.value) return input.value;
     var m = document.cookie.match(/(?:^|;\s*)(?:xyapi_csrftoken|csrftoken)=([^;\s]+)/);
     return m ? m[1] : '';
   }
