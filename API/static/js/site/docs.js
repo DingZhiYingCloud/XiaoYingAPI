@@ -291,11 +291,18 @@
   /* ---------- 流式（SSE）响应：逐帧读取并逐字打印 ----------
    * 服务端 /docs/_call/ 对 text/event-stream 是逐块透传的（不再读完再返回），
    * 这里用 ReadableStream 边收边渲染。帧格式：
-   *   data: {"reasoning": "…"}  思考过程，仅推理模型有，与答案分开渲染（灰色小字）
-   *   data: {"content": "…"}    答案正文
+   *   data: {"reasoning": "…"}  思考过程，仅推理模型有，与答案分开渲染
+   *   data: {"content": "…"}    答案正文（端点是 Markdown 端点时按 Markdown 渲染）
    *   data: {"code": 40001, …}  流开始前出错（如上游 401），只有一帧
-   *   data: [DONE]              结束标记 */
-  function renderStream(res, resBox) {
+   *   data: [DONE]              结束标记
+   *
+   * 两块正文各自限高、内部滚动，避免长回复把文档页顶得很长：
+   *   思考过程  收进 <details>，流式期间自动展开、开始出答案后自动收起（可再次点开）
+   *   答案正文  固定最大高度 + 内部滚动
+   * Markdown 端点每帧都重排代价偏高，故按 MD_RENDER_INTERVAL 节流，收流时再补最后一次。 */
+  var MD_RENDER_INTERVAL = 120;
+
+  function renderStream(res, resBox, markdown) {
     var wrap = el('div', 'rounded-box border border-base-300 bg-base-100 p-3');
     var head = el('div', 'flex flex-wrap items-center gap-2');
     head.appendChild(el('span', 'badge badge-sm ' + (res.ok ? 'badge-success' : 'badge-error'),
@@ -303,10 +310,15 @@
     var tip = el('span', 'text-xs opacity-60', gettext('流式接收中…'));
     head.appendChild(tip);
     wrap.appendChild(head);
-    var think = el('p', 'mt-2 hidden text-xs whitespace-pre-wrap opacity-60');
-    var pre = el('pre', 'mt-2 max-h-96 overflow-auto rounded-box bg-base-200 p-3 font-mono text-xs whitespace-pre-wrap');
-    wrap.appendChild(think);
-    wrap.appendChild(pre);
+
+    // 答案正文：Markdown 端点渲染成 HTML，其余端点保持等宽纯文本（与从前一致）
+    var answerBox = markdown
+      ? el('div', 'md-body mt-2 max-h-96 overflow-auto rounded-box bg-base-200 p-3')
+      : el('pre', 'mt-2 max-h-96 overflow-auto rounded-box bg-base-200 p-3 font-mono text-xs whitespace-pre-wrap');
+    wrap.appendChild(answerBox);
+
+    var think = null;          // 思考过程容器（首次收到 reasoning 帧时才创建）
+    var thinkText = null;
     resBox.innerHTML = '';
     resBox.appendChild(wrap);
 
@@ -314,6 +326,43 @@
     var thinking = '';
     var buf = '';
     var failed = false;
+    var answerStarted = false;
+    var mdTimer = null;
+
+    function paintAnswer() {
+      if (!markdown || !window.DocsMarkdown) {
+        answerBox.textContent = answer;
+        return;
+      }
+      var html = window.DocsMarkdown.render(answer);
+      if (html === null) {                 // 渲染器不可用：退回纯文本，不丢内容
+        answerBox.textContent = answer;
+        return;
+      }
+      answerBox.innerHTML = html;
+    }
+
+    function scheduleAnswer() {
+      if (!markdown) { paintAnswer(); return; }
+      if (mdTimer) return;
+      mdTimer = window.setTimeout(function () {
+        mdTimer = null;
+        paintAnswer();
+      }, MD_RENDER_INTERVAL);
+    }
+
+    function showThinking() {
+      if (think) return;
+      think = el('details',
+        'collapse collapse-arrow mt-2 rounded-box border border-base-300 bg-base-200/40');
+      think.appendChild(el('summary', 'collapse-title text-xs font-medium', gettext('思考过程')));
+      var body = el('div', 'collapse-content');
+      thinkText = el('p', 'max-h-40 overflow-auto whitespace-pre-wrap text-xs opacity-70');
+      body.appendChild(thinkText);
+      think.appendChild(body);
+      wrap.insertBefore(think, answerBox);
+      think.open = true;                   // 边流边展开，让等待期间有东西可看
+    }
 
     function applyFrame(frame) {
       frame.split('\n').forEach(function (line) {
@@ -323,17 +372,32 @@
         var obj;
         try { obj = JSON.parse(body); } catch (e) { return; }
         if (obj.reasoning) {
+          showThinking();
           thinking += obj.reasoning;
-          think.textContent = thinking;
-          think.classList.remove('hidden');
+          thinkText.textContent = thinking;
         }
         if (obj.content) {
+          if (!answerStarted) {
+            answerStarted = true;
+            // 开始出答案 → 把思考过程收起来，视线回到正文；用户可随时再点开
+            if (think) think.open = false;
+          }
           answer += obj.content;
-          pre.textContent = answer;
+          scheduleAnswer();
         }
         if (obj.code && obj.code !== 10000) {
           failed = true;
-          pre.textContent = (answer ? answer + '\n\n' : '') + (obj.msg || gettext('请求失败'));
+          var msg = obj.msg || gettext('请求失败');
+          if (markdown) {
+            paintAnswer();                 // 先把已收到的正文渲染出来
+            if (answer) {
+              wrap.appendChild(el('p', 'mt-2 text-sm text-error', msg));
+            } else {
+              answerBox.textContent = msg; // 还没有正文：直接顶掉空框，不留空白块
+            }
+          } else {
+            answerBox.textContent = (answer ? answer + '\n\n' : '') + msg;
+          }
         }
       });
     }
@@ -350,9 +414,13 @@
     }
 
     function finish() {
+      if (mdTimer) { window.clearTimeout(mdTimer); mdTimer = null; }
+      if (answer) paintAnswer();           // 收流补一次，确保渲染的是完整正文
       tip.className = 'text-xs ' + (failed ? 'text-error' : 'opacity-60');
       tip.textContent = failed ? gettext('请求失败') : gettext('流式接收完成');
-      if (!answer && !thinking && !failed) pre.textContent = gettext('(空响应)');
+      if (!answer && !thinking && !failed) {
+        answerBox.textContent = gettext('(空响应)');
+      }
       document.dispatchEvent(new CustomEvent('docs:result', {
         detail: { resKey: resBox.id.replace(/^res-/, ''), parsed: null, http: res.status }
       }));
@@ -382,6 +450,8 @@
     var method = btn.dataset.method;
     var resId = 'res-' + btn.dataset.res;
     var resBox = document.getElementById(resId);
+    // 端点在文档声明里标了 markdown=True（如 AI 对话）：响应正文按 Markdown 渲染
+    var markdown = btn.dataset.md === '1';
     var params = {};
     var fileFields = {};
 
@@ -444,7 +514,7 @@
         headers: { 'X-CSRFToken': getCsrfToken() }, // Content-Type 由浏览器按 FormData 自动设置
         body: fd
       }).then(parseDone).then(function (data) {
-        renderResult(resBox, data);
+        renderResult(resBox, data, markdown);
       }).catch(showErr).finally(function () {
         btn.disabled = false;
         btn.textContent = oldText;
@@ -470,9 +540,9 @@
     }).then(function (res) {
       // 流式端点（AI 接口 stream=true）：服务端逐块透传，这里逐帧渲染、逐字打印
       if ((res.headers.get('content-type') || '').indexOf('text/event-stream') === 0) {
-        return renderStream(res, resBox);
+        return renderStream(res, resBox, markdown);
       }
-      return res.json().then(function (data) { renderResult(resBox, data); });
+      return res.json().then(function (data) { renderResult(resBox, data, markdown); });
     }).catch(showErr).finally(function () {
       btn.disabled = false;
       btn.textContent = oldText;
@@ -504,7 +574,7 @@
     return row;
   }
 
-  function renderResult(resBox, data) {
+  function renderResult(resBox, data, markdown) {
     resBox.innerHTML = '';
     var wrap = el('div', 'rounded-box border border-base-300 bg-base-100 p-3');
     var head = el('div', 'flex flex-wrap items-center gap-2');
@@ -549,9 +619,31 @@
     }
 
     var body = parsed ? JSON.stringify(parsed, null, 2) : (data.text || gettext('(空响应)'));
-    var pre = el('pre', 'mt-2 max-h-96 overflow-auto rounded-box bg-base-200 p-3 font-mono text-xs');
-    pre.textContent = body;
-    wrap.appendChild(pre);
+
+    // Markdown 端点（如 AI 对话）的回复正文：渲染排版后展示，原始 JSON 收进折叠区备查
+    var reply = markdown && parsed && parsed.data && typeof parsed.data.reply === 'string'
+      ? parsed.data.reply : '';
+    if (reply) {
+      var md = el('div', 'md-body mt-2 max-h-96 overflow-auto rounded-box bg-base-200 p-3');
+      var html = window.DocsMarkdown ? window.DocsMarkdown.render(reply) : null;
+      if (html === null) {                 // 渲染器不可用：退回纯文本，不丢内容
+        md.textContent = reply;
+      } else {
+        md.innerHTML = html;
+      }
+      wrap.appendChild(md);
+
+      var raw = el('details', 'mt-2');
+      raw.appendChild(el('summary', 'cursor-pointer text-xs opacity-60', gettext('原始 JSON')));
+      var rawPre = el('pre', 'mt-2 max-h-64 overflow-auto rounded-box bg-base-200 p-3 font-mono text-xs');
+      rawPre.textContent = body;
+      raw.appendChild(rawPre);
+      wrap.appendChild(raw);
+    } else {
+      var pre = el('pre', 'mt-2 max-h-96 overflow-auto rounded-box bg-base-200 p-3 font-mono text-xs');
+      pre.textContent = body;
+      wrap.appendChild(pre);
+    }
     resBox.appendChild(wrap);
 
     // 广播响应结果，供扩展模块消费（如在线播放器自动加载响应中的 m3u8 地址）

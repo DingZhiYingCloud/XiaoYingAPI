@@ -237,7 +237,7 @@
           <div class="card-actions mt-1 flex flex-wrap items-center gap-2">
             <button type="button" class="btn btn-primary btn-sm"
                     data-run-endpoint data-method="{{ ep.method }}" data-path="{{ ep.path }}"
-                    data-res="{{ channel.slug }}-{{ ep.slug }}">{% trans "发送请求" %}</button>
+                    data-res="{{ channel.slug }}-{{ ep.slug }}"{% if ep.markdown %} data-md="1"{% endif %}>{% trans "发送请求" %}</button>
             <button type="button" class="btn btn-ghost btn-sm"
                     data-clear-result data-res="{{ channel.slug }}-{{ ep.slug }}">{% trans "清空" %}</button>
           </div>
@@ -437,7 +437,12 @@
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'js/site/docs.js' %}?v=20260930d"></script>
+<script src="{% static 'js/site/docs.js' %}?v=20261001a"></script>
+{% if has_markdown %}
+{# AI 回复的 Markdown 渲染：marked 为第三方库（入库的 vendor 文件），渲染封装见 docs_markdown.js #}
+<script src="{% static 'js/vendor/marked.min.js' %}?v=20261001a"></script>
+<script src="{% static 'js/site/docs_markdown.js' %}?v=20261001a"></script>
+{% endif %}
 {% if has_announcement %}
 {# 接口公告条：超长正文折叠 / 展开，单条「关闭」（仅本机记忆） #}
 <script src="{% static 'js/site/docs_announcements.js' %}?v=20260930a"></script>

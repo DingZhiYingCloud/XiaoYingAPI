@@ -307,6 +307,14 @@ msgstr "Request failed"
 msgid "请求失败（HTTP %(status)s），请稍后重试"
 msgstr "Request failed (HTTP %(status)s), please try again later"
 
+# ---- 文档中心调试面板：AI 回复的 Markdown 渲染与思考过程折叠（docs.js） ----
+
+msgid "思考过程"
+msgstr "Reasoning"
+
+msgid "原始 JSON"
+msgstr "Raw JSON"
+
 msgid "请稍候…"
 msgstr "Please wait…"
 

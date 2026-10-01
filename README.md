@@ -575,7 +575,7 @@ curl -s "https://<你的域名>/api/xxx/internal_yyy"
 - **测试连通性**：后台厂商行上的「测试」按钮用该厂商的地址与密钥发一条极短请求（`max_tokens=1`），直接给出是否可用的结论，不用等业务请求失败才发现
 - **图片只收公网 URL**：`images` 支持 JSON 数组或纯文本（换行 / 逗号分隔），张数上限由后台按模型配置（默认 2 张），地址走 `API/common/url_safety.py` 的公网校验（拒绝内网 / 非 http(s) 地址）
 - **流式返回**：`stream=true` 时响应为 SSE（`text/event-stream`），内容分两种帧——`data: {"content": "片段"}` 是答案正文，`data: {"reasoning": "片段"}` 是**推理模型的思考过程**（仅推理模型有，与答案分开下发，只关心答案的调用方忽略该字段即可），结束标记 `data: [DONE]`；非流式则为普通 JSON。注意推理模型在给出答案前会先流一段思考内容，这段时间 `content` 一帧都没有，属正常现象
-- **在线调试可逐字打印**：文档页调试面板对 SSE 响应走**服务端逐块透传 + 前端 `ReadableStream` 逐帧渲染**（思考过程以灰色小字单独展示），其余接口仍是一次性 JSON，行为不变
+- **在线调试的呈现方式**：`stream=true` 时调试面板走**服务端逐块透传 + 前端 `ReadableStream` 逐帧渲染**——答案正文按 **Markdown 渲染排版**（端点在文档声明里标 `markdown=True`，见第八章第 2 节），**推理模型的思考过程收进可折叠的「思考过程」**（流式期间自动展开、开始出答案后自动收起，仍可手动点开）；两块正文各自限高、内部滚动，长回复不会把文档页顶长。非流式则把 `data.reply` 渲染后展示、原始 JSON 收进折叠区备查。其余接口仍是一次性 JSON，行为不变
 - **清单缓存**：模型清单在进程内做 60s TTL 缓存（与「服务策略」缓存同风格）；后台保存 / 删除厂商、模型或系统提示词后由 `API/apps.py` 的信号**即时失效**，无需重启。缓存只存模型元信息与提示词正文，**不含密钥**（密钥按需查库解密）
 - **文档下拉来自数据库**：文档中心 `model` 参数的候选项用 `ParamSpec.dynamic_options='ai_models'`（注册表 `docs.OPTION_LOADERS`，渲染前由 `docs_views._resolve_dynamic_options()` 填入），后台加 / 停模型后刷新文档页即变，不需要改 `API/website/docs/ai.py`
 - **首次升级零手工步骤**：迁移 `0038_seed_ai_deepseek` 会把旧 `.env` 的 `DEEPSEEK_API_KEY` / `DEEPSEEK_API_URL` 灌进 `ai_provider`（已存在则不覆盖）并种下 DeepSeek 的模型记录，因此**不会出现「升级后到后台填 Key 之前接口不可用」的空窗**；迁移 `0039_ai_prompt_and_sampling` 建提示词表并给模型补上提示词 / 采样字段，默认「跟随全局 + 采样参数留空」，升级后行为与升级前一致；迁移 `0040_ai_model_max_images` 给模型补上图片张数上限（默认 2）。`.env` 里的这两个变量已不再使用
@@ -698,6 +698,17 @@ curl -s "https://<你的域名>/api/xxx/internal_yyy"
 文档中心是**声明式**的：在 `API/website/docs/<服务>.py` 中用 `ServiceSpec / ChannelSpec / EndpointSpec / ParamSpec` 描述「服务 → 线路 → 端点 → 参数」，再在 `API/website/docs/__init__.py` 的注册表 import 一行即可。左侧导航（`docs_menu` 中间件）、文档页渲染、在线调试白名单（`ALL_ENDPOINTS`）全部自动生成，**无需改模板或视图**。
 
 调试器只允许转发注册表中已声明的端点路径；文件类参数会以真实 `multipart/form-data` 转发。
+
+**端点可声明专属的调试呈现**：下列字段声明后文档页才加载对应的前端资源，未声明的服务页零开销。
+
+| 字段 | 呈现 |
+| --- | --- |
+| `markdown=True` | 响应正文按 **Markdown 渲染排版**（AI 对话这类把正文放在 `data.reply` 的端点），非流式会把原始 JSON 收进折叠区；流式的思考过程同时收进可折叠区 |
+| `player=True` | 在线播放器（m3u8 / mp4），请求成功后自动加载 |
+| `image_help=[…]` | 图片解码预览面板 + 「解密说明」弹窗 |
+| `auto_fill_path` / `batch_register_path` | 一键填写账号 / 批量注册面板 |
+| `gift_picker_path` | 礼物面板（点选回填 `item_id`） |
+| `tool_path` | 跳转到该服务的可视化工具页 |
 
 **说明类字段支持 Markdown**：`ServiceSpec.intro`（服务说明，块级）、`ChannelSpec.note`（线路说明）、`EndpointSpec.notes`（端点备注）、`ParamSpec.desc`（参数说明）都会在渲染前转成 HTML，可直接写 `**加粗**`、行内代码（反引号）、列表与表格。渲染时**先转义原始 HTML**，所以 `<topic_id>`、`<img src>` 这类占位符会照原样显示（既不会被当标签吞掉，也不会被执行）；翻译发生在渲染**之前**，`.po` 里存的就是带记号的原文。`EndpointSpec.image_help` 例外——它按原文保留换行与缩进，用于书写代码片段。
 

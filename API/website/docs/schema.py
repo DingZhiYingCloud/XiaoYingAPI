@@ -82,6 +82,9 @@ class EndpointSpec:
     # 礼物选择器：填「礼物列表接口」路径（如 /api/haijiao/gift/list）。非空时文档页在本端点表单上方
     # 渲染礼物面板（金币 / 钻石两栏，含图片、名称、价格），点选即把礼物 ID 填进表单的 item_id。
     gift_picker_path: str = ''
+    # 响应正文是 Markdown（如 AI 对话接口的 data.reply）：在线调试把正文按 Markdown 渲染排版，
+    # 而非直接回显 JSON 里的原始字符串。声明后文档页会额外加载 marked 与 docs_markdown.js。
+    markdown: bool = False
 
 
 @dataclass

@@ -169,11 +169,14 @@ def service(request, slug: str):
     # 是否存在「参数选择器」面板（账号选择器 / 礼物面板），有则加载对应脚本
     has_picker = any(ep.gift_picker_path or getattr(ep, 'account_picker_path', '')
                      for channel in doc.channels for ep in channel.endpoints)
+    # 是否存在返回 Markdown 正文的端点（如 AI 对话），有则加载 marked 与渲染脚本
+    has_markdown = any(ep.markdown for channel in doc.channels for ep in channel.endpoints)
     # 本服务端点总数：供「接口目录」浮窗显示数量（仅 1 个端点时不渲染该浮窗）
     endpoint_count = sum(len(channel.endpoints) for channel in doc.channels)
     return render(request, 'docs/service.html',
                   {'doc': doc, 'status': status, 'has_player': has_player, 'has_image': has_image,
                    'has_register_ui': has_register_ui, 'has_picker': has_picker,
+                   'has_markdown': has_markdown,
                    'has_announcement': has_announcement,
                    'endpoint_count': endpoint_count})
 

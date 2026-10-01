@@ -3516,8 +3516,8 @@ msgstr "Full conversation messages (JSON)"
 msgid "模型名称"
 msgstr "Model name"
 
-msgid "流式模式返回 SSE：每帧形如 data: {\"content\": \"片段\"}（答案正文）或 data: {\"reasoning\": \"片段\"}（推理模型的思考过程，仅这类模型有，与答案分开下发、只关心答案可忽略），结束标记 data: [DONE]；在线调试会逐字打印，推理模型在给出答案前会先流一段思考内容。"
-msgstr "Streaming mode returns SSE: each frame is either data: {\"content\": \"chunk\"} (the answer) or data: {\"reasoning\": \"chunk\"} (a reasoning model's thinking; only such models emit it, and it is sent separately from the answer, so ignore it if you only care about the answer), terminated by data: [DONE]. The live debugger prints it character by character; a reasoning model streams some thinking before the answer begins."
+msgid "流式模式返回 SSE：每帧形如 data: {\"content\": \"片段\"}（答案正文）或 data: {\"reasoning\": \"片段\"}（推理模型的思考过程，仅这类模型有，与答案分开下发、只关心答案可忽略），结束标记 data: [DONE]；在线调试会把答案正文按 Markdown 渲染排版并逐字打印，推理模型的思考过程收进可折叠的「思考过程」（首屏自动展开，开始出答案后自动收起）。"
+msgstr "Streaming mode returns SSE: each frame is either data: {\"content\": \"chunk\"} (the answer) or data: {\"reasoning\": \"chunk\"} (a reasoning model's thinking; only such models emit it, and it is sent separately from the answer, so ignore it if you only care about the answer), terminated by data: [DONE]. The live debugger renders the answer as Markdown and prints it character by character; a reasoning model's thinking goes into a collapsible \"Reasoning\" block that is expanded while it streams and collapses once the answer starts."
 
 msgid "流式输出(SSE)"
 msgstr "Streaming output (SSE)"
