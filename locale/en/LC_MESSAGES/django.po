@@ -8126,6 +8126,24 @@ msgstr "When the source site replies \"invalid captcha\", the points are refunde
 msgid "直连模式下源站对注册有 IP 限制，被限时请改用代理出口。"
 msgstr "In direct mode the source site rate-limits registration by IP; switch to the proxy egress when you get blocked."
 
+msgid "当前域名"
+msgstr "Current domain"
+
+msgid "更新今日域名"
+msgstr "Refresh today's domain"
+
+msgid "探测中：正在逐个验证候选域名的验证码端点（最长约 30 秒）…"
+msgstr "Probing: verifying each candidate domain's captcha endpoint (up to ~30 s)…"
+
+msgid "已切换到 %(domain)s，注册将使用该域名"
+msgstr "Switched to %(domain)s; registration will use it."
+
+msgid "更新失败"
+msgstr "Refresh failed"
+
+msgid "源站域名每天轮换，配置接口在旧域名上也可能照常返回旧域名；点「更新今日域名」会逐个验证候选域名的验证码端点，把注册切到真正可用的那个。"
+msgstr "The source site rotates its domains daily, yet the config endpoint may keep returning an old domain even after it dies. \"Refresh today's domain\" verifies each candidate's captcha endpoint and switches registration to one that actually works."
+
 msgid "单次最多 %(n)s 个账号。"
 msgstr "Up to %(n)s accounts per run."
 

@@ -17,12 +17,26 @@
      data-broken="{% trans '连接中断' %}"
      data-ticket-failed="{% trans '领取运行票据失败，请重试' %}"
      data-refunded="{% trans '已返分' %}"
-     data-ok="{% trans '成功' %}" data-failed="{% trans '失败' %}"></div>
+     data-ok="{% trans '成功' %}" data-failed="{% trans '失败' %}"
+     data-domain-probing="{% trans '探测中：正在逐个验证候选域名的验证码端点（最长约 30 秒）…' %}"
+     data-domain-updated="{% trans '已切换到 %(domain)s，注册将使用该域名' %}"
+     data-domain-failed="{% trans '更新失败' %}"></div>
 
 {% comment %}运行设置 + 进度：注册动作走 SSE（页面只负责发起与展示）{% endcomment %}
 <article class="con-panel mt-5">
   <div class="con-panel-body gap-3 p-4">
     <h2 class="text-base font-semibold">{% trans "运行设置" %}</h2>
+
+    {# 当前域名 + 手动更新：源站 conf 接口在旧域名上也会自称「今日域名」，靠自动跟随可能被带回死域名， #}
+    {# 按钮走业务探活（逐个验证候选域名的验证码端点）后切换，见 haijiao/utils.py 的 refresh_domain_config #}
+    <div class="flex flex-wrap items-center gap-2">
+      <span class="text-xs text-base-content/70">{% trans "当前域名" %}</span>
+      <code id="hj-domain" class="break-all rounded bg-base-200 px-2 py-0.5 font-mono text-xs">{{ current_domain }}</code>
+      <button type="button" id="hj-domain-refresh" class="btn btn-outline btn-xs gap-1">
+        <i data-lucide="refresh-cw" class="h-3.5 w-3.5" aria-hidden="true"></i>{% trans "更新今日域名" %}
+      </button>
+      <span id="hj-domain-status" class="text-xs text-base-content/60"></span>
+    </div>
 
     <form id="hj-auto-form" class="flex flex-wrap items-end gap-3" onsubmit="return false;">
       <label class="flex flex-col gap-1 text-xs text-base-content/70">
@@ -62,6 +76,7 @@
       {% blocktrans with code=ocr_codetype label=ocr_codetype_label %}识别类型默认 {{ code }}（{{ label }}），可在上方下拉里改；下拉项末尾的数字即该类型的题分单价。{% endblocktrans %}
       {% trans "源站回「验证码错误」时会自动报错返分并换图重试。" %}
       {% trans "直连模式下源站对注册有 IP 限制，被限时请改用代理出口。" %}
+      {% trans "源站域名每天轮换，配置接口在旧域名上也可能照常返回旧域名；点「更新今日域名」会逐个验证候选域名的验证码端点，把注册切到真正可用的那个。" %}
       {% blocktrans with n=max_batch %}单次最多 {{ n }} 个账号。{% endblocktrans %}
     </p>
 
@@ -169,6 +184,7 @@
 
   var STREAM_URL = '{% url "website:console_haijiao_register_stream" %}';
   var TICKET_URL = '{% url "website:console_haijiao_register_ticket" %}';
+  var REFRESH_DOMAIN_URL = '{% url "website:console_haijiao_register_refresh_domain" %}';
   var es = null;
   var total = 0;
   var finished = 0;
@@ -330,6 +346,43 @@
   stopBtn.addEventListener('click', function () {
     close();
     append('--- ' + i18n.stopped + ' ---');
+  });
+
+  /* 「更新今日域名」：强制重探（业务探活）并切换；成功后本 worker 立即生效，
+     其它 worker 下次建会话经共享缓存自动跟上 —— 无需重启、无需刷新页面 */
+  var domainBtn = document.getElementById('hj-domain-refresh');
+  var domainCode = document.getElementById('hj-domain');
+  var domainStatus = document.getElementById('hj-domain-status');
+
+  function getCsrfToken() {
+    var m = document.cookie.match(/(?:^|;\s*)(?:xyapi_csrftoken|csrftoken)=([^;\s]+)/);
+    return m ? m[1] : '';
+  }
+
+  domainBtn.addEventListener('click', function () {
+    if (domainBtn.disabled) return;
+    domainBtn.disabled = true;
+    domainStatus.textContent = i18n.domainProbing;
+    domainStatus.className = 'text-xs text-info';
+    fetch(REFRESH_DOMAIN_URL, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'X-CSRFToken': getCsrfToken() }
+    }).then(function (r) {
+      return r.json().catch(function () { throw new Error('HTTP ' + r.status); });
+    }).then(function (data) {
+      if (!data.ok) throw new Error(data.msg || '');
+      domainCode.textContent = data.domain;
+      var ok = t(i18n.domainUpdated, { domain: data.domain });
+      domainStatus.textContent = ok;
+      domainStatus.className = 'text-xs text-success';
+      append('--- ' + ok + ' ---');
+    }).catch(function (e) {
+      domainStatus.textContent = i18n.domainFailed + (e.message ? '：' + e.message : '');
+      domainStatus.className = 'text-xs text-error';
+    }).finally(function () {
+      domainBtn.disabled = false;
+    });
   });
 })();
 </script>

@@ -87,6 +87,9 @@ urlpatterns = [
          name='console_haijiao_register'),                                       # 海角自动注册（超管）
     path('console/haijiao/register/ticket/', console_haijiao.haijiao_register_ticket_view,
          name='console_haijiao_register_ticket'),                                # 领一次性运行票据
+    path('console/haijiao/register/refresh-domain/',
+         console_haijiao.haijiao_register_domain_refresh_view,
+         name='console_haijiao_register_refresh_domain'),                        # 更新今日域名（超管）
     path('console/haijiao/register/stream/', console_haijiao.haijiao_register_stream_view,
          name='console_haijiao_register_stream'),                                # 自动注册进度流（SSE）
 ]

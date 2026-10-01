@@ -427,6 +427,12 @@ _DOMAIN_CACHE_KEY = 'domain:config'
 # 进程内失败时间戳：仅用于失败后的短暂节流（成功即清零）
 _domain_failed_at = 0.0
 
+# 业务探活端点：conf 接口在旧域名上也会返回「成功 + 自指旧域名」（2026-10-02 线上实测：
+# 昨日域名的 conf 仍 200 且 domain 字段指向自己，而它的验证码端点已 RemoteDisconnected），
+# 只探 conf 会被假数据骗。必须探一个注册链路真正要用的业务端点——GET 拉一张注册验证码图，
+# 不提交、不消耗超级鹰题分，对源站的副作用可忽略。
+DOMAIN_LIVENESS_PATH = '/api/captcha/request?t=signupCaptcha'
+
 
 def _fetch_domain_config(entry: str) -> dict:
     """从指定入口请求配置接口并解析出域名配置
@@ -447,11 +453,54 @@ def _fetch_domain_config(entry: str) -> dict:
     return config
 
 
+def _probe_domain_alive(entry: str) -> None:
+    """业务级探活：该域名的注册链路端点真正可响应才算通过，否则抛异常
+
+    conf 接口在旧域名上也会返回成功（甚至自称今日域名），只探 conf 不够。
+    探活会向源站拉一张注册验证码图（GET，不提交、不消耗超级鹰题分）。
+    """
+    resp = requests.get(f'{entry.rstrip("/")}{DOMAIN_LIVENESS_PATH}',
+                        headers=_PROBE_HEADERS, timeout=DOMAIN_PROBE_TIMEOUT)
+    resp.raise_for_status()
+    envelope = resp.json()      # 连接活着但回的是 CDN 拦截页等非信封内容，同样判为不可用
+    if not isinstance(envelope, dict) or 'success' not in envelope:
+        raise RuntimeError('响应不是源站信封结构')
+
+
+def _domain_candidates(conf: dict) -> list:
+    """候选域名（去重）：conf 声称的今日域名 → 备用 → 海外永久 → 当前域名 → 兜底入口"""
+    candidates = []
+    for item in ((conf.get('domain'), conf.get('backup_domain'), conf.get('abroad_domain'),
+                  BASE_URL) + DOMAIN_PROBE_FALLBACKS):
+        item = (item or '').strip().rstrip('/')
+        if item and item not in candidates:
+            candidates.append(item)
+    return candidates
+
+
+def _pick_alive_domain(conf: dict):
+    """对候选逐一业务探活，返回 (选定配置, 失败清单)；全部不可用时配置为 None
+
+    选定配置的 domain 以探活结果为准（不信 conf 的自指返回）。
+    """
+    failures = []
+    for candidate in _domain_candidates(conf):
+        try:
+            _probe_domain_alive(candidate)
+        except Exception as e:  # noqa: BLE001 - 记下原因继续下一个候选
+            failures.append(f'{candidate} -> {e}')
+            continue
+        return dict(conf, domain=candidate), failures
+    return None, failures
+
+
 def resolve_domain_config() -> dict:
     """获取今日域名配置（成功结果缓存 DOMAIN_TTL）
 
-    缓存未命中时依次探测「当前 BASE_URL → DOMAIN_PROBE_FALLBACKS」；全部失败抛
-    RuntimeError，并在 DOMAIN_RETRY_TTL 内直接失败（不重复探测，避免拖慢接口）。
+    缓存未命中时先从任一可达的 conf 入口拿配置，再对候选域名逐一**业务探活**：
+    conf 接口在旧域名上也会返回「成功 + 自指旧域名」（2026-10-02 线上实测），只信
+    conf 会把 BASE_URL 切回业务端点已死的域名。探活通过的候选才胜出并写缓存；
+    全部候选不可用抛 RuntimeError，并在 DOMAIN_RETRY_TTL 内直接失败（不重复探测）。
 
     :return: {domain, backup_domain, abroad_domain, movie_domain, customer_service}
     """
@@ -464,19 +513,27 @@ def resolve_domain_config() -> dict:
     if now - _domain_failed_at < DOMAIN_RETRY_TTL:
         raise RuntimeError('今日域名探测失败（稍后自动重试）')
 
-    error = None
+    conf, error = None, None
     for entry in (BASE_URL,) + DOMAIN_PROBE_FALLBACKS:
         try:
-            config = _fetch_domain_config(entry)
+            conf = _fetch_domain_config(entry)
         except Exception as e:      # noqa: BLE001 - 逐个入口尝试，全部失败才算失败
             error = e
             continue
+        break
+
+    if conf is None:
+        _domain_failed_at = now
+        raise RuntimeError(f'今日域名探测失败: {error}')
+
+    config, failures = _pick_alive_domain(conf)
+    if config is not None:
         _cache.set(_DOMAIN_CACHE_KEY, config, DOMAIN_TTL)
         _domain_failed_at = 0.0
         return config
 
     _domain_failed_at = now
-    raise RuntimeError(f'今日域名探测失败: {error}')
+    raise RuntimeError('今日可用域名探测失败: ' + '; '.join(failures))
 
 
 def set_base_url(base: str) -> None:
@@ -520,3 +577,39 @@ def current_base_url() -> str:
         return BASE_URL
     set_base_url(config['domain'])
     return BASE_URL
+
+
+def refresh_domain_config() -> dict:
+    """强制重探「今日真正可用」的域名并立即切换（控制台「更新今日域名」按钮用）
+
+    与 resolve_domain_config() 的区别：不走缓存、不受失败节流限制，按钮一点就真探。
+    探测/探活口径与 resolve_domain_config() 完全一致（conf 会撒谎，必须业务探活）。
+    成功后本进程立即 set_base_url，并把选定域名写入共享缓存 —— 其它 worker 下次建
+    会话经 current_base_url() 自动跟上。
+
+    :return: 探活通过的域名配置（domain 为实际选定域名）
+    :raise RuntimeError: conf 全部不可达，或全部候选业务不可用
+    """
+    global _domain_failed_at
+    conf, conf_error = None, None
+    for entry in (BASE_URL,) + DOMAIN_PROBE_FALLBACKS:
+        try:
+            conf = _fetch_domain_config(entry)
+        except Exception as e:      # noqa: BLE001 - 逐个入口尝试，全部失败才放弃
+            conf_error = e
+            continue
+        break
+
+    if conf is None:
+        _domain_failed_at = time.time()
+        raise RuntimeError(f'获取源站域名配置失败: {conf_error}')
+
+    config, failures = _pick_alive_domain(conf)
+    if config is None:
+        _domain_failed_at = time.time()
+        raise RuntimeError('今日可用域名探测失败（全部候选业务不可用）: ' + '; '.join(failures))
+
+    _cache.set(_DOMAIN_CACHE_KEY, config, DOMAIN_TTL)
+    _domain_failed_at = 0.0
+    set_base_url(config['domain'])
+    return config

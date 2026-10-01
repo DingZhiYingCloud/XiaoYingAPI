@@ -3,8 +3,10 @@
 鉴权：仅 Django is_superuser（见 admin_auth.py）；匿名与普通用户会被重定向到 /login/。
 
 页面：
-    /console/haijiao/register/         自动注册面板（进度条 + 实时日志 + 结果表）
-    /console/haijiao/register/stream/  自动注册进度流（SSE，页面用 EventSource 订阅）
+    /console/haijiao/register/                自动注册面板（进度条 + 实时日志 + 结果表）
+    /console/haijiao/register/ticket/         领一次性运行票据（每次点「开始」现领）
+    /console/haijiao/register/refresh-domain/ 「更新今日域名」按钮（POST，业务探活后切换）
+    /console/haijiao/register/stream/         自动注册进度流（SSE，页面用 EventSource 订阅）
 
 为什么用 SSE 而不是轮询：一个账号要「取码 → 打码 → 提交」好几步、单条数秒到数十秒，
 轮询只能给一个粗略百分比；SSE 能把每一步实时推给页面。项目里 AI 流式对话与文档页代调
@@ -34,6 +36,7 @@ from django.shortcuts import render
 
 from API.apis.haijiao import utils as haijiao_utils
 from SpiderServices.Chaojiying.utils import CODETYPES
+from SpiderServices.haijiao import utils as haijiao_spider_utils
 from SpiderServices.haijiao.main import PROXY_PROVIDERS
 
 from .admin_auth import superadmin_required
@@ -139,6 +142,8 @@ def haijiao_register_view(request):
         'max_batch': haijiao_utils.MAX_BATCH_SIZE,
         'default_retry': haijiao_utils.MAX_CAPTCHA_RETRY,
         'max_retry_limit': MAX_RETRY_LIMIT,
+        # 展示用：本进程当前的海角域名（不触发探测；点「更新今日域名」会强制重探）
+        'current_domain': haijiao_spider_utils.BASE_URL,
     })
 
 
@@ -146,6 +151,27 @@ def haijiao_register_view(request):
 def haijiao_register_ticket_view(request):
     """领一张运行票据（每次点「开始」现领，跑完可接着再跑、无需刷新页面）"""
     return JsonResponse({'ticket': _issue_ticket()})
+
+
+@superadmin_required
+def haijiao_register_domain_refresh_view(request):
+    """「更新今日域名」按钮：强制重探今日真正可用的域名并立即切换
+
+    为什么按钮要走业务探活而不是只重探 conf：conf 接口在旧域名上也会返回成功
+    （甚至自称今日域名，2026-10-02 线上实测），只信 conf 会把注册切回一个业务端点
+    已死的域名。口径见 SpiderServices/haijiao/utils.py 的 refresh_domain_config()。
+    成功后本 worker 立即生效；其它 worker 下次建会话经共享缓存自动跟上。
+    """
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'msg': '仅支持 POST'}, status=405)
+    try:
+        config = haijiao_spider_utils.refresh_domain_config()
+    except RuntimeError as e:
+        logger.warning('手动更新海角今日域名失败: %s', e)
+        return JsonResponse({'ok': False, 'msg': str(e)}, status=502)
+    return JsonResponse({'ok': True, 'domain': config['domain'],
+                         'backup_domain': config.get('backup_domain', ''),
+                         'abroad_domain': config.get('abroad_domain', '')})
 
 
 @superadmin_required
