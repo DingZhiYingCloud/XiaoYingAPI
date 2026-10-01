@@ -4399,9 +4399,6 @@ msgstr "Series Details"
 msgid "可选：榜单类型，默认 hot-drama（热播榜）。"
 msgstr "Optional: ranking type, defaults to hot-drama."
 
-msgid "外链登记"
-msgstr "External Link Registration"
-
 msgid "实时爬取源站 SSR 数据并缓存。剧集元数据/集列表缓存较久；播放直链缓存较短。"
 msgstr "Crawls the source site's SSR data in real time and caches it. Series metadata / episode lists are cached longer; playback links are cached briefly."
 
@@ -4426,8 +4423,8 @@ msgstr "Get a short-drama list by category, with pagination."
 msgid "播放接口返回的源站直链为 MP4 且带时效，请勿在客户端长期缓存；剧集元数据与集列表缓存较久，播放直链缓存较短以便及时刷新。本服务需项目签名。"
 msgstr "Direct source links returned by the playback endpoint are MP4 and time-limited — do not cache them on the client. Series metadata and episode lists are cached longer; playback links are cached briefly so they stay fresh. This service requires project signature."
 
-msgid "播放能力：前 3 集由源站直接下发明文直链；第 4 集及以后源站只下发 DRM 加密的H.265（浏览器无法直接解码），由本服务在服务端解密并转成 H.264 后出流，播放接口返回的地址可直接交给浏览器的「视频」标签播放，支持拖动进度条。已上架到外部平台的集优先返回外部地址，其余走本站直出（首次点播需等待数十秒生成，之后即刻返回）。"
-msgstr "Playback: the first 3 episodes come as plain direct links from the source site. From episode 4 on the source only delivers DRM-encrypted H.265, which browsers cannot decode, so this service decrypts and transcodes it to H.264 and streams it. The URL returned by the playback endpoint can be handed straight to a browser <video> tag and supports seeking. Episodes already published on an external platform return that external URL first; the rest are streamed by this site (the first play waits tens of seconds while it is generated, later plays are immediate)."
+msgid "播放能力：前 3 集由源站直接下发明文直链；第 4 集及以后源站只下发 DRM 加密的H.265（浏览器无法直接解码），由本服务在服务端解密并转成 H.264 后出流，播放接口返回的地址可直接交给浏览器的「视频」标签播放，支持拖动进度条。第 4 集及以后首次点播需等待数十秒生成，之后即刻返回。"
+msgstr "Playback: the first 3 episodes come as plain direct links from the source site. From episode 4 on the source only delivers DRM-encrypted H.265, which browsers cannot decode, so this service decrypts and transcodes it to H.264 and streams it. The URL returned by the playback endpoint can be handed straight to a browser <video> tag and supports seeking. The first play of episode 4 or later waits tens of seconds while it is generated; later plays are immediate."
 
 msgid "榜单类型"
 msgstr "Ranking Type"
@@ -4652,11 +4649,11 @@ msgstr "An invalid or expired token returns 403; call the playback endpoint agai
 msgid "返回 data.episodes 为全量集列表，每项含 ep / episode_id / playable / source。"
 msgstr "data.episodes is the full episode list; each item has ep / episode_id / playable / source."
 
-msgid "episodes[].playable 的口径与「播放地址」接口**完全一致**：源站直链 / 已登记外链 / 本站网页直出三条路任一可用即为 true；source 标出走的哪条路 —— origin（源站直链）/ external（已登记外链）/ stream（本站直出，首播需等数十秒生成）。本站直出默认可用，所以第 4 集及以后通常也是 playable=true。"
-msgstr "episodes[].playable follows exactly the same rule as the playback endpoint: an episode is playable when any of the three routes works — the source link, a registered external link, or this site's own stream. source says which one applies: origin (source link) / external (registered external link) / stream (site stream; the first play takes tens of seconds to generate). Site streaming is available by default, so episode 4 and later are usually playable=true too."
+msgid "episodes[].playable 的口径与「播放地址」接口**完全一致**：源站直链 / 本站网页直出两条路任一可用即为 true；source 标出走的哪条路 —— origin（源站直链）/ stream（本站直出，首播需等数十秒生成）。本站直出默认可用，所以第 4 集及以后通常也是 playable=true。"
+msgstr "episodes[].playable follows exactly the same rule as the playback endpoint: an episode is playable when either route works — the source link or this site's own stream. source says which one applies: origin (source link) / stream (site stream; the first play takes tens of seconds to generate). Site streaming is available by default, so episode 4 and later are usually playable=true too."
 
-msgid "data.playable_cnt 为源站直链的连续范围（前 N 集，保持原义）；data.listed_cnt 为实际可播集数（= playable 为 true 的集数）；data.external_cnt 为已登记外部链接的集数（人工上架进度）。需要判断「某集能不能播」请用 episodes[].playable，不要用 playable_cnt 推算。"
-msgstr "data.playable_cnt is the unbroken range of source links (the first N episodes, meaning unchanged); data.listed_cnt is how many episodes are actually playable (the count of playable=true); data.external_cnt is how many episodes have a registered external link (manual publishing progress). To tell whether a specific episode plays, use episodes[].playable — do not derive it from playable_cnt."
+msgid "data.playable_cnt 为源站直链的连续范围（前 N 集，保持原义）；data.listed_cnt 为实际可播集数（= playable 为 true 的集数）。需要判断「某集能不能播」请用 episodes[].playable，不要用 playable_cnt 推算。"
+msgstr "data.playable_cnt is the unbroken range of source links (the first N episodes, meaning unchanged); data.listed_cnt is how many episodes are actually playable (the count of playable=true). To tell whether a specific episode plays, use episodes[].playable — do not derive it from playable_cnt."
 
 msgid "剧集不存在时返回 EXTERNAL_API_FAILED（外部API调用失败）。"
 msgstr "Returns EXTERNAL_API_FAILED when the series does not exist."
@@ -4668,9 +4665,6 @@ msgstr "The first 3 episodes return plain source MP4 links; from episode 4 on th
 
 msgid "· origin —— 源站明文直链（前若干集）；"
 msgstr "- origin: the plain source link (the first few episodes);"
-
-msgid "· external —— 已上架到外部平台的地址（data.url 为第三方地址）；"
-msgstr "- external: a URL published on an external platform (data.url points to a third party);"
 
 msgid "· stream —— 本站直出：data.url 为可直接交给 <video> 播放的地址（明文 H.264、支持 HTTP Range 拖动），画质见 data.quality，data.ready=false 表示该画质首次被点播、服务端正在生成（约数十秒），请轮询该地址：202=正在生成、503=生成失败（响应体里有原因）、200/206=可播放，别只按 HTTP 200 判定。"
 msgstr "- stream: streamed by this site. data.url plays directly in a <video> tag (plain H.264, supports HTTP Range seeking); data.quality gives the rendition. data.ready=false means this is the first play of that rendition and the server is still generating it (tens of seconds). Poll that URL: 202 = still generating, 503 = generation failed (the body says why), 200 / 206 = playable — never judge by an HTTP 200 alone."
@@ -4719,103 +4713,8 @@ msgstr "Categories have two levels: the top level is the content form (live-acti
 msgid "每个节点的 slug 都可直接传给「分类列表」接口的 category：一级取该一级全部，二级只取该题材（形如 real-drama/romance）；无二级的一级（漫画）children 为空数组。"
 msgstr "Every node's slug can be passed straight to the category parameter of the category list endpoint: a top-level slug returns that whole top level, while a sub-genre returns only that genre (e.g. real-drama/romance). Top levels with no sub-genres (comics) have an empty children array."
 
-msgid "链接类型"
-msgstr "Link Type"
-
 msgid "集数"
 msgstr "Episode"
-
-# ==================== 超管控制台 · 红果短剧（预处理 / 外链登记） ====================
-
-msgid "删除后该集将回到「暂未上架」，确认删除？"
-msgstr "After deletion this episode goes back to \"not published yet\". Delete anyway?"
-
-msgid "删除外链登记"
-msgstr "Delete external link"
-
-msgid "剧集 ID 必须为纯数字"
-msgstr "Series ID must be numeric"
-
-msgid "剧集 ID（纯数字）"
-msgstr "Series ID (numeric)"
-
-msgid "剧集名（可选）"
-msgstr "Series name (optional)"
-
-msgid "小影API 超级管理员：红果短剧预处理导出与外链登记管理。"
-msgstr "XiaoYingAPI super admin: preprocess export and external link registration for Hongguo short dramas."
-
-msgid "尚未运行过"
-msgstr "Not run yet"
-
-msgid "已切换启用状态"
-msgstr "Toggled the enabled state"
-
-msgid "已删除该条登记"
-msgstr "Registration deleted"
-
-msgid "已登记的外链"
-msgstr "Registered external links"
-
-msgid "已结束"
-msgstr "Finished"
-
-msgid "开始预处理"
-msgstr "Start preprocessing"
-
-msgid "批量登记"
-msgstr "Bulk register"
-
-msgid "按「剧名_剧集ID」建目录导出，每集一个 mp4；已存在的集自动跳过，可断点续跑。"
-msgstr "Exports into a \"name_seriesID\" directory, one mp4 per episode; existing episodes are skipped so the run can be resumed."
-
-msgid "按剧集 ID 筛选"
-msgstr "Filter by series ID"
-
-msgid "暂无登记记录"
-msgstr "No registrations yet"
-
-msgid "未知操作"
-msgstr "Unknown action"
-
-msgid "每行一条：集号 + 分隔符 + 链接（分隔符可用 Tab / 空格 / 逗号）"
-msgstr "One per line: episode number + separator + link (separator may be Tab / space / comma)"
-
-msgid "登记完成：共 %(total)s 条（新增 %(created)s / 更新 %(updated)s）"
-msgstr "Registered %(total)s entries (created %(created)s / updated %(updated)s)."
-
-msgid "第 4 集及以后源站是 DRM 加密的 H.265，浏览器无法直接播放：先在此预处理导出，上传到外部平台后登记链接，接口查到就返回。"
-msgstr "Episode 4 onward is DRM-encrypted H.265 from the source site and cannot be played directly in a browser: export it here first, upload it to an external platform, then register the links — the API returns them once registered."
-
-msgid "第 4 集及以后：外链登记"
-msgstr "Episode 4 onward: external link registration"
-
-msgid "红果短剧 - 超级管理员 - 小影API"
-msgstr "Hongguo Short Dramas - Super Admin - XiaoYingAPI"
-
-msgid "超级管理员,红果短剧,预处理"
-msgstr "super admin,Hongguo short dramas,preprocess"
-
-msgid "输出目录"
-msgstr "Output directory"
-
-msgid "运行中"
-msgstr "Running"
-
-msgid "重复登记按「剧集 ID + 集数」覆盖更新；任一行格式有误则整批不写入。"
-msgstr "Re-registering overwrites by series ID + episode; if any line is malformed the whole batch is rejected."
-
-msgid "链接类型非法"
-msgstr "Invalid link type"
-
-msgid "集数范围（如 4-222），留空=全部"
-msgstr "Episode range (e.g. 4-222); blank means all"
-
-msgid "预处理已启动，进度见下方输出（可离开本页，任务会继续跑）"
-msgstr "Preprocessing started; progress shows below (you can leave this page — the task keeps running)."
-
-msgid "预处理（解密导出）"
-msgstr "Preprocess (decrypt & export)"
 
 # ==================== 超级管理控制台 · 通用（策略 / 表单共用文案） ====================
 msgid "生效结果"

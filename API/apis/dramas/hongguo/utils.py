@@ -7,20 +7,13 @@
 源站只给 DRM 加密的 H.265（CENC AES-CTR + 自定义 spade 密钥包装），桌面浏览器无法直接
 播放（多数平台不支持 HEVC），且源站不提供明文/m3u8 通道。
 
-因此第 4 集及以后有两条出路（play 按顺序择优）：
-    1) 外部托管 + 链接登记（零成本，优先）：预处理工具解密导出 → 人工上传到外部平台
-       → 超管控制台 /console/dramas/hongguo/ 登记链接（仅后台内部使用，无对外接口）
-    2) 服务端「网页直出」（免人工）：/api/dramas/hongguo/stream 按需解密 + 转 H.264
-       后出流。浏览器在多数机器上完全解不了源站的 HEVC（原生 / MSE / WebCodecs 实测
-       三条路全断），故只能转码；产物落盘永久复用，只有被点播过的集才会转。
+因此第 4 集及以后走**服务端「网页直出」**：/api/dramas/hongguo/stream 按需解密 + 转
+H.264 后出流。浏览器在多数机器上完全解不了源站的 HEVC（原生 / MSE / WebCodecs 实测
+三条路全断），故只能转码；产物落盘永久复用，只有被点播过的集才会转。
 """
-from urllib.parse import urlparse
-
 from django.conf import settings
 from django.core import signing
-from django.db import transaction
 
-from API.models import HongguoEpisodeVideo
 from SpiderServices.dramas.hongguo.main import HongguoDramaSpider
 from SpiderServices.dramas.hongguo.utils import (
     CATEGORY_OPTIONS,   # noqa: F401  （文档页下拉用，经本模块转出）
@@ -44,13 +37,11 @@ DEFAULT_QUALITY = int(getattr(settings, 'HONGGUO_STREAM_QUALITY', 1080))
 #   榜单 RANK_TYPE_VALUES  —— hot-drama / hot-real-drama / hot-ai-drama / hot-comic-drama
 #   分类 CATEGORY_VALUES   —— 一级 slug（real-drama）或「一级/二级」（real-drama/romance）
 RANK_TYPE_VALUES = RANK_TYPES
-# 允许登记的外链类型（视图层校验用）
-URL_TYPES = ('mp4', 'm3u8')
 
 # get_play 的结果标记：调用方（视图层）据此选择状态码
-PLAY_OK = 'ok'                       # 可直接播放（源站直链 / 已登记外链 / 本站网页直出）
+PLAY_OK = 'ok'                       # 可直接播放（源站直链 / 本站网页直出）
 PLAY_OUT_OF_RANGE = 'out_of_range'   # 集号越界
-PLAY_NOT_LISTED = 'not_listed'       # 第 4 集及以后：既未登记外链、本站直出又不可用
+PLAY_NOT_LISTED = 'not_listed'       # 第 4 集及以后且本站直出不可用
 PLAY_ERROR = 'error'                 # 取数失败
 
 # 「尚未上架」时的提示文案
@@ -149,28 +140,24 @@ def get_search(keyword, page=1):
 def get_detail(series_id):
     """获取剧集详情（全量集号 + 可播集数）；剧集不存在时返回 None
 
-    ``episodes[].playable`` 的口径与 :func:`get_play` **完全一致** —— 三条路任一可用即为
+    ``episodes[].playable`` 的口径与 :func:`get_play` **完全一致** —— 两条路任一可用即为
     true，并额外用 ``source`` 标出走的哪条路：
 
         origin    源站明文直链（前若干集）
-        external  已登记的外部播放地址
         stream    本站「网页直出」（按需解密 + 转 H.264）
 
-    爬虫层只认源站 H5 直链范围（前 3 集），所以这里要把登记表与直出能力补进去。少这一步
+    爬虫层只认源站 H5 直链范围（前 3 集），所以这里要把直出能力补进去。少这一步
     就会出现「detail 说不能播、play 说能播」的自相矛盾：调用方给该集打上锁标记、点不进去，
     接口明明有能力，前端却接不住。
 
-    三个计数含义不同，别混用：
+    两个计数含义不同，别混用：
         playable_cnt  源站直链的**连续**范围（前 N 集），保持原义，避免影响既有调用方
         listed_cnt    **实际可播集数**（= playable 为 true 的集数）
-        external_cnt  **已登记外部链接**的集数（人工上架的进度）
     """
     ok, data = _run("获取详情", lambda s: s.get_detail(series_id))
     if not ok or data is None:
         return ok, data
 
-    listed = set(HongguoEpisodeVideo.objects.filter(
-        series_id=str(series_id), enabled=True).values_list('ep', flat=True))
     # 本站「网页直出」是否可用。settings 里 HONGGUO_STREAM_DIR 有默认值，正常部署恒为可用；
     # 取不到目录（如测试环境显式清空）时不下发 stream，免得承诺一个给不出的地址。
     stream_enabled = bool(getattr(settings, 'HONGGUO_STREAM_DIR', ''))
@@ -181,16 +168,12 @@ def get_detail(series_id):
         item = dict(item)
         if item.get('playable'):
             item['source'] = 'origin'
-        elif item.get('ep') in listed:
-            item['playable'], item['source'] = True, 'external'
         elif stream_enabled:
             item['playable'], item['source'] = True, 'stream'
         episodes.append(item)
 
     data = dict(data, episodes=episodes,
-                listed_cnt=sum(1 for item in episodes if item.get('playable')),
-                # 注册表口径：登记过（且启用）的集数，与它是否同时有源站直链无关
-                external_cnt=sum(1 for item in episodes if item.get('ep') in listed))
+                listed_cnt=sum(1 for item in episodes if item.get('playable')))
     return True, data
 
 
@@ -198,11 +181,11 @@ def get_play(series_id, ep, quality=None):
     """
     获取某集播放地址。
 
-    前若干集（H5 可播范围）返回源站明文直链；第 4 集及以后返回已登记的外部播放地址，
-    没登记则回落到本站「网页直出」（画质由 quality 指定，见 QUALITY_WIDTHS）。
+    前若干集（H5 可播范围）返回源站明文直链；第 4 集及以后返回本站「网页直出」地址
+    （画质由 quality 指定，见 QUALITY_WIDTHS）。
 
     payload 的 ``source`` 标注走的哪条路（取值与 detail 的 episodes[].source 一致）：
-    ``origin`` 源站直链 / ``external`` 已登记外链 / ``stream`` 本站直出。
+    ``origin`` 源站直链 / ``stream`` 本站直出。
 
     :return: (status, payload)
         - PLAY_OK           payload 为播放数据 dict
@@ -220,20 +203,8 @@ def get_play(series_id, ep, quality=None):
         # source 与 detail 的 episodes[].source 同一套取值，调用方不必两处各判一套
         return PLAY_OK, {**data, 'source': 'origin'}
 
-    # 第 4 集及以后：源站只给 DRM 加密的 H.265
-    # ① 已登记外部链接：优先返回（零成本，流量不经过本站）
-    row = HongguoEpisodeVideo.objects.filter(
-        series_id=str(series_id), ep=int(ep), enabled=True).first()
-    if row is not None:
-        return PLAY_OK, {
-            'series_id': str(series_id),
-            'ep': int(ep),
-            'playable': True,
-            'source': 'external',
-            'url': row.url,
-            'url_type': row.url_type,
-        }
-    # ② 未登记：走服务端「网页直出」（按需解密 + 转 H.264，产物永久复用）
+    # 第 4 集及以后：源站只给 DRM 加密的 H.265，走服务端「网页直出」
+    #（按需解密 + 转 H.264，产物永久复用）
     from SpiderServices.dramas.hongguo import transcode
     if not getattr(settings, 'HONGGUO_STREAM_DIR', ''):
         return PLAY_NOT_LISTED, NOT_LISTED_MSG
@@ -252,61 +223,3 @@ def get_play(series_id, ep, quality=None):
         'ready': transcode.is_ready(series_id, ep, width),
     }
 
-
-def _parse_items(raw):
-    """
-    解析批量登记文本，返回 (items, errors)。
-
-    每行一条「集号 + 分隔符 + 链接」，分隔符为 Tab / 空格 / 逗号中的**第一个**出现的，
-    因此链接内部含逗号不受影响。空行忽略。
-    """
-    items, errors = [], []
-    for lineno, line in enumerate(raw.splitlines(), 1):
-        line = line.strip()
-        if not line:
-            continue
-        seps = [i for i in (line.find('\t'), line.find(' '), line.find(',')) if i >= 0]
-        if not seps:
-            errors.append(f'第 {lineno} 行缺少分隔符（应为「集号+分隔符+链接」）')
-            continue
-        ep_raw, url = line[:min(seps)].strip(), line[min(seps) + 1:].strip()
-        if not ep_raw.isdigit() or int(ep_raw) < 1:
-            errors.append(f'第 {lineno} 行集号非法: {ep_raw!r}')
-            continue
-        if urlparse(url).scheme not in ('http', 'https'):
-            errors.append(f'第 {lineno} 行链接非法（需以 http/https 开头）')
-            continue
-        items.append((int(ep_raw), url))
-    if not items and not errors:
-        errors.append('未解析到任何有效行')
-    return items, errors
-
-
-def save_episode_videos(series_id, raw, url_type, series_name=''):
-    """
-    批量登记外部播放地址（按 series_id + ep 幂等 upsert）。
-
-    校验采取「全量通过才写入」：任一行非法则整批不落库，避免出现半截的登记结果。
-
-    :param raw: 批量登记文本（见 _parse_items）
-    :param url_type: mp4 / m3u8
-    :param series_name: 可选；为空时保留库中已有剧集名
-    :return: (True, {total, created, updated}) 或 (False, 错误信息)
-    """
-    items, errors = _parse_items(raw)
-    if errors:
-        head = errors[:5]
-        suffix = f'（共 {len(errors)} 处问题）' if len(errors) > len(head) else ''
-        return False, '登记内容有误: ' + '；'.join(head) + suffix
-
-    created = updated = 0
-    with transaction.atomic():
-        for ep, url in items:
-            defaults = {'url': url, 'url_type': url_type, 'enabled': True}
-            if series_name:
-                defaults['series_name'] = series_name
-            _, is_created = HongguoEpisodeVideo.objects.update_or_create(
-                series_id=str(series_id), ep=ep, defaults=defaults)
-            created += 1 if is_created else 0
-            updated += 0 if is_created else 1
-    return True, {'total': len(items), 'created': created, 'updated': updated}

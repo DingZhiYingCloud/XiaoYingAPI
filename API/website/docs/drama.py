@@ -38,8 +38,7 @@ SERVICE = ServiceSpec(
         '播放能力：前 3 集由源站直接下发明文直链；第 4 集及以后源站只下发 DRM 加密的'
         'H.265（浏览器无法直接解码），由本服务在服务端解密并转成 H.264 后出流，'
         '播放接口返回的地址可直接交给浏览器的「视频」标签播放，支持拖动进度条。'
-        '已上架到外部平台的集优先返回外部地址，其余走本站直出（首次点播需等待数十秒生成，'
-        '之后即刻返回）。',
+        '第 4 集及以后首次点播需等待数十秒生成，之后即刻返回。',
         '播放接口返回的源站直链为 MP4 且带时效，请勿在客户端长期缓存；'
         '剧集元数据与集列表缓存较久，播放直链缓存较短以便及时刷新。本服务需项目签名。',
     ],
@@ -115,13 +114,12 @@ SERVICE = ServiceSpec(
                              ],
                              notes=['返回 data.episodes 为全量集列表，每项含 ep / episode_id / playable / source。',
                                     'episodes[].playable 的口径与「播放地址」接口**完全一致**：'
-                                    '源站直链 / 已登记外链 / 本站网页直出三条路任一可用即为 true；'
-                                    'source 标出走的哪条路 —— origin（源站直链）/ external（已登记外链）'
+                                    '源站直链 / 本站网页直出两条路任一可用即为 true；'
+                                    'source 标出走的哪条路 —— origin（源站直链）'
                                     '/ stream（本站直出，首播需等数十秒生成）。本站直出默认可用，'
                                     '所以第 4 集及以后通常也是 playable=true。',
                                     'data.playable_cnt 为源站直链的连续范围（前 N 集，保持原义）；'
-                                    'data.listed_cnt 为实际可播集数（= playable 为 true 的集数）；'
-                                    'data.external_cnt 为已登记外部链接的集数（人工上架进度）。'
+                                    'data.listed_cnt 为实际可播集数（= playable 为 true 的集数）。'
                                     '需要判断「某集能不能播」请用 episodes[].playable，不要用 playable_cnt 推算。',
                                     '剧集不存在时返回 EXTERNAL_API_FAILED（外部API调用失败）。']),
                 EndpointSpec('play', '播放地址', 'GET',
@@ -143,7 +141,6 @@ SERVICE = ServiceSpec(
                                     ' H.265（浏览器无法解码），改由本站出流。data.source 区分来源'
                                     '（取值与「剧集详情」的 episodes[].source 一致）：',
                                     '· origin —— 源站明文直链（前若干集）；',
-                                    '· external —— 已上架到外部平台的地址（data.url 为第三方地址）；',
                                     '· stream —— 本站直出：data.url 为可直接交给 <video> 播放的地址'
                                     '（明文 H.264、支持 HTTP Range 拖动），画质见 data.quality，'
                                     'data.ready=false 表示该画质首次被点播、服务端正在生成（约数十秒），'

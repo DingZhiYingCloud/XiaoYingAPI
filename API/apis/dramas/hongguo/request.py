@@ -7,17 +7,15 @@
     GET  /api/dramas/hongguo/search               关键词搜索
     GET  /api/dramas/hongguo/detail               剧集详情
     GET  /api/dramas/hongguo/play                 播放地址（前若干集为源站直链；
-                                                  第 4 集及以后返回外链或本站直出地址；
+                                                  第 4 集及以后为本站直出地址；
                                                   直出画质由 q 指定，见 utils.QUALITY_WIDTHS）
     GET  /api/dramas/hongguo/stream               网页直出流（明文 H.264，支持 Range；
                                                   画质写在 play 下发的令牌里）
 
 关于第 4 集及以后：源站只对每部剧前 3 集下发明文直链，其余集是 DRM 加密的 H.265，
 浏览器在多数机器上完全解不了 HEVC（原生 / MSE / WebCodecs 三条路实测全断），
-所以「网页能播」只有两条路：
-    ① 人工：预处理解密导出 → 上传外部平台 → 超管控制台登记链接（play 返回 source=external）
-    ② 自动：本站按需解密 + 转 H.264 后直出（play 返回 source=stream，走本文件 stream_view）
-`play` 按 ①→② 顺序择优。
+所以只有一条路：本站按需解密 + 转 H.264 后直出（play 返回 source=stream，走本文件
+stream_view）。
 
 签名参数（app_id/timestamp/nonce/sign）由 ApiAuthMiddleware 统一校验，视图不重复处理。
 `stream` 是给 <video> 标签用的，带不了项目签名，故改用 play 下发的**时效令牌**鉴权。

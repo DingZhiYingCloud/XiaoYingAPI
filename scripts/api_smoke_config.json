@@ -307,7 +307,7 @@
      "expect": [20001]},
     {"name": "短剧-播放(第2集)", "method": "GET", "path": "/api/dramas/hongguo/play",
      "params": {"series_id": "${DramaSeriesId}", "ep": "2"}, "expect": [10000, 40001]},
-    {"name": "短剧-播放(第4集-外链或本站直出)", "method": "GET", "path": "/api/dramas/hongguo/play",
+    {"name": "短剧-播放(第4集-本站直出)", "method": "GET", "path": "/api/dramas/hongguo/play",
      "params": {"series_id": "${DramaSeriesId}", "ep": "4"}, "expect": [10000, 50002]},
     {"name": "短剧-播放-缺ep", "method": "GET", "path": "/api/dramas/hongguo/play",
      "params": {"series_id": "${DramaSeriesId}"}, "expect": [20001]},

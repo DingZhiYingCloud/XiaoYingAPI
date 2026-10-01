@@ -4397,9 +4397,6 @@ msgstr "劇集詳情"
 msgid "可选：榜单类型，默认 hot-drama（热播榜）。"
 msgstr "可選：榜單類型，默認 hot-drama（熱播榜）。"
 
-msgid "外链登记"
-msgstr "外鏈登記"
-
 msgid "实时爬取源站 SSR 数据并缓存。剧集元数据/集列表缓存较久；播放直链缓存较短。"
 msgstr "實時爬取源站 SSR 數據並緩存。劇集元數據/集列表緩存較久；播放直鏈緩存較短。"
 
@@ -4424,8 +4421,8 @@ msgstr "按分類獲取短劇列表，支持分頁。"
 msgid "播放接口返回的源站直链为 MP4 且带时效，请勿在客户端长期缓存；剧集元数据与集列表缓存较久，播放直链缓存较短以便及时刷新。本服务需项目签名。"
 msgstr "播放接口返回的源站直鏈為 MP4 且帶時效，請勿在客戶端長期緩存；劇集元數據與集列表緩存較久，播放直鏈緩存較短以便及時刷新。本服務需項目簽名。"
 
-msgid "播放能力：前 3 集由源站直接下发明文直链；第 4 集及以后源站只下发 DRM 加密的H.265（浏览器无法直接解码），由本服务在服务端解密并转成 H.264 后出流，播放接口返回的地址可直接交给浏览器的「视频」标签播放，支持拖动进度条。已上架到外部平台的集优先返回外部地址，其余走本站直出（首次点播需等待数十秒生成，之后即刻返回）。"
-msgstr "播放能力：前 3 集由源站直接下發明文直鏈；第 4 集及以後源站只下發 DRM 加密的H.265（瀏覽器無法直接解碼），由本服務在服務端解密並轉成 H.264 後出流，播放接口返回的地址可直接交給瀏覽器的「視頻」標籤播放，支持拖動進度條。已上架到外部平臺的集優先返回外部地址，其餘走本站直出（首次點播需等待數十秒生成，之後即刻返回）。"
+msgid "播放能力：前 3 集由源站直接下发明文直链；第 4 集及以后源站只下发 DRM 加密的H.265（浏览器无法直接解码），由本服务在服务端解密并转成 H.264 后出流，播放接口返回的地址可直接交给浏览器的「视频」标签播放，支持拖动进度条。第 4 集及以后首次点播需等待数十秒生成，之后即刻返回。"
+msgstr "播放能力：前 3 集由源站直接下發明文直鏈；第 4 集及以後源站只下發 DRM 加密的H.265（瀏覽器無法直接解碼），由本服務在服務端解密並轉成 H.264 後出流，播放接口返回的地址可直接交給瀏覽器的「視頻」標籤播放，支持拖動進度條。第 4 集及以後首次點播需等待數十秒生成，之後即刻返回。"
 
 msgid "榜单类型"
 msgstr "榜單類型"
@@ -4650,11 +4647,11 @@ msgstr "令牌無效或過期返回 403，需重新調用「播放地址」接�
 msgid "返回 data.episodes 为全量集列表，每项含 ep / episode_id / playable / source。"
 msgstr "返回 data.episodes 為全量集列表，每項含 ep / episode_id / playable / source。"
 
-msgid "episodes[].playable 的口径与「播放地址」接口**完全一致**：源站直链 / 已登记外链 / 本站网页直出三条路任一可用即为 true；source 标出走的哪条路 —— origin（源站直链）/ external（已登记外链）/ stream（本站直出，首播需等数十秒生成）。本站直出默认可用，所以第 4 集及以后通常也是 playable=true。"
-msgstr "episodes[].playable 的口徑與「播放地址」接口**完全一致**：源站直鏈 / 已登記外鏈 / 本站網頁直出三條路任一可用即為 true；source 標出走的哪條路 —— origin（源站直鏈）/ external（已登記外鏈）/ stream（本站直出，首播需等數十秒生成）。本站直出默認可用，所以第 4 集及以後通常也是 playable=true。"
+msgid "episodes[].playable 的口径与「播放地址」接口**完全一致**：源站直链 / 本站网页直出两条路任一可用即为 true；source 标出走的哪条路 —— origin（源站直链）/ stream（本站直出，首播需等数十秒生成）。本站直出默认可用，所以第 4 集及以后通常也是 playable=true。"
+msgstr "episodes[].playable 的口徑與「播放地址」接口**完全一致**：源站直鏈 / 本站網頁直出兩條路任一可用即為 true；source 標出走的哪條路 —— origin（源站直鏈）/ stream（本站直出，首播需等數十秒生成）。本站直出默認可用，所以第 4 集及以後通常也是 playable=true。"
 
-msgid "data.playable_cnt 为源站直链的连续范围（前 N 集，保持原义）；data.listed_cnt 为实际可播集数（= playable 为 true 的集数）；data.external_cnt 为已登记外部链接的集数（人工上架进度）。需要判断「某集能不能播」请用 episodes[].playable，不要用 playable_cnt 推算。"
-msgstr "data.playable_cnt 為源站直鏈的連續範圍（前 N 集，保持原義）；data.listed_cnt 為實際可播集數（= playable 為 true 的集數）；data.external_cnt 為已登記外部鏈接的集數（人工上架進度）。需要判斷「某集能不能播」請用 episodes[].playable，不要用 playable_cnt 推算。"
+msgid "data.playable_cnt 为源站直链的连续范围（前 N 集，保持原义）；data.listed_cnt 为实际可播集数（= playable 为 true 的集数）。需要判断「某集能不能播」请用 episodes[].playable，不要用 playable_cnt 推算。"
+msgstr "data.playable_cnt 為源站直鏈的連續範圍（前 N 集，保持原義）；data.listed_cnt 為實際可播集數（= playable 為 true 的集數）。需要判斷「某集能不能播」請用 episodes[].playable，不要用 playable_cnt 推算。"
 
 msgid "剧集不存在时返回 EXTERNAL_API_FAILED（外部API调用失败）。"
 msgstr "劇集不存在時返回 EXTERNAL_API_FAILED（外部API調用失敗）。"
@@ -4666,9 +4663,6 @@ msgstr "前 3 集返回源站明文 MP4 直鏈；第 4 集及以後源站只下�
 
 msgid "· origin —— 源站明文直链（前若干集）；"
 msgstr "· origin —— 源站明文直鏈（前若干集）；"
-
-msgid "· external —— 已上架到外部平台的地址（data.url 为第三方地址）；"
-msgstr "· external —— 已上架到外部平臺的地址（data.url 為第三方地址）；"
 
 msgid "· stream —— 本站直出：data.url 为可直接交给 <video> 播放的地址（明文 H.264、支持 HTTP Range 拖动），画质见 data.quality，data.ready=false 表示该画质首次被点播、服务端正在生成（约数十秒），请轮询该地址：202=正在生成、503=生成失败（响应体里有原因）、200/206=可播放，别只按 HTTP 200 判定。"
 msgstr "· stream —— 本站直出：data.url 為可直接交給 <video> 播放的地址（明文 H.264、支持 HTTP Range 拖動），畫質見 data.quality，data.ready=false 表示該畫質首次被點播、服務端正在生成（約數十秒），請輪詢該地址：202=正在生成、503=生成失敗（響應體裡有原因）、200/206=可播放，別只按 HTTP 200 判定。"
@@ -4717,103 +4711,8 @@ msgstr "分類是兩級的：一級是內容形態（真人劇 / 漫劇 / AI劇 
 msgid "每个节点的 slug 都可直接传给「分类列表」接口的 category：一级取该一级全部，二级只取该题材（形如 real-drama/romance）；无二级的一级（漫画）children 为空数组。"
 msgstr "每個節點的 slug 都可直接傳給「分類列表」接口的 category：一級取該一級全部，二級只取該題材（形如 real-drama/romance）；無二級的一級（漫畫）children 為空數組。"
 
-msgid "链接类型"
-msgstr "鏈接類型"
-
 msgid "集数"
 msgstr "集數"
-
-# ==================== 超管控制台 · 红果短剧（预处理 / 外链登记） ====================
-
-msgid "删除后该集将回到「暂未上架」，确认删除？"
-msgstr "刪除後該集將回到「暫未上架」，確認刪除？"
-
-msgid "删除外链登记"
-msgstr "刪除外鏈登記"
-
-msgid "剧集 ID 必须为纯数字"
-msgstr "劇集 ID 必須為純數字"
-
-msgid "剧集 ID（纯数字）"
-msgstr "劇集 ID（純數字）"
-
-msgid "剧集名（可选）"
-msgstr "劇集名（可選）"
-
-msgid "小影API 超级管理员：红果短剧预处理导出与外链登记管理。"
-msgstr "小影API 超級管理員：紅果短劇預處理導出與外鏈登記管理。"
-
-msgid "尚未运行过"
-msgstr "尚未運行過"
-
-msgid "已切换启用状态"
-msgstr "已切換啟用狀態"
-
-msgid "已删除该条登记"
-msgstr "已刪除該條登記"
-
-msgid "已登记的外链"
-msgstr "已登記的外鏈"
-
-msgid "已结束"
-msgstr "已結束"
-
-msgid "开始预处理"
-msgstr "開始預處理"
-
-msgid "批量登记"
-msgstr "批量登記"
-
-msgid "按「剧名_剧集ID」建目录导出，每集一个 mp4；已存在的集自动跳过，可断点续跑。"
-msgstr "按「劇名_劇集ID」建目錄導出，每集一個 mp4；已存在的集自動跳過，可斷點續跑。"
-
-msgid "按剧集 ID 筛选"
-msgstr "按劇集 ID 篩選"
-
-msgid "暂无登记记录"
-msgstr "暫無登記記錄"
-
-msgid "未知操作"
-msgstr "未知操作"
-
-msgid "每行一条：集号 + 分隔符 + 链接（分隔符可用 Tab / 空格 / 逗号）"
-msgstr "每行一條：集號 + 分隔符 + 鏈接（分隔符可用 Tab / 空格 / 逗號）"
-
-msgid "登记完成：共 %(total)s 条（新增 %(created)s / 更新 %(updated)s）"
-msgstr "登記完成：共 %(total)s 條（新增 %(created)s / 更新 %(updated)s）"
-
-msgid "第 4 集及以后源站是 DRM 加密的 H.265，浏览器无法直接播放：先在此预处理导出，上传到外部平台后登记链接，接口查到就返回。"
-msgstr "第 4 集及以後源站是 DRM 加密的 H.265，瀏覽器無法直接播放：先在此預處理導出，上傳到外部平臺後登記鏈接，接口查到就返回。"
-
-msgid "第 4 集及以后：外链登记"
-msgstr "第 4 集及以後：外鏈登記"
-
-msgid "红果短剧 - 超级管理员 - 小影API"
-msgstr "紅果短劇 - 超級管理員 - 小影API"
-
-msgid "超级管理员,红果短剧,预处理"
-msgstr "超級管理員,紅果短劇,預處理"
-
-msgid "输出目录"
-msgstr "輸出目錄"
-
-msgid "运行中"
-msgstr "運行中"
-
-msgid "重复登记按「剧集 ID + 集数」覆盖更新；任一行格式有误则整批不写入。"
-msgstr "重複登記按「劇集 ID + 集數」覆蓋更新；任一行格式有誤則整批不寫入。"
-
-msgid "链接类型非法"
-msgstr "鏈接類型非法"
-
-msgid "集数范围（如 4-222），留空=全部"
-msgstr "集數範圍（如 4-222），留空=全部"
-
-msgid "预处理已启动，进度见下方输出（可离开本页，任务会继续跑）"
-msgstr "預處理已啟動，進度見下方輸出（可離開本頁，任務會繼續跑）"
-
-msgid "预处理（解密导出）"
-msgstr "預處理（解密導出）"
 
 # ==================== 超级管理控制台 · 通用（策略 / 表单共用文案） ====================
 msgid "生效结果"

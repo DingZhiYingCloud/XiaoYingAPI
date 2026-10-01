@@ -2,8 +2,9 @@
 红果短剧 App 线路 - fqnovel 内部接口客户端
 
 用途：H5 站点只对每部剧前若干集下发直链，超出的集数（第 4 集起）由本模块通过
-App 使用的 fqnovel 内部接口取流。该接口强制校验 metasec 安全头，签名由本机常驻的
-unidbg 签名服务生成（settings.HONGGUO_SIGN_URL，见 offline.py 顶部说明）。
+App 使用的 fqnovel 内部接口取流，交给「网页直出」转码链路（见 transcode.py）。
+该接口强制校验 metasec 安全头，签名由本机常驻的 unidbg 签名服务生成
+（settings.HONGGUO_SIGN_URL，见 sign_service.py）。
 
 对外能力:
     get_episode_vids(series_id) -> {集号: vid}

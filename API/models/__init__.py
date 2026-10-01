@@ -20,7 +20,6 @@ from API.models.Feedback.ticket import FeedbackTicket
 from API.models.Captcha.captcha import CaptchaChallenge
 from API.models.Statistics.api_call_stat import ApiCallStat, ApiCallStatHour
 from API.models.ImageHosting.image_hosting_token import ImageHostingToken
-from API.models.Dramas.episode_video import HongguoEpisodeVideo
 from API.models.Haijiao.account import HaijiaoAccount
 from API.models.Docs.announcement import Announcement
 from API.models.AI.provider import AiModel, AiProvider, AiSystemPrompt
@@ -54,7 +53,6 @@ __all__ = [
     'ApiCallStat',
     'ApiCallStatHour',
     'ImageHostingToken',
-    'HongguoEpisodeVideo',
     'HaijiaoAccount',
     'Announcement',
     'AiProvider',

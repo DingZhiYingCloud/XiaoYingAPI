@@ -261,13 +261,12 @@ HAIJIAO_DOMAIN_CACHE_TTL = int(os.getenv('HAIJIAO_DOMAIN_CACHE_TTL', '30'))
 HAIJIAO_USER_ID = os.getenv('HAIJIAO_USER_ID', '')
 HAIJIAO_USER_TOKEN = os.getenv('HAIJIAO_USER_TOKEN', '')
 
-# 短剧 - 红果线路「预处理」配置
+# 短剧 - 红果线路「签名服务」配置
 # 背景：源站只对每部剧前 3 集下发明文直链，第 4 集及以后是 DRM 加密的 H.265，浏览器
-# 无法直接播放。故用预处理工具（manage.py hongguo_preprocess）在服务端解密导出，
-# 人工上传到外部平台后，再在超管控制台 /console/dramas/hongguo/ 登记链接
-# （登记仅后台内部使用，不提供对外接口）。
+# 无法直接播放。故由服务端按需解密 + 转 H.264 后出流（见下方「网页直出」配置）——
+# 取加密直链要调 App 内部接口，该接口强制校验 metasec 安全头。
 # 签名服务地址：项目自带的 unidbg 离线签名器（生成 metasec 安全头）。
-# 指向本机时由预处理进程按需自动拉起（见 SpiderServices/dramas/hongguo/sign_service.py），
+# 指向本机时由转码进程按需自动拉起（见 SpiderServices/dramas/hongguo/sign_service.py），
 # 无需单独启动；指向远端签名服务时只做客户端、不自动拉起。
 HONGGUO_SIGN_URL = os.getenv('HONGGUO_SIGN_URL', 'http://127.0.0.1:9099')
 # 签名服务运行物目录（unidbg-sign.jar、capture/fq_oversea/ 与内置 jre/）
@@ -282,12 +281,7 @@ HONGGUO_SIGN_START_TIMEOUT = int(os.getenv('HONGGUO_SIGN_START_TIMEOUT', '90'))
 #     故这里给得宽一些，避免开机首个请求误判超时。
 HONGGUO_SIGN_TIMEOUT = int(os.getenv('HONGGUO_SIGN_TIMEOUT', '60'))
 HONGGUO_APP_TIMEOUT = int(os.getenv('HONGGUO_APP_TIMEOUT', '20'))
-# 预处理产物根目录（每部剧一个子目录，命名 `{剧名}_{剧集ID}`，随 /cache/ 一起不入库）
-HONGGUO_PREPROCESS_DIR = os.getenv('HONGGUO_PREPROCESS_DIR') or str(
-    XYAPI_CACHE_ROOT / 'dramas' / 'hongguo_preprocess')
-# 预处理期望清晰度高度，0 = 自动取最高可解清晰度
-HONGGUO_PREPROCESS_HEIGHT = int(os.getenv('HONGGUO_PREPROCESS_HEIGHT', '1080'))
-# ffmpeg 可执行文件（CENC 解密必需；留空用 PATH 上的 ffmpeg）
+# ffmpeg 可执行文件（CENC 解密 + 转 H.264 都要用；留空用 PATH 上的 ffmpeg）
 HONGGUO_FFMPEG_BIN = os.getenv('HONGGUO_FFMPEG_BIN') or 'ffmpeg'
 
 # 短剧 - 红果线路「网页直出」配置

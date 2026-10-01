@@ -3,7 +3,7 @@ from django.urls import path
 from django.views.generic import TemplateView
 from django.views.i18n import JavaScriptCatalog
 
-from . import (console, console_ai, console_announcements, console_appearance, console_dramas,
+from . import (console, console_ai, console_announcements, console_appearance,
                console_feedback, console_haijiao, console_security, console_users, docs_views,
                feedback_views, programs_views, views)
 
@@ -83,11 +83,6 @@ urlpatterns = [
          name='console_stats_service'),                                          # 单服务统计详情
     path('console/stats/app/<str:app_id>/', console.stats_app_view,
          name='console_stats_app'),                                              # 单项目统计详情
-    # 红果短剧（超管专属）：预处理导出 + 第 4 集及以后的外链登记管理
-    path('console/dramas/hongguo/', console_dramas.hongguo_view,
-         name='console_dramas_hongguo'),
-    path('console/dramas/hongguo/status/', console_dramas.hongguo_status_view,
-         name='console_dramas_hongguo_status'),
     path('console/haijiao/register/', console_haijiao.haijiao_register_view,
          name='console_haijiao_register'),                                       # 海角自动注册（超管）
     path('console/haijiao/register/ticket/', console_haijiao.haijiao_register_ticket_view,

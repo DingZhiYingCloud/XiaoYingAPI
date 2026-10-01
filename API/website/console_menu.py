@@ -102,12 +102,6 @@ MENU = [
                         '颜色仍由访客选择的主题决定，二者互不冲突。',
             },
             {
-                'key': 'console_dramas_hongguo', 'name': '红果短剧',
-                'url': 'website:console_dramas_hongguo',
-                'icon': 'clapperboard',
-                'desc': '预处理导出剧集（解密落盘，供上传外部平台）与第 4 集及以后的外链登记管理。',
-            },
-            {
                 'key': 'console_haijiao_register', 'name': '海角自动注册',
                 'url': 'website:console_haijiao_register',
                 'icon': 'user-plus',

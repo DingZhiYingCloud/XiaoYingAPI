@@ -26,7 +26,7 @@
 | daisyUI 5 / Tailwind 4          | 官网前端样式（独立可执行文件编译，**前端无 Node 构建链**）                      |
 | Django i18n                     | 多语言（简体中文 / 繁体中文 / English），词条见 `locale/`               |
 | Node.js                         | **抖音评论线路与海角视频的运行时依赖**（≥ 18，用于本地补环境生成请求签名，见第三章）             |
-| ffmpeg                          | **仅红果短剧「预处理」需要**（解密第 4 集及以后的 CENC 流；需在 PATH 上，或由 `HONGGUO_FFMPEG_BIN` 指向可执行文件） |
+| ffmpeg                          | **红果短剧网页直出需要**（第 4 集及以后 CENC 解密 + 转 H.264；需在 PATH 上，或由 `HONGGUO_FFMPEG_BIN` 指向可执行文件） |
 | 内置 JRE（jlink 裁剪）               | 红果短剧取流签名器（unidbg）的 Java 运行时，约 32 MB，**随代码入库**；因此**无需本机安装 Java** |
 | django-cors-headers             | 跨域请求支持                                                 |
 | whitenoise                      | 生产模式静态文件服务                                             |
@@ -57,7 +57,7 @@ XiaoYingAPI/
 │   │   ├── docs/                 # 文档中心的「服务 × 线路 × 端点」声明式数据
 │   │   └── programs.py           # 「计算程序」模块：扫描内容目录、渲染说明文档（见第八章第 6 节）
 │   ├── middlewares/              # 独立中间件组件（cloak_guard 斗篷守卫，见其目录内 README.md）
-│   ├── management/commands/      # 自定义管理命令（security_backfill / prune_api_call_hour / cleanup_api_stats / hongguo_preprocess / seed_service_policies）
+│   ├── management/commands/      # 自定义管理命令（security_backfill / prune_api_call_hour / cleanup_api_stats / seed_service_policies）
 │   ├── migrations/               # 数据库迁移（随代码入库，详见第六章）
 │   ├── templates/                # 全站模板，前端规范见其目录内 前端开发必看.md
 │   ├── static/                   # 应用内静态文件（前端 CSS/JS 源码与编译产物）
@@ -115,7 +115,7 @@ XiaoYingAPI/
 | 文件上传    | `/api/upload/`              | 通用文件上传                       |
 | 抖音      | `/api/douyin/`              | 抖音视频 / 图文解析 + 评论发布（均需签名）     |
 | 电影      | `/api/movies/`              | 影视聚合：分类 / 列表 / 详情 / 选集 / 播放地址（555 电影线路） |
-| 短剧      | `/api/dramas/`              | 红果短剧：榜单（4 种）/ 两级分类 / 搜索 / 详情 / 播放地址（第 4 集及以后由已登记外链或本站直出承接） |
+| 短剧      | `/api/dramas/`              | 红果短剧：榜单（4 种）/ 两级分类 / 搜索 / 详情 / 播放地址（第 4 集及以后由本站按需解密 + 转 H.264 直出） |
 | 海角社区    | `/api/haijiao/`             | 今日域名（自动跟随源站当日可用域名）、内容列表（热帖 / 新闻 / 大事记 / 原创 / 精华 / 最新）、搜索、帖子详情与评论、发帖（板块 / 标签 / 图片视频）、我的收藏（收藏夹的列表 / 新建 / 重命名 / 删除，收藏帖子 / 取消收藏 / 批量取消收藏）、视频播放列表、图片解码、账号注册 / 登录、金币签到（含一键全签）与账号库管理 |
 | AI 服务   | `/api/ai/`                  | 多厂商大模型对话（当前含 DeepSeek）：切模型只改 `model` 一个参数，厂商地址与密钥由超管在后台维护（见第七章第 8 节） |
 | 爬虫验证    | `/api/spider_verification/` | 爬虫验证（sv4759）                  |
@@ -151,18 +151,17 @@ XiaoYingAPI/
 
 **关键约束**：浏览器在多数机器上**完全解不了 HEVC**。实测 Chrome（`canPlayType('hvc1')` 为空、`MediaSource.isTypeSupported('hvc1')` 为 false、`VideoDecoder.isConfigSupported('hvc1')` 也为 false），原生 / MSE / WebCodecs 三条路全断。所以「网页能播」= 视频必须是 **H.264**。
 
-`play` 接口对第 4 集及以后按 **① → ②** 择优返回，前端拿到的 `data.url` 都可直接交给 `<video>` 播放：
+`play` 接口对第 4 集及以后返回 **本站直出** 地址，前端拿到的 `data.url` 可直接交给 `<video>` 播放：
 
 | 来源 | 触发条件 | 说明 |
 | --- | --- | --- |
-| ① `data.source=external` | 该集已在超管控制台登记外部地址 | **零成本、零流量**（第三方托管）；见下方「外部托管 + 链接登记」 |
-| ② `data.source=stream` | 未登记外部地址（默认路径） | **全自动、免人工**：本站按需解密 + 转 H.264 后出流，对应 `GET /api/dramas/hongguo/stream` |
+| `data.source=stream` | 第 4 集及以后（唯一路径） | **全自动、免人工**：本站按需解密 + 转 H.264 后出流，对应 `GET /api/dramas/hongguo/stream` |
 
 前三集走源站直链的返回 `data.source=origin`（`data.source` 与 `detail` 的 `episodes[].source` 是同一套取值）。
 
-**`detail` 与 `play` 的口径必须一致**（判断「某集能不能播」只认 `episodes[].playable`，别用 `playable_cnt` 推算）：每集的 `playable` 就是上面三条路的结论 —— 源站直链 / 已登记外链 / 本站直出任一可用即为 `true`，并用 `episodes[].source` 标出来源。因为本站直出默认可用，**第 4 集及以后的 `playable` 通常也是 `true`**。三个计数各管一段：`playable_cnt` = 源站直链的连续范围（前 N 集，保持原义）、`listed_cnt` = 实际可播集数、`external_cnt` = 已登记外链的集数。
+**`detail` 与 `play` 的口径必须一致**（判断「某集能不能播」只认 `episodes[].playable`，别用 `playable_cnt` 推算）：每集的 `playable` 就是上面两条路的结论 —— 源站直链 / 本站直出任一可用即为 `true`，并用 `episodes[].source` 标出来源。因为本站直出默认可用，**第 4 集及以后的 `playable` 通常也是 `true`**。两个计数各管一段：`playable_cnt` = 源站直链的连续范围（前 N 集，保持原义）、`listed_cnt` = 实际可播集数。
 
-**② 本站直出（自动）** 的工作方式：
+**本站直出的工作方式**：
 
 1. `GET /api/dramas/hongguo/play?series_id=&ep=&q=1080` → `data.source=stream`，`data.url` 是带**时效令牌**（默认 2 小时）的出流地址，`data.ready` 表示该画质是否已生成；
 2. `<video src="data.url">` 直接播放；该地址**不需要项目签名**（浏览器加不了签名），鉴权由 URL 里的令牌承担；
@@ -171,25 +170,19 @@ XiaoYingAPI/
 5. 产物按 `{HONGGUO_STREAM_DIR}/{series_id}/{画质宽度}/001.mp4` 永久复用，此后再播**即刻返回**；支持 **HTTP Range（206）**，可拖动进度条、可断点续传。
 6. **「正在生成」怎么判定、坏了怎么自愈**：状态由「产物文件 + 锁文件」表达 —— 产物在即 `ready`；锁文件在（内容是**属主 pid**、mtime 即开工时间）即 `running`，`elapsed` 由文件推算，因此多 worker 看到的一致。属主进程已死（例如**部署重启 uwsgi** 打断转码留下的锁）或锁已超时，会被**下一次点播立刻接管重转**，不会让某集永久卡在「正在生成播放地址」。
 
-> **成本提示**：② 的所有播放流量都经过本站（1080p 约 30~50 MB/集），且每集首次点播要占用一次转码算力（有硬件编码器时优先用 NVENC / QSV / AMF，否则回退 libx264）。若某集已上架到外部平台，请用超管控制台登记为 ①，流量即回到第三方。
+> **成本提示**：本站直出的播放流量都经过本站（1080p 约 30~50 MB/集），且每集首次点播要占用一次转码算力（有硬件编码器时优先用 NVENC / QSV / AMF，否则回退 libx264）。
 >
 > **画质说明**：源站 1080p 本体码率仅约 540 kbps，转码的意义是「别在二次编码时再掉一层」而非「加细节」，因此各档码率上限按档位分别设定（见 `SpiderServices/dramas/hongguo/transcode.py` 的 `_RATE_BY_WIDTH`）。此前默认档是 `HONGGUO_STREAM_HEIGHT=720`（按**高度**缩，竖屏宽度只剩 408px），观感明显发虚，故改为按**宽度**计档、默认 1080。
-
-**① 外部托管 + 链接登记（可选，零成本）**：
-
-1. **预处理导出**：`python manage.py hongguo_preprocess --series <剧集ID>`（或用超管控制台 `/console/dramas/hongguo/`）在服务端取流 + CENC 解密，按 `{剧名}_{剧集ID}/` 目录导出 1080p 明文 mp4；
-2. **上传外部平台**：把导出的文件上传到对象存储 / 其它托管（文件在 `HONGGUO_PREPROCESS_DIR` 下）；
-3. **登记链接**：在超管控制台 `/console/dramas/hongguo/` 同一页批量粘贴登记（支持 mp4 / m3u8，批量幂等）。登记**不提供对外接口**，仅后台内部使用。
 
 **网页直出相关配置**（详见 `.env.example`）：`HONGGUO_STREAM_DIR` / `HONGGUO_STREAM_QUALITY`（默认出流画质 = 输出宽度上限，默认 1080）/ `HONGGUO_STREAM_HW_ENCODERS` / `HONGGUO_STREAM_X264_PRESET` / `HONGGUO_STREAM_X264_CRF` / `HONGGUO_STREAM_TOKEN_TTL`（默认 7200 秒）；各画质档的码率上限在 `SpiderServices/dramas/hongguo/transcode.py` 的 `_RATE_BY_WIDTH` 里按档位设定。
 
 > API 文档中心的「播放地址」接口自带**在线播放器**：发送请求成功后会自动加载并播放返回的地址（m3u8 走 hls.js，mp4 直链直接交给 `<video>`），可直接用来验收。
 
-**运行时依赖（仅第 4 集及以后需要：预处理导出与网页直出都要）**
+**运行时依赖（仅第 4 集及以后需要）**
 
 | 依赖 | 说明 |
 | --- | --- |
-| **Java** | 取流签名器基于 unidbg（Java）。仓库内置的 `jre/` 是 **Windows 版**（只有 `java.exe` / `.dll`），Windows 本机开箱可用；**Linux 服务器另装 JDK 17 并设 `HONGGUO_JAVA_BIN=/usr/bin/java`**（该变量优先级高于内置 `jre/`）。预处理 / 转码进程按需自动拉起签名服务并复用（见 `SpiderServices/dramas/hongguo/sign_service.py`） |
+| **Java** | 取流签名器基于 unidbg（Java）。仓库内置的 `jre/` 是 **Windows 版**（只有 `java.exe` / `.dll`），Windows 本机开箱可用；**Linux 服务器另装 JDK 17 并设 `HONGGUO_JAVA_BIN=/usr/bin/java`**（该变量优先级高于内置 `jre/`）。转码进程按需自动拉起签名服务并复用（见 `SpiderServices/dramas/hongguo/sign_service.py`） |
 | **ffmpeg** | 解密依赖 `ffmpeg -decryption_key`（CENC AES-CTR），网页直出还用它转 H.264。默认取 PATH 上的 `ffmpeg`，可用 `HONGGUO_FFMPEG_BIN` 指定绝对路径 |
 | **硬件编码器（可选）** | 装了 NVENC / QSV / AMF 时转码显著更快（实测 QSV 约 25~30 秒/集，软编 libx264 veryfast 约 70 秒/集）；都不可用时自动回退 libx264 |
 
@@ -252,7 +245,7 @@ python manage.py runserver 0.0.0.0:10000
 ```
 
 > **Node.js 仅在用到抖音评论接口或海角视频播放时才需要**（`node -v` 确认 ≥ 18）；其余服务不依赖。⚠️ **Linux 服务器默认不带 node**，要靠海角取流或抖音评论就必须自行安装（官方静态包即可，脚本无 npm 依赖），装在非默认位置时用 `.env` 的 `HAIJIAO_NODE_BIN` 指定 —— 少了它的报错长得像权限问题（`[Errno 13] Permission denied: 'node'`），其实是「没装」，详见部署手册第五节第 12 条。
-> **红果短剧不需要安装 Java**（取流签名器用项目内置的裁剪版 JRE，随代码入库）；只有跑**预处理**（导出第 4 集及以后的明文视频）时才需要 **ffmpeg** 在 PATH 上（或由 `HONGGUO_FFMPEG_BIN` 指定）。
+> **红果短剧不需要安装 Java**（取流签名器用项目内置的裁剪版 JRE，随代码入库）；但需要 **ffmpeg** 在 PATH 上（或由 `HONGGUO_FFMPEG_BIN` 指定），第 4 集及以后的网页直出靠它解密与转码。
 > 前端样式产物 `API/static/css/output.css` 与多语言词条 `locale/**/*.mo` 均**随代码入库**，拉到代码直接跑即可；只有新增 daisyUI / Tailwind 类名或改动 `.po` 词条时才需本机重新编译（命令见第八章第 4 节）。
 
 启动后：
@@ -692,8 +685,6 @@ curl -s "https://<你的域名>/api/xxx/internal_yyy"
 | `/console/users/`                           | 用户管理       | 用户搜索 / 筛选 / 分页，行内封禁解封；建号、编辑、重置密码、删除（超管专属）              |
 | `/console/users/<用户ID>/`                     | 用户详情       | 资料、注册信息、按项目登录明细（次数 / 最后登录 / 登录态剩余天数）、Token 明细、验证记录（超管专属）  |
 | `/console/contacts/`                        | 联系方式       | 联系方式平台字典（渠道、填写项名称、跳转链接模板）与各接入项目的具体值，`?capp=` 切换项目（超管专属，见第 9 节） |
-| `/console/dramas/hongguo/`                  | 红果短剧       | 预处理导出剧集（解密落盘，供上传外部平台）与第 4 集及以后的外链登记管理（超管专属）          |
-| `/console/dramas/hongguo/status/`           | 预处理运行状态    | 供上页轮询的 JSON（进度 / 输出目录 / 日志尾部）                        |
 | `/console/haijiao/register/`                | 海角自动注册     | 全自动注册海角社区账号（出口四选一：直连 / 51代理 / 巨量代理 / 51代理·经国内中转，默认项由 `HAIJIAO_REGISTER_PROXY` 决定；超级鹰打码，识别类型可选、默认 1902；打码错自动报错返分并换图重试），进度条 + 实时日志（超管专属，见「三、API 服务清单」海角社区服务） |
 | `/console/haijiao/register/stream/`         | 自动注册进度流    | 供上页 `EventSource` 订阅的 SSE（逐帧推阶段进度与结果；请求需带页面下发的一次性票据）   |
 | `/lang/`、`/jsi18n/`                         | 语言切换 / JS 词条 | 见第 3 节                                              |
@@ -864,7 +855,7 @@ proxy_set_header Host $host;
 | `test_api_stats.py`                    | 调用统计回归测试（两级预聚合口径一致性、筛选/环比/热力图/峰值、保留期清理命令、页面三语渲染、公开接口不回归、统计口径标签：已删除项目 / 未匹配路径归并、`canonical_path` 折算与 `purge_app` 清理） |
 | `test_console_users.py`                | 超管用户管理回归测试（建号/改资料/重置密码校验、登录日志写入、注册来源项目、列表筛选分页、详情聚合口径、增删改查视图、权限与三语、对话框入口守卫） |
 | `test_service_policy.py`               | 服务策略回归测试（fail-closed、开放节点、服务/线路/端点三级继承、状态与白名单继承、状态拦截（只有正常可调用：开发中 30006 / 维护中 30004 / 已下线 30005）、前缀边界、缓存即时失效、控制台三级联动增删改与三语、服务树枚举自证、前台状态图标（服务级 / 线路级 / 线路 Tab）、文档可见性与使用范围（hidden 从文档页/菜单/在线调试消失、admin_only 对外 20020、状态拦截优先）、线路多选（一条策略覆盖多条线路、接管让位）、批量删除与弹窗版面、建议策略（清单与迁移写入的 9 条逐条一致、前缀可在服务树反查、一键新建预览面板、只补缺失 / 可反复执行 / 不覆盖已有、`seed_service_policies --dry-run`、stream 免签代码兜底）） |
-| `test_hongguo_drama.py`                | 短剧（红果线路）「详情 / 播放 口径一致」回归测试（字段契约 episode_cnt / playable_cnt / listed_cnt / external_cnt、episodes[].playable 与 source（origin/external/stream）与 play 结论一致、直出可用时全量集数可播、登记后该集 source 转 external 且 external_cnt +1、playable_cnt 口径不变、不污染爬虫缓存、签名 HTTP 返回体、删除登记行后回落 stream；另含**不依赖源站**的出流 HTTP 契约（202 正在生成 / 503 失败 / 无令牌 403，失败响应不得是 `video/*`）；结束清理测试数据） |
+| `test_hongguo_drama.py`                | 短剧（红果线路）「详情 / 播放 口径一致」回归测试（字段契约 episode_cnt / playable_cnt / listed_cnt、episodes[].playable 与 source（origin/stream）与 play 结论一致、直出可用时全量集数可播、playable_cnt 口径不变、不污染爬虫缓存、签名 HTTP 返回体；另含**不依赖源站**的出流 HTTP 契约（202 正在生成 / 503 失败 / 无令牌 403，失败响应不得是 `video/*`）；结束清理测试数据） |
 | `test_hongguo_catalog.py`              | 短剧「分类树 + 榜单」回归测试（两级分类：4 个一级 + 40 个二级题材，取值唯一且可拼出分类页 URL；文档页下拉与后端白名单一致；4 个榜单均能抓取且**不得混入面包屑脏条目**；签名 HTTP 下二级取值与漫剧榜被接受、非法取值被拒）。分类树形状与文档一致性为**离线**断言，联网断言在源站不可达时整段 SKIP |
 | `test_hongguo_stream_lock.py`          | 短剧「网页直出」转码状态的锁语义回归测试（僵尸锁立刻接管而非干等 30 分钟、属主存活时不重复转码、elapsed 由锁文件推算、失败落状态并释放锁、释放锁只删自己的、并发只转一次）。**离线、秒级**：产物目录指向临时目录、转码函数换成桩，不联网也不起 ffmpeg |
 | `test_email_register.py`               | 邮箱两步注册流程测试                                   |
