@@ -33,6 +33,10 @@ from API.models.Quota.service import QuotaService
 from API.models.Quota.setting import QuotaSetting
 from API.models.Monitor.setting import UpstreamAlertSetting
 from API.models.Monitor.state import UpstreamAlertState
+from API.models.Payment.ledger import UserBalanceLedger
+from API.models.Payment.order import PayNotifyLog, PayOrder
+from API.models.Payment.provider import PayProvider
+from API.models.Payment.setting import PaySetting
 
 __all__ = [
     'BaseModel',
@@ -77,4 +81,9 @@ __all__ = [
     'QuotaSetting',
     'UpstreamAlertSetting',
     'UpstreamAlertState',
+    'PaySetting',
+    'PayProvider',
+    'PayOrder',
+    'PayNotifyLog',
+    'UserBalanceLedger',
 ]

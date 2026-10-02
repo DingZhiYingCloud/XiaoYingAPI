@@ -109,6 +109,13 @@ MENU = [
                         '余额为 0 的项目什么都调不了，调用成功才按服务单价扣点。',
             },
             {
+                'key': 'console_pay', 'name': '支付设置', 'url': 'website:console_pay',
+                'icon': 'credit-card',
+                'desc': '在线支付的全局开关与汇率（1 元 = 多少点）、各支付渠道的商户配置'
+                        '（商户ID / 密钥加密落库 / 可用支付方式）、订单列表（可手动查单与退款）'
+                        '与最近用户余额流水。',
+            },
+            {
                 'key': 'console_stats', 'name': '调用统计', 'url': 'website:console_stats',
                 'icon': 'chart-column', 'desc': '按服务、接口、项目与结果查看调用量与耗时。',
             },

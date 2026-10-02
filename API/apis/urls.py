@@ -26,5 +26,6 @@ urlpatterns = [
     path('movies/', include('API.apis.movies.urls')), # 电影服务路由
     path('dramas/', include('API.apis.dramas.urls')), # 短剧服务路由
     path('haijiao/', include('API.apis.haijiao.urls')), # 海角社区服务路由
+    path('pay/', include('API.apis.pay.urls')), # 第三方支付服务路由（统一下单 / 查单 / 退款）
 ]
 

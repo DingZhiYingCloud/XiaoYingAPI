@@ -1,0 +1,342 @@
+{% extends 'console/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "支付设置 - 超级管理员 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,支付设置,在线支付,易支付,订单,退款,汇率" %}{% endblock %}
+{% block description %}{% trans "小影API 超级管理员：维护在线支付的全局开关与汇率、各支付渠道的商户配置，查看订单并手动查单 / 退款。" %}{% endblock %}
+
+{% block console_content %}
+{% trans "维护在线支付的开关与汇率、各渠道商户配置，处理订单（查单 / 退款）。" as ph_desc %}
+{% include 'console/_page_header.html' with icon='credit-card' title='支付设置' desc=ph_desc %}
+
+{% include 'console/_messages.html' %}
+
+{# 规则说明 #}
+<div role="alert" class="alert alert-soft bg-base-200 mt-4 items-start py-3 text-sm">
+  <div class="space-y-1">
+    <p>
+      {% blocktrans with pending=pending_total %}商户私钥与平台公钥<strong>加密落库、页面不回显</strong>：输入框留空表示不修改，填了就整体替换并即时校验能否解析。当前有 {{ pending }} 笔待支付订单。{% endblocktrans %}
+    </p>
+    <p class="text-xs opacity-80">
+      {% trans "支付成功只认「平台异步通知 + 主动查单」，页面跳转不算；回调会校验签名与订单金额，重复通知不会重复加钱。" %}
+    </p>
+    <p class="text-xs opacity-80">
+      {% trans "渠道清单在代码里维护（API/apis/pay/providers/registry.py），新增渠道只需加一个实现文件并登记一行。" %}
+    </p>
+  </div>
+</div>
+
+{# ==================== 全局设置 ==================== #}
+<form method="post" action="{% url 'website:console_pay' %}" class="mt-5">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="save_setting" />
+  <fieldset class="con-panel p-4">
+    <legend class="px-1 text-base font-bold">{% trans "全局设置" %}</legend>
+    <div class="mt-2 grid gap-4 sm:grid-cols-3">
+      <label class="grid gap-1">
+        <span class="font-semibold">{% trans "开启在线支付" %}</span>
+        <input type="checkbox" name="enabled" class="toggle toggle-primary"
+               {% if setting.enabled %}checked{% endif %} />
+        <span class="text-xs text-base-content/70">
+          {% trans "关闭后前台充值页不再展示下单入口，接口下单直接返回「支付未开启」。" %}
+        </span>
+      </label>
+      <label class="grid gap-1">
+        <span class="font-semibold">{% trans "兑换汇率（点/元）" %}</span>
+        <input type="number" step="any" min="0.0001" name="points_per_yuan"
+               value="{{ setting.points_per_yuan }}"
+               class="input input-bordered input-sm w-full max-w-xs" />
+        <span class="text-xs text-base-content/70">
+          {% trans "1 元等于多少点数：用户余额（元）兑换成接入项目点数时按它换算；也用于对外下单支付成功后给调用项目加点。" %}
+        </span>
+      </label>
+      <label class="grid gap-1">
+        <span class="font-semibold">{% trans "单笔最低金额（元）" %}</span>
+        <input type="number" step="0.01" min="0" name="min_amount"
+               value="{{ setting.min_amount }}"
+               class="input input-bordered input-sm w-full max-w-xs" />
+        <span class="text-xs text-base-content/70">
+          {% trans "低于该金额的下单请求会被直接拒绝。" %}
+        </span>
+      </label>
+    </div>
+    <div class="mt-3 flex justify-end">
+      <button type="submit" class="btn btn-primary btn-sm">{% trans "保存全局设置" %}</button>
+    </div>
+  </fieldset>
+</form>
+
+{# ==================== 渠道配置 ==================== #}
+<div class="mt-5 grid gap-4">
+  {% for row in providers %}
+  <form method="post" action="{% url 'website:console_pay' %}">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="save_provider" />
+    <input type="hidden" name="code" value="{{ row.code }}" />
+    <fieldset class="con-panel p-4">
+      <legend class="flex items-center gap-2 px-1 text-base font-bold">
+        {{ row.name }}
+        <code class="font-mono text-xs text-base-content/50">{{ row.code }}</code>
+        {% if row.config.enabled %}
+        <span class="badge badge-soft badge-success badge-sm">{% trans "已启用" %}</span>
+        {% else %}
+        <span class="badge badge-soft badge-ghost badge-sm">{% trans "未启用" %}</span>
+        {% endif %}
+      </legend>
+
+      <div class="mt-2 grid gap-4 sm:grid-cols-2">
+        <label class="grid gap-1">
+          <span class="font-semibold">{% trans "商户ID" %}</span>
+          <input type="text" name="merchant_id" value="{{ row.config.merchant_id }}"
+                 class="input input-bordered input-sm w-full max-w-sm"
+                 placeholder="{% trans '如 6681' %}" />
+          <span class="text-xs text-base-content/70">{% trans "商户后台的商户ID（易支付即 pid），参与签名。" %}</span>
+        </label>
+        <label class="grid gap-1">
+          <span class="font-semibold">{% trans "网关地址" %}</span>
+          <input type="text" name="gateway" value="{{ row.config.gateway }}"
+                 class="input input-bordered input-sm w-full max-w-sm"
+                 placeholder="{{ row.gateway_default }}" />
+          <span class="text-xs text-base-content/70">
+            {% blocktrans with g=row.gateway_default %}留空使用默认地址 {{ g }}；切测试环境时改这里。{% endblocktrans %}
+          </span>
+        </label>
+
+        <label class="grid gap-1">
+          <span class="font-semibold">
+            {% trans "商户私钥" %}
+            {% if row.has_private_key %}
+            <span class="badge badge-soft badge-success badge-sm">{% trans "已配置" %}</span>
+            {% else %}
+            <span class="badge badge-soft badge-warning badge-sm">{% trans "未配置" %}</span>
+            {% endif %}
+          </span>
+          <textarea name="private_key" rows="3"
+                    class="textarea textarea-bordered w-full font-mono text-xs"
+                    placeholder="{% trans '留空表示不修改；粘贴 PKCS#8 私钥（可带 -----BEGIN----- 头尾）' %}"></textarea>
+        </label>
+        <label class="grid gap-1">
+          <span class="font-semibold">
+            {% trans "平台公钥" %}
+            {% if row.has_platform_key %}
+            <span class="badge badge-soft badge-success badge-sm">{% trans "已配置" %}</span>
+            {% else %}
+            <span class="badge badge-soft badge-warning badge-sm">{% trans "未配置" %}</span>
+            {% endif %}
+          </span>
+          <textarea name="platform_public_key" rows="3"
+                    class="textarea textarea-bordered w-full font-mono text-xs"
+                    placeholder="{% trans '留空表示不修改；用于校验平台应答与异步通知的签名' %}"></textarea>
+        </label>
+      </div>
+
+      <div class="mt-3">
+        <span class="font-semibold">{% trans "可用支付方式" %}</span>
+        <span class="text-xs text-base-content/70">{% trans "一个都不勾 = 不限制（该渠道全部支付方式可用）。" %}</span>
+        <div class="mt-1.5 flex flex-wrap gap-3">
+          {% for value, label in row.pay_types %}
+          <label class="flex cursor-pointer items-center gap-1.5 text-sm">
+            <input type="checkbox" name="method_{{ row.code }}_{{ value }}"
+                   class="checkbox checkbox-sm"
+                   {% if value in row.selected_methods %}checked{% endif %} />
+            {% trans label %}
+            <code class="font-mono text-xs text-base-content/50">{{ value }}</code>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="mt-3 grid gap-3 sm:grid-cols-2">
+        <label class="grid gap-1">
+          <span class="font-semibold">{% trans "备注" %}</span>
+          <input type="text" name="remark" value="{{ row.config.remark }}" maxlength="200"
+                 class="input input-bordered input-sm w-full" />
+        </label>
+        <label class="grid content-end gap-1">
+          <span class="font-semibold">{% trans "启用该渠道" %}</span>
+          <input type="checkbox" name="enabled" class="toggle toggle-primary"
+                 {% if row.config.enabled %}checked{% endif %} />
+          <span class="text-xs text-base-content/70">
+            {% trans "启用前必须填齐：商户ID、商户私钥、平台公钥。" %}
+          </span>
+        </label>
+      </div>
+
+      <div class="mt-3 flex justify-end">
+        <button type="submit" class="btn btn-primary btn-sm">{% trans "保存该渠道" %}</button>
+      </div>
+    </fieldset>
+  </form>
+  {% endfor %}
+</div>
+
+{# ==================== 订单列表 ==================== #}
+<div class="con-panel mt-5 p-4">
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <h2 class="text-base font-bold">{% trans "支付订单" %}</h2>
+    <span class="text-xs text-base-content/60">
+      {% blocktrans with n=total %}共 {{ n }} 笔{% endblocktrans %}
+    </span>
+  </div>
+
+  <form method="get" action="{% url 'website:console_pay' %}" class="mt-3 flex flex-wrap items-end gap-2">
+    <label class="grid gap-1">
+      <span class="text-xs">{% trans "状态" %}</span>
+      <select name="status" class="select select-bordered select-sm">
+        <option value="">{% trans "全部" %}</option>
+        {% for value, label in status_options %}
+        <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{% trans label %}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="grid gap-1">
+      <span class="text-xs">{% trans "渠道" %}</span>
+      <select name="provider" class="select select-bordered select-sm">
+        <option value="">{% trans "全部" %}</option>
+        {% for row in providers %}
+        <option value="{{ row.code }}" {% if provider_filter == row.code %}selected{% endif %}>{{ row.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="grid flex-1 gap-1">
+      <span class="text-xs">{% trans "关键词" %}</span>
+      <input type="text" name="q" value="{{ keyword }}"
+             class="input input-bordered input-sm w-full"
+             placeholder="{% trans '商户订单号 / 平台订单号 / 商品名称' %}" />
+    </label>
+    <button type="submit" class="btn btn-sm btn-outline">{% trans "筛选" %}</button>
+  </form>
+
+  <div class="con-table-wrap mt-3">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th class="whitespace-nowrap">{% trans "商户订单号" %}</th>
+          <th class="whitespace-nowrap">{% trans "商品" %}</th>
+          <th class="whitespace-nowrap">{% trans "金额" %}</th>
+          <th class="whitespace-nowrap">{% trans "方式" %}</th>
+          <th class="whitespace-nowrap">{% trans "归属" %}</th>
+          <th class="whitespace-nowrap">{% trans "状态" %}</th>
+          <th class="whitespace-nowrap">{% trans "创建时间" %}</th>
+          <th class="whitespace-nowrap">{% trans "操作" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in page_obj %}
+        <tr>
+          <td class="whitespace-nowrap">
+            <code class="font-mono text-xs">{{ order.out_trade_no }}</code>
+            {% if order.trade_no %}
+            <div class="text-xs text-base-content/50">{{ order.trade_no }}</div>
+            {% endif %}
+          </td>
+          <td class="max-w-xs truncate">{{ order.subject }}</td>
+          <td class="whitespace-nowrap font-mono">{{ order.amount }}</td>
+          <td class="whitespace-nowrap">
+            <div class="text-xs">{{ order.provider_code }}</div>
+            <div class="text-xs text-base-content/60">{{ order.pay_type }}</div>
+          </td>
+          <td class="whitespace-nowrap text-xs">
+            {% if order.user %}{% trans "用户" %}：{{ order.user.account }}{% endif %}
+            {% if order.app %}{% trans "项目" %}：{{ order.app.name }}{% endif %}
+            {% if not order.user and not order.app %}—{% endif %}
+          </td>
+          <td class="whitespace-nowrap">
+            {% if order.status == 'paid' %}
+            <span class="badge badge-soft badge-success badge-sm">{% trans "已支付" %}</span>
+            {% elif order.status == 'pending' %}
+            <span class="badge badge-soft badge-warning badge-sm">{% trans "待支付" %}</span>
+            {% elif order.status == 'partial_refunded' %}
+            <span class="badge badge-soft badge-info badge-sm">{% trans "部分退款" %}</span>
+            {% elif order.status == 'refunded' %}
+            <span class="badge badge-soft badge-ghost badge-sm">{% trans "已全额退款" %}</span>
+            {% elif order.status == 'failed' %}
+            <span class="badge badge-soft badge-error badge-sm">{% trans "支付失败" %}</span>
+            {% else %}
+            <span class="badge badge-soft badge-ghost badge-sm">{% trans "已关闭" %}</span>
+            {% endif %}
+            {% if order.refund_amount and order.refund_amount > 0 %}
+            <div class="text-xs text-base-content/60">{% blocktrans with m=order.refund_amount %}已退 {{ m }} 元{% endblocktrans %}</div>
+            {% endif %}
+          </td>
+          <td class="whitespace-nowrap text-xs text-base-content/70">{{ order.create_time|date:"Y-m-d H:i" }}</td>
+          <td class="whitespace-nowrap">
+            <div class="flex flex-wrap items-center gap-1">
+              {# 查单：待支付订单的兜底（通知丢了也能补回来） #}
+              <form method="post" action="{% url 'website:console_pay' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="sync_order" />
+                <input type="hidden" name="order_id" value="{{ order.pk }}" />
+                <button type="submit" class="btn btn-ghost btn-xs">{% trans "查单" %}</button>
+              </form>
+              {# 退款：仅已支付 / 部分退款的订单可退 #}
+              {% if order.status == 'paid' or order.status == 'partial_refunded' %}
+              <form method="post" action="{% url 'website:console_pay' %}"
+                    data-confirm="{% trans '确认对该订单发起退款？' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="refund_order" />
+                <input type="hidden" name="order_id" value="{{ order.pk }}" />
+                <input type="number" step="0.01" min="0.01" name="amount"
+                       class="input input-bordered input-xs w-24"
+                       placeholder="{% trans '退剩余' %}" />
+                <button type="submit" class="btn btn-ghost btn-xs text-error">{% trans "退款" %}</button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8" class="py-6 text-center text-sm text-base-content/60">{% trans "还没有支付订单。" %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include 'console/_pagination.html' %}
+</div>
+
+{# ==================== 最近余额流水 ==================== #}
+<div class="con-panel mt-5 p-4">
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <h2 class="text-base font-bold">{% trans "最近用户余额流水" %}</h2>
+    <span class="text-xs text-base-content/60">
+      {% blocktrans with n=ledger_total %}共 {{ n }} 条（此处只显示最近 20 条）{% endblocktrans %}
+    </span>
+  </div>
+  <div class="con-table-wrap mt-3">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th class="whitespace-nowrap">{% trans "时间" %}</th>
+          <th class="whitespace-nowrap">{% trans "用户" %}</th>
+          <th class="whitespace-nowrap">{% trans "类型" %}</th>
+          <th class="whitespace-nowrap">{% trans "变动（元）" %}</th>
+          <th class="whitespace-nowrap">{% trans "变动后余额" %}</th>
+          <th class="whitespace-nowrap">{% trans "兑换点数" %}</th>
+          <th>{% trans "说明" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in ledgers %}
+        <tr>
+          <td class="whitespace-nowrap text-xs text-base-content/70">{{ item.create_time|date:"Y-m-d H:i" }}</td>
+          <td class="whitespace-nowrap text-xs">{{ item.user.account }}</td>
+          <td class="whitespace-nowrap text-xs">{{ item.get_type_display }}</td>
+          <td class="whitespace-nowrap font-mono text-xs {% if item.amount < 0 %}text-error{% else %}text-success{% endif %}">
+            {{ item.amount }}
+          </td>
+          <td class="whitespace-nowrap font-mono text-xs">{{ item.balance_after }}</td>
+          <td class="whitespace-nowrap font-mono text-xs">{% if item.points %}{{ item.points }}{% else %}—{% endif %}</td>
+          <td class="text-xs text-base-content/70">{{ item.remark }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="py-6 text-center text-sm text-base-content/60">{% trans "还没有余额变动。" %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

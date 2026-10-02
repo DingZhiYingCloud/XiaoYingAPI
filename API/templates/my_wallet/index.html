@@ -1,0 +1,302 @@
+{% extends 'template.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "充值中心 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "充值中心,账户余额,在线支付,兑换点数" %}{% endblock %}
+{% block description %}{% trans "小影API 充值中心：为账户余额充值（支付宝 / 微信扫码支付），并把余额按汇率兑换成接入项目的点数。" %}{% endblock %}
+
+{% block content %}
+<section class="mx-auto w-full max-w-4xl px-4 py-8 sm:py-10">
+  <nav class="breadcrumbs text-sm">
+    <ul>
+      <li><a href="/">{% trans "首页" %}</a></li>
+      <li>{% trans "充值中心" %}</li>
+    </ul>
+  </nav>
+
+  <div class="mt-2">
+    <h1 class="text-2xl font-bold sm:text-3xl">{% trans "充值中心" %}</h1>
+    <p class="mt-1 text-sm text-base-content/70">
+      {% trans "充值到账户余额（元），再按汇率兑换成接入项目的点数；接口调用扣的是项目点数。" %}
+    </p>
+  </div>
+
+  {% if messages %}
+  <div class="mt-5 flex flex-col gap-2">
+    {% for message in messages %}
+    <div role="alert" class="alert py-2 text-sm {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-error{% elif message.tags == 'warning' %}alert-warning{% else %}alert-info{% endif %}">
+      <span>{{ message }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# ===== 余额概览 ===== #}
+  <div class="mt-5 grid gap-3 sm:grid-cols-3">
+    <div class="rounded-box border border-base-300 bg-base-100 p-4">
+      <p class="text-xs text-base-content/60">{% trans "账户余额" %}</p>
+      <p class="mt-1 font-mono text-2xl font-semibold {% if summary.balance <= 0 %}text-base-content/70{% else %}text-primary{% endif %}">
+        {{ summary.balance }}<span class="ml-1 text-sm font-normal text-base-content/60">{% trans "元" %}</span>
+      </p>
+    </div>
+    <div class="rounded-box border border-base-300 bg-base-100 p-4">
+      <p class="text-xs text-base-content/60">{% trans "累计充值" %}</p>
+      <p class="mt-1 font-mono text-2xl font-semibold">{{ summary.total_recharged }}</p>
+    </div>
+    <div class="rounded-box border border-base-300 bg-base-100 p-4">
+      <p class="text-xs text-base-content/60">{% trans "已兑换成点数" %}</p>
+      <p class="mt-1 font-mono text-2xl font-semibold">{{ summary.total_transferred }}</p>
+    </div>
+  </div>
+
+  {# ===== 待支付订单（下单后从收银台返回时展示） ===== #}
+  {% if pending_order %}
+  <div class="mt-5 rounded-box border border-warning/40 bg-warning/5 p-5" id="pending-order"
+       data-check-url="{% url 'website:my_wallet' %}" data-order-no="{{ pending_order.out_trade_no }}"
+       data-paid-label="{% trans '支付成功，余额已到账' %}" data-unpaid-label="{% trans '还未收到支付结果，请完成支付后再刷新' %}">
+    <h2 class="text-lg font-semibold">{% trans "有一笔待支付订单" %}</h2>
+    <dl class="mt-2 grid gap-2 text-sm sm:grid-cols-3">
+      <div class="flex gap-2">
+        <dt class="text-base-content/60">{% trans "订单号" %}</dt>
+        <dd class="font-mono text-xs">{{ pending_order.out_trade_no }}</dd>
+      </div>
+      <div class="flex gap-2">
+        <dt class="text-base-content/60">{% trans "金额" %}</dt>
+        <dd class="font-mono">{{ pending_order.amount }} {% trans "元" %}</dd>
+      </div>
+      <div class="flex gap-2">
+        <dt class="text-base-content/60">{% trans "下单时间" %}</dt>
+        <dd class="font-mono text-xs">{{ pending_order.create_time|date:"Y-m-d H:i" }}</dd>
+      </div>
+    </dl>
+    <div class="mt-3 flex flex-wrap gap-2">
+      {% if pending_order.pay_info %}
+      <a href="{{ pending_order.pay_info }}" target="_blank" rel="noopener noreferrer"
+         class="btn btn-primary btn-sm gap-2">
+        <i data-lucide="external-link" class="h-4 w-4"></i>{% trans "去支付" %}
+      </a>
+      {% endif %}
+      <button type="button" id="check-order-btn" class="btn btn-outline btn-sm gap-2">
+        <i data-lucide="refresh-cw" class="h-4 w-4"></i>{% trans "我已支付，刷新状态" %}
+      </button>
+      <span id="check-order-tip" class="self-center text-xs text-base-content/70"></span>
+    </div>
+    <p class="mt-2 text-xs text-base-content/70">
+      {% trans "支付完成后平台会跳回本页，页面会自动确认到账；若仍是待支付，点上面的刷新按钮即可。" %}
+    </p>
+  </div>
+  {% endif %}
+
+  {# ===== 充值 ===== #}
+  <div class="mt-5 rounded-box border border-base-300 bg-base-100 p-5">
+    <h2 class="text-lg font-semibold">{% trans "账户充值" %}</h2>
+    {% if not setting.enabled or not methods %}
+    <p class="mt-2 text-sm text-base-content/70">
+      {% trans "在线支付当前未开启或没有可用渠道，请联系管理员。" %}
+    </p>
+    {% else %}
+    <form method="post" action="{% url 'website:my_wallet' %}" class="mt-4 grid gap-4" id="recharge-form">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create_order" />
+
+      <div class="grid gap-2">
+        <span class="text-sm font-semibold">{% trans "充值金额（元）" %}</span>
+        <div class="flex flex-wrap gap-2">
+          {% for amount in amount_presets %}
+          <button type="button" class="btn btn-sm btn-outline amount-preset" data-amount="{{ amount }}">{{ amount }}</button>
+          {% endfor %}
+        </div>
+        <input type="number" name="amount" id="amount-input" step="0.01"
+               min="{{ setting.min_amount }}" required
+               class="input input-bordered w-full max-w-xs"
+               placeholder="{% blocktrans with m=setting.min_amount %}最低 {{ m }} 元{% endblocktrans %}" />
+        <span class="text-xs text-base-content/70">
+          {% blocktrans with m=setting.min_amount %}单笔最低 {{ m }} 元；金额单位为元，两位小数。{% endblocktrans %}
+        </span>
+      </div>
+
+      <div class="grid gap-2">
+        <span class="text-sm font-semibold">{% trans "支付方式" %}</span>
+        <div class="flex flex-wrap gap-3">
+          {% for value, label in methods %}
+          <label class="flex cursor-pointer items-center gap-1.5 text-sm">
+            <input type="radio" name="pay_type" value="{{ value }}" class="radio radio-sm"
+                   {% if forloop.first %}checked{% endif %} />
+            {% trans label %}
+          </label>
+          {% endfor %}
+        </div>
+        <span class="text-xs text-base-content/70">
+          {% trans "点「去支付」后跳转到支付平台收银台，页面上会显示二维码，用微信 / 支付宝扫码即可完成支付。" %}
+        </span>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-3">
+        <button type="submit" class="btn btn-primary gap-2">
+          <i data-lucide="wallet" class="h-4 w-4"></i>{% trans "去支付" %}
+        </button>
+        <span class="text-xs text-base-content/70">
+          {% trans "支付成功后余额自动到账，无需人工确认。" %}
+        </span>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+
+  {# ===== 余额兑换项目点数 ===== #}
+  <div class="mt-5 rounded-box border border-base-300 bg-base-100 p-5">
+    <h2 class="text-lg font-semibold">{% trans "兑换成项目点数" %}</h2>
+    <p class="mt-1 text-xs text-base-content/70">
+      {% blocktrans with rate=setting.points_per_yuan %}当前汇率：1 元 = {{ rate }} 点。兑换后余额减少、对应项目的点数增加，接口调用按点数扣费。{% endblocktrans %}
+    </p>
+    {% if apps %}
+    <form method="post" action="{% url 'website:my_wallet' %}" class="mt-3 flex flex-wrap items-end gap-3">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="transfer" />
+      <label class="grid gap-1">
+        <span class="text-sm font-semibold">{% trans "目标项目" %}</span>
+        <select name="app_id" class="select select-bordered select-sm min-w-56">
+          {% for app in apps %}
+          <option value="{{ app.pk }}">{{ app.name }}（{% trans "当前" %} {{ app.balance }} {% trans "点" %}）</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="grid gap-1">
+        <span class="text-sm font-semibold">{% trans "兑换金额（元）" %}</span>
+        <input type="number" name="amount" step="0.01" min="0.01" required
+               class="input input-bordered input-sm w-40"
+               placeholder="{% trans '如 10' %}" />
+      </label>
+      <button type="submit" class="btn btn-primary btn-sm">{% trans "兑换" %}</button>
+    </form>
+    {% else %}
+    <p class="mt-2 text-sm text-base-content/70">
+      {% trans "你还没有接入项目，先到" %}<a class="link" href="/my/projects/">{% trans "我的项目" %}</a>{% trans "创建一个再兑换。" %}
+    </p>
+    {% endif %}
+  </div>
+
+  {# ===== 充值记录 ===== #}
+  <div class="mt-5 overflow-x-auto rounded-box border border-base-300 bg-base-100">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th class="whitespace-nowrap">{% trans "时间" %}</th>
+          <th class="whitespace-nowrap">{% trans "类型" %}</th>
+          <th class="whitespace-nowrap">{% trans "变动（元）" %}</th>
+          <th class="whitespace-nowrap">{% trans "变动后余额" %}</th>
+          <th>{% trans "说明" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in ledgers %}
+        <tr>
+          <td class="whitespace-nowrap text-xs text-base-content/70">{{ item.create_time|date:"Y-m-d H:i" }}</td>
+          <td class="whitespace-nowrap text-xs">{{ item.get_type_display }}</td>
+          <td class="whitespace-nowrap font-mono text-xs {% if item.amount < 0 %}text-error{% else %}text-success{% endif %}">{{ item.amount }}</td>
+          <td class="whitespace-nowrap font-mono text-xs">{{ item.balance_after }}</td>
+          <td class="text-xs text-base-content/70">{{ item.remark }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="py-6 text-center text-sm text-base-content/60">{% trans "还没有余额变动。" %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# ===== 我的订单 ===== #}
+  <div class="mt-5 overflow-x-auto rounded-box border border-base-300 bg-base-100">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th class="whitespace-nowrap">{% trans "订单号" %}</th>
+          <th class="whitespace-nowrap">{% trans "金额" %}</th>
+          <th class="whitespace-nowrap">{% trans "方式" %}</th>
+          <th class="whitespace-nowrap">{% trans "状态" %}</th>
+          <th class="whitespace-nowrap">{% trans "创建时间" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in orders %}
+        <tr>
+          <td class="whitespace-nowrap font-mono text-xs">{{ order.out_trade_no }}</td>
+          <td class="whitespace-nowrap font-mono text-xs">{{ order.amount }}</td>
+          <td class="whitespace-nowrap text-xs">{{ order.provider_code }} / {{ order.pay_type }}</td>
+          <td class="whitespace-nowrap">
+            {% if order.status == 'paid' %}
+            <span class="badge badge-soft badge-success badge-sm">{% trans "已支付" %}</span>
+            {% elif order.status == 'pending' %}
+            <span class="badge badge-soft badge-warning badge-sm">{% trans "待支付" %}</span>
+            {% elif order.status == 'partial_refunded' %}
+            <span class="badge badge-soft badge-info badge-sm">{% trans "部分退款" %}</span>
+            {% elif order.status == 'refunded' %}
+            <span class="badge badge-soft badge-ghost badge-sm">{% trans "已全额退款" %}</span>
+            {% elif order.status == 'failed' %}
+            <span class="badge badge-soft badge-error badge-sm">{% trans "支付失败" %}</span>
+            {% else %}
+            <span class="badge badge-soft badge-ghost badge-sm">{% trans "已关闭" %}</span>
+            {% endif %}
+          </td>
+          <td class="whitespace-nowrap text-xs text-base-content/70">{{ order.create_time|date:"Y-m-d H:i" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="py-6 text-center text-sm text-base-content/60">{% trans "还没有支付订单。" %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+
+{% block js %}
+<script>
+(function () {
+  'use strict';
+  var form = document.getElementById('recharge-form');
+  var amountInput = document.getElementById('amount-input');
+  if (form && amountInput) {
+    form.querySelectorAll('.amount-preset').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        amountInput.value = btn.dataset.amount;
+      });
+    });
+  }
+
+  /* 「我已支付，刷新状态」：主动查单，到账了直接刷新页面 */
+  var box = document.getElementById('pending-order');
+  var checkBtn = document.getElementById('check-order-btn');
+  var tip = document.getElementById('check-order-tip');
+  if (!box || !checkBtn) return;
+
+  checkBtn.addEventListener('click', function () {
+    checkBtn.disabled = true;
+    tip.textContent = '';
+    var body = new FormData();
+    body.append('action', 'check_order');
+    body.append('out_trade_no', box.dataset.orderNo);
+    body.append('csrfmiddlewaretoken', form ? form.querySelector('[name=csrfmiddlewaretoken]').value : '');
+    fetch(box.dataset.checkUrl, {
+      method: 'POST',
+      body: body,
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      credentials: 'same-origin'
+    }).then(function (resp) { return resp.json(); }).then(function (data) {
+      checkBtn.disabled = false;
+      if (data && data.data && data.data.paid) {
+        tip.textContent = box.dataset.paidLabel;
+        window.location.reload();
+        return;
+      }
+      tip.textContent = box.dataset.unpaidLabel;
+    }).catch(function () {
+      checkBtn.disabled = false;
+      tip.textContent = box.dataset.unpaidLabel;
+    });
+  });
+})();
+</script>
+{% endblock %}

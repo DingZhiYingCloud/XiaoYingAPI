@@ -33,6 +33,7 @@ from . import user_center as _user_center
 from . import movie as _movie
 from . import drama as _drama
 from . import haijiao as _haijiao
+from . import pay as _pay
 from .schema import (ChannelSpec, EndpointSpec, ParamSpec, ResponseFieldSpec,  # noqa: F401
                      ServiceSpec)  # noqa: F401 便于外部引用
 
@@ -59,6 +60,7 @@ _SERVICES = [
     _movie.SERVICE,
     _drama.SERVICE,
     _haijiao.SERVICE,
+    _pay.SERVICE,
 ]
 
 ALL = {svc.slug: svc for svc in _SERVICES}

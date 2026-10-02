@@ -5,14 +5,17 @@ from django.views.i18n import JavaScriptCatalog
 
 from . import (console, console_ai, console_announcements, console_appearance,
                console_audit, console_credits, console_feedback, console_haijiao,
-               console_prices, console_quota, console_security, console_upstream,
-               console_users, docs_views, feedback_views, my_projects,
-               programs_views, views)
+               console_pay, console_prices, console_quota, console_security,
+               console_upstream, console_users, docs_views, feedback_views,
+               my_projects, my_wallet, programs_views, views)
+# 第三方支付的异步通知：必须挂在 /api/ 之外（平台回调带不了我们的项目签名，靠平台公钥验签）
+from API.apis.pay.notify import notify_view as pay_notify_view
 
 app_name = 'website'
 
 urlpatterns = [
     path('', views.index, name='index'),                       # 官网首页
+    path('pay/notify/<str:code>/', pay_notify_view, name='pay_notify'),  # 第三方支付异步通知（免签名）
     path('guide/', views.guide_view, name='guide'),            # 接入向导
     # 服务配套工具页：按「/<服务>/post/」归到所属服务命名空间，避免各服务的工具页在根路径上撞车
     path('haijiao/post/', views.haijiao_post_view, name='haijiao_post'),  # 海角社区发帖页
@@ -28,6 +31,8 @@ urlpatterns = [
     path('my/projects/', my_projects.projects_view, name='my_projects'),
     path('my/projects/<uuid:app_id>/', my_projects.project_detail_view,
          name='my_project_detail'),
+    # 充值中心（登录用户）：在线充值到账户余额 + 余额兑换成项目点数
+    path('my/wallet/', my_wallet.wallet_view, name='my_wallet'),
     path('lang/', views.set_language, name='set_language'),    # 语言切换（?lang=xx&next=...）
     # JS 端多语言目录：提供 window.gettext() 等函数，文案取自 locale/*/LC_MESSAGES/djangojs.mo
     # （仅下发前端 JS 用到的词条，不把整份服务端词条目录发给浏览器）
@@ -70,6 +75,8 @@ urlpatterns = [
     path('console/prices/', console_prices.prices_view, name='console_prices'),
     # 项目额度（超管专属）：按项目查看余额 / 充值（含充值流水）；目前无支付，只能手动充
     path('console/credits/', console_credits.credits_view, name='console_credits'),
+    # 支付设置（超管专属）：在线支付开关与汇率、各渠道商户配置、订单查单 / 退款
+    path('console/pay/', console_pay.pay_view, name='console_pay'),
     path('console/stats/', console.stats_view, name='console_stats'),           # API 调用统计看板
     # 接口公告（超管专属）：给服务 / 线路 / 端点三级发布公告，前台文档中心展示
     path('console/announcements/', console_announcements.announcements_view,

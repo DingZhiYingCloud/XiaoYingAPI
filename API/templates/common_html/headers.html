@@ -85,6 +85,9 @@
           <a href="{% url 'website:my_projects' %}" class="btn btn-ghost btn-sm w-full justify-start">
             <i data-lucide="folder" class="h-4 w-4"></i>{% trans "我的项目" %}
           </a>
+          <a href="{% url 'website:my_wallet' %}" class="btn btn-ghost btn-sm w-full justify-start">
+            <i data-lucide="wallet" class="h-4 w-4"></i>{% trans "充值中心" %}
+          </a>
           <form method="post" action="{% url 'website:logout' %}">
             {% csrf_token %}
             <button type="submit" class="btn btn-ghost btn-sm w-full justify-start text-error">{% trans "退出登录" %}</button>
@@ -119,6 +122,7 @@
           {% if website_user %}
           <li class="menu-title"><span>{{ website_user.username|default:website_user.account }}（{{ website_user.account }}）</span></li>
           <li><a href="{% url 'website:my_projects' %}">{% trans "我的项目" %}</a></li>
+          <li><a href="{% url 'website:my_wallet' %}">{% trans "充值中心" %}</a></li>
           <li>
             <form method="post" action="{% url 'website:logout' %}">
               {% csrf_token %}

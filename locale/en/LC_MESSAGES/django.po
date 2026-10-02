@@ -10823,3 +10823,612 @@ msgstr "Endpoint price"
 
 msgid "默认价"
 msgstr "Default price"
+
+
+# ==================== 第三方支付（控制台「支付设置」页 /console/pay/ 与支付服务文案） ====================
+msgid "支付设置"
+msgstr "Payment Settings"
+
+msgid "支付设置 - 超级管理员 - 小影API"
+msgstr "Payment Settings - Super Admin - XiaoYingAPI"
+
+msgid "超级管理员,支付设置,在线支付,易支付,订单,退款,汇率"
+msgstr "Super Admin,payment settings,online payment,ezfp,orders,refund,exchange rate"
+
+msgid "小影API 超级管理员：维护在线支付的全局开关与汇率、各支付渠道的商户配置，查看订单并手动查单 / 退款。"
+msgstr "XiaoYingAPI Super Admin: manage the global online-payment switch and exchange rate, each payment channel's merchant configuration, and review orders with manual query / refund."
+
+msgid "维护在线支付的开关与汇率、各渠道商户配置，处理订单（查单 / 退款）。"
+msgstr "Manage the online-payment switch and exchange rate, each channel's merchant configuration, and handle orders (query / refund)."
+
+msgid "在线支付的全局开关与汇率（1 元 = 多少点）、各支付渠道的商户配置（商户ID / 密钥加密落库 / 可用支付方式）、订单列表（可手动查单与退款）与最近用户余额流水。"
+msgstr "The global online-payment switch and exchange rate (points per yuan), each channel's merchant configuration (merchant ID / encrypted keys / available payment methods), the order list with manual query and refund, and the recent balance ledger."
+
+msgid "商户私钥与平台公钥<strong>加密落库、页面不回显</strong>：输入框留空表示不修改，填了就整体替换并即时校验能否解析。当前有 %(pending)s 笔待支付订单。"
+msgstr "The merchant private key and platform public key are <strong>stored encrypted and never shown</strong>: leaving the inputs blank keeps the current value, filling them replaces it entirely and validates it immediately. There are %(pending)s pending orders."
+
+msgid "支付成功只认「平台异步通知 + 主动查单」，页面跳转不算；回调会校验签名与订单金额，重复通知不会重复加钱。"
+msgstr "Payment success is only recognised from the platform's async notification plus active order queries — a browser redirect never counts; callbacks verify the signature and the order amount, and repeated notifications never credit twice."
+
+msgid "渠道清单在代码里维护（API/apis/pay/providers/registry.py），新增渠道只需加一个实现文件并登记一行。"
+msgstr "The channel list lives in code (API/apis/pay/providers/registry.py): adding a channel means adding one implementation file and registering one line."
+
+msgid "全局设置"
+msgstr "Global Settings"
+
+msgid "开启在线支付"
+msgstr "Enable Online Payment"
+
+msgid "关闭后前台充值页不再展示下单入口，接口下单直接返回「支付未开启」。"
+msgstr "When disabled, the top-up page hides the order entry and API order creation returns \"payment disabled\"."
+
+msgid "兑换汇率（点/元）"
+msgstr "Exchange Rate (points per yuan)"
+
+msgid "1 元等于多少点数：用户余额（元）兑换成接入项目点数时按它换算；也用于对外下单支付成功后给调用项目加点。"
+msgstr "How many points one yuan buys: used when converting the account balance (yuan) into project points, and when crediting the calling project after an external order is paid."
+
+msgid "单笔最低金额（元）"
+msgstr "Minimum Amount (yuan)"
+
+msgid "低于该金额的下单请求会被直接拒绝。"
+msgstr "Order requests below this amount are rejected."
+
+msgid "保存全局设置"
+msgstr "Save Global Settings"
+
+msgid "已启用"
+msgstr "Enabled"
+
+msgid "未启用"
+msgstr "Disabled"
+
+msgid "商户ID"
+msgstr "Merchant ID"
+
+msgid "如 6681"
+msgstr "e.g. 6681"
+
+msgid "商户后台的商户ID（易支付即 pid），参与签名。"
+msgstr "The merchant ID from the merchant dashboard (pid for ezfp); it is part of the signature."
+
+msgid "网关地址"
+msgstr "Gateway URL"
+
+msgid "留空使用默认地址 %(g)s；切测试环境时改这里。"
+msgstr "Leave blank to use the default %(g)s; change it to point at a test environment."
+
+msgid "商户私钥"
+msgstr "Merchant Private Key"
+
+msgid "已配置"
+msgstr "Configured"
+
+msgid "未配置"
+msgstr "Not configured"
+
+msgid "留空表示不修改；粘贴 PKCS#8 私钥（可带 -----BEGIN----- 头尾）"
+msgstr "Leave blank to keep unchanged; paste the PKCS#8 private key (PEM header/footer allowed)"
+
+msgid "平台公钥"
+msgstr "Platform Public Key"
+
+msgid "留空表示不修改；用于校验平台应答与异步通知的签名"
+msgstr "Leave blank to keep unchanged; used to verify the signature of platform responses and async notifications"
+
+msgid "可用支付方式"
+msgstr "Available Payment Methods"
+
+msgid "一个都不勾 = 不限制（该渠道全部支付方式可用）。"
+msgstr "Selecting none means no restriction (every payment method of this channel is allowed)."
+
+msgid "启用该渠道"
+msgstr "Enable This Channel"
+
+msgid "启用前必须填齐：商户ID、商户私钥、平台公钥。"
+msgstr "Before enabling, the merchant ID, merchant private key and platform public key must all be filled in."
+
+msgid "保存该渠道"
+msgstr "Save This Channel"
+
+msgid "支付订单"
+msgstr "Payment Orders"
+
+msgid "渠道"
+msgstr "Channel"
+
+msgid "商户订单号"
+msgstr "Merchant Order No."
+
+msgid "商品"
+msgstr "Item"
+
+msgid "商户订单号 / 平台订单号 / 商品名称"
+msgstr "Merchant order no. / platform order no. / item name"
+
+msgid "已支付"
+msgstr "Paid"
+
+msgid "待支付"
+msgstr "Pending"
+
+msgid "部分退款"
+msgstr "Partially Refunded"
+
+msgid "已全额退款"
+msgstr "Fully Refunded"
+
+msgid "支付失败"
+msgstr "Payment Failed"
+
+msgid "共 %(n)s 笔"
+msgstr "%(n)s orders"
+
+msgid "已退 %(m)s 元"
+msgstr "Refunded %(m)s yuan"
+
+msgid "查单"
+msgstr "Query"
+
+msgid "确认对该订单发起退款？"
+msgstr "Refund this order?"
+
+msgid "退剩余"
+msgstr "Rest"
+
+msgid "退款"
+msgstr "Refund"
+
+msgid "还没有支付订单。"
+msgstr "No payment orders yet."
+
+msgid "最近用户余额流水"
+msgstr "Recent Balance Ledger"
+
+msgid "变动（元）"
+msgstr "Change (yuan)"
+
+msgid "兑换点数"
+msgstr "Points Credited"
+
+msgid "还没有余额变动。"
+msgstr "No balance changes yet."
+
+msgid "共 %(n)s 条（此处只显示最近 20 条）"
+msgstr "%(n)s entries (only the latest 20 are shown here)"
+
+msgid "用户"
+msgstr "User"
+
+msgid "项目"
+msgstr "Project"
+
+msgid "不支持的操作"
+msgstr "Unsupported action"
+
+msgid "汇率必须是数字"
+msgstr "The exchange rate must be a number"
+
+msgid "汇率必须大于 0"
+msgstr "The exchange rate must be greater than 0"
+
+msgid "最低金额必须是不小于 0 的数字（元，最多两位小数）"
+msgstr "The minimum amount must be a number not less than 0 (yuan, at most two decimals)"
+
+msgid "支付设置已保存"
+msgstr "Payment settings saved"
+
+msgid "渠道不存在：%(code)s"
+msgstr "Channel does not exist: %(code)s"
+
+msgid "商户私钥无法解析：请确认复制的是完整私钥（PKCS#8，可带 -----BEGIN----- 头尾）"
+msgstr "Cannot parse the merchant private key: make sure you copied the complete key (PKCS#8, PEM header/footer allowed)"
+
+msgid "平台公钥无法解析：请确认复制的是完整公钥"
+msgstr "Cannot parse the platform public key: make sure you copied the complete public key"
+
+msgid "启用渠道前必须填齐：商户ID、商户私钥、平台公钥"
+msgstr "Before enabling the channel, fill in the merchant ID, merchant private key and platform public key"
+
+msgid "（未勾选支付方式 = 不限制，该渠道全部可用）"
+msgstr " (no payment method selected = no restriction, the whole channel is allowed)"
+
+msgid "%(name)s 配置已保存%(tail)s"
+msgstr "%(name)s configuration saved%(tail)s"
+
+msgid "订单不存在"
+msgstr "Order does not exist"
+
+msgid "查单失败：%(msg)s"
+msgstr "Order query failed: %(msg)s"
+
+msgid "查单完成：%(no)s 当前状态为「%(status)s」"
+msgstr "Query finished: %(no)s is now \"%(status)s\""
+
+msgid "退款失败：%(msg)s"
+msgstr "Refund failed: %(msg)s"
+
+msgid "退款已提交：%(no)s 已退 %(money)s 元（累计 %(total)s 元）"
+msgstr "Refund submitted: %(no)s refunded %(money)s yuan (%(total)s yuan in total)"
+
+
+# ==================== 前台充值中心（/my/wallet/） ====================
+msgid "充值中心"
+msgstr "Top Up"
+
+msgid "充值中心 - 小影API"
+msgstr "Top Up - XiaoYingAPI"
+
+msgid "充值中心,账户余额,在线支付,兑换点数"
+msgstr "Top Up,account balance,online payment,points exchange"
+
+msgid "小影API 充值中心：为账户余额充值（支付宝 / 微信扫码支付），并把余额按汇率兑换成接入项目的点数。"
+msgstr "XiaoYingAPI Top Up: recharge your account balance (Alipay / WeChat scan-to-pay) and convert the balance into project points at the configured rate."
+
+msgid "充值到账户余额（元），再按汇率兑换成接入项目的点数；接口调用扣的是项目点数。"
+msgstr "Recharge your account balance (yuan), then convert it into project points at the configured rate; API calls are billed in project points."
+
+msgid "账户余额"
+msgstr "Account Balance"
+
+msgid "已兑换成点数"
+msgstr "Converted to Points"
+
+msgid "有一笔待支付订单"
+msgstr "You have a pending order"
+
+msgid "下单时间"
+msgstr "Created"
+
+msgid "去支付"
+msgstr "Pay Now"
+
+msgid "我已支付，刷新状态"
+msgstr "I've paid, refresh status"
+
+msgid "支付成功，余额已到账"
+msgstr "Payment succeeded, the balance has been credited"
+
+msgid "还未收到支付结果，请完成支付后再刷新"
+msgstr "Payment result not received yet — finish the payment and refresh again"
+
+msgid "支付完成后平台会跳回本页，页面会自动确认到账；若仍是待支付，点上面的刷新按钮即可。"
+msgstr "After paying, the platform sends you back here and this page confirms the credit automatically; if it still shows pending, just click the refresh button above."
+
+msgid "账户充值"
+msgstr "Account Recharge"
+
+msgid "在线支付当前未开启或没有可用渠道，请联系管理员。"
+msgstr "Online payment is currently disabled or has no available channel — please contact the administrator."
+
+msgid "充值金额（元）"
+msgstr "Amount (yuan)"
+
+msgid "支付方式"
+msgstr "Payment Method"
+
+msgid "点「去支付」后跳转到支付平台收银台，页面上会显示二维码，用微信 / 支付宝扫码即可完成支付。"
+msgstr "Clicking \"Pay Now\" takes you to the payment platform's cashier, which shows a QR code you can scan with WeChat / Alipay to complete the payment."
+
+msgid "支付成功后余额自动到账，无需人工确认。"
+msgstr "The balance is credited automatically once the payment succeeds — no manual confirmation needed."
+
+msgid "兑换成项目点数"
+msgstr "Convert to Project Points"
+
+msgid "目标项目"
+msgstr "Target Project"
+
+msgid "当前"
+msgstr "Current"
+
+msgid "兑换金额（元）"
+msgstr "Amount (yuan)"
+
+msgid "如 10"
+msgstr "e.g. 10"
+
+msgid "兑换"
+msgstr "Convert"
+
+msgid "你还没有接入项目，先到"
+msgstr "You have no projects yet — go to "
+
+msgid "创建一个再兑换。"
+msgstr " to create one before converting."
+
+msgid "最低 %(m)s 元"
+msgstr "minimum %(m)s yuan"
+
+msgid "单笔最低 %(m)s 元；金额单位为元，两位小数。"
+msgstr "Minimum %(m)s yuan per order; the amount is in yuan with two decimals."
+
+msgid "当前汇率：1 元 = %(rate)s 点。兑换后余额减少、对应项目的点数增加，接口调用按点数扣费。"
+msgstr "Current rate: 1 yuan = %(rate)s points. After converting, your balance decreases and the target project's points increase; API calls are billed in points."
+
+msgid "当前没有可用的支付渠道，请稍后再试或联系管理员"
+msgstr "No payment channel is available right now — try again later or contact the administrator"
+
+msgid "请选择支付方式"
+msgstr "Please choose a payment method"
+
+msgid "下单失败：%(msg)s"
+msgstr "Failed to create the order: %(msg)s"
+
+msgid "下单成功但平台没有返回支付地址，请稍后在下方订单里重试"
+msgstr "The order was created but the platform returned no payment URL; please retry from the order list below"
+
+msgid "查询完成"
+msgstr "Query finished"
+
+msgid "请选择要兑换的项目"
+msgstr "Please choose a project to convert into"
+
+msgid "兑换金额非法"
+msgstr "Invalid conversion amount"
+
+msgid "已兑换：%(money)s 元 → 「%(app)s」%(points)s 点（当前项目余额 %(balance)s 点）"
+msgstr "Converted: %(money)s yuan → %(points)s points for \"%(app)s\" (project balance now %(balance)s points)"
+
+msgid "已生成支付参数，请在下方订单里继续支付"
+msgstr "Payment parameters generated — continue from the order below"
+
+# ==================== 第三方支付 · 服务卡片与文档中心正文（声明式数据的 localize） ====================
+
+msgid "第三方支付"
+msgstr "Third-party payments"
+
+msgid "聚合支付三件套：统一下单、订单查询、订单退款。支持支付宝、微信、QQ 钱包等支付方式，PC 与移动端通用（按返回的 pay_type 渲染二维码或打开收银台地址即可）。"
+msgstr "A three-part aggregated payment toolkit: create order, query order and refund order. Supports Alipay, WeChat Pay, QQ Wallet and more on both desktop and mobile (just render a QR code or open the cashier URL according to the returned pay_type)."
+
+msgid "统一下单"
+msgstr "Create order"
+
+msgid "订单查询"
+msgstr "Query order"
+
+msgid "退款"
+msgstr "Refund"
+
+msgid "支付宝"
+msgstr "Alipay"
+
+msgid "微信支付"
+msgstr "WeChat Pay"
+
+msgid "支付接口,聚合支付API,扫码支付接口,支付宝微信支付,第三方支付接口"
+msgstr "payment API,aggregated payment API,QR code payment API,Alipay and WeChat Pay,third-party payment API"
+
+msgid "统一下单 / 订单查询 / 订单退款三件套。支持支付宝、微信、QQ 钱包等支付方式，PC 与移动端通用：按返回的 pay_type 渲染二维码或打开收银台地址即可。"
+msgstr "A three-part toolkit — create order, query order and refund order. Supports Alipay, WeChat Pay, QQ Wallet and more on both desktop and mobile: just render a QR code or open the cashier URL according to the returned pay_type."
+
+msgid "支付服务把「下单 → 用户付款 → 到账 / 发货」这条链路收敛成三个接口：`/api/pay/create` 下单拿到支付参数，`/api/pay/query` 查询并同步订单状态，`/api/pay/refund` 退款。调用方不需要对接各支付平台的协议与签名。"
+msgstr "The payment service condenses the whole \"create order → user pays → funds credited / goods delivered\" chain into three endpoints: `/api/pay/create` returns the payment parameters, `/api/pay/query` looks the order up and syncs its status, and `/api/pay/refund` issues a refund. Callers never have to deal with the individual payment platforms' protocols or signatures."
+
+msgid "**支付结果只认异步回调与主动查单，页面跳转不算**：用户付款完成后，平台会异步通知本站，本站校验签名与金额后推进订单（给调用项目的点数余额充值）；通知偶有丢失，因此调用方可在支付后轮询 `query` 接口兜底，两边都能触发且**只会发货一次**。"
+msgstr "**Payment results are taken only from the asynchronous callback and an active query — a page redirect does not count**: once the user has paid, the platform notifies this site asynchronously, and after verifying the signature and the amount the site advances the order (topping up the calling project's points balance). Notifications are occasionally lost, so callers can poll `query` after payment as a fallback; either path can trigger it, and delivery happens **only once**."
+
+msgid "**PC 与移动端同一条路**：支付形态由平台按 `method` / `device` 返回 ——`pay_info` 直接在页面渲染即可（`qrcode` 出二维码，`jump` 打开收银台地址）。移动端 H5 / 内嵌 WebView 用 `method=jump` + `device=mobile`，原生 App 内唤起用 `method=app`，微信内用 `device=wechat`。"
+msgstr "**Desktop and mobile share one path**: the platform decides the payment form from `method` / `device`, and `pay_info` can simply be rendered on the page (`qrcode` renders a QR code, `jump` opens the cashier URL). For mobile H5 / embedded WebViews use `method=jump` + `device=mobile`; to invoke the payment app from a native app use `method=app`; inside WeChat use `device=wechat`."
+
+msgid "易支付"
+msgstr "EZFP"
+
+msgid "ezfp.cn（聚合支付网关，RSA 签名）"
+msgstr "ezfp.cn (aggregated payment gateway, RSA signatures)"
+
+msgid "聚合支付网关，网关地址与商户凭据（商户 ID + 商户私钥 + 平台公钥）由本站后台「支付设置」维护，调用方无需也不应持有。下单的 `notify_url` 由本站固定为 `/pay/notify/ezfp/`，调用方不需要传。实际可用的支付方式取决于商户用户组开通了哪些，未开通的方式下单时平台会直接报错。"
+msgstr "An aggregated payment gateway. Its address and the merchant credentials (merchant ID + merchant private key + platform public key) are maintained by this site under \"Payment settings\" in the console — callers neither need nor should hold them. The `notify_url` for an order is fixed by this site to `/pay/notify/ezfp/`, so callers do not pass it. Which payment methods actually work depends on what the merchant user group has enabled; ordering with a method that is not enabled makes the platform return an error right away."
+
+msgid "创建一笔支付订单，返回支付参数（二维码内容或收银台跳转地址）与商户订单号。"
+msgstr "Create a payment order and return the payment parameters (QR code content or cashier redirect URL) together with the merchant order number."
+
+msgid "支付方式"
+msgstr "Payment method"
+
+msgid "必填。与商户用户组开通的方式一致，否则平台报错"
+msgstr "Required. Must match a method enabled for the merchant user group, otherwise the platform returns an error"
+
+msgid "金额（元）"
+msgstr "Amount (yuan)"
+
+msgid "必填。大于 0 的数字，两位小数；不得低于后台设置的单笔最低金额"
+msgstr "Required. A number greater than 0 with two decimals; must not be below the per-order minimum set in the console"
+
+msgid "如 1.00"
+msgstr "e.g. 1.00"
+
+msgid "支付渠道"
+msgstr "Payment channel"
+
+msgid "选填。不传则用第一个启用的渠道（当前仅 ezfp）"
+msgstr "Optional. If omitted, the first enabled channel is used (currently only ezfp)"
+
+msgid "商品名称"
+msgstr "Product name"
+
+msgid "如 会员充值"
+msgstr "e.g. Membership top-up"
+
+msgid "选填。用户在收银台看到的商品名，不传则用「订单支付」"
+msgstr "Optional. The product name shown to the user on the cashier page; when omitted a default subject is used"
+
+msgid "支付完成跳回地址"
+msgstr "Return URL after payment"
+
+msgid "选填。只影响用户付款后浏览器跳回哪里，**不参与到账判定**"
+msgstr "Optional. Only decides where the browser returns after payment; it takes **no part in judging whether the order is paid**"
+
+msgid "业务扩展参数"
+msgstr "Business extension parameter"
+
+msgid "选填。原样回传，便于对账时把订单与自己系统的业务单关联起来"
+msgstr "Optional. Returned verbatim, which makes it easy to link the order to your own business record during reconciliation"
+
+msgid "调用方式"
+msgstr "Method"
+
+msgid "选填。移动端 H5 / WebView 建议 jump；原生 App 用 app"
+msgstr "Optional. Use jump for mobile H5 / WebView and app inside a native app"
+
+msgid "设备类型"
+msgstr "Device"
+
+msgid "选填。移动端建议 mobile，微信内 wechat"
+msgstr "Optional. Use mobile on phones and wechat inside WeChat"
+
+msgid "请选择"
+msgstr "Please choose"
+
+msgid "不传（默认）"
+msgstr "Omit (default)"
+
+msgid "不传（默认 web）"
+msgstr "Omit (default: web)"
+
+msgid "不传（默认 pc）"
+msgstr "Omit (default: pc)"
+
+msgid "网银支付"
+msgstr "Online banking"
+
+msgid "QQ钱包"
+msgstr "QQ Wallet"
+
+msgid "京东支付"
+msgstr "JD Pay"
+
+msgid "泰达币（USDT-TRC20）"
+msgstr "Tether (USDT-TRC20)"
+
+msgid "银行卡/钱包（Stripe）"
+msgstr "Card / wallet (Stripe)"
+
+msgid "Stripe 支付宝"
+msgstr "Stripe Alipay"
+
+msgid "Stripe 微信支付"
+msgstr "Stripe WeChat Pay"
+
+msgid "web=通用网页支付"
+msgstr "web=generic web payment"
+
+msgid "jump=跳转支付"
+msgstr "jump=redirect payment"
+
+msgid "jsapi=小程序内支付"
+msgstr "jsapi=inside a mini program"
+
+msgid "app=APP 支付"
+msgstr "app=native app payment"
+
+msgid "scan=付款码支付"
+msgstr "scan=payment-code payment"
+
+msgid "applet=小程序支付"
+msgstr "applet=mini-program payment"
+
+msgid "pc=电脑浏览器"
+msgstr "pc=desktop browser"
+
+msgid "mobile=手机浏览器"
+msgstr "mobile=mobile browser"
+
+msgid "qq=手机 QQ 内"
+msgstr "qq=inside mobile QQ"
+
+msgid "wechat=微信内浏览器"
+msgstr "wechat=inside WeChat"
+
+msgid "alipay=支付宝客户端"
+msgstr "alipay=Alipay app"
+
+msgid "拿到返回后**按 `pay_type` 渲染**：`qrcode` 直接把 `pay_info` 做成二维码；`jump` 用浏览器 / WebView 打开 `pay_info`（收银台页自带二维码与付款入口）。实测同一笔微信支付在 `method=web` 下返回 `qrcode`，在 `method=jump` 下返回 https 收银台地址，故**不要硬编码某一种形态**。"
+msgstr "After you get the response, **render according to `pay_type`**: for `qrcode` turn `pay_info` into a QR code; for `jump` open `pay_info` in a browser / WebView (the cashier page carries its own QR code and payment entry). In practice the same WeChat payment comes back as `qrcode` under `method=web` and as an https cashier URL under `method=jump`, so **do not hard-code either form**."
+
+msgid "**到账只认异步回调与主动查单**：`return_url` 的页面跳转只代表用户看到了结果页，不能作为发货依据；请以 `query` 接口的 `paid` 或本站异步通知后的余额变化为准。"
+msgstr "**Payment is recognised only from the asynchronous callback and an active query**: the `return_url` redirect merely means the user saw a result page and must not be used as proof of delivery; rely on `paid` from the `query` endpoint or on the balance change that follows this site's asynchronous notification."
+
+msgid "**只扣一次**：同一订单重复回调 / 回调与查单同时命中时，本站用行锁 + 状态判断保证发货只发生一次。"
+msgstr "**Charged only once**: when the same order triggers repeated callbacks, or a callback and a query land at the same time, this site uses a row lock plus a status check to guarantee that delivery happens exactly once."
+
+msgid "**移动端无需自备二维码库**：用 `method=jump` 时返回的是普通网页地址，PC 浏览器、手机浏览器、WebView 都能直接打开。"
+msgstr "**No QR code library needed on mobile**: with `method=jump` the response is an ordinary web URL that opens directly in a desktop browser, a mobile browser or a WebView."
+
+msgid "**下单本身不消耗项目点数**（本服务单价为 0 点/次），因此余额为 0 的项目也能调用本接口给自己的项目充值。"
+msgstr "**Creating an order costs no project points** (this service is priced at 0 points per call), so a project with zero balance can still call this endpoint to top itself up."
+
+msgid "商户订单号（本站生成，查询 / 退款都用它）"
+msgstr "Merchant order number (generated by this site; used by both query and refund)"
+
+msgid "平台订单号（部分渠道下单时为空，付款后才有）"
+msgstr "Platform order number (empty for some channels at creation time and filled in after payment)"
+
+msgid "渠道标识，当前为 ezfp"
+msgstr "Channel identifier, currently ezfp"
+
+msgid "支付形态：qrcode=二维码内容 / jump=收银台地址"
+msgstr "Payment form: qrcode=QR code content / jump=cashier URL"
+
+msgid "金额（元，两位小数）"
+msgstr "Amount (yuan, two decimals)"
+
+msgid "订单状态：pending 待支付 / paid 已支付 / partial_refunded 部分退款 / refunded 已退款 / failed 下单失败 / closed 已关闭"
+msgstr "Order status: pending (awaiting payment) / paid / partial_refunded / refunded / failed (order creation failed) / closed"
+
+msgid "支付参数：pay_type=qrcode 时是二维码内容，jump 时是收银台地址"
+msgstr "Payment parameter: the QR code content when pay_type=qrcode, the cashier URL when jump"
+
+msgid "业务扩展参数，原样返回"
+msgstr "Business extension parameter, returned verbatim"
+
+msgid "按商户订单号查询订单，并把平台最新状态同步回本站（已支付会补发货）。"
+msgstr "Look an order up by merchant order number and sync the platform's latest status back to this site (a paid order is delivered at that point)."
+
+msgid "商户订单号"
+msgstr "Merchant order number"
+
+msgid "必填。下单接口返回的 out_trade_no"
+msgstr "Required. The out_trade_no returned by the create-order endpoint"
+
+msgid "只能查**本调用方自己**下的单：订单按 APPID 归属隔离，别人的单一律返回「订单不存在」。"
+msgstr "You can only look up orders **created by your own caller**: orders are isolated by APPID owner, and someone else's order always comes back as \"order not found\"."
+
+msgid "查到平台已支付且本站订单还没推进时，本接口会**当场补发货**（按后台汇率给调用项目加点数），因此「回调没收到」也能靠轮询查单兜底。"
+msgstr "When the platform shows the order as paid while this site has not yet advanced it, this endpoint **delivers on the spot** (crediting the calling project's points at the rate configured in the console), so polling the query endpoint covers the case where the callback never arrived."
+
+msgid "已下单后建议每 3～5 秒查一次，直到 `paid=true` 或超时；不必高频轮询，平台侧订单状态不会瞬间多次跳变。"
+msgstr "After creating an order, poll once every 3–5 seconds until `paid=true` or you time out; there is no need to poll faster, since the platform-side order status does not change several times in an instant."
+
+msgid "是否已支付（true 时订单已推进并发货）"
+msgstr "Whether the order is paid (when true, the order has been advanced and delivered)"
+
+msgid "订单退款"
+msgstr "Refund order"
+
+msgid "对已支付的订单发起退款；`amount` 留空表示退回剩余可退金额。"
+msgstr "Refund a paid order; leaving `amount` empty refunds the remaining refundable amount."
+
+msgid "必填。要退款的订单号"
+msgstr "Required. The order number to refund"
+
+msgid "退款金额（元）"
+msgstr "Refund amount (yuan)"
+
+msgid "留空=全额退剩余"
+msgstr "empty = refund the remaining amount"
+
+msgid "选填。不得大于可退金额（订单金额 − 已退金额）"
+msgstr "Optional. Must not exceed the refundable amount (order amount − already refunded)"
+
+msgid "只能退**本调用方自己**的订单。退款是否支持分笔、到账时长由支付平台与渠道决定，本接口只负责提交并把结果回写订单。"
+msgstr "You can only refund **your own** orders. Whether partial refunds are allowed and how long the money takes to arrive are decided by the payment platform and the channel; this endpoint only submits the request and writes the result back to the order."
+
+msgid "退款成功后本站订单状态变为 `refunded`（部分退款为 `partial_refunded`），累计退款额记在 `refund_amount`。"
+msgstr "After a successful refund the order status becomes `refunded` (or `partial_refunded` for a partial refund), and the cumulative refunded amount is recorded in `refund_amount`."
+
+msgid "⚠️ **已充进调用项目点数的订单退款，点数不会自动扣回** ——需要人工核账时请联系本站管理员。"
+msgstr "⚠️ **Refunding an order whose amount has already been credited to the calling project's points does not claw those points back automatically** — contact this site's administrator if you need it reconciled manually."
+
+msgid "累计已退款金额（元）"
+msgstr "Cumulative refunded amount (yuan)"
