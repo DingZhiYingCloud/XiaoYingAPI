@@ -105,13 +105,16 @@ UPSTREAM_TTL = int(_cfg('HJ_RELAY_UPSTREAM_TTL', '600') or 600)
 CONNECT_TIMEOUT = int(_cfg('HJ_RELAY_CONNECT_TIMEOUT', '20') or 20)
 
 # ---------------- 51代理 提取配置（与项目 .env 同名同义） ----------------
+# 路径为「不限量套餐」提取接口；2026-10-02 由旧的 /getapi2 换过来（旧路径对新套餐回
+# 「套餐类型不存在」），并新增必填参数 pid（不限量套餐 ID）。
 API_BASE = (_cfg('PROXY_51DAILI_API_BASE', 'http://bapi.51daili.com')
             or 'http://bapi.51daili.com').rstrip('/')
-API_URL = f'{API_BASE}/getapi2'
+API_URL = f'{API_BASE}/unlimitedip/getip'
 UID = _cfg('PROXY_51DAILI_UID')
 ACCESS_NAME = _cfg('PROXY_51DAILI_ACCESS_NAME')
 ACCESS_PASSWORD = _cfg('PROXY_51DAILI_ACCESS_PASSWORD')
 PACKID = _cfg('PROXY_51DAILI_PACKID')
+PID = _cfg('PROXY_51DAILI_PID')
 RID = _cfg('PROXY_51DAILI_RID')
 EXTRACT_TIMEOUT = int(_cfg('HJ_RELAY_EXTRACT_TIMEOUT', '15') or 15)
 
@@ -132,7 +135,7 @@ def fetch_upstream():
     missing = [name for name, value in (
         ('PROXY_51DAILI_UID', UID), ('PROXY_51DAILI_ACCESS_NAME', ACCESS_NAME),
         ('PROXY_51DAILI_ACCESS_PASSWORD', ACCESS_PASSWORD),
-        ('PROXY_51DAILI_PACKID', PACKID)) if not value]
+        ('PROXY_51DAILI_PACKID', PACKID), ('PROXY_51DAILI_PID', PID)) if not value]
     if missing:
         raise RuntimeError(f'51代理 凭据未配置：{", ".join(missing)}')
 
@@ -141,7 +144,8 @@ def fetch_upstream():
         'accessName': ACCESS_NAME,
         'accessPassword': ACCESS_PASSWORD,
         'packid': PACKID,
-        'time': '31',            # 稳定使用时长
+        'pid': PID,              # 不限量套餐 ID（上游必填）
+        'time': '2',             # 稳定使用时长（照抄控制台提取链接）
         'qty': '1',
         'port': '1',             # 1=HTTP/HTTPS
         'format': 'json',

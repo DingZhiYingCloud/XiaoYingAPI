@@ -1,14 +1,15 @@
 """
 51代理 爬虫 - ProxyIP51Daili
 
-从 51代理（51daili.com）「getapi2」提取接口获取国内动态代理 IP。
+从 51代理（51daili.com）「不限量套餐」提取接口 `/unlimitedip/getip` 获取国内动态代理 IP。
 
 API 文档: https://m.51daili.com/wap/api/apinote.html
     请求方式: GET
     参数说明:
         packid         套餐 ID（账号级，默认取 .env）
+        pid            不限量套餐 ID（**本接口必填**，账号级，默认取 .env）
         qty            获取 IP 数量
-        time           稳定使用时长（官方文档标注 1-6，本线路默认 31）
+        time           稳定使用时长（本线路默认 2，照抄控制台提取链接）
         port           代理协议 1=HTTP/HTTPS 2=Socks5
         format         返回格式 txt / json / html（本线路只用 json 或 txt）
         field          返回字段，英文逗号分隔（如 ipport,expiretime,regioncode,isptype）
@@ -28,9 +29,10 @@ API 文档: https://m.51daili.com/wap/api/apinote.html
     result = spider.get_proxies(qty=5)
     # 2) 取 Socks5 出口
     result = spider.get_proxies(qty=1, port="2")
-    # 3) 调用方自己的账号（uid/accessName/accessPassword/packid 必须整组传）
+    # 3) 调用方自己的账号
+    #    （uid/accessName/accessPassword/packid/pid 是账号级凭据，必须整组传）
     result = spider.get_proxies(qty=1, uid="76385", accessName="xiaoyingapi",
-                                accessPassword="xxxxxxxx", packid="2")
+                                accessPassword="xxxxxxxx", packid="2", pid="xxxxxxxx")
 """
 
 import json
@@ -40,8 +42,8 @@ import requests
 
 from .utils import (ALLOWED_FORMATS, API_URL, CRED_FIELDS, DEFAULT_ACCESS_NAME,
                     DEFAULT_ACCESS_PASSWORD, DEFAULT_FIELD, DEFAULT_FORMAT,
-                    DEFAULT_LINE_POOL_INDEX, DEFAULT_PACKID, DEFAULT_PORT,
-                    DEFAULT_QTY, DEFAULT_RID, DEFAULT_TIME, DEFAULT_UID,
+                    DEFAULT_LINE_POOL_INDEX, DEFAULT_PACKID, DEFAULT_PID,
+                    DEFAULT_PORT, DEFAULT_QTY, DEFAULT_RID, DEFAULT_TIME, DEFAULT_UID,
                     FORMAT_JSON, MAX_QTY, PROTOCOL_MAP, REQUEST_TIMEOUT, TEXT_FORMATS)
 from ..utils import get_desktop_headers, response_dict
 
@@ -56,7 +58,7 @@ _IPV4_RE = re.compile(r'^\d{1,3}(?:\.\d{1,3}){3}$')
 
 
 class ProxyIP51Daili:
-    """51代理（getapi2 提取接口）动态 IP 提取"""
+    """51代理（不限量套餐 `/unlimitedip/getip` 提取接口）动态 IP 提取"""
 
     def __init__(self):
         self.session = requests.Session()
@@ -69,13 +71,13 @@ class ProxyIP51Daili:
         :param pages: 忽略（接口无分页概念），用 qty 指定数量
         :param page_size: 忽略
         :param kwargs: 可选业务参数（未传时用平台默认）:
-            - uid / accessName / accessPassword / packid: str, 账号三件套 + 套餐 ID，
-              **整组**使用：调用方全传则用调用方的，全不传则回退 .env；
+            - uid / accessName / accessPassword / packid / pid: str, 账号三件套 + 套餐 ID
+              + 不限量套餐 ID，**整组**使用：调用方全传则用调用方的，全不传则回退 .env；
               只传其中一部分按「参数缺失」拒绝（混用两个账号的凭据没有意义）
             - rid: str, 提取链接上的标识（可选，默认取 .env）
             - qty: int, 提取数量（默认 1，最大 MAX_QTY）
             - port: str, 代理协议 1=HTTP/HTTPS 2=Socks5（默认 1）
-            - time: str, 稳定使用时长（默认 31）
+            - time: str, 稳定使用时长（默认 2）
             - format: str, 返回格式 json / txt（默认 json；html 无法解析，不接受）
             - field: str, 返回字段，英文逗号分隔（默认见 DEFAULT_FIELD）
             - linePoolIndex: str, 线路池索引（默认 -1）
@@ -96,27 +98,33 @@ class ProxyIP51Daili:
                 return response_dict(
                     code=1,
                     message='参数缺失: ' + ' / '.join(missing)
-                            + ' 未传入（uid / accessName / accessPassword / packid 必须整组传入）',
+                            + f' 未传入（{" / ".join(CRED_FIELDS)} 必须整组传入）',
                     data=dict(_EMPTY),
                 )
             uid = supplied['uid']
             access_name = supplied['accessName']
             access_password = supplied['accessPassword']
             packid = supplied['packid']
+            pid = supplied['pid']
         else:
             uid, access_name = DEFAULT_UID, DEFAULT_ACCESS_NAME
             access_password, packid = DEFAULT_ACCESS_PASSWORD, DEFAULT_PACKID
+            pid = DEFAULT_PID
 
+        # .env 变量名与参数名并非一一对应（PROXY_51DAILI_ 前缀 + 大写），逐项列出便于照着配
+        env_names = {'uid': 'PROXY_51DAILI_UID', 'accessName': 'PROXY_51DAILI_ACCESS_NAME',
+                     'accessPassword': 'PROXY_51DAILI_ACCESS_PASSWORD',
+                     'packid': 'PROXY_51DAILI_PACKID', 'pid': 'PROXY_51DAILI_PID'}
         missing = [name for name, value in (('uid', uid), ('accessName', access_name),
                                             ('accessPassword', access_password),
-                                            ('packid', packid)) if not value]
+                                            ('packid', packid), ('pid', pid)) if not value]
         if missing:
             return response_dict(
                 code=1,
                 message='凭据未配置: 缺少 ' + ' / '.join(missing)
-                        + '，请在 .env 设置 PROXY_51DAILI_UID / PROXY_51DAILI_ACCESS_NAME / '
-                          'PROXY_51DAILI_ACCESS_PASSWORD / PROXY_51DAILI_PACKID，'
-                          '或由调用方整组传入',
+                        + '，请在 .env 设置 '
+                        + ' / '.join(env_names[name] for name in CRED_FIELDS)
+                        + '，或由调用方整组传入',
                 data=dict(_EMPTY),
             )
 
@@ -152,6 +160,7 @@ class ProxyIP51Daili:
         # ── 组装请求参数 ──
         params = {
             'packid': packid,
+            'pid': pid,
             'qty': str(qty),
             'time': str(kwargs.get('time') or DEFAULT_TIME).strip(),
             'port': port,

@@ -40,18 +40,19 @@ def get_51daili_proxies_view(request):
 
     API 文档: https://m.51daili.com/wap/api/apinote.html
     参数名与官方提取链接一致，可直接照抄控制台生成的链接里的参数。
-    账号凭据（uid / accessName / accessPassword）与套餐标识（packid / rid）
-    默认由平台 .env 提供，调用方也可整套传自己的（使用自己购买的套餐）。
+    账号凭据（uid / accessName / accessPassword）与套餐标识（packid / pid）默认由平台 .env
+    提供，调用方也可整套传自己的（使用自己购买的套餐）。
 
     参数:
         uid             (选填, str): 账号 ID；不传则用平台 .env（PROXY_51DAILI_UID）
         accessName      (选填, str): 账号名；不传则用平台 .env（PROXY_51DAILI_ACCESS_NAME）
         accessPassword  (选填, str): 账号密码；不传则用平台 .env（PROXY_51DAILI_ACCESS_PASSWORD）
         packid          (选填, str): 套餐 ID；不传则用平台 .env（PROXY_51DAILI_PACKID）
+        pid             (选填, str): 不限量套餐 ID（上游必填）；不传则用平台 .env（PROXY_51DAILI_PID）
         rid             (选填, str): 提取链接上的标识；不传则用平台 .env（PROXY_51DAILI_RID）
         qty             (选填, int): 提取数量，默认 1，最大 100
         port            (选填, str): 代理协议 1=HTTP/HTTPS（默认）2=Socks5
-        time            (选填, str): 稳定使用时长，默认 31
+        time            (选填, str): 稳定使用时长，默认 2
         format          (选填, str): 返回格式 json（默认）/ txt
         field           (选填, str): 返回字段，逗号分隔，
                                      默认 ipport,expiretime,regioncode,isptype

@@ -2,7 +2,7 @@
 
 数据与 API/apis/ProxyIp/ 实际实现对齐（服务策略 /api/ProxyIp/ 默认需签名）：
 - juliang：巨量代理 IP（独享代理产品，key/sign 双模式凭据）
-- 51daili：51代理 IP（动态提取，账号三件套 + 套餐 ID 整组传参）
+- 51daili：51代理 IP（动态提取，不限量套餐接口；账号三件套 + 套餐 ID + 不限量套餐 ID 整组传参）
 """
 from .schema import (ChannelSpec, EndpointSpec, ParamSpec, ResponseFieldSpec,
                      ServiceSpec)
@@ -128,12 +128,14 @@ SERVICE = ServiceSpec(
         ChannelSpec(
             slug='51daili',
             name='51代理 IP',
-            provider='51daili.com（bapi.51daili.com getapi2，国内动态 IP）',
+            provider='51daili.com（bapi.51daili.com 不限量套餐接口，国内动态 IP）',
             auth_note='auth',
-            note='按次提取国内动态代理 IP。参数名与官方控制台生成的提取链接完全一致，可直接照抄。'
-                 '账号三件套（uid / accessName / accessPassword）与套餐标识（packid / rid）'
+            note='按次提取国内动态代理 IP，走 51代理 的**不限量套餐**提取接口。'
+                 '参数名与官方控制台生成的提取链接完全一致，可直接照抄。'
+                 '账号三件套（uid / accessName / accessPassword）与套餐标识（packid / pid）'
                  '默认由平台 .env 持有，调用方也可**整套**传自己的（使用自己购买的套餐）——'
-                 '只传其中一部分会被拒绝，因为混用两个账号的凭据没有意义。'
+                 '只传其中一部分会被拒绝，因为混用两个账号的凭据没有意义'
+                 '（`pid` 是不限量套餐 ID，缺了上游会直接回「不限量套餐id不能为空」）。'
                  '其余参数（qty / time / port / format / field / linePoolIndex）不传则用平台默认值。',
             endpoints=[
                 EndpointSpec('proxies', '获取动态代理', 'GET', '/api/ProxyIp/51daili/proxies',
@@ -146,8 +148,8 @@ SERVICE = ServiceSpec(
                                                     {'value': '1', 'label': '1=HTTP/HTTPS'},
                                                     {'value': '2', 'label': '2=Socks5'}],
                                            desc='选填'),
-                                 ParamSpec('time', '稳定使用时长', kind='text', default='31',
-                                           desc='选填：官方文档标注取值范围 1-6，本线路默认 31；'
+                                 ParamSpec('time', '稳定使用时长', kind='text', default='2',
+                                           desc='选填：本线路默认 2（照抄平台控制台生成的提取链接）；'
                                                 '实际可用时长以账号套餐为准'),
                                  ParamSpec('format', '返回格式', kind='select',
                                            options=[{'value': '', 'label': '不传（默认 json）'},
@@ -167,10 +169,13 @@ SERVICE = ServiceSpec(
                                            desc='选填：不传则用平台 .env（PROXY_51DAILI_ACCESS_PASSWORD）'),
                                  ParamSpec('packid', '套餐 ID', kind='text',
                                            desc='选填：不传则用平台 .env（PROXY_51DAILI_PACKID）'),
+                                 ParamSpec('pid', '不限量套餐 ID', kind='text',
+                                           desc='选填：本接口**必填项**（缺了上游回「不限量套餐id不能为空」）；'
+                                                '不传则用平台 .env（PROXY_51DAILI_PID）'),
                                  ParamSpec('rid', '提取标识', kind='text',
                                            desc='选填：控制台提取链接上的 rid；不传则用平台 .env（PROXY_51DAILI_RID）'),
                              ],
-                             notes=['uid / accessName / accessPassword / packid 必须**整组**传入：'
+                             notes=['uid / accessName / accessPassword / packid / pid 必须**整组**传入：'
                                     '只传一部分返回 20001，一个都不传则整组回退平台 .env。',
                                     '平台 .env 未配置凭据时返回 40001（并说明缺哪些变量）。',
                                     '⚠️ 51代理 的节点**只从中国内地网络可达**：海外服务器拿正确账密直连也是一律'

@@ -4,9 +4,10 @@
 - 每次调用创建新的爬虫实例（无状态、线程安全）
 - 统一捕获异常，返回 (success, data_or_msg) 二元组
 
-参数名沿用 51代理 官方提取链接里的写法（uid / accessName / accessPassword / packid /
+参数名沿用 51代理 官方提取链接里的写法（uid / accessName / accessPassword / packid / pid /
 rid / qty / time / port / format / field / linePoolIndex），调用方可直接照抄控制台生成的
-链接，不必做名字换算。
+链接，不必做名字换算。其中 `pid` 是不限量套餐 ID，**本接口必填**（缺了上游回
+「不限量套餐id不能为空」）。
 
 ⚠️ 数量参数是 `qty`（不是 `num`）：非白名单参数会被静默忽略、悄悄回退成 1 条，
 调用方写错名字不会报错（巨量线路才是 `num`）。
@@ -26,7 +27,7 @@ from ProxyIp.ProxyIP_51daili.home import ProxyIP51Daili
 
 # 允许传给爬虫的参数白名单（视图按本表从 query 里取值，避免拼错名字后被静默忽略、
 # 悄悄回退到平台 .env 凭据）
-PARAM_NAMES = ('uid', 'accessName', 'accessPassword', 'packid', 'rid',
+PARAM_NAMES = ('uid', 'accessName', 'accessPassword', 'packid', 'pid', 'rid',
                'qty', 'port', 'time', 'format', 'field', 'linePoolIndex')
 
 
@@ -54,8 +55,8 @@ def _attach_relay_proxy(result: dict) -> None:
 def get_51daili_proxies(params: dict) -> tuple:
     """获取 51代理动态 IP
 
-    账号级参数（uid / accessName / accessPassword / packid / rid）优先取调用方传入，
-    未传则回退平台 .env；其余参数未传则用服务层默认值。
+    账号级参数（uid / accessName / accessPassword / packid / pid）成组使用：整组传入则用
+    调用方的，整组不传则回退平台 .env（只传一部分会被拒绝）；rid 与其余参数未传则用默认值。
 
     :param params: 请求参数字典，取值键见 PARAM_NAMES
     :return: (True, dict) 或 (False, error_msg)

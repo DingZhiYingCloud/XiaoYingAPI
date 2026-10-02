@@ -310,10 +310,11 @@ python manage.py runserver 0.0.0.0:10000
 | `PROXY_JULIANG_USERNAME`      | 否  | 巨量代理：代理认证账号（与 PASSWORD 成对）                                                              |
 | `PROXY_JULIANG_PASSWORD`      | 否  | 巨量代理：代理认证密码                                                                           |
 | `PROXY_JULIANG_API_BASE`      | 否  | 巨量代理提取接口地址，留空=直连官方；巨量仅向国内 IP 提供提取服务，海外部署需指向国内中转                                         |
-| `PROXY_51DAILI_UID`           | 否  | 51代理：账号 ID（与下面四项配套，对应控制台提取链接里的 uid）                                                  |
+| `PROXY_51DAILI_UID`           | 否  | 51代理：账号 ID（与下面五项配套，对应控制台提取链接里的 uid）                                                  |
 | `PROXY_51DAILI_ACCESS_NAME`   | 否  | 51代理：账号名                                                                               |
 | `PROXY_51DAILI_ACCESS_PASSWORD` | 否 | 51代理：账号密码                                                                              |
 | `PROXY_51DAILI_PACKID`        | 否  | 51代理：套餐 ID                                                                              |
+| `PROXY_51DAILI_PID`           | 否  | 51代理：**不限量套餐 ID**（提取接口 `/unlimitedip/getip` 的必填参数，控制台提取链接里的 pid）                          |
 | `PROXY_51DAILI_RID`           | 否  | 51代理：提取链接上的标识（可选）                                                                      |
 | `PROXY_51DAILI_API_BASE`      | 否  | 51代理提取接口地址，留空=直连官方 `http://bapi.51daili.com`；51代理只向国内 IP 提供提取服务，海外部署需指向国内中转（仅平台侧可配，不下发给调用方）                          |
 | `PROXY_RELAY_URL`             | 否  | 「国内中转出口」地址（形如 `http://<国内IP>:17890`），**海角自动注册与代理 IP 服务共用**；留空则控制台 relay 出口与 51代理 的 `proxy` 字段都不可用。部署见 `scripts/hj_relay/`                        |
