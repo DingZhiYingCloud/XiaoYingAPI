@@ -14,10 +14,13 @@
    响应非 JSON 或异常时回退为 HTTP 状态码。业务 code 读取见 business_code()。
 5. **统计范围**：仅 /api/ 请求；统计服务自身不计入（避免查询统计把统计刷高）；
    不存在的路径（扫描器探测）统一归并为 UNMATCHED_PATH，不打散服务榜与接口榜。
+6. **消耗点数**：落库那一刻按**当时的生效单价**给成功调用（业务码 10000）结算出
+   `cost_points` 写进统计行，并按项目原子扣减余额 —— 改价不回填历史，累计消耗永远可对账。
+   单价解析与扣费口径见 credit_guard.py；失败调用记 0 点、不扣费。
 
 对外接口：
     record(path, cost_ms, status_code, app_id)  - 记录一次调用（缓冲区累加，必要时触发落库）
-    flush()                                     - 立即把缓冲写入数据库
+    flush()                                     - 立即把缓冲写入数据库（含结算消耗点数与扣费）
     purge_app(app_id)                           - 清掉某项目在统计表里的行（删除项目时调用）
     service_of(path)                            - 由路径解析服务前缀
     request_path(request) / canonical_path(p)   - 由请求 / 历史路径解析规范统计路径
@@ -30,6 +33,7 @@ import re
 import threading
 import time
 from collections import defaultdict
+from decimal import Decimal
 
 from django.db import IntegrityError
 from django.db.models import F, Value
@@ -37,6 +41,7 @@ from django.db.models.functions import Greatest
 from django.urls import Resolver404, resolve
 from django.utils import timezone
 
+from API.common.status_code import StatusCode
 from API.models.Statistics.api_call_stat import NO_APP, ApiCallStat, ApiCallStatHour
 
 logger = logging.getLogger('api.stats')
@@ -68,6 +73,8 @@ _hour_buffer = defaultdict(lambda: [0, 0, 0])
 _lock = threading.Lock()
 _last_flush = time.monotonic()
 _flush_thread = None
+# 唤醒事件：请求线程只负责「置位」，真正的写库由后台刷新线程做（见 record 的说明）
+_wake = threading.Event()
 
 # 路径参数占位符（如 <uuid:music_id>、<id>）统一归一为该标记，避免同一接口按不同 ID 拆成多行
 PARAM_PLACEHOLDER = '<param>'
@@ -181,7 +188,9 @@ def record(path, cost_ms, status_code, app_id=NO_APP):
                or len(_hour_buffer) >= FLUSH_THRESHOLD
                or (time.monotonic() - _last_flush) >= FLUSH_INTERVAL_SECONDS)
     if due:
-        flush()
+        # 只唤醒后台刷新线程，**不在这里同步写库**：写库要抢 SQLite 单写锁（最长等 20 秒），
+        # 落在请求线程上会给客户端凭空加一段延迟；而且这批已经出缓冲，写失败还会整批丢。
+        _wake.set()
 
 
 def _bump(item, cost):
@@ -193,7 +202,14 @@ def _bump(item, cost):
 
 
 def flush():
-    """把两个粒度的缓冲都写入数据库（各自独立处理，互不影响）"""
+    """把两个粒度的缓冲都写入数据库（各自独立处理，互不影响）
+
+    落库前先按**当时的生效单价**给成功调用算出消耗点数（`_with_points`），写进统计行的
+    `cost_points` 列；按天表写成功后顺带按这批点数扣减项目余额（见
+    API/common/credit_guard.py 的 charge）。扣费与统计**同源同一批**，保证
+    「余额 = Σ充值 - 统计里的累计消耗」两边始终能对上。
+    统计写失败时不扣费 —— 宁可少收，不可凭空计费。
+    """
     global _last_flush
     with _lock:
         day_batch = list(_buffer.items())
@@ -201,8 +217,51 @@ def flush():
         hour_batch = list(_hour_buffer.items())
         _hour_buffer.clear()
         _last_flush = time.monotonic()
-    _flush_one(ApiCallStat, _DAY_KEY_FIELDS, day_batch, '按天')
-    _flush_one(ApiCallStatHour, _HOUR_KEY_FIELDS, hour_batch, '按小时')
+    day_items = _with_points(day_batch, _DAY_KEY_FIELDS)
+    hour_items = _with_points(hour_batch, _HOUR_KEY_FIELDS)
+    day_ok = _flush_one(ApiCallStat, _DAY_KEY_FIELDS, day_items, '按天')
+    _flush_one(ApiCallStatHour, _HOUR_KEY_FIELDS, hour_items, '按小时')
+    if day_ok:
+        try:
+            _charge(day_items, _DAY_KEY_FIELDS)
+        except Exception:
+            # 扣费失败不能影响统计（统计已落库）；少扣一点可事后核账
+            logger.exception('额度扣减失败，本批成功调用未计费（%d 个聚合键）', len(day_items))
+
+
+def _with_points(batch, key_fields):
+    """给批次里每个聚合键算出「消耗点数」（只对成功调用按当时生效单价结算）
+
+    :return: [(key, (count, cost_sum, cost_max), points), ...]
+    """
+    from API.common.credit_guard import resolve_price
+
+    i_path = key_fields.index('path')
+    i_status = key_fields.index('status_code')
+    items = []
+    for key, values in batch:
+        points = Decimal('0')
+        if key[i_status] == StatusCode.SUCCESS:
+            try:
+                points = resolve_price(key[i_path]) * values[0]
+            except Exception:
+                logger.exception('单价解析失败，本键不扣费: path=%s', key[i_path])
+        items.append((key, values, points))
+    return items
+
+
+def _charge(items, key_fields):
+    """按项目汇总这批消耗点数并原子扣减余额"""
+    from API.common.credit_guard import charge
+
+    i_app = key_fields.index('app_id')
+    totals = {}
+    for key, _values, points in items:
+        app_id = key[i_app]
+        if points <= 0 or not app_id or app_id == NO_APP:
+            continue
+        totals[app_id] = totals.get(app_id, Decimal('0')) + points
+    return charge(totals) if totals else 0
 
 
 def purge_app(app_id, retries=1, wait_seconds=0):
@@ -228,14 +287,19 @@ def purge_app(app_id, retries=1, wait_seconds=0):
     return total
 
 
-def _flush_one(model, key_fields, batch, label):
-    """写一批聚合数据；失败只记日志丢弃（统计失败绝不冒泡到业务请求）"""
-    if not batch:
-        return
+def _flush_one(model, key_fields, items, label):
+    """写一批聚合数据；失败只记日志丢弃（统计失败绝不冒泡到业务请求）
+
+    :return: True=写入成功（调用方可据此决定是否做后续动作，如扣费）
+    """
+    if not items:
+        return True
     try:
-        _write_batch(model, key_fields, batch)
+        _write_batch(model, key_fields, items)
+        return True
     except Exception:
-        logger.exception('API 调用统计（%s）写入失败，本批 %d 个聚合键被丢弃', label, len(batch))
+        logger.exception('API 调用统计（%s）写入失败，本批 %d 个聚合键被丢弃', label, len(items))
+        return False
 
 
 def _lookup(key_fields, key):
@@ -243,52 +307,68 @@ def _lookup(key_fields, key):
     return dict(zip(key_fields, key))
 
 
-def _accumulate(model, lookup, count, cost_sum, cost_max, now):
+def _accumulate(model, lookup, count, cost_sum, cost_max, points, now):
     """按聚合维度累加更新一行，返回受影响行数（0 表示该行还不存在）"""
     return model.objects.filter(**lookup).update(
         call_count=F('call_count') + count,
         cost_sum_ms=F('cost_sum_ms') + cost_sum,
         cost_max_ms=Greatest(F('cost_max_ms'), Value(cost_max)),
+        cost_points=F('cost_points') + points,
         updated_time=now,
     )
 
 
-def _write_batch(model, key_fields, batch):
-    """逐键写库：已存在则累加，不存在则新建"""
+def _write_batch(model, key_fields, items):
+    """逐键写库：已存在则累加，不存在则新建
+
+    :param items: [(key, (count, cost_sum, cost_max), points), ...]
+    """
     now = timezone.now()
-    for key, (count, cost_sum, cost_max) in batch:
+    for key, (count, cost_sum, cost_max), points in items:
         lookup = _lookup(key_fields, key)
-        if _accumulate(model, lookup, count, cost_sum, cost_max, now):
+        if _accumulate(model, lookup, count, cost_sum, cost_max, points, now):
             continue
         try:
             model.objects.create(
                 **lookup, service=service_of(lookup['path']),
                 call_count=count, cost_sum_ms=cost_sum, cost_max_ms=cost_max,
+                cost_points=points,
             )
         except IntegrityError:
             # 并发下已由其它进程插入同一聚合键：退化为累加更新
-            _accumulate(model, lookup, count, cost_sum, cost_max, now)
+            _accumulate(model, lookup, count, cost_sum, cost_max, points, now)
 
 
 def _flush_loop():
-    """后台定时刷新线程（守护线程，随进程退出）"""
+    """后台定时刷新线程（守护线程，随进程退出）
+
+    - 到点或被 record() 唤醒即刷一次（请求线程不再同步写库）；
+    - **循环体必须整体兜住异常**：这是唯一负责落库的地方，一旦异常逃逸线程就死了，
+      缓冲会一直涨且永不落库，而且只影响单个 worker，非常隐蔽。
+    """
     from django.db import connection
     while True:
-        time.sleep(FLUSH_INTERVAL_SECONDS)
+        _wake.wait(FLUSH_INTERVAL_SECONDS)   # 到点或被唤醒
+        _wake.clear()
         try:
             flush()
+        except Exception:
+            logger.exception('API 调用统计刷新失败，本轮跳过（缓冲保留，下轮重试）')
         finally:
-            # 后台线程用完即关连接，避免在非请求线程上长期占用数据库连接
-            connection.close()
+            try:
+                # 后台线程用完即关连接，避免在非请求线程上长期占用数据库连接
+                connection.close()
+            except Exception:
+                logger.exception('API 调用统计刷新线程关闭连接失败')
 
 
 def _ensure_flush_thread():
-    """首次记录时惰性启动后台刷新线程（仅启动一次）"""
+    """首次记录时惰性启动后台刷新线程（线程若已意外退出则重新拉起）"""
     global _flush_thread
-    if _flush_thread is not None:
+    if _flush_thread is not None and _flush_thread.is_alive():
         return
     with _lock:
-        if _flush_thread is not None:
+        if _flush_thread is not None and _flush_thread.is_alive():
             return
         _flush_thread = threading.Thread(target=_flush_loop, name='api-stats-flush', daemon=True)
         _flush_thread.start()

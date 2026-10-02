@@ -1,6 +1,6 @@
 from django.apps import AppConfig, apps
 from django.db.backends.signals import connection_created
-from django.db.models.signals import m2m_changed, post_delete, post_save
+from django.db.models.signals import post_delete, post_save
 
 
 def _configure_sqlite(sender, connection, **kwargs):
@@ -29,8 +29,8 @@ class ApiConfig(AppConfig):
     verbose_name = 'API服务'
 
     def ready(self):
-        # 服务策略查询缓存失效钩子：后台保存 / 删除 ApiServicePolicy、
-        # 或改动白名单项目（M2M 变更走 m2m_changed）后立即失效，改动即时生效、无需等 TTL
+        # 服务策略查询缓存失效钩子：后台保存 / 删除 ApiServicePolicy 后立即失效，
+        # 改动即时生效、无需等 TTL
         from API.common.middleware import invalidate_api_service_policy_cache
         from API.models.Auth.policy import ApiServicePolicy
 
@@ -39,8 +39,16 @@ class ApiConfig(AppConfig):
 
         post_save.connect(_invalidate_policy_cache, sender=ApiServicePolicy, weak=False)
         post_delete.connect(_invalidate_policy_cache, sender=ApiServicePolicy, weak=False)
-        m2m_changed.connect(_invalidate_policy_cache,
-                            sender=ApiServicePolicy.apps.through, weak=False)
+
+        # 调用单价缓存失效钩子：「线路价格」页保存 / 删除 ApiPricePolicy 后立即失效
+        from API.common.credit_guard import invalidate_api_price_cache
+        from API.models.Credit.price import ApiPricePolicy
+
+        def _invalidate_price_cache(sender, instance, **kwargs):
+            invalidate_api_price_cache()
+
+        post_save.connect(_invalidate_price_cache, sender=ApiPricePolicy, weak=False)
+        post_delete.connect(_invalidate_price_cache, sender=ApiPricePolicy, weak=False)
 
         # AI 模型清单缓存失效钩子：后台保存 / 删除厂商、模型或系统提示词后立即失效，
         # 文档页下拉与 /api/ai/BuiltInModel/models 立刻反映改动，无需等 TTL
@@ -64,6 +72,22 @@ class ApiConfig(AppConfig):
 
         if is_serving_process():
             start_review_worker()
+
+        # 服务余量巡检线程：同样只在「对外提供服务」的进程里启动，定期取各上游服务账号的
+        # 余量、低于阈值时发邮件；多 worker 靠行级抢占保证同一轮告警只发一封
+        # （见 API/apis/quota/utils.py）
+        from API.apis.quota.utils import start_worker as start_quota_worker
+
+        if is_serving_process():
+            start_quota_worker()
+
+        # 上游故障告警巡检线程：按服务统计上游调用失败率（业务码 4xxxx），超阈值发邮件；
+        # 与余量线程分开跑（间隔不同：故障要更灵敏），多 worker 靠行级抢占保证只发一封
+        # （见 API/apis/monitor/utils.py）
+        from API.apis.monitor.utils import start_worker as start_monitor_worker
+
+        if is_serving_process():
+            start_monitor_worker()
 
         # collectstatic：把「前端编译源码与工具」排除在收集之外 —— 它们只服务编译期，不是运行时资源：
         #   - css/input.css 第 1 行的 @import "tailwindcss" 会被 Manifest 存储当成待解析的 URL，直接报错；

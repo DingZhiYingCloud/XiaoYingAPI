@@ -1,0 +1,97 @@
+{% extends 'template.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "我的项目 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "我的项目,接入项目,APPID,APPSECRET,额度余额" %}{% endblock %}
+{% block description %}{% trans "小影API 我的项目：自助创建接入项目、查看 APPID 与 APPSECRET、查看额度余额。" %}{% endblock %}
+
+{% block content %}
+<section class="mx-auto w-full max-w-5xl px-4 py-8 sm:py-10">
+  <nav class="breadcrumbs text-sm">
+    <ul>
+      <li><a href="/">{% trans "首页" %}</a></li>
+      <li>{% trans "我的项目" %}</li>
+    </ul>
+  </nav>
+
+  <div class="mt-2">
+    <h1 class="text-2xl font-bold sm:text-3xl">{% trans "我的项目" %}</h1>
+    <p class="mt-1 text-sm text-base-content/70">
+      {% trans "这里是你名下接入项目的 APPID / APPSECRET 与额度余额。签名规则见" %}
+      <a class="link" href="/guide/">{% trans "接入向导" %}</a>{% trans "。" %}
+    </p>
+  </div>
+
+  {% if messages %}
+  <div class="mt-5 flex flex-col gap-2">
+    {% for message in messages %}
+    <div role="alert" class="alert py-2 text-sm {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-error{% elif message.tags == 'warning' %}alert-warning{% else %}alert-info{% endif %}">
+      <span>{{ message }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <form method="post" action="{% url 'website:my_projects' %}"
+        class="mt-6 flex flex-wrap items-end gap-3 rounded-box border border-base-300 bg-base-100 p-4">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="create" />
+    <label class="grid min-w-56 flex-1 gap-1">
+      <span class="text-sm font-semibold">{% trans "新建项目" %}</span>
+      <input type="text" name="name" maxlength="100" required
+             class="input input-bordered w-full"
+             placeholder="{% trans '应用名称（全局唯一）' %}" />
+    </label>
+    <button type="submit" class="btn btn-primary">
+      <i data-lucide="plus" class="h-4 w-4"></i>{% trans "创建项目" %}
+    </button>
+  </form>
+
+  {% if apps %}
+  <div class="mt-5 overflow-x-auto rounded-box border border-base-300 bg-base-100">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th class="whitespace-nowrap">{% trans "项目" %}</th>
+          <th class="whitespace-nowrap">{% trans "APPID" %}</th>
+          <th class="whitespace-nowrap">{% trans "额度余额" %}</th>
+          <th class="whitespace-nowrap">{% trans "状态" %}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for app in apps %}
+        <tr>
+          <td class="whitespace-nowrap font-medium">{{ app.name }}</td>
+          <td><code class="font-mono text-xs">{{ app.app_id }}</code></td>
+          <td>
+            <span class="font-mono text-sm {% if app.balance <= 0 %}text-error{% endif %}">{{ app.balance }}</span>
+            <span class="text-xs text-base-content/60">{% trans "点" %}</span>
+          </td>
+          <td class="whitespace-nowrap">
+            {% if app.status %}
+            <span class="badge badge-soft badge-success badge-sm">{% trans "启用" %}</span>
+            {% else %}
+            <span class="badge badge-soft badge-ghost badge-sm">{% trans "已停用" %}</span>
+            {% endif %}
+          </td>
+          <td class="whitespace-nowrap">
+            <a href="{% url 'website:my_project_detail' app.pk %}" class="btn btn-ghost btn-xs">
+              {% trans "详情" %}
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="mt-2 text-xs text-base-content/60">
+    {% trans "额度为 0 或负数时接口无法调用（开放接口除外），需联系管理员充值。停用或删除项目也请联系管理员。" %}
+  </p>
+  {% else %}
+  <div class="mt-5 rounded-box border border-dashed border-base-300 p-10 text-center">
+    <p class="text-sm text-base-content/60">{% trans "你还没有接入项目，用上面的表单创建第一个。" %}</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

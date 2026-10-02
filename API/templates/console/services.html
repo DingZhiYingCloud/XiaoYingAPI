@@ -2,7 +2,7 @@
 {% load i18n static %}
 
 {% block title %}{% trans "服务策略 - 超级管理员 - 小影API" %}{% endblock %}
-{% block keywords %}{% trans "超级管理员,服务策略,状态,认证模式,项目白名单,三级继承" %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,服务策略,状态,认证模式,三级继承" %}{% endblock %}
 {% block description %}{% trans "小影API 超级管理员：按服务 / 线路 / 端点三级配置认证模式与对外状态，逐级继承。" %}{% endblock %}
 
 {% block console_content %}
@@ -15,13 +15,10 @@
   <div role="alert" class="alert alert-soft bg-base-200 mt-4 items-start py-3 text-sm">
     <div class="space-y-1">
       <p>
-        {% trans "逐级继承：服务 → 线路 → 端点，每一级都可单独设状态 / 认证模式 / 项目范围 / 文档可见性 / 使用范围；设为「跟随上级」则向上一级取，最终兜底为「正常 + 需要签名 + 不限项目 + 文档展示 + 正常」。" %}
+        {% trans "逐级继承：服务 → 线路 → 端点，每一级都可单独设状态 / 认证模式 / 文档可见性 / 使用范围；设为「跟随上级」则向上一级取，最终兜底为「正常 + 需要签名 + 文档展示 + 正常」。" %}
       </p>
       <p class="text-xs opacity-80">
         {% trans "状态拦截：只有生效状态为「正常」的接口可被调用。「开发中」返回 30006、「维护中」返回 30004、「已下线」返回 30005，命中即拦截且不做签名校验（匿名同样收到）。想让接口可调用，把生效状态配成「正常」。" %}
-      </p>
-      <p class="text-xs opacity-80">
-        {% trans "项目白名单：仅在生效认证模式为「需要签名」时生效——签名通过后若当前项目不在名单内，返回 20020「无权限」；开放模式不校验签名，拿不到调用项目。" %}
       </p>
       <p class="text-xs opacity-80">
         {% trans "文档可见性：生效值「文档隐藏」的路径不会出现在官网文档中心与在线调试中（后台内部接口用）。" %}
@@ -79,7 +76,6 @@
           <th class="whitespace-nowrap">{% trans "状态" %}</th>
           <th class="whitespace-nowrap">{% trans "认证模式" %}</th>
           <th class="whitespace-nowrap">{% trans "生效结果" %}</th>
-          <th class="whitespace-nowrap">{% trans "项目范围" %}</th>
           <th class="whitespace-nowrap">{% trans "文档 / 使用范围" %}</th>
           <th class="whitespace-nowrap text-right">{% trans "操作" %}</th>
         </tr>
@@ -114,16 +110,6 @@
             {% endif %}
           </td>
           <td class="whitespace-nowrap text-sm">
-            {% if policy.app_scope == 'whitelist' %}
-            <span class="badge badge-soft badge-info badge-sm">{% trans "仅白名单项目" %}</span>
-            <span class="ml-1 text-xs text-base-content/60">{% blocktrans with n=policy.whitelist_count %}{{ n }} 个项目{% endblocktrans %}</span>
-            {% elif policy.app_scope == 'all' %}
-            <span class="text-sm">{% trans "不限项目" %}</span>
-            {% else %}
-            <span class="text-xs text-base-content/60">{% trans "跟随上级" %}{% if policy.effective_scope == 'whitelist' %}（{% trans "生效：仅白名单项目" %}）{% endif %}</span>
-            {% endif %}
-          </td>
-          <td class="whitespace-nowrap text-sm">
             {% if policy.docs_visible == 'hidden' %}
             <span class="badge badge-soft badge-ghost badge-sm">{% trans "文档隐藏" %}</span>
             {% elif policy.docs_visible == 'visible' %}
@@ -145,9 +131,9 @@
               <button type="button" class="btn btn-xs btn-ghost" data-edit-policy
                       data-id="{{ policy.id }}" data-name="{{ policy.name }}"
                       data-prefixes="{{ policy.path_prefixes|join:',' }}" data-status="{{ policy.status }}"
-                      data-mode="{{ policy.auth_mode }}" data-scope="{{ policy.app_scope }}"
+                      data-mode="{{ policy.auth_mode }}"
                       data-docs-visible="{{ policy.docs_visible }}" data-audience="{{ policy.audience }}"
-                      data-remark="{{ policy.remark }}" data-apps="{{ policy.app_ids|join:',' }}">{% trans "编辑" %}</button>
+                      data-remark="{{ policy.remark }}">{% trans "编辑" %}</button>
               <form method="post" action="{% url 'website:console_services' %}">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="toggle" />
@@ -425,77 +411,6 @@
     endpointSelect(form).addEventListener('change', updatePreview);
   }
 
-  /* ---------- 白名单项目：按需展开 + 搜索 + 全选/清空 + 已选计数 ---------- */
-  function appsPanel(form) { return form.querySelector('[data-apps-panel]'); }
-  function appsItems(form) {
-    return Array.prototype.slice.call(form.querySelectorAll('[data-app-item]'));
-  }
-
-  function refreshAppsCount(form) {
-    var el = form.querySelector('[data-apps-count]');
-    if (!el) return;
-    var n = appsItems(form).filter(function (item) {
-      var box = item.querySelector('[name=apps]');
-      return box && box.checked;
-    }).length;
-    el.textContent = n ? interpolate(gettext('已选 %(n)s 个'), { n: n }, true) : gettext('未选');
-  }
-
-  /* 选「仅白名单项目」时自动展开（不强制收起，避免打断手动开合） */
-  function syncAppsPanel(form) {
-    var scope = form.querySelector('[data-app-scope]');
-    var panel = appsPanel(form);
-    if (panel && scope && scope.value === 'whitelist') panel.open = true;
-    refreshAppsCount(form);
-  }
-
-  function filterApps(form) {
-    var box = form.querySelector('[data-apps-search]');
-    var q = (box ? box.value : '').trim().toLowerCase();
-    var shown = 0;
-    appsItems(form).forEach(function (item) {
-      var hit = !q || (item.getAttribute('data-app-item') || '').toLowerCase().indexOf(q) !== -1;
-      item.hidden = !hit;
-      if (hit) shown += 1;
-    });
-    var empty = form.querySelector('[data-apps-empty]');
-    if (empty) empty.hidden = shown !== 0;
-  }
-
-  function setAppsAll(form, checked) {
-    appsItems(form).forEach(function (item) {
-      if (item.hidden) return;   // 只作用于当前搜索结果，便于「筛一批再全选」
-      var box = item.querySelector('[name=apps]');
-      if (box) box.checked = checked;
-    });
-    refreshAppsCount(form);
-  }
-
-  function bindAppsPanel(form) {
-    if (!form || !appsPanel(form)) return;
-    var scope = form.querySelector('[data-app-scope]');
-    if (scope) scope.addEventListener('change', function () { syncAppsPanel(form); });
-    form.addEventListener('change', function (e) {
-      if (e.target && e.target.name === 'apps') refreshAppsCount(form);
-    });
-    var search = form.querySelector('[data-apps-search]');
-    if (search) search.addEventListener('input', function () { filterApps(form); });
-    var all = form.querySelector('[data-apps-all]');
-    if (all) all.addEventListener('click', function () { setAppsAll(form, true); });
-    var none = form.querySelector('[data-apps-none]');
-    if (none) none.addEventListener('click', function () { setAppsAll(form, false); });
-  }
-
-  /* 每次打开弹窗前把白名单区恢复到干净状态（清搜索、按范围决定是否展开） */
-  function resetAppsPanel(form) {
-    var search = form.querySelector('[data-apps-search]');
-    if (search) search.value = '';
-    filterApps(form);
-    var panel = appsPanel(form);
-    if (panel) panel.open = false;
-    syncAppsPanel(form);
-  }
-
   /* 反查一组 path_prefix 对应的三级选择（线路可能多条） */
   function locate(prefixes) {
     var svc = findService(prefixes[0]);
@@ -516,12 +431,10 @@
 
   var createForm = document.getElementById('service_create_form');
   initForm(createForm);
-  bindAppsPanel(createForm);
 
   document.querySelectorAll('[data-open-create]').forEach(function (btn) {
     btn.addEventListener('click', function () {
       createForm.reset();
-      resetAppsPanel(createForm);
       document.getElementById('service_create_modal').showModal();
     });
   });
@@ -534,7 +447,6 @@
 
   var editForm = document.getElementById('service_edit_form');
   initForm(editForm);
-  bindAppsPanel(editForm);
   document.querySelectorAll('[data-edit-policy]').forEach(function (btn) {
     btn.addEventListener('click', function () {
       if (!editForm) return;
@@ -546,7 +458,6 @@
       set('name', btn.dataset.name);
       set('status', btn.dataset.status);
       set('auth_mode', btn.dataset.mode);
-      set('app_scope', btn.dataset.scope);
       set('docs_visible', btn.dataset.docsVisible);
       set('audience', btn.dataset.audience);
       set('remark', btn.dataset.remark || '');
@@ -556,11 +467,6 @@
       fillChannels(editForm, loc.service, loc.channels);
       fillEndpoints(editForm, loc.channels.length === 1 ? loc.channels[0] : '', loc.endpoint);
       updatePreview(editForm);
-      var apps = (btn.dataset.apps || '').split(',').filter(Boolean);
-      editForm.querySelectorAll('[name=apps]').forEach(function (box) {
-        box.checked = apps.indexOf(box.value) !== -1;
-      });
-      resetAppsPanel(editForm);
       document.getElementById('service_edit_modal').showModal();
     });
   });

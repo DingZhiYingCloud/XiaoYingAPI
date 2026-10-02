@@ -21,6 +21,7 @@
 from datetime import timedelta
 import datetime
 import threading
+import time
 from contextlib import contextmanager
 
 from django.db import connection
@@ -43,8 +44,13 @@ STALE_COUNTER_HOURS = 6
 
 _TS_FMT = '%Y-%m-%d %H:%M:%S.%f'
 
+# 过期行清理的节流间隔（秒）：见 _purge_guard_rows 的说明
+PURGE_INTERVAL_SECONDS = 60
+
 _ensure_lock = threading.Lock()
 _created = False
+_purge_lock = threading.Lock()
+_last_purge = 0.0
 
 
 def _now_str() -> str:
@@ -107,18 +113,39 @@ def _ensure_tables():
                     PRIMARY KEY (app_id, nonce)
                 )
             """)
+            # 清理语句的过滤列必须走索引：这两张表是原生表、演进不了迁移，索引只能在这里建
+            # （幂等）。没有索引时每次清理都是全表扫描，表越大越慢。
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_login_guard_lock_until "
+                        "ON api_login_guard(lock_until)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_login_guard_update_time "
+                        "ON api_login_guard(update_time)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_api_nonce_ts ON api_nonce(ts)")
         _created = True
 
 
 def _purge_guard_rows():
-    """清理：已过期锁 / 过期计数 / 过期 nonce（每次操作顺带执行，控制表体积）"""
-    now = _now_str()
-    stale = (timezone.now() - timedelta(hours=STALE_COUNTER_HOURS)).strftime(_TS_FMT)
-    old_nonce = (timezone.now() - timedelta(seconds=NONCE_WINDOW_SECONDS)).strftime(_TS_FMT)
-    with _raw_cursor() as cur:
-        cur.execute("DELETE FROM api_login_guard WHERE lock_until IS NOT NULL AND lock_until <= ?", [now])
-        cur.execute("DELETE FROM api_login_guard WHERE lock_until IS NULL AND update_time < ?", [stale])
-        cur.execute("DELETE FROM api_nonce WHERE ts < ?", [old_nonce])
+    """清理：已过期锁 / 过期计数 / 过期 nonce（按时间节流，避免每个请求都写库）
+
+    这三个 DELETE 原来是「每次验签顺带执行」，于是**每个需签名的 API 请求都会写一次库**，
+    与统计落库、批量导入等写方抢 SQLite 的单写锁（最长等 20 秒，等不到就 database is locked）。
+    改为每 PURGE_INTERVAL_SECONDS 秒最多清一次：过期行多留一会儿无影响 ——
+    锁定与判重都以**时间比较**为准，不依赖行是否已被删掉。
+    """
+    global _last_purge
+    if time.monotonic() - _last_purge < PURGE_INTERVAL_SECONDS:
+        return
+    with _purge_lock:
+        # 双检：并发请求只放一个进来真正执行
+        if time.monotonic() - _last_purge < PURGE_INTERVAL_SECONDS:
+            return
+        _last_purge = time.monotonic()
+        now = _now_str()
+        stale = (timezone.now() - timedelta(hours=STALE_COUNTER_HOURS)).strftime(_TS_FMT)
+        old_nonce = (timezone.now() - timedelta(seconds=NONCE_WINDOW_SECONDS)).strftime(_TS_FMT)
+        with _raw_cursor() as cur:
+            cur.execute("DELETE FROM api_login_guard WHERE lock_until IS NOT NULL AND lock_until <= ?", [now])
+            cur.execute("DELETE FROM api_login_guard WHERE lock_until IS NULL AND update_time < ?", [stale])
+            cur.execute("DELETE FROM api_nonce WHERE ts < ?", [old_nonce])
 
 
 # ==================== S-03：登录失败锁定 ====================

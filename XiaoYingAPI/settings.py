@@ -353,6 +353,9 @@ EMAIL_USE_SSL = True                # 启用SSL加密传输
 EMAIL_HOST_USER = os.getenv('QQ_MAIL_ACCOUNT', '')        # 发件邮箱账号
 EMAIL_HOST_PASSWORD = os.getenv('QQ_MAIL_AUTH_CODE', '')  # 发件邮箱授权码
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER  # 默认发件人地址(与发件账号一致)
+# SMTP 超时（秒）：不设的话底层 socket **没有超时**，SMTP 服务器半挂/不可达时，
+# 发信会一直卡在请求线程里占住 uwsgi worker（注册 / 登录 / 重置密码都走发信）。
+EMAIL_TIMEOUT = 10
 
 
 # ==================== 邮箱验证/登录配置 ====================

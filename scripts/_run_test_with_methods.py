@@ -5,7 +5,7 @@
 
 用法：
     .venv\\Scripts\\python.exe scripts\\_run_test_with_methods.py [模块名]
-    默认模块名为 test_auth_methods；也可传入 test_email_register 等依赖验证方式的测试模块
+    默认模块名为 test_auth_methods；其它依赖邮箱/手机号验证方式的测试模块也可按名传入
 """
 import importlib
 import os

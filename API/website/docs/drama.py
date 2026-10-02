@@ -9,7 +9,7 @@
 """
 from API.apis.dramas.hongguo.utils import CATEGORY_OPTIONS, DEFAULT_QUALITY, QUALITY_WIDTHS
 
-from .schema import ChannelSpec, EndpointSpec, ParamSpec, ServiceSpec
+from .schema import ChannelSpec, EndpointSpec, ParamSpec, ResponseFieldSpec, ServiceSpec
 
 # 出流画质档位直接取后端白名单，避免「文档里能选、接口却报参数非法」——
 # 真实可选值只有一个来源（API/apis/dramas/hongguo/utils.py 的 QUALITY_WIDTHS）。
@@ -69,7 +69,32 @@ SERVICE = ServiceSpec(
                                            desc='可选：页码，从 1 开始，默认 1。'),
                              ],
                              notes=['榜单类型非法时返回 PARAM_VALUE_INVALID。',
-                                    '返回 data 为榜单剧集列表（字段与「分类列表」接口一致）。']),
+                                    '返回 data 为榜单剧集列表（字段与「分类列表」接口一致）。'],
+                             response_fields=[
+                                 ResponseFieldSpec('type', 'string', '榜单类型（回带入参）'),
+                                 ResponseFieldSpec('page', 'int', '当前页码'),
+                                 ResponseFieldSpec('total_page', 'int', '总页数'),
+                                 ResponseFieldSpec('results', 'array', '榜单剧集列表'),
+                                 ResponseFieldSpec('results[].rank', 'int', '排名'),
+                                 ResponseFieldSpec('results[].series_id', 'string', '剧集 ID（传给详情/播放接口）'),
+                                 ResponseFieldSpec('results[].name', 'string', '剧名'),
+                                 ResponseFieldSpec('results[].cover', 'string', '封面图地址'),
+                                 ResponseFieldSpec('results[].url', 'string', '详情页地址'),
+                                 ResponseFieldSpec('results[].heat', 'string', '热度（无则 null）'),
+                                 ResponseFieldSpec('results[].score', 'string', '评分（无则 null）'),
+                                 ResponseFieldSpec('results[].favorite', 'string', '收藏数（无则 null）'),
+                                 ResponseFieldSpec('results[].like', 'string', '点赞数（无则 null）'),
+                                 ResponseFieldSpec('results[].tags', 'array', '题材标签'),
+                                 ResponseFieldSpec('results[].intro', 'string', '剧情简介'),
+                             ],
+                             response_example="""{
+  "type": "hot-drama",
+  "page": 1,
+  "total_page": 3,
+  "results": [
+    {"rank": 1, "series_id": "7686894628578020414", "name": "示例短剧", "cover": "https://img.example.com/1.jpg", "url": "https://www.hongguoduanju.com/detail/7686894628578020414", "heat": "1234", "score": "9.2", "favorite": "120", "like": "56", "tags": ["逆袭", "甜宠"], "intro": ""}
+  ]
+}"""),
                 EndpointSpec('categories', '分类清单', 'GET',
                              '/api/dramas/hongguo/categories',
                              summary='获取分类树（一级 -> 二级题材）。',
@@ -77,7 +102,24 @@ SERVICE = ServiceSpec(
                                     '二级是题材（爱情 / 年代 / 逆袭 …）。',
                                     '每个节点的 slug 都可直接传给「分类列表」接口的 category：'
                                     '一级取该一级全部，二级只取该题材（形如 real-drama/romance）；'
-                                    '无二级的一级（漫画）children 为空数组。']),
+                                    '无二级的一级（漫画）children 为空数组。'],
+                             response_fields=[
+                                 ResponseFieldSpec('categories', 'array', '分类树（一级）'),
+                                 ResponseFieldSpec('categories[].slug', 'string', '一级分类标识（传给列表接口 category）'),
+                                 ResponseFieldSpec('categories[].name', 'string', '一级分类名称'),
+                                 ResponseFieldSpec('categories[].url', 'string', '分类页地址'),
+                                 ResponseFieldSpec('categories[].children', 'array', '二级题材（无则为空数组）'),
+                                 ResponseFieldSpec('categories[].children[].slug', 'string', '二级标识（一级/二级形式）'),
+                                 ResponseFieldSpec('categories[].children[].name', 'string', '二级题材名称'),
+                                 ResponseFieldSpec('categories[].children[].url', 'string', '分类页地址'),
+                             ],
+                             response_example="""{
+  "categories": [
+    {"slug": "real-drama", "name": "真人剧", "url": "https://www.hongguoduanju.com/category/real-drama", "children": [
+      {"slug": "real-drama/romance", "name": "爱情", "url": "https://www.hongguoduanju.com/category/real-drama/romance"}
+    ]}
+  ]
+}"""),
                 EndpointSpec('list', '分类列表', 'GET',
                              '/api/dramas/hongguo/list',
                              summary='按分类获取短剧列表，支持分页。',
@@ -91,7 +133,34 @@ SERVICE = ServiceSpec(
                                            placeholder='1',
                                            desc='可选：页码，从 1 开始，默认 1。'),
                              ],
-                             notes=['category 缺失或非法时返回 PARAM_MISSING / PARAM_VALUE_INVALID。']),
+                             notes=['category 缺失或非法时返回 PARAM_MISSING / PARAM_VALUE_INVALID。'],
+                             response_fields=[
+                                 ResponseFieldSpec('category', 'string', '分类标识（回带入参）'),
+                                 ResponseFieldSpec('page', 'int', '当前页码'),
+                                 ResponseFieldSpec('results', 'array', '短剧列表'),
+                                 ResponseFieldSpec('results[].series_id', 'string', '剧集 ID（传给详情/播放接口）'),
+                                 ResponseFieldSpec('results[].name', 'string', '剧名'),
+                                 ResponseFieldSpec('results[].cover', 'string', '封面图地址'),
+                                 ResponseFieldSpec('results[].url', 'string', '详情页地址'),
+                                 ResponseFieldSpec('results[].tags', 'array', '题材标签'),
+                                 ResponseFieldSpec('results[].intro', 'string', '剧情简介'),
+                                 ResponseFieldSpec('results[].rank', 'null', '榜单专有字段，列表接口恒为 null'),
+                                 ResponseFieldSpec('results[].heat', 'null', '榜单专有字段，列表接口恒为 null'),
+                                 ResponseFieldSpec('results[].score', 'null', '榜单专有字段，列表接口恒为 null'),
+                                 ResponseFieldSpec('results[].favorite', 'null', '榜单专有字段，列表接口恒为 null'),
+                                 ResponseFieldSpec('results[].like', 'null', '榜单专有字段，列表接口恒为 null'),
+                                 ResponseFieldSpec('pagination', 'object', '分页信息'),
+                                 ResponseFieldSpec('pagination.current', 'int', '当前页码'),
+                                 ResponseFieldSpec('pagination.total', 'int', '总页数'),
+                             ],
+                             response_example="""{
+  "category": "real-drama",
+  "page": 1,
+  "results": [
+    {"series_id": "7686894628578020414", "name": "示例短剧", "cover": "https://img.example.com/1.jpg", "url": "https://www.hongguoduanju.com/detail/7686894628578020414", "tags": ["逆袭"], "intro": "", "rank": null, "heat": null, "score": null, "favorite": null, "like": null}
+  ],
+  "pagination": {"current": 1, "total": 2}
+}"""),
                 EndpointSpec('search', '搜索', 'GET',
                              '/api/dramas/hongguo/search',
                              summary='按关键词搜索短剧。',
@@ -103,7 +172,34 @@ SERVICE = ServiceSpec(
                                            placeholder='1',
                                            desc='可选：页码，从 1 开始，默认 1。'),
                              ],
-                             notes=['源站搜索不支持分页，恒返回单页（page 传入也仅返回同一批结果）。']),
+                             notes=['源站搜索不支持分页，恒返回单页（page 传入也仅返回同一批结果）。'],
+                             response_fields=[
+                                 ResponseFieldSpec('keyword', 'string', '搜索关键词（回带入参）'),
+                                 ResponseFieldSpec('page', 'int', '当前页码'),
+                                 ResponseFieldSpec('results', 'array', '搜索结果列表'),
+                                 ResponseFieldSpec('results[].series_id', 'string', '剧集 ID（传给详情/播放接口）'),
+                                 ResponseFieldSpec('results[].name', 'string', '剧名'),
+                                 ResponseFieldSpec('results[].cover', 'string', '封面图地址'),
+                                 ResponseFieldSpec('results[].url', 'string', '详情页地址'),
+                                 ResponseFieldSpec('results[].tags', 'array', '题材标签'),
+                                 ResponseFieldSpec('results[].intro', 'string', '剧情简介'),
+                                 ResponseFieldSpec('results[].rank', 'null', '榜单专有字段，列表接口恒为 null'),
+                                 ResponseFieldSpec('results[].heat', 'null', '榜单专有字段，列表接口恒为 null'),
+                                 ResponseFieldSpec('results[].score', 'null', '榜单专有字段，列表接口恒为 null'),
+                                 ResponseFieldSpec('results[].favorite', 'null', '榜单专有字段，列表接口恒为 null'),
+                                 ResponseFieldSpec('results[].like', 'null', '榜单专有字段，列表接口恒为 null'),
+                                 ResponseFieldSpec('pagination', 'object', '分页信息'),
+                                 ResponseFieldSpec('pagination.current', 'int', '当前页码'),
+                                 ResponseFieldSpec('pagination.total', 'int', '总页数（搜索恒为 1）'),
+                             ],
+                             response_example="""{
+  "keyword": "短剧",
+  "page": 1,
+  "results": [
+    {"series_id": "7686894628578020414", "name": "示例短剧", "cover": "https://img.example.com/1.jpg", "url": "https://www.hongguoduanju.com/detail/7686894628578020414", "tags": ["逆袭"], "intro": "", "rank": null, "heat": null, "score": null, "favorite": null, "like": null}
+  ],
+  "pagination": {"current": 1, "total": 1}
+}"""),
                 EndpointSpec('detail', '剧集详情', 'GET',
                              '/api/dramas/hongguo/detail',
                              summary='获取剧集详情与全量集列表。',
@@ -121,7 +217,36 @@ SERVICE = ServiceSpec(
                                     'data.playable_cnt 为源站直链的连续范围（前 N 集，保持原义）；'
                                     'data.listed_cnt 为实际可播集数（= playable 为 true 的集数）。'
                                     '需要判断「某集能不能播」请用 episodes[].playable，不要用 playable_cnt 推算。',
-                                    '剧集不存在时返回 EXTERNAL_API_FAILED（外部API调用失败）。']),
+                                    '剧集不存在时返回 EXTERNAL_API_FAILED（外部API调用失败）。'],
+                             response_fields=[
+                                 ResponseFieldSpec('series_id', 'string', '剧集 ID（回带入参）'),
+                                 ResponseFieldSpec('name', 'string', '剧名'),
+                                 ResponseFieldSpec('cover', 'string', '封面图地址'),
+                                 ResponseFieldSpec('intro', 'string', '剧情简介'),
+                                 ResponseFieldSpec('tags', 'array', '题材标签'),
+                                 ResponseFieldSpec('episode_cnt', 'int', '总集数'),
+                                 ResponseFieldSpec('playable_cnt', 'int', '源站直链的连续可播集数'),
+                                 ResponseFieldSpec('listed_cnt', 'int', '实际可播集数（playable=true 的集数）'),
+                                 ResponseFieldSpec('episodes', 'array', '全量集列表'),
+                                 ResponseFieldSpec('episodes[].ep', 'int', '集号（从 1 开始）'),
+                                 ResponseFieldSpec('episodes[].episode_id', 'string', '源站集 ID'),
+                                 ResponseFieldSpec('episodes[].playable', 'bool', '该集是否可播'),
+                                 ResponseFieldSpec('episodes[].source', 'string', '来源：origin 源站直链 / stream 本站直出'),
+                             ],
+                             response_example="""{
+  "series_id": "7686894628578020414",
+  "name": "示例短剧",
+  "cover": "https://img.example.com/1.jpg",
+  "intro": "",
+  "tags": ["逆袭"],
+  "episode_cnt": 60,
+  "playable_cnt": 3,
+  "listed_cnt": 60,
+  "episodes": [
+    {"ep": 1, "episode_id": "123", "playable": true, "source": "origin"},
+    {"ep": 4, "episode_id": "456", "playable": true, "source": "stream"}
+  ]
+}"""),
                 EndpointSpec('play', '播放地址', 'GET',
                              '/api/dramas/hongguo/play',
                              summary='获取指定集的播放地址（网页可直接播放）。',
@@ -150,7 +275,34 @@ SERVICE = ServiceSpec(
                                     '过期后重新调用本接口换取新地址。',
                                     'ep 越界（超出总集数）返回 PARAM_VALUE_INVALID。',
                                     '源站直链带时效，请勿长期缓存。'],
-                             player=True),
+                             player=True,
+                             response_fields=[
+                                 ResponseFieldSpec('series_id', 'string', '剧集 ID（回带入参）'),
+                                 ResponseFieldSpec('ep', 'int', '集号（回带入参）'),
+                                 ResponseFieldSpec('playable', 'bool', '是否可播（成功恒为 true）'),
+                                 ResponseFieldSpec('source', 'string', '来源：origin 源站直链 / stream 本站直出'),
+                                 ResponseFieldSpec('url', 'string', '播放地址（带时效）'),
+                                 ResponseFieldSpec('url_type', 'string', '仅 source=stream：地址类型（mp4）'),
+                                 ResponseFieldSpec('quality', 'int', '仅 source=stream：出流画质（宽度上限）'),
+                                 ResponseFieldSpec('ready', 'bool', '仅 source=stream：产物是否已生成（false 需轮询）'),
+                                 ResponseFieldSpec('episode_id', 'string', '仅 source=origin：源站集 ID'),
+                                 ResponseFieldSpec('duration', 'int', '仅 source=origin：时长'),
+                                 ResponseFieldSpec('width', 'int', '仅 source=origin：视频宽'),
+                                 ResponseFieldSpec('height', 'int', '仅 source=origin：视频高'),
+                                 ResponseFieldSpec('poster', 'string', '仅 source=origin：封面图地址'),
+                             ],
+                             response_example="""{
+  "series_id": "7686894628578020414",
+  "ep": 1,
+  "episode_id": "123",
+  "playable": true,
+  "url": "https://www.hongguoduanju.com/xxx.mp4",
+  "duration": 90000,
+  "width": 720,
+  "height": 1280,
+  "poster": "https://img.example.com/1.jpg",
+  "source": "origin"
+}"""),
                 EndpointSpec('stream', '网页直出流', 'GET',
                              '/api/dramas/hongguo/stream',
                              summary='第 4 集及以后的「网页可播」流地址（普通 <video> 标签直接播放）。',
@@ -168,7 +320,9 @@ SERVICE = ServiceSpec(
                                     '解密并转成 H.264（约数十秒），200 / 206 才是可播放；'
                                     '生成失败返回 503（响应体里有失败原因），请勿只按 HTTP 200 判定。'
                                     '产物落盘永久复用，此后再播为即刻返回。',
-                                    '令牌无效或过期返回 403，需重新调用「播放地址」接口获取新地址。']),
+                                    '令牌无效或过期返回 403，需重新调用「播放地址」接口获取新地址。'],
+                             response_note='成功返回视频二进制流（video/mp4，支持 Range）；'
+                                           '生成中返回 202、生成失败 503、令牌无效或过期 403，均非统一 JSON 信封。'),
             ],
         ),
     ],

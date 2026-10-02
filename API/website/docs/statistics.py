@@ -4,7 +4,8 @@
 - statistics：公开口径的调用量查询（仅调用次数），供任何人在文档中心或第三方页面引用。
 超管看板的完整统计（项目 / 失败率 / 耗时）不在本服务暴露，见 /console/stats/。
 """
-from .schema import ChannelSpec, EndpointSpec, ParamSpec, ServiceSpec
+from .schema import (ChannelSpec, EndpointSpec, ParamSpec, ResponseFieldSpec,
+                     ServiceSpec)
 
 SERVICE = ServiceSpec(
     slug='statistics',
@@ -37,12 +38,32 @@ SERVICE = ServiceSpec(
                                                 '如 /api/music/xiaoying/musics/<uuid>'),
                              ],
                              notes=['公开接口，无需项目签名。',
-                                    '返回 data = {path, total_calls, today_calls}。',
-                                    'path 未登记时返回 code=20003；未传时返回 code=20001。']),
+                                    'path 未登记时返回 code=20003；未传时返回 code=20001。'],
+                             response_fields=[
+                                 ResponseFieldSpec('path', 'string', '查询的接口路径'),
+                                 ResponseFieldSpec('total_calls', 'int', '累计调用次数'),
+                                 ResponseFieldSpec('today_calls', 'int', '今日调用次数'),
+                             ],
+                             response_example='''{
+  "path": "/api/email/v1/send",
+  "total_calls": 12345,
+  "today_calls": 67
+}'''),
                 EndpointSpec('services', '各服务调用量排行', 'GET', '/api/statistics/services',
                              summary='返回各服务的累计与今日调用次数，按累计调用量降序。',
-                             notes=['公开接口，无需项目签名。',
-                                    '返回 data = {services: [{service, name, total_calls, today_calls}, ...]}。']),
+                             notes=['公开接口，无需项目签名。'],
+                             response_fields=[
+                                 ResponseFieldSpec('services', 'array', '各服务调用量列表（按累计降序）'),
+                                 ResponseFieldSpec('services[].service', 'string', '服务前缀（如 /api/email/）'),
+                                 ResponseFieldSpec('services[].name', 'string', '服务名称'),
+                                 ResponseFieldSpec('services[].total_calls', 'int', '累计调用次数'),
+                                 ResponseFieldSpec('services[].today_calls', 'int', '今日调用次数'),
+                             ],
+                             response_example='''{
+  "services": [
+    {"service": "/api/email/", "name": "邮箱服务", "total_calls": 12345, "today_calls": 67}
+  ]
+}'''),
             ],
         ),
     ],

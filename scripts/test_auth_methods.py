@@ -10,8 +10,7 @@
     第七轮 methods 公开配置接口（免签名可访问、状态与后台一致）
 
 说明：
-    - 发信层使用 mock（send_email / 阿里云短信），聚焦逻辑与安全，
-      真实 SMTP 端到端收发由 scripts/test_email_register.py 覆盖
+    - 发信层使用 mock（send_email / 阿里云短信），聚焦逻辑与安全，不依赖真实收发信
     - 验证码从 user_verify_record 记录中读取（本地落库校验）
     - 使用真实数据库，测试结束自动清理测试数据并恢复 AuthMethod 原开关状态
 
@@ -44,6 +43,8 @@ from API.apis.user_center.users import utils as user_utils
 from API.apis.user_center.sign import build_sign
 from API.common.credential_crypto import hash_token
 from API.models import AuthMethod, User, UserApp, UserVerifyRecord
+
+from _test_support import grant_credit
 
 # ───────────────────────── 发信层 mock ─────────────────────────
 
@@ -115,6 +116,7 @@ def _create_app(name=None, status=True):
         name=name or f'{_PREFIX}项目{len(_created_apps)}',
         token_expire_days=7, status=status,
     )
+    grant_credit(obj)   # 新项目默认 0 点额度，签名调用会被 30012 拦掉，先补一笔
     entry = (obj.app_id, obj.app_secret, obj)
     _created_apps.append(entry)
     return entry

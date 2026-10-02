@@ -1188,9 +1188,6 @@ msgstr "VMEmail(mail.cx)"
 msgid "VMEmail（mail.cx）临时邮箱（仅收信）"
 msgstr "VMEmail（mail.cx）臨時郵箱（僅收信）"
 
-msgid "VMEmail（minmail.app）临时邮箱"
-msgstr "VMEmail（minmail.app）臨時郵箱"
-
 msgid "a@example.com\nb@example.com"
 msgstr "a@example.com\nb@example.com"
 
@@ -5229,11 +5226,17 @@ msgstr "服務維護中"
 msgid "服务已下线"
 msgstr "服務已下線"
 
+msgid "服务开发中"
+msgstr "服務開發中"
+
 msgid "余额不足"
 msgstr "餘額不足"
 
 msgid "库存不足"
 msgstr "庫存不足"
+
+msgid "调用配额已用尽"
+msgstr "調用配額已用盡"
 
 msgid "外部API调用失败"
 msgstr "外部API調用失敗"
@@ -7143,6 +7146,80 @@ msgstr "管理員回復前審查語氣；AI 只提醒，管理員可強制發送
 msgid "类型名称 *"
 msgstr "類型名稱 *"
 
+
+# ==================== 官网文案更新：额度计费说明（首页 / 文档中心 / 接入向导） ====================
+msgid "按次计费 · 点数余额"
+msgstr "按次計費 · 點數餘額"
+
+msgid "调用按次消耗项目额度（点数），单价以文档页标价为准。"
+msgstr "調用按次消耗項目額度（點數），單價以文檔頁標價為準。"
+
+msgid "每个端点标注单价"
+msgstr "每個端點標註單價"
+
+msgid "使用用户名、邮箱或手机号注册小影API账号，注册与登录均免费。"
+msgstr "使用用戶名、郵箱或手機號註冊小影API賬號，註冊與登錄均免費。"
+
+msgid "创建接入项目"
+msgstr "創建接入項目"
+
+msgid "登录后在「我的项目」自助创建，立即获得专属 APPID 与 APPSECRET，创建项目免费。"
+msgstr "登錄後在「我的項目」自助創建，立即獲得專屬 APPID 與 APPSECRET，創建項目免費。"
+
+msgid "充值额度并调用"
+msgstr "充值額度並調用"
+
+msgid "为项目充值点数后即可调用（新项目默认 0 额度）；成功后按次扣点、失败不扣，统一 <code class=\"font-mono text-xs\">{ code, msg, data }</code> 响应。"
+msgstr "為項目充值點數後即可調用（新項目默認 0 額度）；成功後按次扣點、失敗不扣，統一 <code class=\"font-mono text-xs\">{ code, msg, data }</code> 響應。"
+
+msgid "调用接口要收费吗？额度怎么算？"
+msgstr "調用接口要收費嗎？額度怎麼算？"
+
+msgid "注册、登录、创建项目与浏览文档均免费。调用接口按次消耗项目额度（点数），单价以接口文档页标价为准（未单独配置的服务默认 1 点/次）；只有调用成功才扣点，失败不扣。新建项目默认 0 额度，额度不足时无法调用接口（开放接口除外），请联系管理员充值。"
+msgstr "註冊、登錄、創建項目與瀏覽文檔均免費。調用接口按次消耗項目額度（點數），單價以接口文檔頁標價為準（未單獨配置的服務默認 1 點/次）；只有調用成功才扣點，失敗不扣。新建項目默認 0 額度，額度不足時無法調用接口（開放接口除外），請聯繫管理員充值。"
+
+msgid "登录后在「我的项目」页自助创建接入项目，创建后即可看到 APPID / APPSECRET，创建项目免费。APPSECRET 请务必保存在你的服务端，严禁写入前端代码或提交到仓库。"
+msgstr "登錄後在「我的項目」頁自助創建接入項目，創建後即可看到 APPID / APPSECRET，創建項目免費。APPSECRET 請務必保存在你的服務端，嚴禁寫入前端代碼或提交到倉庫。"
+
+msgid "小影API 是一个通用 API 聚合服务平台，聚合音乐、视频解析、AI、代理IP、验证码、短信、邮箱、用户中心等 %(n)s 类服务能力，统一签名认证与标准 JSON 响应，注册免费、调用按次消耗项目额度（点数）。"
+msgstr "小影API 是一個通用 API 聚合服務平臺，聚合音樂、視頻解析、AI、代理IP、驗證碼、短信、郵箱、用戶中心等 %(n)s 類服務能力，統一簽名認證與標準 JSON 響應，註冊免費、調用按次消耗項目額度（點數）。"
+
+msgid "登录后在「我的项目」自助创建，立即获得专属 APPID 与 APPSECRET（新建项目默认 0 额度，创建免费）。"
+msgstr "登錄後在「我的項目」自助創建，立即獲得專屬 APPID 與 APPSECRET（新建項目默認 0 額度，創建免費）。"
+
+msgid "充值额度并接入生产"
+msgstr "充值額度並接入生產"
+
+msgid "为项目充值点数后即可调用（成功按次扣点、失败不扣）；在上线前于服务端实现 HMAC-SHA256 签名，密钥放进环境变量，绝不进前端。"
+msgstr "為項目充值點數後即可調用（成功按次扣點、失敗不扣）；在上線前於服務端實現 HMAC-SHA256 簽名，密鑰放進環境變量，絕不進前端。"
+
+msgid "② 创建接入项目"
+msgstr "② 創建接入項目"
+
+msgid "登录后在「我的项目」自助创建项目；创建后"
+msgstr "登錄後在「我的項目」自助創建項目；創建後"
+
+msgid "APPID 是公开标识；APPSECRET 是签名密钥，只应保存在你的服务端。泄露可在「我的项目」详情页一键重置。"
+msgstr "APPID 是公開標識；APPSECRET 是簽名密鑰，只應保存在你的服務端。泄露可在「我的項目」詳情頁一鍵重置。"
+
+msgid "④ 充值额度"
+msgstr "④ 充值額度"
+
+msgid "新建项目默认 0 额度，调用接口前需联系管理员为项目充值点数；成功调用按次扣点，失败不扣。"
+msgstr "新建項目默認 0 額度，調用接口前需聯繫管理員為項目充值點數；成功調用按次扣點，失敗不扣。"
+
+msgid "调用接口要额度吗？怎么计费？"
+msgstr "調用接口要額度嗎？怎麼計費？"
+
+msgid "注册、登录、创建项目与浏览文档均免费。调用接口按次消耗项目额度（点数），单价以接口文档页标价为准（未单独配置的服务默认 1 点/次）；只有调用成功（业务码 10000）才扣点，失败不扣。新建项目默认 0 额度，调用前需联系管理员充值；余额不足时接口返回 30012，开放接口（免签名）不受额度限制。"
+msgstr "註冊、登錄、創建項目與瀏覽文檔均免費。調用接口按次消耗項目額度（點數），單價以接口文檔頁標價為準（未單獨配置的服務默認 1 點/次）；只有調用成功（業務碼 10000）才扣點，失敗不扣。新建項目默認 0 額度，調用前需聯繫管理員充值；餘額不足時接口返回 30012，開放接口（免簽名）不受額度限制。"
+
+msgid "10000=成功；20001/20002/20003=参数缺失/格式错误/值非法；20011=签名或认证失败；20040=触发频率限制（如登录连续失败被临时锁定）；30012=额度不足（项目余额低于本次调用单价，请充值）；40001=外部服务调用失败（请稍后重试或核对被调用的第三方资源）。"
+msgstr "10000=成功；20001/20002/20003=參數缺失/格式錯誤/值非法；20011=簽名或認證失敗；20040=觸發頻率限制（如登錄連續失敗被臨時鎖定）；30012=額度不足（項目餘額低於本次調用單價，請充值）；40001=外部服務調用失敗（請稍後重試或核對被調用的第三方資源）。"
+
+msgid "在「我的项目」详情页点「重置密钥」即可，旧密钥立即失效；重置后所有已接入的调用需改用新密钥。"
+msgstr "在「我的項目」詳情頁點「重置密鑰」即可，舊密鑰立即失效；重置後所有已接入的調用需改用新密鑰。"
+
 msgid "类型标识 *"
 msgstr "類型標識 *"
 
@@ -8199,3 +8276,2548 @@ msgstr "未登錄訪問後臺一律返回 404；關閉則退回「跳轉登錄�
 msgid "安全设置已保存"
 msgstr "安全設置已保存"
 
+
+# ===== 控制台服务余量页（2026-10-02 第四批次） =====
+
+msgid "服务余量"
+msgstr "服務餘量"
+
+msgid "服务余量 - 超级管理员 - 小影API"
+msgstr "服務餘量 - 超級管理員 - 小影API"
+
+msgid "超级管理员,服务余量,余额监控,低量告警,51代理,超级鹰"
+msgstr "超級管理員,服務餘量,餘額監控,低量告警,51代理,超級鷹"
+
+msgid "小影API 超级管理员：监控各上游服务账号的余量（51代理余额、超级鹰题分），低于阈值时邮件提醒。"
+msgstr "小影API 超級管理員：監控各上遊服務賬號的餘量（51代理餘額、超級鷹題分），低於閾值時郵件提醒。"
+
+msgid "监控上游服务账号还剩多少，低于设定阈值时发邮件提醒。"
+msgstr "監控上遊服務賬號還剩多少，低於設定閾值時發郵件提醒。"
+
+msgid "监控上游服务账号还剩多少（51代理余额、超级鹰题分），可逐项设置最低数量阈值，低于阈值时邮件提醒（告警只发一次，恢复后重新武装）。"
+msgstr "監控上遊服務賬號還剩多少（51代理餘額、超級鷹題分），可逐項設置最低數量閾值，低於閾值時郵件提醒（告警只發一次，恢復後重新武裝）。"
+
+msgid "后台每 %(minutes)s 分钟自动检查一轮，也可在下方点「立即检查」手动触发。"
+msgstr "後臺每 %(minutes)s 分鐘自動檢查一輪，也可在下方點「立即檢查」手動觸發。"
+
+msgid "告警只发一次：余量跌破阈值时发一封邮件，之后不再重复；余量回升到阈值以上（或关闭该服务的通知）后重新武装，再次跌破时会再发一封。"
+msgstr "告警只發一次：餘量跌破閾值時發一封郵件，之後不再重複；餘量回升到閾值以上（或關閉該服務的通知）後重新武裝，再次跌破時會再發一封。"
+
+msgid "被监控的服务清单在代码里维护（API/apis/quota/services.py），新增服务只需在那里加一条。"
+msgstr "被監控的服務清單在代碼裡維護（API/apis/quota/services.py），新增服務只需在那裡加一條。"
+
+msgid "取数失败只会记在「最近错误」里，不会覆盖上一次成功取得的余量。"
+msgstr "取數失敗只會記在「最近錯誤」裡，不會覆蓋上一次成功取得的餘量。"
+
+msgid "立即检查"
+msgstr "立即檢查"
+
+msgid "通知设置"
+msgstr "通知設置"
+
+msgid "接收通知邮箱"
+msgstr "接收通知郵箱"
+
+msgid "留空则不发通知"
+msgstr "留空則不發通知"
+
+msgid "所有服务的余量告警统一发到该邮箱；发送失败只记日志，不影响告警状态。"
+msgstr "所有服務的餘量告警統一發到該郵箱；發送失敗只記日誌，不影響告警狀態。"
+
+msgid "各服务阈值与通知"
+msgstr "各服務閾值與通知"
+
+msgid "当前余量"
+msgstr "當前餘量"
+
+msgid "最低数量阈值"
+msgstr "最低數量閾值"
+
+msgid "启用通知"
+msgstr "啟用通知"
+
+msgid "通知方式"
+msgstr "通知方式"
+
+msgid "最近检查"
+msgstr "最近檢查"
+
+msgid "最近告警"
+msgstr "最近告警"
+
+msgid "留空则不通知"
+msgstr "留空則不通知"
+
+msgid "告警中"
+msgstr "告警中"
+
+msgid "取数失败"
+msgstr "取數失敗"
+
+msgid "未检查"
+msgstr "未檢查"
+
+msgid "未知"
+msgstr "未知"
+
+msgid "阈值留空表示该服务不通知；时间按服务器本地时区显示。"
+msgstr "閾值留空表示該服務不通知；時間按服務器本地時區顯示。"
+
+msgid "51代理"
+msgstr "51代理"
+
+msgid "超级鹰"
+msgstr "超級鷹"
+
+msgid "元"
+msgstr "元"
+
+msgid "题分"
+msgstr "題分"
+
+msgid "邮件"
+msgstr "郵件"
+
+msgid "接收通知邮箱格式不正确：%(email)s"
+msgstr "接收通知郵箱格式不正確：%(email)s"
+
+msgid "%(name)s 的阈值必须是数字"
+msgstr "%(name)s 的閾值必須是數字"
+
+msgid "%(name)s 的阈值必须是不小于 0 的数字"
+msgstr "%(name)s 的閾值必須是不小於 0 的數字"
+
+msgid "余量通知设置已保存"
+msgstr "餘量通知設置已保存"
+
+msgid "检查完成，%(n)s 个服务取数失败：%(detail)s"
+msgstr "檢查完成，%(n)s 個服務取數失敗：%(detail)s"
+
+msgid "检查完成，已更新 %(n)s 个服务的余量"
+msgstr "檢查完成，已更新 %(n)s 個服務的餘量"
+
+
+# ===== 文档中心「本机凭据」（2026-10-02 第五批次） =====
+
+msgid "本机凭据"
+msgstr "本機憑據"
+
+msgid "只保存在本机浏览器，不上传、不落库；调试用到它的接口时自动带上。"
+msgstr "只保存在本機瀏覽器，不上傳、不落庫；調試用到它的接口時自動帶上。"
+
+msgid "在指定视频下发布一级纯文本评论。登录 Cookie 在右侧栏「本机凭据」填写并保存到本机，调试时自动带上。"
+msgstr "在指定視頻下發布一級純文本評論。登錄 Cookie 在右側欄「本機憑據」填寫並保存到本機，調試時自動帶上。"
+
+msgid "必填：抖音登录 Cookie 完整字符串（含 sessionid 等）。在右侧栏「本机凭据」填写并保存到本机浏览器，调试时自动带上（换设备 / 清缓存需重新粘贴）；不落库、不上传，仅透传给抖音。Cookie 失效会返回外部服务错误。"
+msgstr "必填：抖音登錄 Cookie 完整字符串（含 sessionid 等）。在右側欄「本機憑據」填寫並保存到本機瀏覽器，調試時自動帶上（換設備 / 清緩存需重新粘貼）；不落庫、不上傳，僅透傳給抖音。Cookie 失效會返回外部服務錯誤。"
+
+msgid "登录 Cookie 只填一次：在右侧栏「本机凭据」粘贴并点「保存到本机浏览器」，之后调试会自动带上（仅本机保存，换设备需重新粘贴）。"
+msgstr "登錄 Cookie 只填一次：在右側欄「本機憑據」粘貼並點「保存到本機瀏覽器」，之後調試會自動帶上（僅本機保存，換設備需重新粘貼）。"
+
+
+# ===== 前台无障碍修复（2026-10-02 第六批次） =====
+
+msgid "切换语言（当前：%(lang)s）"
+msgstr "切換語言（當前：%(lang)s）"
+
+
+# ===== 控制台操作日志（2026-10-02 第七批次） =====
+
+msgid "操作日志"
+msgstr "操作日誌"
+
+msgid "操作日志 - 超级管理员 - 小影API"
+msgstr "操作日誌 - 超級管理員 - 小影API"
+
+msgid "超级管理员,操作日志,审计留痕,控制台"
+msgstr "超級管理員,操作日誌,審計留痕,控制臺"
+
+msgid "小影API 超级管理员：查看控制台写操作留痕（谁在何时改了哪个功能）。"
+msgstr "小影API 超級管理員：查看控制臺寫操作留痕（誰在何時改了哪個功能）。"
+
+msgid "控制台写操作的审计留痕：谁在什么时候改了哪个功能、结果如何。由所有控制台视图的必经入口统一采集，新增页面不会漏记。"
+msgstr "控制臺寫操作的審計留痕：誰在什麼時候改了哪個功能、結果如何。由所有控制臺視圖的必經入口統一採集，新增頁面不會漏記。"
+
+msgid "共 %(total)s 条留痕；只记写操作（新建 / 保存 / 删除 / 启用停用），看页面与搜索这类读操作不记。"
+msgstr "共 %(total)s 條留痕；只記寫操作（新建 / 保存 / 刪除 / 啟用停用），看頁面與搜索這類讀操作不記。"
+
+msgid "留痕在服务端统一采集（所有控制台视图的必经入口），新增页面不会漏记。"
+msgstr "留痕在服務端統一採集（所有控制臺視圖的必經入口），新增頁面不會漏記。"
+
+msgid "「说明」就是操作者当时看到的那句成功提示；操作失败也留痕（状态码 3xx、说明为空）。"
+msgstr "「說明」就是操作者當時看到的那句成功提示；操作失敗也留痕（狀態碼 3xx、說明為空）。"
+
+msgid "路径 / 说明 / 动作 / 对象"
+msgstr "路徑 / 說明 / 動作 / 對象"
+
+msgid "操作者"
+msgstr "操作者"
+
+msgid "功能"
+msgstr "功能"
+
+msgid "动作"
+msgstr "動作"
+
+msgid "对象"
+msgstr "對象"
+
+msgid "来源"
+msgstr "來源"
+
+msgid "暂无记录"
+msgstr "暫無記錄"
+
+
+# ===== 控制台上游故障告警页（2026-10-02 第七批次） =====
+
+msgid "上游故障告警"
+msgstr "上遊故障告警"
+
+msgid "上游故障告警 - 超级管理员 - 小影API"
+msgstr "上遊故障告警 - 超級管理員 - 小影API"
+
+msgid "超级管理员,上游故障告警,失败率监控,邮件告警"
+msgstr "超級管理員,上遊故障告警,失敗率監控,郵件告警"
+
+msgid "小影API 超级管理员：按服务监控上游调用失败率（4xxxx 错误码），超过阈值时邮件提醒。"
+msgstr "小影API 超級管理員：按服務監控上遊調用失敗率（4xxxx 錯誤碼），超過閾值時郵件提醒。"
+
+msgid "按服务监控上游调用失败率，超过阈值时发邮件提醒。"
+msgstr "按服務監控上遊調用失敗率，超過閾值時發郵件提醒。"
+
+msgid "按服务监控上游调用失败率（业务码 4xxxx 的占比），超过阈值时发邮件提醒（告警只发一次，恢复后重新武装）。"
+msgstr "按服務監控上遊調用失敗率（業務碼 4xxxx 的佔比），超過閾值時發郵件提醒（告警只發一次，恢復後重新武裝）。"
+
+msgid "判定窗口：%(window)s（当前小时 + 上一小时）。调用统计最细只有小时粒度，这是对「最近 1 小时」最接近的近似。"
+msgstr "判定窗口：%(window)s（當前小時 + 上一小時）。調用統計最細只有小時粒度，這是對「最近 1 小時」最接近的近似。"
+
+msgid "「上游错误」= 业务状态码落在 4xxxx（第三方/外部服务错误）的调用；各服务调用上游失败时统一返回该区间错误码。"
+msgstr "「上遊錯誤」= 業務狀態碼落在 4xxxx（第三方/外部服務錯誤）的調用；各服務調用上遊失敗時統一返回該區間錯誤碼。"
+
+msgid "告警只发一次：超过阈值时发一封邮件，之后不再重复；失败率回落到阈值以下（或关闭告警）后重新武装，再次超过时会再发一封。"
+msgstr "告警只發一次：超過閾值時發一封郵件，之後不再重複；失敗率回落到閾值以下（或關閉告警）後重新武裝，再次超過時會再發一封。"
+
+msgid "被监控的服务无需人工维护：调用统计里出现过的服务前缀会自动纳入监控。"
+msgstr "被監控的服務無需人工維護：調用統計裡出現過的服務前綴會自動納入監控。"
+
+msgid "告警设置"
+msgstr "告警設置"
+
+msgid "失败率阈值"
+msgstr "失敗率閾值"
+
+msgid "窗口内上游错误占比不低于该值时判定为故障。"
+msgstr "窗口內上遊錯誤佔比不低於該值時判定為故障。"
+
+msgid "最小样本数"
+msgstr "最小樣本數"
+
+msgid "次"
+msgstr "次"
+
+msgid "窗口内总调用量低于该值时不判定，避免小样本误报。"
+msgstr "窗口內總調用量低於該值時不判定，避免小樣本誤報。"
+
+msgid "启用告警"
+msgstr "啟用告警"
+
+msgid "关闭后不再判定与发送；已置位的告警态会在下一轮检查时复位。"
+msgstr "關閉後不再判定與發送；已置位的告警態會在下一輪檢查時復位。"
+
+msgid "未配置（不会发信）"
+msgstr "未配置（不會發信）"
+
+msgid "与「服务余量」告警共用同一邮箱，请到"
+msgstr "與「服務餘量」告警共用同一郵箱，請到"
+
+msgid "页面修改。"
+msgstr "頁面修改。"
+
+msgid "各服务当前状态"
+msgstr "各服務當前狀態"
+
+msgid "窗口调用量"
+msgstr "窗口調用量"
+
+msgid "上游错误"
+msgstr "上遊錯誤"
+
+msgid "样本不足"
+msgstr "樣本不足"
+
+msgid "暂无调用记录。"
+msgstr "暫無調用記錄。"
+
+msgid "「样本不足」表示窗口内调用量未达到最小样本数，暂不判定；时间按服务器本地时区显示。"
+msgstr "「樣本不足」表示窗口內調用量未達到最小樣本數，暫不判定；時間按服務器本地時區顯示。"
+
+msgid "失败率阈值必须是数字"
+msgstr "失敗率閾值必須是數字"
+
+msgid "失败率阈值必须是 0 到 100 之间的数字"
+msgstr "失敗率閾值必須是 0 到 100 之間的數字"
+
+msgid "最小样本数必须是整数"
+msgstr "最小樣本數必須是整數"
+
+msgid "最小样本数必须大于 0"
+msgstr "最小樣本數必須大於 0"
+
+msgid "上游故障告警设置已保存"
+msgstr "上遊故障告警設置已保存"
+
+msgid "检查完成，%(n)s 个服务触发上游故障告警：%(detail)s"
+msgstr "檢查完成，%(n)s 個服務觸發上遊故障告警：%(detail)s"
+
+msgid "检查完成，%s 个服务均未触发告警"
+msgstr "檢查完成，%s 個服務均未觸發告警"
+
+
+# ===== 前台「我的项目」（接入方自助，2026-10-02 第八批次） =====
+
+msgid "我的项目"
+msgstr "我的項目"
+
+msgid "我的项目 - 小影API"
+msgstr "我的項目 - 小影API"
+
+msgid "%(name)s - 我的项目 - 小影API"
+msgstr "%(name)s - 我的項目 - 小影API"
+
+msgid "我的项目,接入项目,APPID,APPSECRET,调用用量"
+msgstr "我的項目,接入項目,APPID,APPSECRET,調用用量"
+
+msgid "小影API 我的项目：自助创建接入项目、查看 APPID 与 APPSECRET、查看当日与当月调用用量。"
+msgstr "小影API 我的項目：自助創建接入項目、查看 APPID 與 APPSECRET、查看當日與當月調用用量。"
+
+msgid "查看接入项目的 APPID / APPSECRET、调用用量，并可重置密钥。"
+msgstr "查看接入項目的 APPID / APPSECRET、調用用量，並可重置密鑰。"
+
+msgid "这里是你名下接入项目的 APPID / APPSECRET 与调用用量。签名规则见"
+msgstr "這裡是你名下接入項目的 APPID / APPSECRET 與調用用量。簽名規則見"
+
+msgid "新建项目"
+msgstr "新建項目"
+
+msgid "应用名称（全局唯一）"
+msgstr "應用名稱（全局唯一）"
+
+msgid "创建项目"
+msgstr "創建項目"
+
+msgid "今日用量"
+msgstr "今日用量"
+
+msgid "本月用量"
+msgstr "本月用量"
+
+msgid "不限"
+msgstr "不限"
+
+msgid "配额使用进度"
+msgstr "配額使用進度"
+
+msgid "启用"
+msgstr "啟用"
+
+msgid "已停用"
+msgstr "已停用"
+
+msgid "「不限」表示该项未设上限；用量统计有数秒延迟，仅供参考。停用或删除项目请联系管理员。"
+msgstr "「不限」表示該項未設上限；用量統計有數秒延遲，僅供參考。停用或刪除項目請聯繫管理員。"
+
+msgid "你还没有接入项目，用上面的表单创建第一个。"
+msgstr "你還沒有接入項目，用上面的表單創建第一個。"
+
+msgid "接入凭据"
+msgstr "接入憑據"
+
+msgid "APPID 是公开标识；APPSECRET 是签名密钥，只放服务端，不要写进前端代码或公开仓库。"
+msgstr "APPID 是公開標識；APPSECRET 是簽名密鑰，只放服務端，不要寫進前端代碼或公開倉庫。"
+
+msgid "点击右侧「显示」查看"
+msgstr "點擊右側「顯示」查看"
+
+msgid "显示"
+msgstr "顯示"
+
+msgid "隐藏"
+msgstr "隱藏"
+
+msgid "已复制"
+msgstr "已複製"
+
+msgid "创建时间"
+msgstr "創建時間"
+
+msgid "调用用量"
+msgstr "調用用量"
+
+msgid "累计调用"
+msgstr "累計調用"
+
+msgid "「不限」表示该项未设上限。配额由管理员按合作约定设置，用完会在调用时返回「调用配额已用尽」；需要调整请联系管理员。"
+msgstr "「不限」表示該項未設上限。配額由管理員按合作約定設置，用完會在調用時返回「調用配額已用盡」；需要調整請聯繫管理員。"
+
+msgid "重置 APPSECRET"
+msgstr "重置 APPSECRET"
+
+msgid "重置后旧密钥立即失效，所有已接入的调用必须先换成新密钥才能继续使用。仅在密钥泄露等必要情况下操作。"
+msgstr "重置後舊密鑰立即失效，所有已接入的調用必須先換成新密鑰才能繼續使用。僅在密鑰泄露等必要情況下操作。"
+
+msgid "确认重置 APPSECRET？旧密钥会立即失效。"
+msgstr "確認重置 APPSECRET？舊密鑰會立即失效。"
+
+msgid "重置密钥"
+msgstr "重置密鑰"
+
+
+# ===== 控制台「接入项目」加归属与配额（2026-10-02 第八批次） =====
+
+msgid "归属："
+msgstr "歸屬："
+
+msgid "平台自有（无归属用户）"
+msgstr "平臺自有（無歸屬用戶）"
+
+msgid "调用上限（日 / 月，— 表示不限）："
+msgstr "調用上限（日 / 月，— 表示不限）："
+
+msgid "每日调用上限"
+msgstr "每日調用上限"
+
+msgid "每月调用上限"
+msgstr "每月調用上限"
+
+msgid "留空 = 不限制"
+msgstr "留空 = 不限制"
+
+msgid "调用上限必须是 0 或正整数（留空表示不限制）"
+msgstr "調用上限必須是 0 或正整數（留空表示不限制）"
+
+# ==================== 文档中心：统一响应格式 / 端点响应说明 / 错误码页 ====================
+
+msgid "响应格式"
+msgstr "響應格式"
+
+msgid "所有接口返回同一个 JSON 信封，业务数据都在 data 里："
+msgstr "所有接口返回同一個 JSON 信封，業務數據都在 data 裡："
+
+msgid "code：业务状态码，10000 表示成功；其余为各类错误，完整清单见「错误码」页。"
+msgstr "code：業務狀態碼，10000 表示成功；其餘為各類錯誤，完整清單見「錯誤碼」頁。"
+
+msgid "msg：给人看的提示文案，可直接展示给终端用户，但不要用它做逻辑判断。"
+msgstr "msg：給人看的提示文案，可直接展示給終端用戶，但不要用它做邏輯判斷。"
+
+msgid "data：业务数据；出错时通常为 null。各接口 data 的具体字段见该接口的「响应说明」。"
+msgstr "data：業務數據；出錯時通常為 null。各接口 data 的具體字段見該接口的「響應說明」。"
+
+msgid "判断成功与否请看 code，不要依赖 HTTP 状态码。"
+msgstr "判斷成功與否請看 code，不要依賴 HTTP 狀態碼。"
+
+msgid "查看完整错误码"
+msgstr "查看完整錯誤碼"
+
+msgid "响应说明"
+msgstr "響應說明"
+
+msgid "外层统一格式"
+msgstr "外層統一格式"
+
+msgid "字段"
+msgstr "字段"
+
+msgid "返回示例"
+msgstr "返回示例"
+
+msgid "该接口未单独声明 data 结构，以上述外层统一格式为准。"
+msgstr "該接口未單獨聲明 data 結構，以上述外層統一格式為準。"
+
+msgid "错误码"
+msgstr "錯誤碼"
+
+msgid "错误码 - 接口文档 - 小影API"
+msgstr "錯誤碼 - 接口文檔 - 小影API"
+
+msgid "错误码,状态码,API错误,小影API"
+msgstr "錯誤碼,狀態碼,API錯誤,小影API"
+
+msgid "小影API 对外错误码总表：按类别列出接口会返回的状态码、触发场景与处理建议。"
+msgstr "小影API 對外錯誤碼總表：按類別列出接口會返回的狀態碼、觸發場景與處理建議。"
+
+msgid "错误码总表"
+msgstr "錯誤碼總表"
+
+msgid "所有接口统一返回 {code, msg, data} 信封，判断成功与否请看 code。本页按类别列出可能遇到的错误码、触发场景与处理建议。"
+msgstr "所有接口統一返回 {code, msg, data} 信封，判斷成功與否請看 code。本頁按類別列出可能遇到的錯誤碼、觸發場景與處理建議。"
+
+msgid "共 %(n)s 个错误码"
+msgstr "共 %(n)s 個錯誤碼"
+
+msgid "含义"
+msgstr "含義"
+
+msgid "触发场景"
+msgstr "觸發場景"
+
+msgid "处理建议"
+msgstr "處理建議"
+
+msgid "遇到本页未列出的状态码，请连同请求参数与返回的 msg 一起反馈给我们。"
+msgstr "遇到本頁未列出的狀態碼，請連同請求參數與返回的 msg 一起反饋給我們。"
+
+# ---- 错误码类别（StatusCode.category() 的展示文案） ----
+
+msgid "客户端错误"
+msgstr "客戶端錯誤"
+
+msgid "业务逻辑错误"
+msgstr "業務邏輯錯誤"
+
+msgid "第三方/外部服务错误"
+msgstr "第三方/外部服務錯誤"
+
+msgid "系统内部错误"
+msgstr "系統內部錯誤"
+
+msgid "未分类"
+msgstr "未分類"
+
+# ---- 错误码总表：触发场景 / 处理建议（API/website/docs/errors.py） ----
+
+msgid "必填参数没有传。"
+msgstr "必填參數沒有傳。"
+
+msgid "对照该接口「请求参数」表里标为必填的字段补齐后重试。"
+msgstr "對照該接口「請求參數」表裡標為必填的字段補齊後重試。"
+
+msgid "参数格式不对，比如该传数字却传了文字、JSON 体无法解析。"
+msgstr "參數格式不對，比如該傳數字卻傳了文字、JSON 體無法解析。"
+
+msgid "检查参数取值格式与请求体编码，并确认 Content-Type 与实际内容一致（JSON 用 application/json）。"
+msgstr "檢查參數取值格式與請求體編碼，並確認 Content-Type 與實際內容一致（JSON 用 application/json）。"
+
+msgid "参数值本身不合法，比如超出取值范围、传入的 ID 不存在。"
+msgstr "參數值本身不合法，比如超出取值範圍、傳入的 ID 不存在。"
+
+msgid "核对该参数文档里的取值说明后重新提交。"
+msgstr "核對該參數文檔裡的取值說明後重新提交。"
+
+msgid "请求没有携带认证信息。"
+msgstr "請求沒有攜帶認證信息。"
+
+msgid "按「签名说明」在请求头带上 APPID、时间戳与签名后重试。"
+msgstr "按「簽名說明」在請求頭帶上 APPID、時間戳與簽名後重試。"
+
+msgid "签名校验不通过：密钥错误、参数被改动，或时间戳已过期。"
+msgstr "簽名校驗不通過：密鑰錯誤、參數被改動，或時間戳已過期。"
+
+msgid "用 APPSECRET 重新生成签名，确认时间戳在有效期内且参与签名的是原样参数。"
+msgstr "用 APPSECRET 重新生成簽名，確認時間戳在有效期內且參與簽名的是原樣參數。"
+
+msgid "身份合法但无权访问：项目未开通该服务，或账号被策略限制。"
+msgstr "身份合法但無權訪問：項目未開通該服務，或賬號被策略限制。"
+
+msgid "确认项目已开通对应服务；仍有问题请联系管理员。"
+msgstr "確認項目已開通對應服務；仍有問題請聯繫管理員。"
+
+msgid "请求的路径不存在，或引用的资源不存在。"
+msgstr "請求的路徑不存在，或引用的資源不存在。"
+
+msgid "核对请求 URL 与资源 ID 是否正确。"
+msgstr "核對請求 URL 與資源 ID 是否正確。"
+
+msgid "短时间请求过于频繁（例如登录连续失败被临时锁定）。"
+msgstr "短時間請求過於頻繁（例如登錄連續失敗被臨時鎖定）。"
+
+msgid "降低请求频率、稍后重试。"
+msgstr "降低請求頻率、稍後重試。"
+
+msgid "使用了该接口不支持的 HTTP 方法。"
+msgstr "使用了該接口不支持的 HTTP 方法。"
+
+msgid "按文档标注的方法（GET / POST 等）发起请求。"
+msgstr "按文檔標註的方法（GET / POST 等）發起請求。"
+
+msgid "违反业务规则，例如当前账号状态不允许该操作。"
+msgstr "違反業務規則，例如當前賬號狀態不允許該操作。"
+
+msgid "按返回的 msg 提示处理；属于账号限制的请联系管理员。"
+msgstr "按返回的 msg 提示處理；屬於賬號限制的請聯繫管理員。"
+
+msgid "对象当前状态不允许执行该操作。"
+msgstr "對象當前狀態不允許執行該操作。"
+
+msgid "按提示调整对象状态后再试。"
+msgstr "按提示調整對象狀態後再試。"
+
+msgid "该服务正在维护，命中路径的请求被统一拦截。"
+msgstr "該服務正在維護，命中路徑的請求被統一攔截。"
+
+msgid "稍后重试，或关注该服务的公告。"
+msgstr "稍後重試，或關注該服務的公告。"
+
+msgid "该服务已下线。"
+msgstr "該服務已下線。"
+
+msgid "改用其它可用服务或线路。"
+msgstr "改用其它可用服務或線路。"
+
+msgid "该服务还在开发中，暂未对外开放。"
+msgstr "該服務還在開發中，暫未對外開放。"
+
+msgid "等待服务上线后再调用。"
+msgstr "等待服務上線後再調用。"
+
+msgid "项目的当日 / 当月调用量已达到配额上限。"
+msgstr "項目的當日 / 當月調用量已達到配額上限。"
+
+msgid "等待配额周期重置，或联系管理员调整配额。"
+msgstr "等待配額周期重置，或聯繫管理員調整配額。"
+
+msgid "平台调用上游第三方服务失败（上游异常或网络问题）。"
+msgstr "平臺調用上遊第三方服務失敗（上遊異常或網絡問題）。"
+
+msgid "稍后重试；若持续失败请反馈，平台会排查上游链路。"
+msgstr "稍後重試；若持續失敗請反饋，平臺會排查上遊鏈路。"
+
+msgid "服务端发生未预期的内部异常。"
+msgstr "服務端發生未預期的內部異常。"
+
+msgid "稍后重试；若持续失败请反馈。"
+msgstr "稍後重試；若持續失敗請反饋。"
+
+msgid "服务暂时不可用（维护或过载）。"
+msgstr "服務暫時不可用（維護或過載）。"
+
+msgid "稍后重试。"
+msgstr "稍後重試。"
+
+msgid "发生了未归类的错误。"
+msgstr "發生了未歸類的錯誤。"
+
+# ---- 控制台「立即送审」的并发与异常提示 ----
+
+msgid "该反馈正在审核中，请稍候"
+msgstr "該反饋正在審核中，請稍候"
+
+msgid "该反馈已被删除"
+msgstr "該反饋已被刪除"
+
+msgid "审核过程出错，请稍后重试"
+msgstr "審核過程出錯，請稍後重試"
+
+msgid "原价"
+msgstr "原價"
+
+msgid "名次"
+msgstr "名次"
+
+msgid "描述"
+msgstr "描述"
+
+msgid "摘要"
+msgstr "摘要"
+
+msgid "昵称"
+msgstr "暱稱"
+
+msgid "楼层"
+msgstr "樓層"
+
+msgid "发帖数"
+msgstr "發帖數"
+
+msgid "失败数"
+msgstr "失敗數"
+
+msgid "总条数"
+msgstr "總條數"
+
+msgid "总页数"
+msgstr "總頁數"
+
+msgid "成功数"
+msgstr "成功數"
+
+msgid "收藏数"
+msgstr "收藏數"
+
+msgid "新名称"
+msgstr "新名稱"
+
+msgid "标签名"
+msgstr "標籤名"
+
+msgid "浏览数"
+msgstr "瀏覽數"
+
+msgid "点赞数"
+msgstr "點讚數"
+
+msgid "粉丝数"
+msgstr "粉絲數"
+
+msgid "获赞数"
+msgstr "獲贊數"
+
+msgid "视频数"
+msgstr "視頻數"
+
+msgid "评论数"
+msgstr "評論數"
+
+msgid "购买数"
+msgstr "購買數"
+
+msgid "跳过数"
+msgstr "跳過數"
+
+msgid "付费价格"
+msgstr "付費價格"
+
+msgid "作者信息"
+msgstr "作者信息"
+
+msgid "作者昵称"
+msgstr "作者暱稱"
+
+msgid "关注总数"
+msgstr "關注總數"
+
+msgid "分页信息"
+msgstr "分頁信息"
+
+msgid "到账金币"
+msgstr "到賬金幣"
+
+msgid "发布时间"
+msgstr "發布時間"
+
+msgid "发生时间"
+msgstr "發生時間"
+
+msgid "备用域名"
+msgstr "備用域名"
+
+msgid "失败原因"
+msgstr "失敗原因"
+
+msgid "头像地址"
+msgstr "頭像地址"
+
+msgid "头衔名称"
+msgstr "頭銜名稱"
+
+msgid "头衔图标"
+msgstr "頭銜圖標"
+
+msgid "实际单价"
+msgstr "實際單價"
+
+msgid "审核状态"
+msgstr "審核狀態"
+
+msgid "客服邮箱"
+msgstr "客服郵箱"
+
+msgid "封面地址"
+msgstr "封面地址"
+
+msgid "当前栏目"
+msgstr "當前欄目"
+
+msgid "当前页码"
+msgstr "當前頁碼"
+
+msgid "所属板块"
+msgstr "所屬板塊"
+
+msgid "所赠礼物"
+msgstr "所贈禮物"
+
+msgid "是否加精"
+msgstr "是否加精"
+
+msgid "是否原创"
+msgstr "是否原創"
+
+msgid "是否名人"
+msgstr "是否名人"
+
+msgid "是否成功"
+msgstr "是否成功"
+
+msgid "是否显示"
+msgstr "是否顯示"
+
+msgid "是否置顶"
+msgstr "是否置頂"
+
+msgid "是否认证"
+msgstr "是否認證"
+
+msgid "更新时间"
+msgstr "更新時間"
+
+msgid "本次花费"
+msgstr "本次花費"
+
+msgid "板块名称"
+msgstr "板塊名稱"
+
+msgid "板块说明"
+msgstr "板塊說明"
+
+msgid "标签列表"
+msgstr "標籤列表"
+
+msgid "榜单人数"
+msgstr "榜單人數"
+
+msgid "榜单周期"
+msgstr "榜單周期"
+
+msgid "榜单数值"
+msgstr "榜單數值"
+
+msgid "榜单数据"
+msgstr "榜單數據"
+
+msgid "榜单维度"
+msgstr "榜單維度"
+
+msgid "流水类型"
+msgstr "流水類型"
+
+msgid "流水说明"
+msgstr "流水說明"
+
+msgid "用户头衔"
+msgstr "用戶頭銜"
+
+msgid "登录凭证"
+msgstr "登錄憑證"
+
+msgid "相对时间"
+msgstr "相對時間"
+
+msgid "礼物名称"
+msgstr "禮物名稱"
+
+msgid "礼物类型"
+msgstr "禮物類型"
+
+msgid "礼物说明"
+msgstr "禮物說明"
+
+msgid "筛选类型"
+msgstr "篩選類型"
+
+msgid "结果说明"
+msgstr "結果說明"
+
+msgid "账号列表"
+msgstr "賬號列表"
+
+msgid "账号总数"
+msgstr "賬號總數"
+
+msgid "货币类型"
+msgstr "貨幣類型"
+
+msgid "赠送数量"
+msgstr "贈送數量"
+
+msgid "逐条结果"
+msgstr "逐條結果"
+
+msgid "逐项结果"
+msgstr "逐項結果"
+
+msgid "今日已签数"
+msgstr "今日已簽數"
+
+msgid "变动后余额"
+msgstr "變動後餘額"
+
+msgid "头衔 ID"
+msgstr "頭銜 ID"
+
+msgid "夹内帖子数"
+msgstr "夾內帖子數"
+
+msgid "子评论总数"
+msgstr "子評論總數"
+
+msgid "帖子 ID"
+msgstr "帖子 ID"
+
+msgid "影视站域名"
+msgstr "影視站域名"
+
+msgid "待审 ID"
+msgstr "待審 ID"
+
+msgid "收礼人信息"
+msgstr "收禮人信息"
+
+msgid "收礼人昵称"
+msgstr "收禮人暱稱"
+
+msgid "收藏夹列表"
+msgstr "收藏夾列表"
+
+msgid "收藏夹名称"
+msgstr "收藏夾名稱"
+
+msgid "收藏夹总数"
+msgstr "收藏夾總數"
+
+msgid "无需操作数"
+msgstr "無需操作數"
+
+msgid "是否含图片"
+msgstr "是否含圖片"
+
+msgid "是否含视频"
+msgstr "是否含視頻"
+
+msgid "是否含音频"
+msgstr "是否含音頻"
+
+msgid "是否已点赞"
+msgstr "是否已點讚"
+
+msgid "是否待审核"
+msgstr "是否待審核"
+
+msgid "是否经代理"
+msgstr "是否經代理"
+
+msgid "本次新签数"
+msgstr "本次新簽數"
+
+msgid "板块 ID"
+msgstr "板塊 ID"
+
+msgid "标签 ID"
+msgstr "標籤 ID"
+
+msgid "源站状态码"
+msgstr "源站狀態碼"
+
+msgid "用户 ID"
+msgstr "用戶 ID"
+
+msgid "礼物 ID"
+msgstr "禮物 ID"
+
+msgid "评论 ID"
+msgstr "評論 ID"
+
+msgid "赠送后余额"
+msgstr "贈送後餘額"
+
+msgid "逐账号结果"
+msgstr "逐賬號結果"
+
+msgid "附件 ID"
+msgstr "附件 ID"
+
+msgid "VIP 等级"
+msgstr "VIP 等級"
+
+msgid "主评论 ID"
+msgstr "主評論 ID"
+
+msgid "作者头像地址"
+msgstr "作者頭像地址"
+
+msgid "审核失败原因"
+msgstr "審核失敗原因"
+
+msgid "我是否已关注"
+msgstr "我是否已關注"
+
+msgid "我是否点过赞"
+msgstr "我是否點過贊"
+
+msgid "操作后的状态"
+msgstr "操作後的狀態"
+
+msgid "收藏夹 ID"
+msgstr "收藏夾 ID"
+
+msgid "是否付费评论"
+msgstr "是否付費評論"
+
+msgid "是否已存密码"
+msgstr "是否已存密碼"
+
+msgid "最后评论时间"
+msgstr "最後評論時間"
+
+msgid "有效期（秒）"
+msgstr "有效期（秒）"
+
+msgid "本条子回复数"
+msgstr "本條子回複數"
+
+msgid "本次到账金币"
+msgstr "本次到賬金幣"
+
+msgid "板块图标地址"
+msgstr "板塊圖標地址"
+
+msgid "榜单周期名称"
+msgstr "榜單周期名稱"
+
+msgid "榜单维度名称"
+msgstr "榜單維度名稱"
+
+msgid "海外永久域名"
+msgstr "海外永久域名"
+
+msgid "父板块 ID"
+msgstr "父板塊 ID"
+
+msgid "相关推荐列表"
+msgstr "相關推薦列表"
+
+msgid "礼物图片地址"
+msgstr "禮物圖片地址"
+
+msgid "视频封面地址"
+msgstr "視頻封面地址"
+
+msgid "视频附件列表"
+msgstr "視頻附件列表"
+
+msgid "顶层板块数组"
+msgstr "頂層板塊數組"
+
+msgid "作者用户 ID"
+msgstr "作者用戶 ID"
+
+msgid "内联子评论预览"
+msgstr "內聯子評論預覽"
+
+msgid "动作（add）"
+msgstr "動作（add）"
+
+msgid "头像是否需解码"
+msgstr "頭像是否需解碼"
+
+msgid "库内账号 ID"
+msgstr "庫內賬號 ID"
+
+msgid "引用的评论内容"
+msgstr "引用的評論內容"
+
+msgid "本来就没收藏数"
+msgstr "本來就沒收藏數"
+
+msgid "板块数据版本号"
+msgstr "板塊數據版本號"
+
+msgid "正文（纯文本）"
+msgstr "正文（純文本）"
+
+msgid "源站用户 ID"
+msgstr "源站用戶 ID"
+
+msgid "目标用户 ID"
+msgstr "目標用戶 ID"
+
+msgid "原图加密地址列表"
+msgstr "原圖加密地址列表"
+
+msgid "所属主评论 ID"
+msgstr "所屬主評論 ID"
+
+msgid "操作后的关注状态"
+msgstr "操作後的關注狀態"
+
+msgid "收礼人用户 ID"
+msgstr "收禮人用戶 ID"
+
+msgid "调用方是否已购买"
+msgstr "調用方是否已購買"
+
+msgid "配图加密地址列表"
+msgstr "配圖加密地址列表"
+
+msgid "限定的板块 ID"
+msgstr "限定的板塊 ID"
+
+msgid "今日大陆可访问域名"
+msgstr "今日大陸可訪問域名"
+
+msgid "作者 VIP 等级"
+msgstr "作者 VIP 等級"
+
+msgid "内联最新子回复预览"
+msgstr "內聯最新子回復預覽"
+
+msgid "所需 VIP 等级"
+msgstr "所需 VIP 等級"
+
+msgid "动作（delete）"
+msgstr "動作（delete）"
+
+msgid "动作（remove）"
+msgstr "動作（remove）"
+
+msgid "动作（rename）"
+msgstr "動作（rename）"
+
+msgid "序号（从 0 开始）"
+msgstr "序號（從 0 開始）"
+
+msgid "是否已存 Token"
+msgstr "是否已存 Token"
+
+msgid "直接回复的评论 ID"
+msgstr "直接回復的評論 ID"
+
+msgid "代理出口（IP:端口）"
+msgstr "代理出口（IP:端口）"
+
+msgid "子板块数组（结构相同）"
+msgstr "子板塊數組（結構相同）"
+
+msgid "本服务可播放的列表地址"
+msgstr "本服務可播放的列表地址"
+
+msgid "附件地址（视频为空串）"
+msgstr "附件地址（視頻為空串）"
+
+msgid "验证码会话 Token"
+msgstr "驗證碼會話 Token"
+
+msgid "变动数额（正收入负支出）"
+msgstr "變動數額（正收入負支出）"
+
+msgid "帖子 ID（待审核时为空）"
+msgstr "帖子 ID（待審核時為空）"
+
+msgid "正文 HTML（原样返回）"
+msgstr "正文 HTML（原樣返回）"
+
+msgid "可拼进正文的 HTML 片段"
+msgstr "可拼進正文的 HTML 片段"
+
+msgid "动作（like/unlike）"
+msgstr "動作（like/unlike）"
+
+msgid "货币类型（1 金币 2 钻石）"
+msgstr "貨幣類型（1 金幣 2 鑽石）"
+
+msgid "验证码图片（data URI）"
+msgstr "驗證碼圖片（data URI）"
+
+msgid "源站原始 m3u8（不可直接播放）"
+msgstr "源站原始 m3u8（不可直接播放）"
+
+msgid "礼物类型（gold/diamond）"
+msgstr "禮物類型（gold/diamond）"
+
+msgid "附件类型（images/video）"
+msgstr "附件類型（images/video）"
+
+msgid "动作（follow/unfollow）"
+msgstr "動作（follow/unfollow）"
+
+msgid "成功时无业务数据（data 为 null）。"
+msgstr "成功時無業務數據（data 為 null）。"
+
+msgid "状态（done/skipped/failed）"
+msgstr "狀態（done/skipped/failed）"
+
+msgid "状态（signed/already/failed）"
+msgstr "狀態（signed/already/failed）"
+
+msgid "密码明文（仅 with_password=true）"
+msgstr "密碼明文（僅 with_password=true）"
+
+msgid "签到状态（signed/already/closed）"
+msgstr "簽到狀態（signed/already/closed）"
+
+msgid "状态（done/already/skipped/failed）"
+msgstr "狀態（done/already/skipped/failed）"
+
+msgid "data 为源站余额对象的原样透传，当前含 gold（金币）与 diamond（钻石）两个字段，具体字段以源站返回为准。"
+msgstr "data 為源站餘額對象的原樣透傳，當前含 gold（金幣）與 diamond（鑽石）兩個字段，具體字段以源站返回為準。"
+
+msgid "响应不是 {code, msg, data} 信封，而是真实图片二进制（Content-Type 为 image/jpeg 等），可直接用于 <img src>。"
+msgstr "響應不是 {code, msg, data} 信封，而是真實圖片二進制（Content-Type 為 image/jpeg 等），可直接用於 <img src>。"
+
+msgid "响应不是 {code, msg, data} 信封，而是 m3u8 播放列表文本（Content-Type: application/vnd.apple.mpegurl），可直接交给播放器加载。"
+msgstr "響應不是 {code, msg, data} 信封，而是 m3u8 播放列表文本（Content-Type: application/vnd.apple.mpegurl），可直接交給播放器加載。"
+
+msgid "今天已签到（本地记录）"
+msgstr "今天已簽到（本地記錄）"
+
+msgid "总榜"
+msgstr "總榜"
+
+msgid "粉丝"
+msgstr "粉絲"
+
+msgid "本来就没收藏"
+msgstr "本來就沒收藏"
+
+msgid "目标用户就是该账号自己"
+msgstr "目標用戶就是該賬號自己"
+
+msgid "data 为代练通短信接口返回的原始 JSON 对象（原样透传），字段由上游定义。"
+msgstr "data 為代練通短信接口返回的原始 JSON 對象（原樣透傳），字段由上遊定義。"
+
+msgid "data 为代练通注册接口返回的原始 JSON 对象（原样透传），字段由上游定义。"
+msgstr "data 為代練通註冊接口返回的原始 JSON 對象（原樣透傳），字段由上遊定義。"
+
+msgid "data 为代练通登录接口返回的原始 JSON 对象（原样透传），含上游下发的登录态信息，字段由上游定义。"
+msgstr "data 為代練通登錄接口返回的原始 JSON 對象（原樣透傳），含上遊下發的登錄態信息，字段由上遊定義。"
+
+msgid "data 为代练通用户信息接口返回的原始 JSON 对象（原样透传），字段由上游定义。"
+msgstr "data 為代練通用戶信息接口返回的原始 JSON 對象（原樣透傳），字段由上遊定義。"
+
+msgid "data 为代练通用户信息更新接口返回的原始 JSON 对象（原样透传），字段由上游定义。"
+msgstr "data 為代練通用戶信息更新接口返回的原始 JSON 對象（原樣透傳），字段由上遊定義。"
+
+msgid "执行结果由外层 code / msg 表达；data 为 null，不含业务数据。"
+msgstr "執行結果由外層 code / msg 表達；data 為 null，不含業務數據。"
+
+msgid "data 为代练通改密接口返回的原始 JSON 对象（原样透传），字段由上游定义。"
+msgstr "data 為代練通改密接口返回的原始 JSON 對象（原樣透傳），字段由上遊定義。"
+
+msgid "data 为上游签到接口 Result1 字段的内容（原样透传），字段由上游定义。"
+msgstr "data 為上遊簽到接口 Result1 字段的內容（原樣透傳），字段由上遊定義。"
+
+msgid "data 为上游实名认证接口 Result 字段的内容（数组或对象，原样透传），字段由上游定义。"
+msgstr "data 為上遊實名認證接口 Result 字段的內容（數組或對象，原樣透傳），字段由上遊定義。"
+
+msgid "默认 data 为上游订单数组（字段由上游定义）；当 filter_sensitive=true 时，data 变为下列含过滤统计的对象。"
+msgstr "默認 data 為上遊訂單數組（字段由上遊定義）；當 filter_sensitive=true 時，data 變為下列含過濾統計的對象。"
+
+msgid "过滤后保留的订单数组"
+msgstr "過濾後保留的訂單數組"
+
+msgid "过滤前的订单总数"
+msgstr "過濾前的訂單總數"
+
+msgid "被过滤的订单数"
+msgstr "被過濾的訂單數"
+
+msgid "过滤后剩余的订单数"
+msgstr "過濾後剩餘的訂單數"
+
+msgid "被过滤订单及命中的敏感词"
+msgstr "被過濾訂單及命中的敏感詞"
+
+msgid "被过滤的订单号"
+msgstr "被過濾的訂單號"
+
+msgid "被过滤的订单标题"
+msgstr "被過濾的訂單標題"
+
+msgid "命中该订单的敏感词"
+msgstr "命中該訂單的敏感詞"
+
+msgid "data 为代练通订单详情接口返回的原始 JSON 对象（原样透传），字段由上游定义。"
+msgstr "data 為代練通訂單詳情接口返回的原始 JSON 對象（原樣透傳），字段由上遊定義。"
+
+msgid "data 为代练通接收订单接口返回的原始 JSON 对象（原样透传），字段由上游定义。"
+msgstr "data 為代練通接收訂單接口返回的原始 JSON 對象（原樣透傳），字段由上遊定義。"
+
+msgid "data 为代练通发布订单接口返回的原始 JSON 对象（原样透传），字段由上游定义。"
+msgstr "data 為代練通發布訂單接口返回的原始 JSON 對象（原樣透傳），字段由上遊定義。"
+
+msgid "data 为代练通删除订单接口返回的原始 JSON 对象（原样透传），字段由上游定义。"
+msgstr "data 為代練通刪除訂單接口返回的原始 JSON 對象（原樣透傳），字段由上遊定義。"
+
+msgid "data 为上游「我的订单」接口 LevelOrderList 字段的订单数组（原样透传），每项字段由上游定义。"
+msgstr "data 為上遊「我的訂單」接口 LevelOrderList 字段的訂單數組（原樣透傳），每項字段由上遊定義。"
+
+msgid "data 为代练通订单留言接口返回的原始 JSON 对象（原样透传），字段由上游定义。"
+msgstr "data 為代練通訂單留言接口返回的原始 JSON 對象（原樣透傳），字段由上遊定義。"
+
+msgid "data 为上游接口返回的完整响应对象（原样透传，含上游自身的 code / message / data），字段由上游定义。"
+msgstr "data 為上遊接口返回的完整響應對象（原樣透傳，含上遊自身的 code / message / data），字段由上遊定義。"
+
+msgid "后台启用的注册/登录方式列表"
+msgstr "後臺啟用的註冊/登錄方式列表"
+
+msgid "取值 email / phone"
+msgstr "取值 email / phone"
+
+msgid "用户名+密码注册是否可用（恒为 false）"
+msgstr "用戶名+密碼註冊是否可用（恆為 false）"
+
+msgid "选填：注册时提交的展示名，原样回带"
+msgstr "選填：註冊時提交的展示名，原樣回帶"
+
+msgid "本次注册绑定的邮箱（提交邮箱时返回）"
+msgstr "本次註冊綁定的郵箱（提交郵箱時返回）"
+
+msgid "验证邮件是否发送成功"
+msgstr "驗證郵件是否發送成功"
+
+msgid "本次注册绑定的手机号（提交手机号时返回）"
+msgstr "本次註冊綁定的手機號（提交手機號時返回）"
+
+msgid "注册短信是否发送成功"
+msgstr "註冊短信是否發送成功"
+
+msgid "恒为 true：需完成验证后才发放账号"
+msgstr "恆為 true：需完成驗證後才發放賬號"
+
+msgid "用户唯一 ID（UUID）"
+msgstr "用戶唯一 ID（UUID）"
+
+msgid "系统分配的账号（6-12 位数字）"
+msgstr "系統分配的賬號（6-12 位數字）"
+
+msgid "用户名（可空）"
+msgstr "用戶名（可空）"
+
+msgid "登录 Token，绑定本项目"
+msgstr "登錄 Token，綁定本項目"
+
+msgid "Token 过期时间（Y-m-d H:M:S）"
+msgstr "Token 過期時間（Y-m-d H:M:S）"
+
+msgid "已绑定邮箱（未绑定时不返回）"
+msgstr "已綁定郵箱（未綁定時不返回）"
+
+msgid "已绑定手机号（未绑定时不返回）"
+msgstr "已綁定手機號（未綁定時不返回）"
+
+msgid "Token 是否有效（成功恒为 true）"
+msgstr "Token 是否有效（成功恆為 true）"
+
+msgid "邮箱是否已验证"
+msgstr "郵箱是否已驗證"
+
+msgid "手机号是否已验证"
+msgstr "手機號是否已驗證"
+
+msgid "项目唯一 ID（UUID）"
+msgstr "項目唯一 ID（UUID）"
+
+msgid "项目名称"
+msgstr "項目名稱"
+
+msgid "APPID（公开标识）"
+msgstr "APPID（公開標識）"
+
+msgid "Token 默认有效期（天）"
+msgstr "Token 默認有效期（天）"
+
+msgid "项目启用状态"
+msgstr "項目啟用狀態"
+
+msgid "本次注册绑定的邮箱"
+msgstr "本次註冊綁定的郵箱"
+
+msgid "本次注册绑定的手机号"
+msgstr "本次註冊綁定的手機號"
+
+msgid "成功时 data 为 null：接口只下发验证码，不返回业务数据。"
+msgstr "成功時 data 為 null：接口只下發驗證碼，不返回業務數據。"
+
+msgid "成功时 data 为 null：接口只返回操作结果。"
+msgstr "成功時 data 為 null：接口只返回操作結果。"
+
+msgid "成功时 data 为 null：接口只重发验证邮件。"
+msgstr "成功時 data 為 null：接口只重發驗證郵件。"
+
+msgid "成功时 data 为 null：接口只重发注册短信。"
+msgstr "成功時 data 為 null：接口只重發註冊短信。"
+
+msgid "成功/失败均返回 HTML 结果页（非 JSON），data 不适用；调试面板显示 HTML 原文属正常。"
+msgstr "成功/失敗均返回 HTML 結果頁（非 JSON），data 不適用；調試面板顯示 HTML 原文屬正常。"
+
+msgid "主分类列表"
+msgstr "主分類列表"
+
+msgid "分类 ID，传给列表接口 type_id"
+msgstr "分類 ID，傳給列表接口 type_id"
+
+msgid "分类名称"
+msgstr "分類名稱"
+
+msgid "连续剧的子分类列表"
+msgstr "連續劇的子分類列表"
+
+msgid "子分类 ID，同样可传 type_id"
+msgstr "子分類 ID，同樣可傳 type_id"
+
+msgid "子分类名称"
+msgstr "子分類名稱"
+
+msgid "首页专题（label）列表"
+msgstr "首頁專題（label）列表"
+
+msgid "专题标识"
+msgstr "專題標識"
+
+msgid "专题名称"
+msgstr "專題名稱"
+
+msgid "分类 ID（回带入参）"
+msgstr "分類 ID（回帶入參）"
+
+msgid "该分类的子分类"
+msgstr "該分類的子分類"
+
+msgid "值，回传给列表接口 type_id"
+msgstr "值，回傳給列表接口 type_id"
+
+msgid "筛选条件分组（地区/题材/语言/年份/排序）"
+msgstr "篩選條件分組（地區/題材/語言/年份/排序）"
+
+msgid "参数名（area/genre/lang/year/order）"
+msgstr "參數名（area/genre/lang/year/order）"
+
+msgid "分组名称"
+msgstr "分組名稱"
+
+msgid "该组的可选值"
+msgstr "該組的可選值"
+
+msgid "选项名称"
+msgstr "選項名稱"
+
+msgid "选项值，回传给同名参数"
+msgstr "選項值，回傳給同名參數"
+
+msgid "轮播图"
+msgstr "輪播圖"
+
+msgid "片名"
+msgstr "片名"
+
+msgid "详情页地址"
+msgstr "詳情頁地址"
+
+msgid "封面图地址"
+msgstr "封面圖地址"
+
+msgid "角标/备注"
+msgstr "角標/備註"
+
+msgid "一句话简介"
+msgstr "一句話簡介"
+
+msgid "推荐区块列表"
+msgstr "推薦區塊列表"
+
+msgid "区块标题"
+msgstr "區塊標題"
+
+msgid "区块内影片"
+msgstr "區塊內影片"
+
+msgid "豆瓣评分"
+msgstr "豆瓣評分"
+
+msgid "影片列表"
+msgstr "影片列表"
+
+msgid "影片 ID（传给详情接口 vod_id）"
+msgstr "影片 ID（傳給詳情接口 vod_id）"
+
+msgid "播放源列表"
+msgstr "播放源列表"
+
+msgid "剧情简介"
+msgstr "劇情簡介"
+
+msgid "元数据键值对（导演/主演/上映等）"
+msgstr "元數據鍵值對（導演/主演/上映等）"
+
+msgid "播放源名称"
+msgstr "播放源名稱"
+
+msgid "播放源序号，传给播放接口"
+msgstr "播放源序號，傳給播放接口"
+
+msgid "该源的选集列表"
+msgstr "該源的選集列表"
+
+msgid "集数序号，传给播放接口"
+msgstr "集數序號，傳給播放接口"
+
+msgid "集数名称"
+msgstr "集數名稱"
+
+msgid "播放页地址"
+msgstr "播放頁地址"
+
+msgid "影片 ID（回带入参）"
+msgstr "影片 ID（回帶入參）"
+
+msgid "播放源序号（回带入参）"
+msgstr "播放源序號（回帶入參）"
+
+msgid "集数序号（回带入参）"
+msgstr "集數序號（回帶入參）"
+
+msgid "m3u8 播放地址（带时效）"
+msgstr "m3u8 播放地址（帶時效）"
+
+msgid "源站标识"
+msgstr "源站標識"
+
+msgid "是否加密（源站字段，通常 0）"
+msgstr "是否加密（源站字段，通常 0）"
+
+msgid "搜索关键词（回带入参）"
+msgstr "搜索關鍵詞（回帶入參）"
+
+msgid "搜索结果列表"
+msgstr "搜索結果列表"
+
+msgid "榜单类型（回带入参）"
+msgstr "榜單類型（回帶入參）"
+
+msgid "榜单剧集列表"
+msgstr "榜單劇集列表"
+
+msgid "排名"
+msgstr "排名"
+
+msgid "剧集 ID（传给详情/播放接口）"
+msgstr "劇集 ID（傳給詳情/播放接口）"
+
+msgid "剧名"
+msgstr "劇名"
+
+msgid "热度（无则 null）"
+msgstr "熱度（無則 null）"
+
+msgid "评分（无则 null）"
+msgstr "評分（無則 null）"
+
+msgid "收藏数（无则 null）"
+msgstr "收藏數（無則 null）"
+
+msgid "点赞数（无则 null）"
+msgstr "點讚數（無則 null）"
+
+msgid "题材标签"
+msgstr "題材標籤"
+
+msgid "分类树（一级）"
+msgstr "分類樹（一級）"
+
+msgid "一级分类标识（传给列表接口 category）"
+msgstr "一級分類標識（傳給列表接口 category）"
+
+msgid "一级分类名称"
+msgstr "一級分類名稱"
+
+msgid "分类页地址"
+msgstr "分類頁地址"
+
+msgid "二级题材（无则为空数组）"
+msgstr "二級題材（無則為空數組）"
+
+msgid "二级标识（一级/二级形式）"
+msgstr "二級標識（一級/二級形式）"
+
+msgid "二级题材名称"
+msgstr "二級題材名稱"
+
+msgid "分类标识（回带入参）"
+msgstr "分類標識（回帶入參）"
+
+msgid "短剧列表"
+msgstr "短劇列表"
+
+msgid "剧集 ID（回带入参）"
+msgstr "劇集 ID（回帶入參）"
+
+msgid "总集数"
+msgstr "總集數"
+
+msgid "源站直链的连续可播集数"
+msgstr "源站直鏈的連續可播集數"
+
+msgid "实际可播集数（playable=true 的集数）"
+msgstr "實際可播集數（playable=true 的集數）"
+
+msgid "全量集列表"
+msgstr "全量集列表"
+
+msgid "集号（从 1 开始）"
+msgstr "集號（從 1 開始）"
+
+msgid "源站集 ID"
+msgstr "源站集 ID"
+
+msgid "该集是否可播"
+msgstr "該集是否可播"
+
+msgid "来源：origin 源站直链 / stream 本站直出"
+msgstr "來源：origin 源站直鏈 / stream 本站直出"
+
+msgid "集号（回带入参）"
+msgstr "集號（回帶入參）"
+
+msgid "是否可播（成功恒为 true）"
+msgstr "是否可播（成功恆為 true）"
+
+msgid "播放地址（带时效）"
+msgstr "播放地址（帶時效）"
+
+msgid "仅 source=stream：地址类型（mp4）"
+msgstr "僅 source=stream：地址類型（mp4）"
+
+msgid "仅 source=stream：出流画质（宽度上限）"
+msgstr "僅 source=stream：出流畫質（寬度上限）"
+
+msgid "仅 source=stream：产物是否已生成（false 需轮询）"
+msgstr "僅 source=stream：產物是否已生成（false 需輪詢）"
+
+msgid "仅 source=origin：源站集 ID"
+msgstr "僅 source=origin：源站集 ID"
+
+msgid "仅 source=origin：时长"
+msgstr "僅 source=origin：時長"
+
+msgid "仅 source=origin：视频宽"
+msgstr "僅 source=origin：視頻寬"
+
+msgid "仅 source=origin：视频高"
+msgstr "僅 source=origin：視頻高"
+
+msgid "仅 source=origin：封面图地址"
+msgstr "僅 source=origin：封面圖地址"
+
+msgid "榜单专有字段，列表接口恒为 null"
+msgstr "榜單專有字段，列表接口恆為 null"
+
+msgid "总页数（搜索恒为 1）"
+msgstr "總頁數（搜索恆為 1）"
+
+msgid "成功返回视频二进制流（video/mp4，支持 Range）；生成中返回 202、生成失败 503、令牌无效或过期 403，均非统一 JSON 信封。"
+msgstr "成功返回視頻二進制流（video/mp4，支持 Range）；生成中返回 202、生成失敗 503、令牌無效或過期 403，均非統一 JSON 信封。"
+
+msgid "连续剧"
+msgstr "連續劇"
+
+msgid "热门连续剧"
+msgstr "熱門連續劇"
+
+msgid "Netflix 专区"
+msgstr "Netflix 專區"
+
+msgid "动作片"
+msgstr "動作片"
+
+msgid "大陆"
+msgstr "大陸"
+
+msgid "示例影片"
+msgstr "示例影片"
+
+msgid "本周最佳"
+msgstr "本周最佳"
+
+msgid "更新至10集"
+msgstr "更新至10集"
+
+msgid "导演"
+msgstr "導演"
+
+msgid "张三"
+msgstr "張三"
+
+msgid "主演"
+msgstr "主演"
+
+msgid "李四"
+msgstr "李四"
+
+msgid "上映"
+msgstr "上映"
+
+msgid "线路1"
+msgstr "線路1"
+
+msgid "第1集"
+msgstr "第1集"
+
+msgid "保姆"
+msgstr "保姆"
+
+msgid "示例短剧"
+msgstr "示例短劇"
+
+msgid "逆袭"
+msgstr "逆襲"
+
+msgid "甜宠"
+msgstr "甜寵"
+
+msgid "爱情"
+msgstr "愛情"
+
+msgid "热门歌手列表"
+msgstr "熱門歌手列表"
+
+msgid "歌手名"
+msgstr "歌手名"
+
+msgid "头像图片地址"
+msgstr "頭像圖片地址"
+
+msgid "歌手页地址"
+msgstr "歌手頁地址"
+
+msgid "歌曲飙升榜"
+msgstr "歌曲飆升榜"
+
+msgid "歌曲名"
+msgstr "歌曲名"
+
+msgid "歌手名列表"
+msgstr "歌手名列表"
+
+msgid "流行趋势榜"
+msgstr "流行趨勢榜"
+
+msgid "歌手基本信息"
+msgstr "歌手基本信息"
+
+msgid "歌手名称"
+msgstr "歌手名稱"
+
+msgid "歌手简介"
+msgstr "歌手簡介"
+
+msgid "歌曲列表"
+msgstr "歌曲列表"
+
+msgid "歌曲基本信息"
+msgstr "歌曲基本信息"
+
+msgid "分页信息；无分页时为 null"
+msgstr "分頁信息；無分頁時為 null"
+
+msgid "当前页 {page,url}"
+msgstr "當前頁 {page,url}"
+
+msgid "页面地址"
+msgstr "頁面地址"
+
+msgid "首页 {page,url}；不存在为 null"
+msgstr "首頁 {page,url}；不存在為 null"
+
+msgid "上一页 {page,url}；不存在为 null"
+msgstr "上一頁 {page,url}；不存在為 null"
+
+msgid "下一页 {page,url}；不存在为 null"
+msgstr "下一頁 {page,url}；不存在為 null"
+
+msgid "尾页 {page,url}；不存在为 null"
+msgstr "尾頁 {page,url}；不存在為 null"
+
+msgid "搜索结果歌曲列表"
+msgstr "搜索結果歌曲列表"
+
+msgid "搜索结果总条数"
+msgstr "搜索結果總條數"
+
+msgid "播放直链（解密后）；失败为空字符串"
+msgstr "播放直鏈（解密後）；失敗為空字符串"
+
+msgid "LRC 格式歌词；失败为空字符串"
+msgstr "LRC 格式歌詞；失敗為空字符串"
+
+msgid "随机推荐列表"
+msgstr "隨機推薦列表"
+
+msgid "音乐列表"
+msgstr "音樂列表"
+
+msgid "歌手列表"
+msgstr "歌手列表"
+
+msgid "是否在线"
+msgstr "是否在線"
+
+msgid "音乐 UUID（即 music_id）"
+msgstr "音樂 UUID（即 music_id）"
+
+msgid "该音乐的播放源列表"
+msgstr "該音樂的播放源列表"
+
+msgid "所属音乐 UUID"
+msgstr "所屬音樂 UUID"
+
+msgid "提交总条数"
+msgstr "提交總條數"
+
+msgid "成功入库条数"
+msgstr "成功入庫條數"
+
+msgid "失败条数"
+msgstr "失敗條數"
+
+msgid "失败明细列表"
+msgstr "失敗明細列表"
+
+msgid "记录在数组中的下标（从 0 起）"
+msgstr "記錄在數組中的下標（從 0 起）"
+
+msgid "该记录的 name；取不到为空字符串"
+msgstr "該記錄的 name；取不到為空字符串"
+
+msgid "删除成功时 data 为 null（无返回数据）。"
+msgstr "刪除成功時 data 為 null（無返回數據）。"
+
+msgid "该接口返回文件下载（Content-Disposition: attachment），不走 {code,msg,data} 统一包裹：内容为与「批量导入」同格式的 JSON 数组，≤9999 条为单个 .json，超出为 .zip 分片。"
+msgstr "該接口返回文件下載（Content-Disposition: attachment），不走 {code,msg,data} 統一包裹：內容為與「批量導入」同格式的 JSON 數組，≤9999 條為單個 .json，超出為 .zip 分片。"
+
+msgid "歌曲页地址"
+msgstr "歌曲頁地址"
+
+msgid "视频/图文标题"
+msgstr "視頻/圖文標題"
+
+msgid "时长（秒）；图文为 null"
+msgstr "時長（秒）；圖文為 null"
+
+msgid "视频下载列表；图文为空数组"
+msgstr "視頻下載列表；圖文為空數組"
+
+msgid "画质描述（如 1080P）"
+msgstr "畫質描述（如 1080P）"
+
+msgid "无水印视频地址"
+msgstr "無水印視頻地址"
+
+msgid "文件大小（字节，可能为 null）"
+msgstr "文件大小（字節，可能為 null）"
+
+msgid "图片下载列表；视频为空数组"
+msgstr "圖片下載列表；視頻為空數組"
+
+msgid "图片描述（如 图片1）"
+msgstr "圖片描述（如 圖片1）"
+
+msgid "图片原图地址"
+msgstr "圖片原圖地址"
+
+msgid "文件大小（通常为 null）"
+msgstr "文件大小（通常為 null）"
+
+msgid "发布时间（Unix 秒级时间戳）"
+msgstr "發布時間（Unix 秒級時間戳）"
+
+msgid "代理列表"
+msgstr "代理列表"
+
+msgid "代理端口"
+msgstr "代理端口"
+
+msgid "协议：HTTP / SOCKS5"
+msgstr "協議：HTTP / SOCKS5"
+
+msgid "归属说明（固定为「国内动态」）"
+msgstr "歸屬說明（固定為「國內動態」）"
+
+msgid "附加列内容；仅开启附加列参数时出现"
+msgstr "附加列內容；僅開啟附加列參數時出現"
+
+msgid "代理认证账号；随账密成对出现时才有"
+msgstr "代理認證賬號；隨賬密成對出現時才有"
+
+msgid "代理认证密码；随账密成对出现时才有"
+msgstr "代理認證密碼；隨賬密成對出現時才有"
+
+msgid "可直接使用的代理地址；随账密成对出现时才有"
+msgstr "可直接使用的代理地址；隨賬密成對出現時才有"
+
+msgid "返回总数"
+msgstr "返回總數"
+
+msgid "本次返回数"
+msgstr "本次返回數"
+
+msgid "地区名（可能为空）"
+msgstr "地區名（可能為空）"
+
+msgid "地区编码（可能为空）"
+msgstr "地區編碼（可能為空）"
+
+msgid "运营商（可能为空）"
+msgstr "運營商（可能為空）"
+
+msgid "到期时间（可能为空）"
+msgstr "到期時間（可能為空）"
+
+msgid "经国内中转的代理地址；未配置中转时无此字段"
+msgstr "經國內中轉的代理地址；未配置中轉時無此字段"
+
+msgid "被验证的 IP"
+msgstr "被驗證的 IP"
+
+msgid "是否为搜索引擎爬虫"
+msgstr "是否為搜索引擎爬蟲"
+
+msgid "蜘蛛类型；非蜘蛛为「非蜘蛛」"
+msgstr "蜘蛛類型；非蜘蛛為「非蜘蛛」"
+
+msgid "反向解析域名（PTR）"
+msgstr "反向解析域名（PTR）"
+
+msgid "匹配的官方域名后缀；未匹配为「未匹配」"
+msgstr "匹配的官方域名後綴；未匹配為「未匹配」"
+
+msgid "结果描述（如「查询成功」）"
+msgstr "結果描述（如「查詢成功」）"
+
+msgid "对外部服务查询耗时可能较长，属正常。"
+msgstr "對外部服務查詢耗時可能較長，屬正常。"
+
+msgid "以下字段为 stream=false 时的 data 结构；stream=true 时响应改为 SSE 文本流（逐帧推送，见上方说明），不走该结构。"
+msgstr "以下字段為 stream=false 時的 data 結構；stream=true 時響應改為 SSE 文本流（逐幀推送，見上方說明），不走該結構。"
+
+msgid "模型回复正文（Markdown）"
+msgstr "模型回復正文（Markdown）"
+
+msgid "对外模型标识"
+msgstr "對外模型標識"
+
+msgid "Token 用量；上游未返回时为 null"
+msgstr "Token 用量；上遊未返回時為 null"
+
+msgid "输入 Token 数"
+msgstr "輸入 Token 數"
+
+msgid "输出 Token 数"
+msgstr "輸出 Token 數"
+
+msgid "总 Token 数"
+msgstr "總 Token 數"
+
+msgid "结束原因；可能为 null"
+msgstr "結束原因；可能為 null"
+
+msgid "可用模型列表"
+msgstr "可用模型列表"
+
+msgid "模型标识（传参 model 的取值）"
+msgstr "模型標識（傳參 model 的取值）"
+
+msgid "展示名"
+msgstr "展示名"
+
+msgid "是否支持视觉（可传 images）"
+msgstr "是否支持視覺（可傳 images）"
+
+msgid "上下文长度；未知为 null"
+msgstr "上下文長度；未知為 null"
+
+msgid "是否为默认模型"
+msgstr "是否為默認模型"
+
+msgid "查询的接口路径"
+msgstr "查詢的接口路徑"
+
+msgid "累计调用次数"
+msgstr "累計調用次數"
+
+msgid "今日调用次数"
+msgstr "今日調用次數"
+
+msgid "各服务调用量列表（按累计降序）"
+msgstr "各服務調用量列表（按累計降序）"
+
+msgid "服务前缀（如 /api/email/）"
+msgstr "服務前綴（如 /api/email/）"
+
+msgid "服务名称"
+msgstr "服務名稱"
+
+msgid "示例歌手"
+msgstr "示例歌手"
+
+msgid "示例歌曲"
+msgstr "示例歌曲"
+
+msgid "示例歌词"
+msgstr "示例歌詞"
+
+msgid "资源已存在: 同名且同歌手的音乐已存在"
+msgstr "資源已存在: 同名且同歌手的音樂已存在"
+
+msgid "示例视频标题"
+msgstr "示例視頻標題"
+
+msgid "示例评论"
+msgstr "示例評論"
+
+msgid "国内动态"
+msgstr "國內動態"
+
+msgid "曲靖市"
+msgstr "曲靖市"
+
+msgid "电信"
+msgstr "電信"
+
+msgid "谷歌蜘蛛"
+msgstr "谷歌蜘蛛"
+
+msgid "反向DNS验证"
+msgstr "反向DNS驗證"
+
+msgid "查询成功"
+msgstr "查詢成功"
+
+msgid "示例回复内容"
+msgstr "示例回復內容"
+
+msgid "收件人邮箱列表"
+msgstr "收件人郵箱列表"
+
+msgid "收件人数量"
+msgstr "收件人數量"
+
+msgid "临时邮箱地址"
+msgstr "臨時郵箱地址"
+
+msgid "客户端标识，查询邮件时回传"
+msgstr "客戶端標識，查詢郵件時回傳"
+
+msgid "发送失败归为外部服务错误。"
+msgstr "發送失敗歸為外部服務錯誤。"
+
+msgid "完整正文用列表里的 id 查「获取邮件详情」。"
+msgstr "完整正文用列表裡的 id 查「獲取郵件詳情」。"
+
+msgid "data 为可用后缀域名组成的字符串数组；上游异常时回退为内置默认域名。"
+msgstr "data 為可用後綴域名組成的字符串數組；上遊異常時回退為內置默認域名。"
+
+msgid "data 为上游 mail.cx 的邮件摘要列表，每项含 id / from_name / from_email / subject / preview_text / preview_status / size / created_at 等字段，以实际返回为准。"
+msgstr "data 為上遊 mail.cx 的郵件摘要列表，每項含 id / from_name / from_email / subject / preview_text / preview_status / size / created_at 等字段，以實際返回為準。"
+
+msgid "data 为上游 mail.cx 返回的邮件详情原始 JSON，含 id / from / from_email / from_name / to / subject / text_body / html_body / attachments / date / created_at 等字段，以实际返回为准。"
+msgstr "data 為上遊 mail.cx 返回的郵件詳情原始 JSON，含 id / from / from_email / from_name / to / subject / text_body / html_body / attachments / date / created_at 等字段，以實際返回為準。"
+
+msgid "阿里云发送流水号"
+msgstr "阿里雲發送流水號"
+
+msgid "外部流水号（透传返回）"
+msgstr "外部流水號（透傳返回）"
+
+msgid "验证码，仅开启返回时有值"
+msgstr "驗證碼，僅開啟返回時有值"
+
+msgid "核验结果：PASS/UNKNOWN"
+msgstr "核驗結果：PASS/UNKNOWN"
+
+msgid "是否核验通过"
+msgstr "是否核驗通過"
+
+msgid "图形认证 appId（captchaId）"
+msgstr "圖形認證 appId（captchaId）"
+
+msgid "校验结果：success/fail"
+msgstr "校驗結果：success/fail"
+
+msgid "是否校验通过"
+msgstr "是否校驗通過"
+
+msgid "失败原因（成功为空）"
+msgstr "失敗原因（成功為空）"
+
+msgid "验证输出参数（风控信息）"
+msgstr "驗證輸出參數（風控信息）"
+
+msgid "验证码ID，校验时回传"
+msgstr "驗證碼ID，校驗時回傳"
+
+msgid "类型：char/arithmetic"
+msgstr "類型：char/arithmetic"
+
+msgid "base64 图片（data URI）"
+msgstr "base64 圖片（data URI）"
+
+msgid "captcha_id 必须与答案一起回传给 verify；image 可直接用作 <img src>。"
+msgstr "captcha_id 必須與答案一起回傳給 verify；image 可直接用作 <img src>。"
+
+msgid "缺口左上角 x 坐标"
+msgstr "缺口左上角 x 坐標"
+
+msgid "缺口左上角 y 坐标"
+msgstr "缺口左上角 y 坐標"
+
+msgid "图片标识号，报错返分时用"
+msgstr "圖片標識號，報錯返分時用"
+
+msgid "识别结果文本"
+msgstr "識別結果文本"
+
+msgid "结果校验值"
+msgstr "結果校驗值"
+
+msgid "题分余额"
+msgstr "題分餘額"
+
+msgid "锁定中的题分"
+msgstr "鎖定中的題分"
+
+msgid "data 随参数变化：probability=false 时为识别文本字符串；probability=true 时为对象 {text, probability}，其中 probability 为 ddddocr 的原始概率分布结构。"
+msgstr "data 隨參數變化：probability=false 時為識別文本字符串；probability=true 時為對象 {text, probability}，其中 probability 為 ddddocr 的原始概率分布結構。"
+
+msgid "该接口不返回业务数据，成功时 data 为 null，结果以 code 与 msg 判断。"
+msgstr "該接口不返回業務數據，成功時 data 為 null，結果以 code 與 msg 判斷。"
+
+msgid "data 为目标检测结果数组，每个元素为 [x1, y1, x2, y2]，即目标边界框的左上角与右下角坐标（像素）。"
+msgstr "data 為目標檢測結果數組，每個元素為 [x1, y1, x2, y2]，即目標邊界框的左上角與右下角坐標（像素）。"
+
+msgid "该接口不返回业务数据，成功时 data 为空对象 {}，结果以 code 与 msg 判断。"
+msgstr "該接口不返回業務數據，成功時 data 為空對象 {}，結果以 code 與 msg 判斷。"
+
+msgid "平台业务错误（如账号密码错误、题分不足）返回 4xxxx，msg 为平台中文说明。"
+msgstr "平臺業務錯誤（如賬號密碼錯誤、題分不足）返回 4xxxx，msg 為平臺中文說明。"
+
+msgid "按官方标准价换算，1000 题分 ≈ 1 元。"
+msgstr "按官方標準價換算，1000 題分 ≈ 1 元。"
+
+msgid "存储后的文件名"
+msgstr "存儲後的文件名"
+
+msgid "原始文件名"
+msgstr "原始文件名"
+
+msgid "文件大小（字节）"
+msgstr "文件大小（字節）"
+
+msgid "文件大小（MB，2 位小数）"
+msgstr "文件大小（MB，2 位小數）"
+
+msgid "扩展名"
+msgstr "擴展名"
+
+msgid "类型：image/video/file"
+msgstr "類型：image/video/file"
+
+msgid "相对 media 的路径"
+msgstr "相對 media 的路徑"
+
+msgid "可访问地址（/media/...）"
+msgstr "可訪問地址（/media/...）"
+
+msgid "CDN 外链地址"
+msgstr "CDN 外鏈地址"
+
+msgid "文件名"
+msgstr "文件名"
+
+msgid "存储后端"
+msgstr "存儲後端"
+
+msgid "原始大小（字节）"
+msgstr "原始大小（字節）"
+
+msgid "压缩后大小（字节）"
+msgstr "壓縮後大小（字節）"
+
+msgid "压缩率"
+msgstr "壓縮率"
+
+msgid "是否命中秒传"
+msgstr "是否命中秒傳"
+
+msgid "是否加密保护"
+msgstr "是否加密保護"
+
+msgid "图片外链地址"
+msgstr "圖片外鏈地址"
+
+msgid "存储路径"
+msgstr "存儲路徑"
+
+msgid "文件大小（KB）"
+msgstr "文件大小（KB）"
+
+msgid "MIME 类型"
+msgstr "MIME 類型"
+
+msgid "MD5 值"
+msgstr "MD5 值"
+
+msgid "SHA-1 值"
+msgstr "SHA-1 值"
+
+msgid "多种引用格式"
+msgstr "多種引用格式"
+
+msgid "HTML 引用"
+msgstr "HTML 引用"
+
+msgid "论坛 BBCode 引用"
+msgstr "論壇 BBCode 引用"
+
+msgid "Markdown 图片"
+msgstr "Markdown 圖片"
+
+msgid "带链接的 Markdown"
+msgstr "帶鏈接的 Markdown"
+
+msgid "缩略图地址"
+msgstr "縮略圖地址"
+
+msgid "池内可用 Token 数量"
+msgstr "池內可用 Token 數量"
+
+msgid "总容量合计（MB）"
+msgstr "總容量合計（MB）"
+
+msgid "总容量合计（字节）"
+msgstr "總容量合計（字節）"
+
+msgid "已用容量合计（MB）"
+msgstr "已用容量合計（MB）"
+
+msgid "已用容量合计（字节）"
+msgstr "已用容量合計（字節）"
+
+msgid "剩余容量合计（MB，看它判断补货）"
+msgstr "剩餘容量合計（MB，看它判斷補貨）"
+
+msgid "剩余容量合计（字节）"
+msgstr "剩餘容量合計（字節）"
+
+msgid "每个 Token 的容量明细"
+msgstr "每個 Token 的容量明細"
+
+msgid "Token 脱敏值（留首 6 末 4）"
+msgstr "Token 脫敏值（留首 6 末 4）"
+
+msgid "该 Token 总容量（MB）"
+msgstr "該 Token 總容量（MB）"
+
+msgid "该 Token 总容量（字节）"
+msgstr "該 Token 總容量（字節）"
+
+msgid "该 Token 已用（MB）"
+msgstr "該 Token 已用（MB）"
+
+msgid "该 Token 已用（字节）"
+msgstr "該 Token 已用（字節）"
+
+msgid "该 Token 剩余（MB）"
+msgstr "該 Token 剩餘（MB）"
+
+msgid "该 Token 剩余（字节）"
+msgstr "該 Token 剩餘（字節）"
+
+msgid "该 Token 的入库时间"
+msgstr "該 Token 的入庫時間"
+
+msgid "本次提交的 Token 数（去重后）"
+msgstr "本次提交的 Token 數（去重後）"
+
+msgid "实际新增数量"
+msgstr "實際新增數量"
+
+msgid "因已存在而跳过的数量"
+msgstr "因已存在而跳過的數量"
+
+msgid "被跳过的 Token 脱敏列表"
+msgstr "被跳過的 Token 脫敏列表"
+
+msgid "每个新 Token 的容量（字节）"
+msgstr "每個新 Token 的容量（字節）"
+
+msgid "每个新 Token 的容量（MB）"
+msgstr "每個新 Token 的容量（MB）"
+
+msgid "容量同时提供 MB（保留 2 位小数，便于阅读）与字节（便于计算）两种单位。"
+msgstr "容量同時提供 MB（保留 2 位小數，便於閱讀）與字節（便於計算）兩種單位。"
+
+msgid "主键 ID"
+msgstr "主鍵 ID"
+
+msgid "命中总条数"
+msgstr "命中總條數"
+
+msgid "是否超过单次上限被截断"
+msgstr "是否超過單次上限被截斷"
+
+msgid "items 按 sort 降序排列；单次最多返回 500 条，超出时 truncated=true。"
+msgstr "items 按 sort 降序排列；單次最多返回 500 條，超出時 truncated=true。"
+
+msgid "删除成功时 data 为 null，结果以 code 与 msg 判断。"
+msgstr "刪除成功時 data 為 null，結果以 code 與 msg 判斷。"
+
+msgid "一次性票据"
+msgstr "一次性票據"
+
+msgid "接入项目名称"
+msgstr "接入項目名稱"
+
+msgid "开发者联系方式列表"
+msgstr "開發者聯繫方式列表"
+
+msgid "平台代码"
+msgstr "平臺代碼"
+
+msgid "平台图标"
+msgstr "平臺圖標"
+
+msgid "值标签"
+msgstr "值標籤"
+
+msgid "联系方式值"
+msgstr "聯繫方式值"
+
+msgid "可点击链接（空串为纯文本）"
+msgstr "可點擊鏈接（空串為純文本）"
+
+msgid "contacts[].url 为空串表示该平台未配置跳转模板，此时按纯文本展示。"
+msgstr "contacts[].url 為空串表示該平臺未配置跳轉模板，此時按純文本展示。"
+
+msgid "单价（点/次）"
+msgstr "單價（點/次）"
+
+msgid "留空=上级，兜底 %(default_price)s"
+msgstr "留空=上級，兜底 %(default_price)s"
+
+msgid "单价按「服务 → 线路 → 端点」逐级继承：端点级填了就以端点为准，否则取上一级，最终兜底为上面这个默认值。调用成功（业务码 10000）才扣点，失败不扣。"
+msgstr "單價按「服務 → 線路 → 端點」逐級繼承：端點級填了就以端點為準，否則取上一級，最終兜底為上面這個默認值。調用成功（業務碼 10000）才扣點，失敗不扣。"
+
+msgid "项目额度 - 超级管理员 - 小影API"
+msgstr "項目額度 - 超級管理員 - 小影API"
+
+msgid "超级管理员,项目额度,充值,余额,点数"
+msgstr "超級管理員,項目額度,充值,餘額,點數"
+
+msgid "小影API 超级管理员：按接入项目查看额度余额、手动充值（含充值流水）。额度是接口调用的唯一门槛。"
+msgstr "小影API 超級管理員：按接入項目查看額度餘額、手動充值（含充值流水）。額度是接口調用的唯一門檻。"
+
+msgid "额度是接口调用的唯一门槛：余额为 0 的项目什么都调不了，调用成功才按服务单价扣点。"
+msgstr "額度是接口調用的唯一門檻：餘額為 0 的項目什麼都調不了，調用成功才按服務單價扣點。"
+
+msgid "目前没有支付功能，只能在这里手动充值；每笔充值都会记一条流水（含操作人），同时落一条操作日志。"
+msgstr "目前沒有支付功能，只能在這裡手動充值；每筆充值都會記一條流水（含操作人），同時落一條操作日誌。"
+
+msgid "正数是充值、负数是扣回（纠错用）。单价在「服务策略」页按服务 / 线路 / 端点三级配置，默认 1 点/次。"
+msgstr "正數是充值、負數是扣回（糾錯用）。單價在「服務策略」頁按服務 / 線路 / 端點三級配置，默認 1 點/次。"
+
+msgid "扣费跟着调用统计批量落库（每 5 秒或满 200 条一次），所以余额显示会比真实用量滞后几秒；余额可以为负，表示欠费，下次充值自动抵扣。"
+msgstr "扣費跟着調用統計批量落庫（每 5 秒或滿 200 條一次），所以餘額顯示會比真實用量滯後幾秒；餘額可以為負，表示欠費，下次充值自動抵扣。"
+
+msgid "按项目名或 APPID 搜索"
+msgstr "按項目名或 APPID 搜索"
+
+msgid "匹配 %(n)s 个 / 共 %(total)s 个项目"
+msgstr "匹配 %(n)s 個 / 共 %(total)s 個項目"
+
+msgid "各项目余额与充值"
+msgstr "各項目餘額與充值"
+
+msgid "归属"
+msgstr "歸屬"
+
+msgid "当前余额"
+msgstr "當前餘額"
+
+msgid "充值 / 扣回"
+msgstr "充值 / 扣回"
+
+msgid "平台自有"
+msgstr "平臺自有"
+
+msgid "点"
+msgstr "點"
+
+msgid "如 10000"
+msgstr "如 10000"
+
+msgid "备注（可选）"
+msgstr "備註（可選）"
+
+msgid "还没有接入项目"
+msgstr "還沒有接入項目"
+
+msgid "充值流水"
+msgstr "充值流水"
+
+msgid "金额"
+msgstr "金額"
+
+msgid "调整后余额"
+msgstr "調整後餘額"
+
+msgid "暂无充值记录"
+msgstr "暫無充值記錄"
+
+msgid "只显示最近 %(n)s 条；逐次扣费不在这里（见「调用统计」），余额对账以「充值合计 − 按统计折算的消耗」为准。"
+msgstr "只顯示最近 %(n)s 條；逐次扣費不在這裡（見「調用統計」），餘額對賬以「充值合計 − 按統計折算的消耗」為準。"
+
+msgid "额度余额："
+msgstr "額度餘額："
+
+msgid "去充值"
+msgstr "去充值"
+
+msgid "超级管理员,服务策略,状态,认证模式,单价,三级继承"
+msgstr "超級管理員,服務策略,狀態,認證模式,單價,三級繼承"
+
+msgid "小影API 超级管理员：按服务 / 线路 / 端点三级配置认证模式、对外状态与调用单价，逐级继承。"
+msgstr "小影API 超級管理員：按服務 / 線路 / 端點三級配置認證模式、對外狀態與調用單價，逐級繼承。"
+
+msgid "逐级继承：服务 → 线路 → 端点，每一级都可单独设状态 / 认证模式 / 单价 / 文档可见性 / 使用范围；设为「跟随上级」则向上一级取，最终兜底为「正常 + 需要签名 + 1 点/次 + 文档展示 + 正常」。"
+msgstr "逐級繼承：服務 → 線路 → 端點，每一級都可單獨設狀態 / 認證模式 / 單價 / 文檔可見性 / 使用範圍；設為「跟隨上級」則向上一級取，最終兜底為「正常 + 需要簽名 + 1 點/次 + 文檔展示 + 正常」。"
+
+msgid "调用单价（点/次）：调用成功（业务码 10000）才从接入项目余额里扣点，失败不扣。按「服务 → 线路 → 端点」逐级继承，端点级填了就以端点为准，未配置时兜底 1 点/次。余额在「项目额度」页充值。"
+msgstr "調用單價（點/次）：調用成功（業務碼 10000）才從接入項目餘額裡扣點，失敗不扣。按「服務 → 線路 → 端點」逐級繼承，端點級填了就以端點為準，未配置時兜底 1 點/次。餘額在「項目額度」頁充值。"
+
+msgid "点/次"
+msgstr "點/次"
+
+msgid "生效 %(p)s 点/次"
+msgstr "生效 %(p)s 點/次"
+
+msgid "选择我的项目"
+msgstr "選擇我的項目"
+
+msgid "— 选择一个项目自动填入 —"
+msgstr "— 選擇一個項目自動填入 —"
+
+msgid "查看接入项目的 APPID / APPSECRET、额度余额，并可重置密钥。"
+msgstr "查看接入項目的 APPID / APPSECRET、額度餘額，並可重置密鑰。"
+
+msgid "额度"
+msgstr "額度"
+
+msgid "接口调用成功（业务码 10000）时按服务单价扣点，失败调用不扣费。余额为 0 或负数时接口无法调用（开放接口除外），需联系管理员充值。额度由管理员手动充值，消耗略有延迟。"
+msgstr "接口調用成功（業務碼 10000）時按服務單價扣點，失敗調用不扣費。餘額為 0 或負數時接口無法調用（開放接口除外），需聯繫管理員充值。額度由管理員手動充值，消耗略有延遲。"
+
+msgid "我的项目,接入项目,APPID,APPSECRET,额度余额"
+msgstr "我的項目,接入項目,APPID,APPSECRET,額度餘額"
+
+msgid "小影API 我的项目：自助创建接入项目、查看 APPID 与 APPSECRET、查看额度余额。"
+msgstr "小影API 我的項目：自助創建接入項目、查看 APPID 與 APPSECRET、查看額度餘額。"
+
+msgid "这里是你名下接入项目的 APPID / APPSECRET 与额度余额。签名规则见"
+msgstr "這裡是你名下接入項目的 APPID / APPSECRET 與額度餘額。簽名規則見"
+
+msgid "额度余额"
+msgstr "額度餘額"
+
+msgid "额度为 0 或负数时接口无法调用（开放接口除外），需联系管理员充值。停用或删除项目也请联系管理员。"
+msgstr "額度為 0 或負數時接口無法調用（開放接口除外），需聯繫管理員充值。停用或刪除項目也請聯繫管理員。"
+
+msgid "消耗点数"
+msgstr "消耗點數"
+
+msgid "平均每次"
+msgstr "平均每次"
+
+msgid "线路价格 - 超级管理员 - 小影API"
+msgstr "線路價格 - 超級管理員 - 小影API"
+
+msgid "线路价格"
+msgstr "線路價格"
+
+msgid "超级管理员,线路价格,单价,点数,计费"
+msgstr "超級管理員,線路價格,單價,點數,計費"
+
+msgid "小影API 超级管理员：按服务 / 线路 / 端点三级设置调用单价（点/次），逐级继承，兜底 1 点/次。"
+msgstr "小影API 超級管理員：按服務 / 線路 / 端點三級設置調用單價（點/次），逐級繼承，兜底 1 點/次。"
+
+msgid "调用单价与「服务策略」解耦：服务策略管「能不能调」（状态 / 认证 / 文档可见性 / 使用范围），本页只管「调一次扣多少点」。"
+msgstr "調用單價與「服務策略」解耦：服務策略管「能不能調」（狀態 / 認證 / 文檔可見性 / 使用範圍），本頁只管「調一次扣多少點」。"
+
+msgid "只有成功调用（业务码 10000）才按单价扣点，失败不扣；扣费跟随调用统计批量落库，因此余额显示会滞后几秒，且允许为负（欠费）。"
+msgstr "只有成功調用（業務碼 10000）才按單價扣點，失敗不扣；扣費跟隨調用統計批量落庫，因此餘額顯示會滯後幾秒，且允許為負（欠費）。"
+
+msgid "保存立即生效（无需重启），并会清掉该节点的单价缓存；清空输入框即恢复「跟随上级」。"
+msgstr "保存立即生效（無需重啟），並會清掉該節點的單價緩存；清空輸入框即恢復「跟隨上級」。"
+
+msgid "保存全部"
+msgstr "保存全部"
+
+msgid "已设价"
+msgstr "已設價"
+
+msgid "生效"
+msgstr "生效"
+
+msgid "服务价"
+msgstr "服務價"
+
+msgid "线路价"
+msgstr "線路價"
+
+msgid "路径"
+msgstr "路徑"
+
+msgid "生效单价"
+msgstr "生效單價"
+
+msgid "把服务树全量列出，逐节点填价：留空 = 跟随上级，填了就以该节点为准。当前有 %(n)s 个节点设了单价，未设置的按上级取，最终兜底 %(default_price)s 点/次。"
+msgstr "把服務樹全量列出，逐節點填價：留空 = 跟隨上級，填了就以該節點為準。當前有 %(n)s 個節點設了單價，未設置的按上級取，最終兜底 %(default_price)s 點/次。"
+
+msgid "逐级继承：服务 → 线路 → 端点，端点级填了就以端点为准，否则取线路级、再否则取服务级，都没填则兜底 %(default_price)s 点/次。填 0 表示该节点免费。"
+msgstr "逐級繼承：服務 → 線路 → 端點，端點級填了就以端點為準，否則取線路級、再否則取服務級，都沒填則兜底 %(default_price)s 點/次。填 0 表示該節點免費。"
+
+msgid "已设置 %(n)s 个节点"
+msgstr "已設置 %(n)s 個節點"
+
+msgid "超级管理员,服务策略,状态,认证模式,三级继承"
+msgstr "超級管理員,服務策略,狀態,認證模式,三級繼承"
+
+msgid "逐级继承：服务 → 线路 → 端点，每一级都可单独设状态 / 认证模式 / 文档可见性 / 使用范围；设为「跟随上级」则向上一级取，最终兜底为「正常 + 需要签名 + 文档展示 + 正常」。"
+msgstr "逐級繼承：服務 → 線路 → 端點，每一級都可單獨設狀態 / 認證模式 / 文檔可見性 / 使用範圍；設為「跟隨上級」則向上一級取，最終兜底為「正常 + 需要簽名 + 文檔展示 + 正常」。"
+
+msgid "额度与消耗"
+msgstr "額度與消耗"
+
+msgid "全历史"
+msgstr "全歷史"
+
+msgid "累计充值"
+msgstr "累計充值"
+
+msgid "流水净值"
+msgstr "流水淨值"
+
+msgid "累计消耗点数"
+msgstr "累計消耗點數"
+
+msgid "平均每次消耗"
+msgstr "平均每次消耗"
+
+msgid "点/次（按当时单价结算）"
+msgstr "點/次（按當時單價結算）"
+
+msgid "累计消耗按调用统计里的 cost_points 汇总（落库时按当时生效单价结算，改价不回填历史）；余额 = Σ充值 − 累计消耗，允许为负（欠费）。"
+msgstr "累計消耗按調用統計裡的 cost_points 匯總（落庫時按當時生效單價結算，改價不回填歷史）；餘額 = Σ充值 − 累計消耗，允許為負（欠費）。"
+
+msgid "调用成功一次扣的点数（失败不扣）"
+msgstr "調用成功一次扣的點數（失敗不扣）"
+
+msgid "免费"
+msgstr "免費"
+
+msgid "单价按「服务 → 线路 → 端点」逐级继承"
+msgstr "單價按「服務 → 線路 → 端點」逐級繼承"
+
+msgid "端点价"
+msgstr "端點價"
+
+msgid "默认价"
+msgstr "默認價"

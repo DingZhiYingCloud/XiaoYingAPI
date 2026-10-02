@@ -47,7 +47,7 @@
       <label class="cursor-pointer">
         <input type="radio" name="preset" value="{{ item.key }}" class="peer sr-only"
                {% if appearance.preset == item.key %}checked{% endif %} />
-        <span class="con-panel block p-3 transition hover:border-primary/50 peer-checked:border-primary peer-checked:ring-2 peer-checked:ring-primary/30 peer-focus-visible:ring-2 peer-focus-visible:ring-primary/30">
+        <span class="con-panel block p-3 peer-checked:border-primary peer-checked:ring-2 peer-checked:ring-primary/30 peer-focus-visible:ring-2 peer-focus-visible:ring-primary/30">
           <span class="feel-swatch feel-swatch-{{ item.key }} block"></span>
           <span class="mt-2 flex items-center gap-2">
             <span class="font-semibold">{% trans item.label %}</span>

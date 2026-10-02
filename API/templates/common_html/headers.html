@@ -41,7 +41,9 @@
       {# 语言切换：链接到 /lang/ 写入语言 Cookie（LocaleMiddleware 在后续请求按 Cookie 生效）；名称取 name_local（本族语写法），不随当前语言变化 #}
       {% get_language_info for ACTIVE_LANG as ACTIVE_LANG_INFO %}
       <details class="dropdown dropdown-end">
-        <summary class="btn btn-ghost btn-sm gap-1" title="{% trans '切换语言' %}" aria-label="{% trans '切换语言' %}">
+        {# aria-label 必须包含可见文本（Lighthouse label-content-name-mismatch）：可见的是当前语言名，故把它带进标签 #}
+        <summary class="btn btn-ghost btn-sm gap-1" title="{% trans '切换语言' %}"
+                 aria-label="{% blocktrans with lang=ACTIVE_LANG_INFO.name_local %}切换语言（当前：{{ lang }}）{% endblocktrans %}">
           <i data-lucide="languages" class="h-4 w-4"></i>
           <span class="hidden sm:inline">{{ ACTIVE_LANG_INFO.name_local }}</span>
         </summary>
@@ -80,6 +82,9 @@
             <p class="truncate text-xs opacity-60">{% trans "账号：" %}{{ website_user.account }}</p>
           </div>
           <div class="divider my-1"></div>
+          <a href="{% url 'website:my_projects' %}" class="btn btn-ghost btn-sm w-full justify-start">
+            <i data-lucide="folder" class="h-4 w-4"></i>{% trans "我的项目" %}
+          </a>
           <form method="post" action="{% url 'website:logout' %}">
             {% csrf_token %}
             <button type="submit" class="btn btn-ghost btn-sm w-full justify-start text-error">{% trans "退出登录" %}</button>
@@ -113,6 +118,7 @@
           <li><div class="divider my-1"></div></li>
           {% if website_user %}
           <li class="menu-title"><span>{{ website_user.username|default:website_user.account }}（{{ website_user.account }}）</span></li>
+          <li><a href="{% url 'website:my_projects' %}">{% trans "我的项目" %}</a></li>
           <li>
             <form method="post" action="{% url 'website:logout' %}">
               {% csrf_token %}

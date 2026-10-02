@@ -9,7 +9,8 @@
 从数据库取（见 docs/OPTION_LOADERS），后台加模型后文档下拉立即跟着变。
 新增厂商 / 模型 / 提示词属于后台配置操作，不需要改本文件。
 """
-from .schema import ChannelSpec, EndpointSpec, ParamSpec, ServiceSpec
+from .schema import (ChannelSpec, EndpointSpec, ParamSpec, ResponseFieldSpec,
+                     ServiceSpec)
 
 _BOOL_OPT = [
     {'value': 'false', 'label': 'false（默认）'},
@@ -92,12 +93,43 @@ SERVICE = ServiceSpec(
                                     '开始出答案后自动收起）。',
                                     '在线调用会真实消耗上游额度，请确认平台密钥可用后再调试。',
                                     '原「前缀续写（prefix / prefix_content）」能力已下线，传入会返回参数值非法。'],
+                             response_note='以下字段为 stream=false 时的 data 结构；'
+                                           'stream=true 时响应改为 SSE 文本流（逐帧推送，见上方说明），不走该结构。',
+                             response_fields=[
+                                 ResponseFieldSpec('reply', 'string', '模型回复正文（Markdown）'),
+                                 ResponseFieldSpec('model', 'string', '对外模型标识'),
+                                 ResponseFieldSpec('usage', 'object', 'Token 用量；上游未返回时为 null'),
+                                 ResponseFieldSpec('usage.prompt_tokens', 'int', '输入 Token 数'),
+                                 ResponseFieldSpec('usage.completion_tokens', 'int', '输出 Token 数'),
+                                 ResponseFieldSpec('usage.total_tokens', 'int', '总 Token 数'),
+                                 ResponseFieldSpec('finish_reason', 'string', '结束原因；可能为 null'),
+                             ],
+                             response_example='''{
+  "reply": "示例回复内容",
+  "model": "deepseek-chat",
+  "usage": {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
+  "finish_reason": "stop"
+}''',
                              markdown=True),
                 EndpointSpec('models', '模型清单', 'GET', '/api/ai/BuiltInModel/models',
                              summary='列出平台当前可用的模型（标识、展示名、是否支持视觉、是否为默认模型）。',
                              notes=['用于让调用方动态发现可选模型，避免把模型名写死在客户端。',
                                     '只返回模型自身信息：不含厂商、上游地址与密钥。',
-                                    '请求不传 model 时使用 is_default 为 true 的那个模型。']),
+                                    '请求不传 model 时使用 is_default 为 true 的那个模型。'],
+                             response_fields=[
+                                 ResponseFieldSpec('models', 'array', '可用模型列表'),
+                                 ResponseFieldSpec('models[].model', 'string', '模型标识（传参 model 的取值）'),
+                                 ResponseFieldSpec('models[].name', 'string', '展示名'),
+                                 ResponseFieldSpec('models[].supports_vision', 'bool', '是否支持视觉（可传 images）'),
+                                 ResponseFieldSpec('models[].context_window', 'int', '上下文长度；未知为 null'),
+                                 ResponseFieldSpec('models[].is_default', 'bool', '是否为默认模型'),
+                             ],
+                             response_example='''{
+  "models": [
+    {"model": "deepseek-chat", "name": "DeepSeek Chat", "supports_vision": false,
+     "context_window": 65536, "is_default": true}
+  ]
+}'''),
             ],
         ),
     ],

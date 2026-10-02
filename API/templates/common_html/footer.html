@@ -17,7 +17,7 @@
     </div>
   </aside>
   <nav>
-    <h6 class="footer-title">{% trans "快速导航" %}</h6>
+    <h2 class="footer-title">{% trans "快速导航" %}</h2>
     <a class="link link-hover" href="/">{% trans "首页" %}</a>
     <a class="link link-hover" href="/docs/">{% trans "接口文档中心" %}</a>
     <a class="link link-hover" href="/programs/">{% trans "计算程序" %}</a>
@@ -27,7 +27,7 @@
   {# 联系我们：平台与值全部由超管在后台「联系方式」模块按「小影API官网」项目维护，前台不硬编码任何账号（数据由 context.footer_contacts 注入）；一条都没配时整块隐藏 #}
   {% if footer_contacts %}
   <nav>
-    <h6 class="footer-title">{% trans "联系我们" %}</h6>
+    <h2 class="footer-title">{% trans "联系我们" %}</h2>
     {% for contact in footer_contacts %}
     {% if contact.url %}
     <a class="link link-hover flex items-start gap-1.5 text-sm" href="{{ contact.url }}"

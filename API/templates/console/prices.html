@@ -1,0 +1,136 @@
+{% extends 'console/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "线路价格 - 超级管理员 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,线路价格,单价,点数,计费" %}{% endblock %}
+{% block description %}{% trans "小影API 超级管理员：按服务 / 线路 / 端点三级设置调用单价（点/次），逐级继承，兜底 1 点/次。" %}{% endblock %}
+
+{% block console_content %}
+{% blocktrans with n=explicit_count asvar ph_desc %}把服务树全量列出，逐节点填价：留空 = 跟随上级，填了就以该节点为准。当前有 {{ n }} 个节点设了单价，未设置的按上级取，最终兜底 {{ default_price }} 点/次。{% endblocktrans %}
+{% include 'console/_page_header.html' with icon='tags' title='线路价格' desc=ph_desc %}
+
+  {% include 'console/_messages.html' %}
+
+  {# 规则说明（纯提示，中性灰） #}
+  <div role="alert" class="alert alert-soft bg-base-200 mt-4 items-start py-3 text-sm">
+    <div class="space-y-1">
+      <p>
+        {% trans "调用单价与「服务策略」解耦：服务策略管「能不能调」（状态 / 认证 / 文档可见性 / 使用范围），本页只管「调一次扣多少点」。" %}
+      </p>
+      <p class="text-xs opacity-80">
+        {% blocktrans %}逐级继承：服务 → 线路 → 端点，端点级填了就以端点为准，否则取线路级、再否则取服务级，都没填则兜底 {{ default_price }} 点/次。填 0 表示该节点免费。{% endblocktrans %}
+      </p>
+      <p class="text-xs opacity-80">
+        {% trans "只有成功调用（业务码 10000）才按单价扣点，失败不扣；扣费跟随调用统计批量落库，因此余额显示会滞后几秒，且允许为负（欠费）。" %}
+      </p>
+      <p class="text-xs opacity-80">
+        {% trans "保存立即生效（无需重启），并会清掉该节点的单价缓存；清空输入框即恢复「跟随上级」。" %}
+      </p>
+    </div>
+  </div>
+
+  <form method="post" action="{% url 'website:console_prices' %}" class="mt-4">
+    {% csrf_token %}
+    <div class="flex flex-wrap items-center gap-2">
+      <button type="submit" class="btn btn-sm btn-primary">{% trans "保存全部" %}</button>
+      <span class="text-xs text-base-content/60">
+        {% blocktrans with n=explicit_count %}已设置 {{ n }} 个节点{% endblocktrans %}
+      </span>
+    </div>
+
+    <div class="mt-3 space-y-3">
+      {% for svc in tree %}
+      <details class="con-panel overflow-hidden"{% if svc.explicit_price is not None %} open{% endif %}>
+        <summary class="flex cursor-pointer flex-wrap items-center gap-2 p-3">
+          <i data-lucide="folder-tree" class="h-4 w-4 shrink-0 opacity-60" aria-hidden="true"></i>
+          <span class="font-semibold">{{ svc.name }}</span>
+          <code class="text-xs opacity-60">{{ svc.prefix }}</code>
+          {% if svc.explicit_price is not None %}
+          <span class="badge badge-soft badge-primary badge-sm">{% trans "已设价" %}</span>
+          {% endif %}
+          <span class="badge badge-ghost badge-sm">{% trans "生效" %} {{ svc.effective_price }} {% trans "点/次" %}</span>
+        </summary>
+
+        <div class="space-y-3 border-t border-base-300 p-3">
+          {# 服务级单价 #}
+          <label class="flex flex-wrap items-center gap-2 text-sm">
+            <span class="w-16 shrink-0 text-base-content/70">{% trans "服务价" %}</span>
+            <input type="number" min="0" step="0.0001" inputmode="decimal"
+                   name="price::{{ svc.prefix }}"
+                   value="{{ svc.explicit_price|default_if_none:'' }}"
+                   class="input input-bordered input-sm w-32"
+                   placeholder="{% trans '跟随上级' %}" />
+            <span class="text-xs text-base-content/50">{% trans "点/次" %}</span>
+          </label>
+
+          {% for ch in svc.channels %}
+          <details class="rounded-box border border-base-300 p-2"{% if ch.explicit_price is not None %} open{% endif %}>
+            <summary class="flex cursor-pointer flex-wrap items-center gap-2 text-sm font-medium">
+              <span>{{ ch.name }}</span>
+              <code class="text-xs opacity-60">{{ ch.prefix }}</code>
+              {% if ch.explicit_price is not None %}
+              <span class="badge badge-soft badge-primary badge-xs">{% trans "已设价" %}</span>
+              {% endif %}
+              <span class="badge badge-ghost badge-xs">{% trans "生效" %} {{ ch.effective_price }}</span>
+            </summary>
+
+            <div class="mt-2 space-y-2">
+              {# 线路级单价 #}
+              <label class="flex flex-wrap items-center gap-2 text-sm">
+                <span class="w-16 shrink-0 text-base-content/70">{% trans "线路价" %}</span>
+                <input type="number" min="0" step="0.0001" inputmode="decimal"
+                       name="price::{{ ch.prefix }}"
+                       value="{{ ch.explicit_price|default_if_none:'' }}"
+                       class="input input-bordered input-sm w-32"
+                       placeholder="{% trans '跟随上级' %}" />
+                <span class="text-xs text-base-content/50">{% trans "点/次" %}</span>
+              </label>
+
+              {% if ch.endpoints %}
+              <div class="con-table-wrap">
+                <table class="table table-xs">
+                  <thead>
+                    <tr>
+                      <th class="whitespace-nowrap">{% trans "端点" %}</th>
+                      <th>{% trans "路径" %}</th>
+                      <th class="whitespace-nowrap">{% trans "生效单价" %}</th>
+                      <th class="whitespace-nowrap">{% trans "单价（点/次）" %}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for ep in ch.endpoints %}
+                    <tr>
+                      <td class="whitespace-nowrap">
+                        {{ ep.name }}
+                        {% if not ep.registered %}
+                        <span class="badge badge-ghost badge-xs">{% trans "未登记" %}</span>
+                        {% endif %}
+                      </td>
+                      <td><code class="break-all font-mono text-xs">{{ ep.path }}</code></td>
+                      <td class="whitespace-nowrap font-mono text-xs">{{ ep.effective_price }}</td>
+                      <td>
+                        <input type="number" min="0" step="0.0001" inputmode="decimal"
+                               name="price::{{ ep.path }}"
+                               value="{{ ep.explicit_price|default_if_none:'' }}"
+                               class="input input-bordered input-xs w-28"
+                               placeholder="{% trans '跟随上级' %}" />
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              {% endif %}
+            </div>
+          </details>
+          {% endfor %}
+        </div>
+      </details>
+      {% endfor %}
+    </div>
+
+    <div class="mt-4">
+      <button type="submit" class="btn btn-sm btn-primary">{% trans "保存全部" %}</button>
+    </div>
+  </form>
+{% endblock %}

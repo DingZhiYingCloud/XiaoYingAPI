@@ -13,7 +13,6 @@
 最终兜底：
 - status       -> normal（正常）
 - auth_mode    -> auth（需要签名，全局 fail-closed）
-- app_scope    -> all（不限项目）
 - docs_visible -> visible（展示在官网文档中心）
 - audience     -> normal（对外正常可用）
 
@@ -21,13 +20,16 @@
 逐字段取第一个非 inherit 的值。认证判定的唯一口径是
 ``API/common/middleware.py`` 的 ``requires_auth()`` / ``resolve_service_policy()``。
 
-注意：``auth_mode=open`` 时白名单无意义 —— 开放接口不校验签名、拿不到调用项目。
+注意：``auth_mode=open`` 时额度不参与判定 —— 开放接口不校验签名、拿不到调用项目。
+
+**调用单价不在这里**：单价由独立的 ``ApiPricePolicy``（见 ``API/models/Credit/price.py``，
+控制台「线路价格」页）管理，与本策略表解耦；额度判定与扣费口径见
+``API/common/credit_guard.py``。
 """
 from django.core.exceptions import ValidationError
 from django.db import models
 
 from API.common.base import BaseModel
-from API.models.Projects.app import UserApp
 
 
 class ApiServicePolicy(BaseModel):
@@ -49,11 +51,6 @@ class ApiServicePolicy(BaseModel):
         ('inherit', '跟随上级'),
         ('auth', '需要签名'),
         ('open', '开放'),
-    ]
-    APP_SCOPE_CHOICES = [
-        ('inherit', '跟随上级'),
-        ('all', '不限项目'),
-        ('whitelist', '仅白名单项目'),
     ]
     DOCS_VISIBLE_CHOICES = [
         ('inherit', '跟随上级'),
@@ -79,11 +76,6 @@ class ApiServicePolicy(BaseModel):
                               help_text='inherit=跟随上级；正常 / 开发中 / 维护中 / 已下线')
     auth_mode = models.CharField('认证模式', max_length=10, choices=AUTH_MODE_CHOICES, default='inherit',
                                  help_text='inherit=跟随上级；auth=需要签名；open=开放（无需签名）')
-    app_scope = models.CharField('项目范围', max_length=10, choices=APP_SCOPE_CHOICES, default='inherit',
-                                 help_text='inherit=跟随上级；all=不限项目；whitelist=仅白名单项目可调用')
-    apps = models.ManyToManyField(UserApp, blank=True, related_name='service_policies',
-                                  verbose_name='白名单项目',
-                                  help_text='仅生效值 app_scope=whitelist 时生效：名单内的项目才可调用')
     docs_visible = models.CharField('文档可见性', max_length=10, choices=DOCS_VISIBLE_CHOICES,
                                     default='inherit',
                                     help_text='inherit=跟随上级；visible=展示在官网文档中心；'

@@ -33,7 +33,8 @@ from . import user_center as _user_center
 from . import movie as _movie
 from . import drama as _drama
 from . import haijiao as _haijiao
-from .schema import (ChannelSpec, EndpointSpec, ParamSpec, ServiceSpec)  # noqa: F401 便于外部引用
+from .schema import (ChannelSpec, EndpointSpec, ParamSpec, ResponseFieldSpec,  # noqa: F401
+                     ServiceSpec)  # noqa: F401 便于外部引用
 
 # 已接入文档的服务（顺序即 /docs/ 目录展示顺序）
 _SERVICES = [
@@ -127,6 +128,9 @@ def localize(spec: ServiceSpec) -> ServiceSpec:
             endpoint.name, endpoint.summary = _(endpoint.name), _(endpoint.summary)
             endpoint.notes = [_(n) for n in endpoint.notes]
             endpoint.tool_label = _(endpoint.tool_label)
+            endpoint.response_note = _(endpoint.response_note)
+            for field_spec in endpoint.response_fields:
+                field_spec.desc = _(field_spec.desc)
             for param in endpoint.params:
                 param.label, param.desc = _(param.label), _(param.desc)
                 param.placeholder = _(param.placeholder)

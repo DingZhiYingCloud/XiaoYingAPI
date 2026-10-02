@@ -46,7 +46,11 @@ from API.apis.feedback.utils import serialize_contacts
 from API.common.credential_crypto import hash_token
 from API.models import (CaptchaChallenge, ContactPlatform, Feedback, FeedbackAttachment,
                         FeedbackAuditLog, FeedbackReply, FeedbackSetting, FeedbackTicket,
-                        FeedbackType, ProjectContact, User, UserApp, UserToken)
+                        FeedbackType, ProjectContact, SecuritySetting, User, UserApp, UserToken)
+
+# 匿名 / 非超管访问控制台：默认「后台入口隐身」开启 → 一律 404（与不存在的地址无差别）；
+# 关掉隐身才 302 跳登录。断言写死 302 会在默认配置下恒失败。
+_CONSOLE_DENIED = 404 if SecuritySetting.get_solo().hide_console else 302
 
 _PREFIX = f'FB{int(time.time())}'
 _stats = {'pass': 0, 'fail': 0}
@@ -453,7 +457,8 @@ def round_console(app, feedback_type):
     admin = _django_user()
     anonymous = Client()
     r = anonymous.get(reverse('website:console_feedback'))
-    _check('未登录访问后台被重定向', r.status_code == 302, r.status_code)
+    _check('未登录访问后台被拦（隐身 404 / 否则 302）',
+           r.status_code == _CONSOLE_DENIED, r.status_code)
 
     c = Client()
     c.force_login(admin)
@@ -571,7 +576,8 @@ def round_console(app, feedback_type):
     plain = Client()
     plain.force_login(_django_user(is_superuser=False))
     r = plain.get(reverse('website:console_feedback'))
-    _check('非超管访问后台被拒', r.status_code == 302, r.status_code)
+    _check('非超管访问后台被拒（隐身 404 / 否则 302）',
+           r.status_code == _CONSOLE_DENIED, r.status_code)
 
     # 删除
     c.post(reply_url, {'action': 'delete', 'id': str(fb2.pk), 'next': '/console/feedback/'})

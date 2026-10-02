@@ -1,0 +1,23 @@
+{% load i18n %}
+{% comment %}统一响应格式（所有 /api/ 接口共用同一信封）。文档目录页与服务页各渲染一次；
+带锚点 id，供各端点卡「响应说明」区块跳转。{% endcomment %}
+<section id="docs-response-envelope" class="scroll-mt-20 rounded-box border border-base-300 bg-base-100 p-4">
+  <h2 class="text-base font-semibold">{% trans "响应格式" %}</h2>
+  <p class="mt-1 text-sm text-base-content/70">
+    {% trans "所有接口返回同一个 JSON 信封，业务数据都在 data 里：" %}
+  </p>
+  <pre class="mt-2 overflow-x-auto rounded-box bg-base-200 p-2 font-mono text-xs">{
+  "code": 10000,
+  "msg": "成功",
+  "data": { ... }
+}</pre>
+  <ul class="mt-2 list-inside list-disc space-y-0.5 text-xs text-base-content/70">
+    <li>{% trans "code：业务状态码，10000 表示成功；其余为各类错误，完整清单见「错误码」页。" %}</li>
+    <li>{% trans "msg：给人看的提示文案，可直接展示给终端用户，但不要用它做逻辑判断。" %}</li>
+    <li>{% trans "data：业务数据；出错时通常为 null。各接口 data 的具体字段见该接口的「响应说明」。" %}</li>
+  </ul>
+  <p class="mt-2 text-xs text-base-content/60">
+    {% trans "判断成功与否请看 code，不要依赖 HTTP 状态码。" %}
+    <a class="link" href="{% url 'website:docs_errors' %}">{% trans "查看完整错误码" %}</a>
+  </p>
+</section>

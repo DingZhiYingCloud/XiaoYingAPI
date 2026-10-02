@@ -26,11 +26,15 @@ import sys
 import threading
 import time
 
+from datetime import timedelta
+
 from django.db import close_old_connections
+from django.db.models import Q
 from django.utils import timezone
 
 from API.apis.ai.BuiltInModel import utils as ai_utils
 from API.models import (
+    AI_RUNNING_STALE_MINUTES,
     AiModel,
     Feedback,
     FeedbackAuditLog,
@@ -158,9 +162,12 @@ def _normalize_verdict(data, reject_words, warn_words=()):
     return ''
 
 
-def _call_ai(target, system_prompt, user_content):
+def _call_ai(target, system_prompt, user_content, background=False):
     """把「提示词 + 正文」发给 AI 并解析出结构化结论
 
+    :param background: True=后台审核线程在调（保留重试与长假）；
+        False=控制台在请求线程里同步调（只发一次、超时更短，避免占住 worker）。
+        口径见 `API.apis.ai.BuiltInModel.utils.SYNC_MAX_ATTEMPTS`。
     :return: (True, dict) / (False, 错误文案)
     """
     try:
@@ -174,7 +181,7 @@ def _call_ai(target, system_prompt, user_content):
 
     # 采样参数沿用该模型在后台的配置（与对外对话接口同一口径，调用方不额外干预）
     ok, result = ai_utils.chat_completion(
-        target, messages,
+        target, messages, background=background,
         temperature=target['temperature'], max_tokens=target['max_tokens'],
         stop=target['stop_list'],
     )
@@ -262,9 +269,11 @@ def _reject_text(reason) -> str:
             '如有疑问，可通过下方开发者联系方式沟通；请勿重复提交同类内容。')
 
 
-def review_submission(feedback):
+def review_submission(feedback, background=False):
     """审核一条反馈的提交内容（审核线程与后台「立即送审」共用）
 
+    :param background: 见 _call_ai —— 审核线程传 True（可重试），
+        控制台「立即送审」保持默认（同步、不重试）
     :return: (ok, 说明文案)；ok 只表示流程跑完，不代表审核通过
     """
     setting = FeedbackSetting.get_solo()
@@ -272,7 +281,8 @@ def review_submission(feedback):
     if target is None:
         return _skip(feedback, reason)
 
-    ok, data = _call_ai(target, review_prompt(setting, 'submit'), _render_submit_input(feedback))
+    ok, data = _call_ai(target, review_prompt(setting, 'submit'),
+                        _render_submit_input(feedback), background=background)
     if not ok:
         return _fail(feedback, data, target)
 
@@ -322,7 +332,7 @@ def _attach_reject_image(feedback, reply, reason, points):
 
 
 def review_reply_text(feedback, content):
-    """管理员回复的语气审查（同步调用）
+    """管理员回复的语气审查（**只在控制台同步调用**，故走同步口径：只发一次）
 
     :return: (True, {verdict, reason, model_key}) —— 审查跑完
              (False, 不可用/失败原因)          —— 调用方应当直接放行（AI 只提醒不阻断）
@@ -365,6 +375,9 @@ def is_serving_process() -> bool:
       避免父进程与子进程各起一份
     - **直接执行的 .py 脚本**（`scripts/*.py`、一次性运维脚本等）同样不起：它们只是
       跑一次就退出，起了线程反而会去消费待审数据、消耗 AI 额度，还会让回归脚本不确定
+    - **测试 / REPL 入口**（pytest、`python -c` / `python -m`）也一样不起：它们会触发
+      `apps.ready()`，而入口名不以 `.py` 结尾（原先会落到「视为服务进程」），起了线程
+      就会去消费待审数据、发告警邮件，让测试结果变得不确定
     - 其余（uwsgi / gunicorn 等）视为服务进程；多 worker 时每个 worker 都有自己的线程，
       靠行级抢占保证同一条不会被审两次
     """
@@ -377,6 +390,8 @@ def is_serving_process() -> bool:
         if os.environ.get('RUN_MAIN') != 'true' and '--noreload' not in argv:
             return False
         return True
+    if entry.startswith('pytest') or (len(argv) > 1 and argv[1] in ('-c', '-m')):
+        return False
     if entry.endswith('.py'):
         return False
     return True
@@ -409,21 +424,24 @@ def _worker_loop():
 def review_one_pending():
     """取一条「待审核」的反馈并审掉；返回是否真的处理了一条
 
-    抢占用条件更新（`WHERE id=? AND ai_status='pending'`）：多进程 / 多线程下只有一个
-    能把状态改成「审核中」，抢不到的进程直接进入下一轮，不会重复调用 AI。
+    抢占用条件更新：多进程 / 多线程下只有一个能把状态改成「审核中」，抢不到的进程直接进入
+    下一轮，不会重复调用 AI。可抢的条件与 `pending_ai_queryset()` 一致 ——
+    「待审核」或「审核中但已超时」（进程被 kill 后留下的僵尸标记）。
     """
     feedback = Feedback.pending_ai_queryset().first()
     if feedback is None:
         return False
 
-    claimed = Feedback.objects.filter(
-        pk=feedback.pk, ai_status=Feedback.AiStatus.PENDING,
+    stale = timezone.now() - timedelta(minutes=AI_RUNNING_STALE_MINUTES)
+    claimed = Feedback.objects.filter(pk=feedback.pk).filter(
+        Q(ai_status=Feedback.AiStatus.PENDING)
+        | Q(ai_status=Feedback.AiStatus.RUNNING, updated_time__lt=stale)
     ).update(ai_status=Feedback.AiStatus.RUNNING, updated_time=timezone.now())
     if not claimed:
         return False
 
     try:
-        review_submission(feedback)
+        review_submission(feedback, background=True)   # 后台线程：允许重试（同步路径不重试）
     except Exception:
         logger.exception('反馈 %s 审核过程中异常', feedback.pk)
         Feedback.objects.filter(pk=feedback.pk, ai_status=Feedback.AiStatus.RUNNING).update(

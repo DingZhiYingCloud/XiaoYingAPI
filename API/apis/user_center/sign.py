@@ -14,6 +14,7 @@
 """
 import hashlib
 import hmac
+import logging
 import time
 
 from API.common.security_guard import nonce_replayed
@@ -21,6 +22,8 @@ from API.models.Projects.app import UserApp
 
 # 时间戳有效窗口（秒），超出即拒绝，防重放攻击
 SIGN_TIMESTAMP_WINDOW = 300
+
+logger = logging.getLogger('api.request')
 
 
 def build_sign(params: dict, app_secret: str) -> str:
@@ -64,6 +67,9 @@ def verify_sign(params: dict):
     except UserApp.DoesNotExist:
         return False, '未注册的接入项目: app_id 不存在'
     except Exception as e:
+        # 数据库异常也会走到这里：对外仍是 20011（fail-closed），但必须留日志 ——
+        # 否则「DB 故障」会被当成「密钥不对」，监控与排查看不出真实原因。
+        logger.exception('查询接入项目失败: app_id=%s', app_id)
         return False, f'查询接入项目失败: {e}'
 
     if not app.status:

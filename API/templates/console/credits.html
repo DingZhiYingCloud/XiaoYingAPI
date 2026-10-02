@@ -1,0 +1,143 @@
+{% extends 'console/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "项目额度 - 超级管理员 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,项目额度,充值,余额,点数" %}{% endblock %}
+{% block description %}{% trans "小影API 超级管理员：按接入项目查看额度余额、手动充值（含充值流水）。额度是接口调用的唯一门槛。" %}{% endblock %}
+
+{% block console_content %}
+{% trans "额度是接口调用的唯一门槛：余额为 0 的项目什么都调不了，调用成功才按服务单价扣点。" as ph_desc %}
+{% include 'console/_page_header.html' with icon='circle-dollar-sign' title='项目额度' desc=ph_desc %}
+
+{% include 'console/_messages.html' %}
+
+{# 规则说明（纯提示，中性灰） #}
+<div role="alert" class="alert alert-soft bg-base-200 mt-4 items-start py-3 text-sm">
+  <div class="space-y-1">
+    <p>
+      {% trans "目前没有支付功能，只能在这里手动充值；每笔充值都会记一条流水（含操作人），同时落一条操作日志。" %}
+    </p>
+    <p class="text-xs opacity-80">
+      {% trans "正数是充值、负数是扣回（纠错用）。单价在「服务策略」页按服务 / 线路 / 端点三级配置，默认 1 点/次。" %}
+    </p>
+    <p class="text-xs opacity-80">
+      {% trans "扣费跟着调用统计批量落库（每 5 秒或满 200 条一次），所以余额显示会比真实用量滞后几秒；余额可以为负，表示欠费，下次充值自动抵扣。" %}
+    </p>
+  </div>
+</div>
+
+{# 搜索 #}
+<form method="get" action="{% url 'website:console_credits' %}" class="mt-5 flex flex-wrap items-center gap-2">
+  <input type="search" name="q" value="{{ keyword }}" class="input input-bordered input-sm w-full sm:w-72"
+         placeholder="{% trans '按项目名或 APPID 搜索' %}" />
+  <button type="submit" class="btn btn-sm btn-outline">{% trans "搜索" %}</button>
+  {% if keyword %}
+  <a href="{% url 'website:console_credits' %}" class="btn btn-sm btn-ghost">{% trans "清空" %}</a>
+  {% endif %}
+  <span class="text-xs text-base-content/60">
+    {% blocktrans with n=apps|length total=total %}匹配 {{ n }} 个 / 共 {{ total }} 个项目{% endblocktrans %}
+  </span>
+</form>
+
+{# 项目余额 + 充值 #}
+<fieldset class="con-panel mt-4 p-4">
+  <legend class="px-1 text-base font-bold">{% trans "各项目余额与充值" %}</legend>
+  <div class="con-table-wrap mt-2">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th class="whitespace-nowrap">{% trans "项目" %}</th>
+          <th class="whitespace-nowrap">{% trans "归属" %}</th>
+          <th class="whitespace-nowrap">{% trans "当前余额" %}</th>
+          <th class="whitespace-nowrap">{% trans "充值 / 扣回" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for app in apps %}
+        <tr>
+          <td>
+            <div class="font-medium">{{ app.name }}</div>
+            <code class="font-mono text-xs text-base-content/50">{{ app.app_id }}</code>
+            {% if not app.status %}
+            <span class="badge badge-soft badge-ghost badge-sm ml-1">{% trans "已停用" %}</span>
+            {% endif %}
+          </td>
+          <td class="whitespace-nowrap text-xs text-base-content/70">
+            {% if app.owner %}{{ app.owner.account }}{% else %}{% trans "平台自有" %}{% endif %}
+          </td>
+          <td class="whitespace-nowrap">
+            <span class="font-mono font-semibold {% if app.balance <= 0 %}text-error{% endif %}">{{ app.balance }}</span>
+            <span class="text-xs text-base-content/60">{% trans "点" %}</span>
+          </td>
+          <td>
+            <form method="post" action="{% url 'website:console_credits' %}"
+                  class="flex flex-wrap items-center gap-2">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="recharge" />
+              <input type="hidden" name="id" value="{{ app.pk }}" />
+              <input type="number" name="amount" step="0.01" required
+                     class="input input-bordered input-sm w-28"
+                     placeholder="{% trans '如 10000' %}" />
+              <input type="text" name="remark" maxlength="255"
+                     class="input input-bordered input-sm w-40"
+                     placeholder="{% trans '备注（可选）' %}" />
+              <button type="submit" class="btn btn-sm btn-primary">{% trans "提交" %}</button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="4" class="py-6 text-center text-sm text-base-content/60">
+            {% if keyword %}{% trans "没有匹配的项目" %}{% else %}{% trans "还没有接入项目" %}{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</fieldset>
+
+{# 充值流水 #}
+<fieldset class="con-panel mt-4 p-4">
+  <legend class="px-1 text-base font-bold">{% trans "充值流水" %}</legend>
+  <div class="con-table-wrap mt-2">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th class="whitespace-nowrap">{% trans "时间" %}</th>
+          <th class="whitespace-nowrap">{% trans "项目" %}</th>
+          <th class="whitespace-nowrap">{% trans "金额" %}</th>
+          <th class="whitespace-nowrap">{% trans "调整后余额" %}</th>
+          <th class="whitespace-nowrap">{% trans "操作人" %}</th>
+          <th class="whitespace-nowrap">{% trans "备注" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in ledger %}
+        <tr>
+          <td class="whitespace-nowrap text-xs text-base-content/70">{{ row.create_time|date:"Y-m-d H:i" }}</td>
+          <td class="whitespace-nowrap">{{ row.app.name }}</td>
+          <td class="whitespace-nowrap font-mono">
+            {% if row.amount < 0 %}
+            <span class="text-error">{{ row.amount }}</span>
+            {% else %}
+            <span class="text-success">+{{ row.amount }}</span>
+            {% endif %}
+          </td>
+          <td class="whitespace-nowrap font-mono">{{ row.balance_after }}</td>
+          <td class="whitespace-nowrap text-xs text-base-content/70">{{ row.operator|default:"—" }}</td>
+          <td class="text-xs text-base-content/70">{{ row.remark|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="py-6 text-center text-sm text-base-content/60">{% trans "暂无充值记录" %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="mt-2 text-xs text-base-content/70">
+    {% blocktrans with n=ledger_limit %}只显示最近 {{ n }} 条；逐次扣费不在这里（见「调用统计」），余额对账以「充值合计 − 按统计折算的消耗」为准。{% endblocktrans %}
+  </p>
+</fieldset>
+{% endblock %}

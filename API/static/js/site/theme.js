@@ -118,10 +118,13 @@
       head.appendChild(cur);
       panel.appendChild(head);
 
-      // 搜索框
+      // 搜索框（带 id / name / aria-label：无 id 的表单控件会被无障碍审计判为问题项）
       var input = el('input', 'input input-sm w-full');
       input.type = 'text';
+      input.id = 'theme-search';
+      input.name = 'theme_search';
       input.placeholder = gettext('搜索主题…');
+      input.setAttribute('aria-label', input.placeholder);
       panel.appendChild(input);
 
       // 列表

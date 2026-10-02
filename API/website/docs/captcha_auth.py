@@ -4,7 +4,7 @@
 - 阿里云 aliyun：阿里云图形认证（滑块/点选等）——下发前端配置 + 服务端二次校验。
 后续接入更多图形验证渠道时在 channels 追加即可。
 """
-from .schema import ChannelSpec, EndpointSpec, ParamSpec, ServiceSpec
+from .schema import ChannelSpec, EndpointSpec, ParamSpec, ResponseFieldSpec, ServiceSpec
 
 SERVICE = ServiceSpec(
     slug='captcha_auth',
@@ -29,7 +29,11 @@ SERVICE = ServiceSpec(
             endpoints=[
                 EndpointSpec('config', '获取图形认证配置', 'GET', '/api/captcha_auth/aliyun/config',
                              summary='返回图形认证 appId（captchaId），供 H5 前端 SDK 初始化。公开接口，无需签名。',
-                             notes=['响应 data.app_id 即前端 initAlicom4({ captchaId: app_id, product: "bind" }, ...) 所需的 captchaId。']),
+                             notes=['响应 data.app_id 即前端 initAlicom4({ captchaId: app_id, product: "bind" }, ...) 所需的 captchaId。'],
+                             response_fields=[
+                                 ResponseFieldSpec('app_id', 'string', '图形认证 appId（captchaId）'),
+                             ],
+                             response_example='{"app_id": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"}'),
                 EndpointSpec('verify', '二次校验', 'POST', '/api/captcha_auth/aliyun/verify',
                              summary='上传客户端验证参数，确认用户本次图形验证有效（防绕过）。',
                              params=[
@@ -45,7 +49,14 @@ SERVICE = ServiceSpec(
                              ],
                              notes=['请求体为 application/x-www-form-urlencoded 表单；公开接口，无需项目签名。',
                                     '接口请求成功统一返回 code=10000；业务结果以 data.result 判断：',
-                                    'success=验证有效，fail=验证无效（pass_token 过期/流水号已用等），原因见 data.reason。']),
+                                    'success=验证有效，fail=验证无效（pass_token 过期/流水号已用等），原因见 data.reason。'],
+                             response_fields=[
+                                 ResponseFieldSpec('result', 'string', '校验结果：success/fail'),
+                                 ResponseFieldSpec('passed', 'bool', '是否校验通过'),
+                                 ResponseFieldSpec('reason', 'string', '失败原因（成功为空）'),
+                                 ResponseFieldSpec('captcha_args', 'object', '验证输出参数（风控信息）'),
+                             ],
+                             response_example='{"result": "success", "passed": true, "reason": "", "captcha_args": {}}'),
             ],
         ),
     ],

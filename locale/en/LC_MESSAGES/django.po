@@ -1190,9 +1190,6 @@ msgstr "VMEmail(mail.cx)"
 msgid "VMEmail（mail.cx）临时邮箱（仅收信）"
 msgstr "VMEmail (mail.cx) temporary mailbox (receive only)"
 
-msgid "VMEmail（minmail.app）临时邮箱"
-msgstr "VMEmail (minmail.app) Temporary Mailbox"
-
 msgid "a@example.com\nb@example.com"
 msgstr "a@example.com\nb@example.com"
 
@@ -5231,11 +5228,17 @@ msgstr "Service under maintenance"
 msgid "服务已下线"
 msgstr "Service taken offline"
 
+msgid "服务开发中"
+msgstr "Service under development"
+
 msgid "余额不足"
 msgstr "Insufficient balance"
 
 msgid "库存不足"
 msgstr "Insufficient stock"
+
+msgid "调用配额已用尽"
+msgstr "Call quota exhausted"
 
 msgid "外部API调用失败"
 msgstr "External API call failed"
@@ -7145,6 +7148,80 @@ msgstr "Review the tone before an admin reply is sent; the AI only warns and adm
 msgid "类型名称 *"
 msgstr "Type name *"
 
+
+# ==================== 官网文案更新：额度计费说明（首页 / 文档中心 / 接入向导） ====================
+msgid "按次计费 · 点数余额"
+msgstr "Pay-per-call · Point Balance"
+
+msgid "调用按次消耗项目额度（点数），单价以文档页标价为准。"
+msgstr "Calls consume project credits (points) per request; prices are shown on each docs page."
+
+msgid "每个端点标注单价"
+msgstr "Price shown on every endpoint"
+
+msgid "使用用户名、邮箱或手机号注册小影API账号，注册与登录均免费。"
+msgstr "Sign up for a XiaoYingAPI account with a username, email, or phone number — registration and login are free."
+
+msgid "创建接入项目"
+msgstr "Create a Project"
+
+msgid "登录后在「我的项目」自助创建，立即获得专属 APPID 与 APPSECRET，创建项目免费。"
+msgstr "Sign in and create one yourself under \"My Projects\" to get a dedicated APPID and APPSECRET right away — creating a project is free."
+
+msgid "充值额度并调用"
+msgstr "Top Up Credits and Start Calling"
+
+msgid "为项目充值点数后即可调用（新项目默认 0 额度）；成功后按次扣点、失败不扣，统一 <code class=\"font-mono text-xs\">{ code, msg, data }</code> 响应。"
+msgstr "Top up points for your project to start calling (new projects default to 0 credits); successful calls deduct points per request and failed calls are not charged, all returning a unified <code class=\"font-mono text-xs\">{ code, msg, data }</code> response."
+
+msgid "调用接口要收费吗？额度怎么算？"
+msgstr "Does calling the APIs cost money? How are credits calculated?"
+
+msgid "注册、登录、创建项目与浏览文档均免费。调用接口按次消耗项目额度（点数），单价以接口文档页标价为准（未单独配置的服务默认 1 点/次）；只有调用成功才扣点，失败不扣。新建项目默认 0 额度，额度不足时无法调用接口（开放接口除外），请联系管理员充值。"
+msgstr "Registering, logging in, creating projects, and browsing the docs are all free. Calling APIs consumes project credits (points) per request, priced as shown on each docs page (services without a specific price default to 1 point per call); points are deducted only on success, never on failure. New projects start with 0 credits, and APIs cannot be called when credits run out (except open APIs) — contact an administrator to top up."
+
+msgid "登录后在「我的项目」页自助创建接入项目，创建后即可看到 APPID / APPSECRET，创建项目免费。APPSECRET 请务必保存在你的服务端，严禁写入前端代码或提交到仓库。"
+msgstr "Sign in and create a project yourself on the \"My Projects\" page; APPID / APPSECRET appear right away, and creating a project is free. Always keep APPSECRET on your server — never put it in front-end code or commit it to a repository."
+
+msgid "小影API 是一个通用 API 聚合服务平台，聚合音乐、视频解析、AI、代理IP、验证码、短信、邮箱、用户中心等 %(n)s 类服务能力，统一签名认证与标准 JSON 响应，注册免费、调用按次消耗项目额度（点数）。"
+msgstr "XiaoYingAPI is a Unified API Aggregation Platform that aggregates %(n)s categories of services including music, video parsing, AI, proxy IP, CAPTCHA, SMS, email, and user center, with Unified Signature Auth and Standard JSON Response — free to register, with each call consuming project credits (points)."
+
+msgid "登录后在「我的项目」自助创建，立即获得专属 APPID 与 APPSECRET（新建项目默认 0 额度，创建免费）。"
+msgstr "Sign in and create one yourself under \"My Projects\" to get a dedicated APPID and APPSECRET right away (new projects default to 0 credits; creating one is free)."
+
+msgid "充值额度并接入生产"
+msgstr "Top Up Credits and Go to Production"
+
+msgid "为项目充值点数后即可调用（成功按次扣点、失败不扣）；在上线前于服务端实现 HMAC-SHA256 签名，密钥放进环境变量，绝不进前端。"
+msgstr "Top up points for your project to start calling (points are deducted per successful call, never on failure); before going live, implement HMAC-SHA256 signing on your server and keep the secret in environment variables — never in the frontend."
+
+msgid "② 创建接入项目"
+msgstr "② Create a Project"
+
+msgid "登录后在「我的项目」自助创建项目；创建后"
+msgstr "Sign in and create a project yourself under \"My Projects\"; after creation, "
+
+msgid "APPID 是公开标识；APPSECRET 是签名密钥，只应保存在你的服务端。泄露可在「我的项目」详情页一键重置。"
+msgstr "APPID is a public identifier; APPSECRET is the signing secret and must only be kept on your server. If it leaks, you can reset it in one click on the project's \"My Projects\" detail page."
+
+msgid "④ 充值额度"
+msgstr "④ Top Up Credits"
+
+msgid "新建项目默认 0 额度，调用接口前需联系管理员为项目充值点数；成功调用按次扣点，失败不扣。"
+msgstr "New projects default to 0 credits; contact an administrator to top up points before calling APIs. Successful calls deduct points per request and failed calls are not charged."
+
+msgid "调用接口要额度吗？怎么计费？"
+msgstr "Do API calls need credits? How is billing calculated?"
+
+msgid "注册、登录、创建项目与浏览文档均免费。调用接口按次消耗项目额度（点数），单价以接口文档页标价为准（未单独配置的服务默认 1 点/次）；只有调用成功（业务码 10000）才扣点，失败不扣。新建项目默认 0 额度，调用前需联系管理员充值；余额不足时接口返回 30012，开放接口（免签名）不受额度限制。"
+msgstr "Registering, logging in, creating projects, and browsing the docs are all free. Calling APIs consumes project credits (points) per request, priced as shown on each docs page (services without a specific price default to 1 point per call); points are deducted only on success (business code 10000), never on failure. New projects start with 0 credits — contact an administrator to top up before calling; insufficient balance returns 30012, while open (signature-free) APIs are not subject to credit limits."
+
+msgid "10000=成功；20001/20002/20003=参数缺失/格式错误/值非法；20011=签名或认证失败；20040=触发频率限制（如登录连续失败被临时锁定）；30012=额度不足（项目余额低于本次调用单价，请充值）；40001=外部服务调用失败（请稍后重试或核对被调用的第三方资源）。"
+msgstr "10000 = Success; 20001/20002/20003 = Missing parameter / Invalid format / Illegal value; 20011 = Signature or authentication failure; 20040 = Rate limit triggered (e.g. temporarily locked after repeated login failures); 30012 = Insufficient credits (project balance below the price of this call, please top up); 40001 = External service call failed (retry later or check the third-party resource being called)."
+
+msgid "在「我的项目」详情页点「重置密钥」即可，旧密钥立即失效；重置后所有已接入的调用需改用新密钥。"
+msgstr "Go to the project's detail page under \"My Projects\" and click \"Reset Secret\"; the old secret is invalidated immediately, and all existing integrations must switch to the new one."
+
 msgid "类型标识 *"
 msgstr "Type code *"
 
@@ -8202,3 +8279,2547 @@ msgid "安全设置已保存"
 msgstr "Security settings saved"
 
 
+# ===== 控制台服务余量页（2026-10-02 第四批次） =====
+
+msgid "服务余量"
+msgstr "Service Balances"
+
+msgid "服务余量 - 超级管理员 - 小影API"
+msgstr "Service Balances - Super Admin - XiaoYingAPI"
+
+msgid "超级管理员,服务余量,余额监控,低量告警,51代理,超级鹰"
+msgstr "Super Admin, service balances, balance monitoring, low-balance alerts, 51Proxy, Chaojiying"
+
+msgid "小影API 超级管理员：监控各上游服务账号的余量（51代理余额、超级鹰题分），低于阈值时邮件提醒。"
+msgstr "XiaoYingAPI Super Admin: monitor the balance of each upstream service account (51Proxy balance, Chaojiying credits) and get an email alert when it drops below its threshold."
+
+msgid "监控上游服务账号还剩多少，低于设定阈值时发邮件提醒。"
+msgstr "Monitor how much is left in each upstream service account, and get an email alert when a balance drops below its threshold."
+
+msgid "监控上游服务账号还剩多少（51代理余额、超级鹰题分），可逐项设置最低数量阈值，低于阈值时邮件提醒（告警只发一次，恢复后重新武装）。"
+msgstr "Monitor how much is left in each upstream service account (51Proxy balance, Chaojiying credits); set a minimum threshold per service and get an email alert when it is breached (each alert is sent once, then re-arms after recovery)."
+
+msgid "后台每 %(minutes)s 分钟自动检查一轮，也可在下方点「立即检查」手动触发。"
+msgstr "A check runs automatically in the background every %(minutes)s minutes; you can also trigger one manually with the 'Check now' button below."
+
+msgid "告警只发一次：余量跌破阈值时发一封邮件，之后不再重复；余量回升到阈值以上（或关闭该服务的通知）后重新武装，再次跌破时会再发一封。"
+msgstr "Each alert is sent only once: one email when the balance drops below the threshold, with no repeats afterwards. Once the balance rises back above the threshold (or you turn off notifications for that service) the alert re-arms and will be sent again if the balance drops below the threshold once more."
+
+msgid "被监控的服务清单在代码里维护（API/apis/quota/services.py），新增服务只需在那里加一条。"
+msgstr "The list of monitored services is maintained in code (API/apis/quota/services.py); adding a service is just one more entry there."
+
+msgid "取数失败只会记在「最近错误」里，不会覆盖上一次成功取得的余量。"
+msgstr "A failed fetch is only recorded under 'last error'; it never overwrites the balance from the last successful fetch."
+
+msgid "立即检查"
+msgstr "Check now"
+
+msgid "通知设置"
+msgstr "Notification Settings"
+
+msgid "接收通知邮箱"
+msgstr "Notification Email"
+
+msgid "留空则不发通知"
+msgstr "Leave empty to send no notifications"
+
+msgid "所有服务的余量告警统一发到该邮箱；发送失败只记日志，不影响告警状态。"
+msgstr "Alerts for all services are sent to this address; a failed send is only logged and does not affect the alert state."
+
+msgid "各服务阈值与通知"
+msgstr "Per-service Thresholds and Notifications"
+
+msgid "当前余量"
+msgstr "Current Balance"
+
+msgid "最低数量阈值"
+msgstr "Minimum Threshold"
+
+msgid "启用通知"
+msgstr "Notifications"
+
+msgid "通知方式"
+msgstr "Method"
+
+msgid "最近检查"
+msgstr "Last Checked"
+
+msgid "最近告警"
+msgstr "Last Alerted"
+
+msgid "留空则不通知"
+msgstr "Empty = no notification"
+
+msgid "告警中"
+msgstr "Alerting"
+
+msgid "取数失败"
+msgstr "Fetch failed"
+
+msgid "未检查"
+msgstr "Not checked"
+
+msgid "未知"
+msgstr "Unknown"
+
+msgid "阈值留空表示该服务不通知；时间按服务器本地时区显示。"
+msgstr "An empty threshold means no notifications for that service; times are shown in the server's local timezone."
+
+msgid "51代理"
+msgstr "51Proxy"
+
+msgid "超级鹰"
+msgstr "Chaojiying"
+
+msgid "元"
+msgstr "CNY"
+
+msgid "题分"
+msgstr "credits"
+
+msgid "邮件"
+msgstr "Email"
+
+msgid "接收通知邮箱格式不正确：%(email)s"
+msgstr "Invalid notification email address: %(email)s"
+
+msgid "%(name)s 的阈值必须是数字"
+msgstr "The threshold for %(name)s must be a number"
+
+msgid "%(name)s 的阈值必须是不小于 0 的数字"
+msgstr "The threshold for %(name)s must be a number not less than 0"
+
+msgid "余量通知设置已保存"
+msgstr "Balance notification settings saved"
+
+msgid "检查完成，%(n)s 个服务取数失败：%(detail)s"
+msgstr "Check finished; %(n)s service(s) failed to fetch: %(detail)s"
+
+msgid "检查完成，已更新 %(n)s 个服务的余量"
+msgstr "Check finished; balances updated for %(n)s service(s)"
+
+
+# ===== 文档中心「本机凭据」（2026-10-02 第五批次） =====
+
+msgid "本机凭据"
+msgstr "Local Credentials"
+
+msgid "只保存在本机浏览器，不上传、不落库；调试用到它的接口时自动带上。"
+msgstr "Stored only in this browser — never uploaded or persisted; attached automatically when you debug an endpoint that uses it."
+
+msgid "在指定视频下发布一级纯文本评论。登录 Cookie 在右侧栏「本机凭据」填写并保存到本机，调试时自动带上。"
+msgstr "Post a top-level plain-text comment on the given video. The login cookie goes in the right-hand \"Local Credentials\" card and is saved on this machine, then attached automatically when you debug."
+
+msgid "必填：抖音登录 Cookie 完整字符串（含 sessionid 等）。在右侧栏「本机凭据」填写并保存到本机浏览器，调试时自动带上（换设备 / 清缓存需重新粘贴）；不落库、不上传，仅透传给抖音。Cookie 失效会返回外部服务错误。"
+msgstr "Required: the full Douyin login cookie string (including sessionid and so on). Fill it in the right-hand \"Local Credentials\" card and save it to this browser; it is attached automatically when you debug (re-paste it on another device or after clearing the cache). It is never persisted or uploaded, and is only passed through to Douyin. An expired cookie returns an external service error."
+
+msgid "登录 Cookie 只填一次：在右侧栏「本机凭据」粘贴并点「保存到本机浏览器」，之后调试会自动带上（仅本机保存，换设备需重新粘贴）。"
+msgstr "Fill in the login cookie once: paste it into the right-hand \"Local Credentials\" card and click \"Save to this browser\"; every later debug run attaches it automatically (it is saved on this machine only, so re-paste it on another device)."
+
+
+# ===== 前台无障碍修复（2026-10-02 第六批次） =====
+
+msgid "切换语言（当前：%(lang)s）"
+msgstr "Switch language (current: %(lang)s)"
+
+
+# ===== 控制台操作日志（2026-10-02 第七批次） =====
+
+msgid "操作日志"
+msgstr "Audit Log"
+
+msgid "操作日志 - 超级管理员 - 小影API"
+msgstr "Audit Log - Super Admin - XiaoYingAPI"
+
+msgid "超级管理员,操作日志,审计留痕,控制台"
+msgstr "Super Admin, audit log, audit trail, console"
+
+msgid "小影API 超级管理员：查看控制台写操作留痕（谁在何时改了哪个功能）。"
+msgstr "XiaoYingAPI Super Admin: review the audit trail of console write actions (who changed what, and when)."
+
+msgid "控制台写操作的审计留痕：谁在什么时候改了哪个功能、结果如何。由所有控制台视图的必经入口统一采集，新增页面不会漏记。"
+msgstr "An audit trail of console write actions: who changed which feature, and how it went. Collected at the single entry point every console view goes through, so newly added pages can never be missed."
+
+msgid "共 %(total)s 条留痕；只记写操作（新建 / 保存 / 删除 / 启用停用），看页面与搜索这类读操作不记。"
+msgstr "%(total)s audit entries. Only write actions are recorded (create / save / delete / enable-disable); read actions such as viewing pages and searching are not."
+
+msgid "留痕在服务端统一采集（所有控制台视图的必经入口），新增页面不会漏记。"
+msgstr "Entries are collected server-side at the single entry point every console view goes through, so newly added pages can never be missed."
+
+msgid "「说明」就是操作者当时看到的那句成功提示；操作失败也留痕（状态码 3xx、说明为空）。"
+msgstr "The \"note\" is exactly the success message the operator saw. Failed actions are recorded too (status 3xx, empty note)."
+
+msgid "路径 / 说明 / 动作 / 对象"
+msgstr "Path / note / action / target"
+
+msgid "操作者"
+msgstr "Operator"
+
+msgid "功能"
+msgstr "Feature"
+
+msgid "动作"
+msgstr "Action"
+
+msgid "对象"
+msgstr "Target"
+
+msgid "来源"
+msgstr "Origin"
+
+msgid "暂无记录"
+msgstr "No entries yet"
+
+
+# ===== 控制台上游故障告警页（2026-10-02 第七批次） =====
+
+msgid "上游故障告警"
+msgstr "Upstream Failure Alerts"
+
+msgid "上游故障告警 - 超级管理员 - 小影API"
+msgstr "Upstream Failure Alerts - Super Admin - XiaoYingAPI"
+
+msgid "超级管理员,上游故障告警,失败率监控,邮件告警"
+msgstr "Super Admin, upstream failure alerts, failure-rate monitoring, email alerts"
+
+msgid "小影API 超级管理员：按服务监控上游调用失败率（4xxxx 错误码），超过阈值时邮件提醒。"
+msgstr "XiaoYingAPI Super Admin: monitor the upstream call failure rate per service (4xxxx error codes) and get an email alert when it exceeds the threshold."
+
+msgid "按服务监控上游调用失败率，超过阈值时发邮件提醒。"
+msgstr "Monitor the upstream call failure rate per service and get an email alert when it exceeds the threshold."
+
+msgid "按服务监控上游调用失败率（业务码 4xxxx 的占比），超过阈值时发邮件提醒（告警只发一次，恢复后重新武装）。"
+msgstr "Monitor the upstream call failure rate per service (the share of business code 4xxxx) and get an email alert when it exceeds the threshold (each alert is sent once, then re-arms after recovery)."
+
+msgid "判定窗口：%(window)s（当前小时 + 上一小时）。调用统计最细只有小时粒度，这是对「最近 1 小时」最接近的近似。"
+msgstr "Judgement window: %(window)s (current hour + previous hour). Call statistics are only aggregated hourly, so this is the closest approximation to \"the last 1 hour\"."
+
+msgid "「上游错误」= 业务状态码落在 4xxxx（第三方/外部服务错误）的调用；各服务调用上游失败时统一返回该区间错误码。"
+msgstr "\"Upstream errors\" are calls whose business status code falls in 4xxxx (third-party/external service errors); every service returns a code in this range when an upstream call fails."
+
+msgid "告警只发一次：超过阈值时发一封邮件，之后不再重复；失败率回落到阈值以下（或关闭告警）后重新武装，再次超过时会再发一封。"
+msgstr "Each alert is sent only once: one email when the threshold is exceeded, with no repeats afterwards. Once the failure rate falls back below the threshold (or you turn alerts off) the alert re-arms and will be sent again if the threshold is exceeded once more."
+
+msgid "被监控的服务无需人工维护：调用统计里出现过的服务前缀会自动纳入监控。"
+msgstr "Monitored services need no manual upkeep: any service prefix that appears in call statistics is monitored automatically."
+
+msgid "告警设置"
+msgstr "Alert Settings"
+
+msgid "失败率阈值"
+msgstr "Failure-rate Threshold"
+
+msgid "窗口内上游错误占比不低于该值时判定为故障。"
+msgstr "A failure is declared when the share of upstream errors in the window is at least this value."
+
+msgid "最小样本数"
+msgstr "Minimum Sample Size"
+
+msgid "次"
+msgstr "calls"
+
+msgid "窗口内总调用量低于该值时不判定，避免小样本误报。"
+msgstr "No judgement is made when the total calls in the window are below this value, avoiding false alarms from small samples."
+
+msgid "启用告警"
+msgstr "Enable Alerts"
+
+msgid "关闭后不再判定与发送；已置位的告警态会在下一轮检查时复位。"
+msgstr "When off, no judgement or sending happens; an alert already raised is reset on the next check."
+
+msgid "未配置（不会发信）"
+msgstr "Not configured (no email will be sent)"
+
+msgid "与「服务余量」告警共用同一邮箱，请到"
+msgstr "Shares the same address as the Service Balances alerts; change it on the"
+
+msgid "页面修改。"
+msgstr " page."
+
+msgid "各服务当前状态"
+msgstr "Current Status per Service"
+
+msgid "窗口调用量"
+msgstr "Window Calls"
+
+msgid "上游错误"
+msgstr "Upstream Errors"
+
+msgid "样本不足"
+msgstr "Insufficient sample"
+
+msgid "暂无调用记录。"
+msgstr "No call records yet."
+
+msgid "「样本不足」表示窗口内调用量未达到最小样本数，暂不判定；时间按服务器本地时区显示。"
+msgstr "\"Insufficient sample\" means the calls in the window are below the minimum sample size, so no judgement is made; times are shown in the server's local timezone."
+
+msgid "失败率阈值必须是数字"
+msgstr "The failure-rate threshold must be a number"
+
+msgid "失败率阈值必须是 0 到 100 之间的数字"
+msgstr "The failure-rate threshold must be a number between 0 and 100"
+
+msgid "最小样本数必须是整数"
+msgstr "The minimum sample size must be an integer"
+
+msgid "最小样本数必须大于 0"
+msgstr "The minimum sample size must be greater than 0"
+
+msgid "上游故障告警设置已保存"
+msgstr "Upstream failure alert settings saved"
+
+msgid "检查完成，%(n)s 个服务触发上游故障告警：%(detail)s"
+msgstr "Check finished; %(n)s service(s) triggered an upstream failure alert: %(detail)s"
+
+msgid "检查完成，%s 个服务均未触发告警"
+msgstr "Check finished; none of the %s service(s) triggered an alert"
+
+
+# ===== 前台「我的项目」（接入方自助，2026-10-02 第八批次） =====
+
+msgid "我的项目"
+msgstr "My Projects"
+
+msgid "我的项目 - 小影API"
+msgstr "My Projects - XiaoYingAPI"
+
+msgid "%(name)s - 我的项目 - 小影API"
+msgstr "%(name)s - My Projects - XiaoYingAPI"
+
+msgid "我的项目,接入项目,APPID,APPSECRET,调用用量"
+msgstr "my projects, access projects, APPID, APPSECRET, call usage"
+
+msgid "小影API 我的项目：自助创建接入项目、查看 APPID 与 APPSECRET、查看当日与当月调用用量。"
+msgstr "XiaoYingAPI My Projects: create access projects yourself, view the APPID / APPSECRET, and check daily and monthly call usage."
+
+msgid "查看接入项目的 APPID / APPSECRET、调用用量，并可重置密钥。"
+msgstr "View an access project's APPID / APPSECRET and call usage, and reset its secret."
+
+msgid "这里是你名下接入项目的 APPID / APPSECRET 与调用用量。签名规则见"
+msgstr "Your access projects' APPID / APPSECRET and call usage. For the signing rules see the"
+
+msgid "新建项目"
+msgstr "New Project"
+
+msgid "应用名称（全局唯一）"
+msgstr "App name (globally unique)"
+
+msgid "创建项目"
+msgstr "Create Project"
+
+msgid "今日用量"
+msgstr "Today"
+
+msgid "本月用量"
+msgstr "This Month"
+
+msgid "不限"
+msgstr "Unlimited"
+
+msgid "配额使用进度"
+msgstr "Quota usage"
+
+msgid "启用"
+msgstr "Active"
+
+msgid "已停用"
+msgstr "Disabled"
+
+msgid "「不限」表示该项未设上限；用量统计有数秒延迟，仅供参考。停用或删除项目请联系管理员。"
+msgstr "\"Unlimited\" means no cap is set. Usage statistics lag by a few seconds and are for reference only. Contact the administrator to disable or delete a project."
+
+msgid "你还没有接入项目，用上面的表单创建第一个。"
+msgstr "You have no access projects yet — use the form above to create your first one."
+
+msgid "接入凭据"
+msgstr "Credentials"
+
+msgid "APPID 是公开标识；APPSECRET 是签名密钥，只放服务端，不要写进前端代码或公开仓库。"
+msgstr "The APPID is a public identifier; the APPSECRET is the signing key — keep it on your server only, never in front-end code or a public repository."
+
+msgid "点击右侧「显示」查看"
+msgstr "Click \"Show\" on the right to reveal it"
+
+msgid "显示"
+msgstr "Show"
+
+msgid "隐藏"
+msgstr "Hide"
+
+msgid "已复制"
+msgstr "Copied"
+
+msgid "创建时间"
+msgstr "Created"
+
+msgid "调用用量"
+msgstr "Call Usage"
+
+msgid "累计调用"
+msgstr "Total Calls"
+
+msgid "「不限」表示该项未设上限。配额由管理员按合作约定设置，用完会在调用时返回「调用配额已用尽」；需要调整请联系管理员。"
+msgstr "\"Unlimited\" means no cap is set for that period. Quotas are configured by the administrator; once exhausted, calls return \"quota exceeded\". Contact the administrator to adjust it."
+
+msgid "重置 APPSECRET"
+msgstr "Reset APPSECRET"
+
+msgid "重置后旧密钥立即失效，所有已接入的调用必须先换成新密钥才能继续使用。仅在密钥泄露等必要情况下操作。"
+msgstr "After resetting, the old key stops working immediately and every integration must switch to the new key. Only do this when necessary, for example if the key leaked."
+
+msgid "确认重置 APPSECRET？旧密钥会立即失效。"
+msgstr "Reset the APPSECRET? The old key will stop working immediately."
+
+msgid "重置密钥"
+msgstr "Reset Secret"
+
+
+# ===== 控制台「接入项目」加归属与配额（2026-10-02 第八批次） =====
+
+msgid "归属："
+msgstr "Owner: "
+
+msgid "平台自有（无归属用户）"
+msgstr "Platform-owned (no owner)"
+
+msgid "调用上限（日 / 月，— 表示不限）："
+msgstr "Call limit (daily / monthly, — = unlimited):"
+
+msgid "每日调用上限"
+msgstr "Daily Call Limit"
+
+msgid "每月调用上限"
+msgstr "Monthly Call Limit"
+
+msgid "留空 = 不限制"
+msgstr "Empty = unlimited"
+
+msgid "调用上限必须是 0 或正整数（留空表示不限制）"
+msgstr "Call limits must be 0 or a positive integer (leave empty for unlimited)"
+
+# ==================== 文档中心：统一响应格式 / 端点响应说明 / 错误码页 ====================
+
+msgid "响应格式"
+msgstr "Response Format"
+
+msgid "所有接口返回同一个 JSON 信封，业务数据都在 data 里："
+msgstr "Every endpoint returns the same JSON envelope; the payload is always inside data:"
+
+msgid "code：业务状态码，10000 表示成功；其余为各类错误，完整清单见「错误码」页。"
+msgstr "code: business status code. 10000 means success; anything else is an error — see the Error Codes page for the full list."
+
+msgid "msg：给人看的提示文案，可直接展示给终端用户，但不要用它做逻辑判断。"
+msgstr "msg: a human-readable message you can show to end users, but never use it for program logic."
+
+msgid "data：业务数据；出错时通常为 null。各接口 data 的具体字段见该接口的「响应说明」。"
+msgstr "data: the payload; usually null on error. Each endpoint's Response section lists its data fields."
+
+msgid "判断成功与否请看 code，不要依赖 HTTP 状态码。"
+msgstr "Judge success by code, not by the HTTP status code."
+
+msgid "查看完整错误码"
+msgstr "View all error codes"
+
+msgid "响应说明"
+msgstr "Response"
+
+msgid "外层统一格式"
+msgstr "Common envelope"
+
+msgid "字段"
+msgstr "Field"
+
+msgid "返回示例"
+msgstr "Example response"
+
+msgid "该接口未单独声明 data 结构，以上述外层统一格式为准。"
+msgstr "This endpoint does not document its data structure separately; see the common envelope above."
+
+msgid "错误码"
+msgstr "Error Codes"
+
+msgid "错误码 - 接口文档 - 小影API"
+msgstr "Error Codes - API Docs - XiaoYingAPI"
+
+msgid "错误码,状态码,API错误,小影API"
+msgstr "Error codes,status codes,API errors,XiaoYingAPI"
+
+msgid "小影API 对外错误码总表：按类别列出接口会返回的状态码、触发场景与处理建议。"
+msgstr "XiaoYingAPI error code reference: the status codes the endpoints can return, grouped by category, with when they happen and what to do."
+
+msgid "错误码总表"
+msgstr "Error Code Reference"
+
+msgid "所有接口统一返回 {code, msg, data} 信封，判断成功与否请看 code。本页按类别列出可能遇到的错误码、触发场景与处理建议。"
+msgstr "Every endpoint returns a {code, msg, data} envelope; judge success by code. This page lists the error codes you may hit, grouped by category, with when they happen and what to do."
+
+msgid "共 %(n)s 个错误码"
+msgstr "%(n)s error codes"
+
+msgid "含义"
+msgstr "Meaning"
+
+msgid "触发场景"
+msgstr "When it happens"
+
+msgid "处理建议"
+msgstr "What to do"
+
+msgid "遇到本页未列出的状态码，请连同请求参数与返回的 msg 一起反馈给我们。"
+msgstr "If you hit a status code not listed here, report it to us together with your request parameters and the returned msg."
+
+# ---- 错误码类别（StatusCode.category() 的展示文案） ----
+
+msgid "客户端错误"
+msgstr "Client errors"
+
+msgid "业务逻辑错误"
+msgstr "Business logic errors"
+
+msgid "第三方/外部服务错误"
+msgstr "Third-party / external service errors"
+
+msgid "系统内部错误"
+msgstr "Internal server errors"
+
+msgid "未分类"
+msgstr "Uncategorized"
+
+# ---- 错误码总表：触发场景 / 处理建议（API/website/docs/errors.py） ----
+
+msgid "必填参数没有传。"
+msgstr "A required parameter was not provided."
+
+msgid "对照该接口「请求参数」表里标为必填的字段补齐后重试。"
+msgstr "Check the endpoint's Parameters table and supply every required field, then retry."
+
+msgid "参数格式不对，比如该传数字却传了文字、JSON 体无法解析。"
+msgstr "A parameter has the wrong format — e.g. text where a number is expected, or an unparsable JSON body."
+
+msgid "检查参数取值格式与请求体编码，并确认 Content-Type 与实际内容一致（JSON 用 application/json）。"
+msgstr "Check the value format and body encoding, and make sure Content-Type matches the body (use application/json for JSON)."
+
+msgid "参数值本身不合法，比如超出取值范围、传入的 ID 不存在。"
+msgstr "The value itself is invalid — e.g. out of the allowed range, or an ID that does not exist."
+
+msgid "核对该参数文档里的取值说明后重新提交。"
+msgstr "Check the documented allowed values for that parameter and submit again."
+
+msgid "请求没有携带认证信息。"
+msgstr "The request carries no authentication information."
+
+msgid "按「签名说明」在请求头带上 APPID、时间戳与签名后重试。"
+msgstr "Follow the Signing section: send APPID, timestamp and signature in the request headers, then retry."
+
+msgid "签名校验不通过：密钥错误、参数被改动，或时间戳已过期。"
+msgstr "Signature verification failed: wrong secret, modified parameters, or an expired timestamp."
+
+msgid "用 APPSECRET 重新生成签名，确认时间戳在有效期内且参与签名的是原样参数。"
+msgstr "Regenerate the signature with your APPSECRET, and make sure the timestamp is still valid and that the exact parameters were signed."
+
+msgid "身份合法但无权访问：项目未开通该服务，或账号被策略限制。"
+msgstr "Authenticated but not allowed: the project has not enabled this service, or the account is restricted by policy."
+
+msgid "确认项目已开通对应服务；仍有问题请联系管理员。"
+msgstr "Make sure the project has enabled this service; contact the administrator if the problem persists."
+
+msgid "请求的路径不存在，或引用的资源不存在。"
+msgstr "The requested path does not exist, or the referenced resource does not exist."
+
+msgid "核对请求 URL 与资源 ID 是否正确。"
+msgstr "Double-check the request URL and the resource ID."
+
+msgid "短时间请求过于频繁（例如登录连续失败被临时锁定）。"
+msgstr "Too many requests in a short time (for example, repeated login failures temporarily locked the account)."
+
+msgid "降低请求频率、稍后重试。"
+msgstr "Slow down and retry later."
+
+msgid "使用了该接口不支持的 HTTP 方法。"
+msgstr "The endpoint does not support this HTTP method."
+
+msgid "按文档标注的方法（GET / POST 等）发起请求。"
+msgstr "Use the method shown in the docs (GET / POST, etc.)."
+
+msgid "违反业务规则，例如当前账号状态不允许该操作。"
+msgstr "A business rule was violated — e.g. the current account state does not allow this action."
+
+msgid "按返回的 msg 提示处理；属于账号限制的请联系管理员。"
+msgstr "Follow the returned msg; if it is an account restriction, contact the administrator."
+
+msgid "对象当前状态不允许执行该操作。"
+msgstr "The object's current state does not allow this action."
+
+msgid "按提示调整对象状态后再试。"
+msgstr "Adjust the object state as prompted, then retry."
+
+msgid "该服务正在维护，命中路径的请求被统一拦截。"
+msgstr "This service is under maintenance; requests to it are blocked."
+
+msgid "稍后重试，或关注该服务的公告。"
+msgstr "Retry later, or watch the service announcements."
+
+msgid "该服务已下线。"
+msgstr "This service has been taken offline."
+
+msgid "改用其它可用服务或线路。"
+msgstr "Switch to another available service or channel."
+
+msgid "该服务还在开发中，暂未对外开放。"
+msgstr "This service is still under development and not yet available."
+
+msgid "等待服务上线后再调用。"
+msgstr "Wait until the service goes live."
+
+msgid "项目的当日 / 当月调用量已达到配额上限。"
+msgstr "The project has reached its daily / monthly call quota."
+
+msgid "等待配额周期重置，或联系管理员调整配额。"
+msgstr "Wait for the quota period to reset, or contact the administrator to adjust the quota."
+
+msgid "平台调用上游第三方服务失败（上游异常或网络问题）。"
+msgstr "The platform failed to call an upstream third-party service (upstream error or network issue)."
+
+msgid "稍后重试；若持续失败请反馈，平台会排查上游链路。"
+msgstr "Retry later; if it keeps failing, report it and we will investigate the upstream link."
+
+msgid "服务端发生未预期的内部异常。"
+msgstr "The server hit an unexpected internal error."
+
+msgid "稍后重试；若持续失败请反馈。"
+msgstr "Retry later; if it keeps failing, report it."
+
+msgid "服务暂时不可用（维护或过载）。"
+msgstr "The service is temporarily unavailable (maintenance or overload)."
+
+msgid "稍后重试。"
+msgstr "Retry later."
+
+msgid "发生了未归类的错误。"
+msgstr "An unclassified error occurred."
+
+# ---- 控制台「立即送审」的并发与异常提示 ----
+
+msgid "该反馈正在审核中，请稍候"
+msgstr "This feedback is already being reviewed. Please wait."
+
+msgid "该反馈已被删除"
+msgstr "This feedback has been deleted."
+
+msgid "审核过程出错，请稍后重试"
+msgstr "The review failed. Please try again later."
+
+msgid "原价"
+msgstr "Original price"
+
+msgid "名次"
+msgstr "Rank"
+
+msgid "描述"
+msgstr "Description"
+
+msgid "摘要"
+msgstr "Excerpt"
+
+msgid "昵称"
+msgstr "Nickname"
+
+msgid "楼层"
+msgstr "Floor"
+
+msgid "发帖数"
+msgstr "Post count"
+
+msgid "失败数"
+msgstr "Failed count"
+
+msgid "总条数"
+msgstr "Total count"
+
+msgid "总页数"
+msgstr "Total pages"
+
+msgid "成功数"
+msgstr "Success count"
+
+msgid "收藏数"
+msgstr "Favorite count"
+
+msgid "新名称"
+msgstr "New name"
+
+msgid "标签名"
+msgstr "Tag name"
+
+msgid "浏览数"
+msgstr "View count"
+
+msgid "点赞数"
+msgstr "Like count"
+
+msgid "粉丝数"
+msgstr "Follower count"
+
+msgid "获赞数"
+msgstr "Likes received"
+
+msgid "视频数"
+msgstr "Video count"
+
+msgid "评论数"
+msgstr "Comment count"
+
+msgid "购买数"
+msgstr "Purchase count"
+
+msgid "跳过数"
+msgstr "Skipped count"
+
+msgid "付费价格"
+msgstr "Paid price"
+
+msgid "作者信息"
+msgstr "Author info"
+
+msgid "作者昵称"
+msgstr "Author nickname"
+
+msgid "关注总数"
+msgstr "Following count"
+
+msgid "分页信息"
+msgstr "Pagination"
+
+msgid "到账金币"
+msgstr "Coins credited"
+
+msgid "发布时间"
+msgstr "Publish time"
+
+msgid "发生时间"
+msgstr "Time"
+
+msgid "备用域名"
+msgstr "Backup domain"
+
+msgid "失败原因"
+msgstr "Failure reason"
+
+msgid "头像地址"
+msgstr "Avatar URL"
+
+msgid "头衔名称"
+msgstr "Title name"
+
+msgid "头衔图标"
+msgstr "Title icon"
+
+msgid "实际单价"
+msgstr "Sale price"
+
+msgid "审核状态"
+msgstr "Review status"
+
+msgid "客服邮箱"
+msgstr "Support email"
+
+msgid "封面地址"
+msgstr "Cover URL"
+
+msgid "当前栏目"
+msgstr "Current tab"
+
+msgid "当前页码"
+msgstr "Current page"
+
+msgid "所属板块"
+msgstr "Node"
+
+msgid "所赠礼物"
+msgstr "Gift"
+
+msgid "是否加精"
+msgstr "Featured"
+
+msgid "是否原创"
+msgstr "Original"
+
+msgid "是否名人"
+msgstr "Famous"
+
+msgid "是否成功"
+msgstr "Success"
+
+msgid "是否显示"
+msgstr "Displayed"
+
+msgid "是否置顶"
+msgstr "Pinned"
+
+msgid "是否认证"
+msgstr "Certified"
+
+msgid "更新时间"
+msgstr "Updated time"
+
+msgid "本次花费"
+msgstr "Total cost"
+
+msgid "板块名称"
+msgstr "Node name"
+
+msgid "板块说明"
+msgstr "Node description"
+
+msgid "标签列表"
+msgstr "Tag list"
+
+msgid "榜单人数"
+msgstr "Ranking size"
+
+msgid "榜单周期"
+msgstr "Ranking period"
+
+msgid "榜单数值"
+msgstr "Ranking value"
+
+msgid "榜单数据"
+msgstr "Ranking data"
+
+msgid "榜单维度"
+msgstr "Ranking board"
+
+msgid "流水类型"
+msgstr "Log type"
+
+msgid "流水说明"
+msgstr "Log description"
+
+msgid "用户头衔"
+msgstr "User title"
+
+msgid "登录凭证"
+msgstr "Login token"
+
+msgid "相对时间"
+msgstr "Relative time"
+
+msgid "礼物名称"
+msgstr "Gift name"
+
+msgid "礼物类型"
+msgstr "Gift type"
+
+msgid "礼物说明"
+msgstr "Gift description"
+
+msgid "筛选类型"
+msgstr "Filter type"
+
+msgid "结果说明"
+msgstr "Result message"
+
+msgid "账号列表"
+msgstr "Account list"
+
+msgid "账号总数"
+msgstr "Account count"
+
+msgid "货币类型"
+msgstr "Currency type"
+
+msgid "赠送数量"
+msgstr "Quantity"
+
+msgid "逐条结果"
+msgstr "Per-item results"
+
+msgid "逐项结果"
+msgstr "Per-item results"
+
+msgid "今日已签数"
+msgstr "Already signed count"
+
+msgid "变动后余额"
+msgstr "Balance after"
+
+msgid "头衔 ID"
+msgstr "Title ID"
+
+msgid "夹内帖子数"
+msgstr "Topic count in folder"
+
+msgid "子评论总数"
+msgstr "Reply count"
+
+msgid "帖子 ID"
+msgstr "Topic ID"
+
+msgid "影视站域名"
+msgstr "Movie site domain"
+
+msgid "待审 ID"
+msgstr "Pending ID"
+
+msgid "收礼人信息"
+msgstr "Receiver info"
+
+msgid "收礼人昵称"
+msgstr "Receiver nickname"
+
+msgid "收藏夹列表"
+msgstr "Folder list"
+
+msgid "收藏夹名称"
+msgstr "Folder name"
+
+msgid "收藏夹总数"
+msgstr "Folder count"
+
+msgid "无需操作数"
+msgstr "Already-in-target-state count"
+
+msgid "是否含图片"
+msgstr "Has image"
+
+msgid "是否含视频"
+msgstr "Has video"
+
+msgid "是否含音频"
+msgstr "Has audio"
+
+msgid "是否已点赞"
+msgstr "Liked"
+
+msgid "是否待审核"
+msgstr "Pending review"
+
+msgid "是否经代理"
+msgstr "Via proxy"
+
+msgid "本次新签数"
+msgstr "Newly signed count"
+
+msgid "板块 ID"
+msgstr "Node ID"
+
+msgid "标签 ID"
+msgstr "Tag ID"
+
+msgid "源站状态码"
+msgstr "Source status code"
+
+msgid "用户 ID"
+msgstr "User ID"
+
+msgid "礼物 ID"
+msgstr "Gift ID"
+
+msgid "评论 ID"
+msgstr "Comment ID"
+
+msgid "赠送后余额"
+msgstr "Balance after gifting"
+
+msgid "逐账号结果"
+msgstr "Per-account results"
+
+msgid "附件 ID"
+msgstr "Attachment ID"
+
+msgid "VIP 等级"
+msgstr "VIP level"
+
+msgid "主评论 ID"
+msgstr "Root comment ID"
+
+msgid "作者头像地址"
+msgstr "Author avatar URL"
+
+msgid "审核失败原因"
+msgstr "Rejection reason"
+
+msgid "我是否已关注"
+msgstr "Whether I follow"
+
+msgid "我是否点过赞"
+msgstr "Whether I liked"
+
+msgid "操作后的状态"
+msgstr "State after action"
+
+msgid "收藏夹 ID"
+msgstr "Folder ID"
+
+msgid "是否付费评论"
+msgstr "Paid comment"
+
+msgid "是否已存密码"
+msgstr "Has password"
+
+msgid "最后评论时间"
+msgstr "Last comment time"
+
+msgid "有效期（秒）"
+msgstr "TTL (seconds)"
+
+msgid "本条子回复数"
+msgstr "Reply count"
+
+msgid "本次到账金币"
+msgstr "Coins credited"
+
+msgid "板块图标地址"
+msgstr "Node icon URL"
+
+msgid "榜单周期名称"
+msgstr "Ranking period label"
+
+msgid "榜单维度名称"
+msgstr "Ranking board label"
+
+msgid "海外永久域名"
+msgstr "Overseas domain"
+
+msgid "父板块 ID"
+msgstr "Parent node ID"
+
+msgid "相关推荐列表"
+msgstr "Related list"
+
+msgid "礼物图片地址"
+msgstr "Gift image URL"
+
+msgid "视频封面地址"
+msgstr "Video cover URL"
+
+msgid "视频附件列表"
+msgstr "Video attachments"
+
+msgid "顶层板块数组"
+msgstr "Top-level nodes"
+
+msgid "作者用户 ID"
+msgstr "Author user ID"
+
+msgid "内联子评论预览"
+msgstr "Inline reply preview"
+
+msgid "动作（add）"
+msgstr "Action (add)"
+
+msgid "头像是否需解码"
+msgstr "Avatar needs decoding"
+
+msgid "库内账号 ID"
+msgstr "Account ID"
+
+msgid "引用的评论内容"
+msgstr "Quoted content"
+
+msgid "本来就没收藏数"
+msgstr "Not-collected count"
+
+msgid "板块数据版本号"
+msgstr "Node data version"
+
+msgid "正文（纯文本）"
+msgstr "Content (plain text)"
+
+msgid "源站用户 ID"
+msgstr "Source user ID"
+
+msgid "目标用户 ID"
+msgstr "Target user ID"
+
+msgid "原图加密地址列表"
+msgstr "Original image URL list"
+
+msgid "所属主评论 ID"
+msgstr "Root comment ID"
+
+msgid "操作后的关注状态"
+msgstr "Follow state after action"
+
+msgid "收礼人用户 ID"
+msgstr "Receiver user ID"
+
+msgid "调用方是否已购买"
+msgstr "Purchased by caller"
+
+msgid "配图加密地址列表"
+msgstr "Image URL list"
+
+msgid "限定的板块 ID"
+msgstr "Limited node ID"
+
+msgid "今日大陆可访问域名"
+msgstr "Today's mainland domain"
+
+msgid "作者 VIP 等级"
+msgstr "Author VIP level"
+
+msgid "内联最新子回复预览"
+msgstr "Inline latest reply preview"
+
+msgid "所需 VIP 等级"
+msgstr "Required VIP level"
+
+msgid "动作（delete）"
+msgstr "Action (delete)"
+
+msgid "动作（remove）"
+msgstr "Action (remove)"
+
+msgid "动作（rename）"
+msgstr "Action (rename)"
+
+msgid "序号（从 0 开始）"
+msgstr "Index (from 0)"
+
+msgid "是否已存 Token"
+msgstr "Has token"
+
+msgid "直接回复的评论 ID"
+msgstr "Directly replied comment ID"
+
+msgid "代理出口（IP:端口）"
+msgstr "Proxy endpoint (IP:port)"
+
+msgid "子板块数组（结构相同）"
+msgstr "Child nodes (same structure)"
+
+msgid "本服务可播放的列表地址"
+msgstr "Playable playlist URL (this service)"
+
+msgid "附件地址（视频为空串）"
+msgstr "Attachment URL (empty for video)"
+
+msgid "验证码会话 Token"
+msgstr "Captcha session token"
+
+msgid "变动数额（正收入负支出）"
+msgstr "Amount (positive income, negative expense)"
+
+msgid "帖子 ID（待审核时为空）"
+msgstr "Topic ID (empty while pending review)"
+
+msgid "正文 HTML（原样返回）"
+msgstr "Content HTML (returned as-is)"
+
+msgid "可拼进正文的 HTML 片段"
+msgstr "HTML snippet for post content"
+
+msgid "动作（like/unlike）"
+msgstr "Action (like/unlike)"
+
+msgid "货币类型（1 金币 2 钻石）"
+msgstr "Currency type (1 gold, 2 diamond)"
+
+msgid "验证码图片（data URI）"
+msgstr "Captcha image (data URI)"
+
+msgid "源站原始 m3u8（不可直接播放）"
+msgstr "Source m3u8 (not directly playable)"
+
+msgid "礼物类型（gold/diamond）"
+msgstr "Gift type (gold/diamond)"
+
+msgid "附件类型（images/video）"
+msgstr "Attachment type (images/video)"
+
+msgid "动作（follow/unfollow）"
+msgstr "Action (follow/unfollow)"
+
+msgid "成功时无业务数据（data 为 null）。"
+msgstr "No business data on success (data is null)."
+
+msgid "状态（done/skipped/failed）"
+msgstr "State (done/skipped/failed)"
+
+msgid "状态（signed/already/failed）"
+msgstr "State (signed/already/failed)"
+
+msgid "密码明文（仅 with_password=true）"
+msgstr "Plain password (only when with_password=true)"
+
+msgid "签到状态（signed/already/closed）"
+msgstr "Sign-in state (signed/already/closed)"
+
+msgid "状态（done/already/skipped/failed）"
+msgstr "State (done/already/skipped/failed)"
+
+msgid "data 为源站余额对象的原样透传，当前含 gold（金币）与 diamond（钻石）两个字段，具体字段以源站返回为准。"
+msgstr "data is passed through from the upstream balance object as-is; it currently contains gold and diamond fields; the exact fields are defined by the upstream."
+
+msgid "响应不是 {code, msg, data} 信封，而是真实图片二进制（Content-Type 为 image/jpeg 等），可直接用于 <img src>。"
+msgstr "The response is not a {code, msg, data} envelope but raw image bytes (Content-Type such as image/jpeg); it can be used directly in <img src>."
+
+msgid "响应不是 {code, msg, data} 信封，而是 m3u8 播放列表文本（Content-Type: application/vnd.apple.mpegurl），可直接交给播放器加载。"
+msgstr "The response is not a {code, msg, data} envelope but an m3u8 playlist text (Content-Type: application/vnd.apple.mpegurl); it can be loaded directly by a player."
+
+msgid "今天已签到（本地记录）"
+msgstr "Already signed in today (local record)"
+
+msgid "总榜"
+msgstr "Overall"
+
+msgid "粉丝"
+msgstr "Followers"
+
+msgid "本来就没收藏"
+msgstr "Was not collected"
+
+msgid "目标用户就是该账号自己"
+msgstr "Target user is the account itself"
+
+msgid "data 为代练通短信接口返回的原始 JSON 对象（原样透传），字段由上游定义。"
+msgstr "data is the raw JSON object returned by DaiLianTong's SMS API (passed through as-is); its fields are defined by the upstream."
+
+msgid "data 为代练通注册接口返回的原始 JSON 对象（原样透传），字段由上游定义。"
+msgstr "data is the raw JSON object returned by DaiLianTong's registration API (passed through as-is); its fields are defined by the upstream."
+
+msgid "data 为代练通登录接口返回的原始 JSON 对象（原样透传），含上游下发的登录态信息，字段由上游定义。"
+msgstr "data is the raw JSON object returned by DaiLianTong's login API (passed through as-is); it includes the session information issued by the upstream, and its fields are defined by the upstream."
+
+msgid "data 为代练通用户信息接口返回的原始 JSON 对象（原样透传），字段由上游定义。"
+msgstr "data is the raw JSON object returned by DaiLianTong's user info API (passed through as-is); its fields are defined by the upstream."
+
+msgid "data 为代练通用户信息更新接口返回的原始 JSON 对象（原样透传），字段由上游定义。"
+msgstr "data is the raw JSON object returned by DaiLianTong's user info update API (passed through as-is); its fields are defined by the upstream."
+
+msgid "执行结果由外层 code / msg 表达；data 为 null，不含业务数据。"
+msgstr "The result is conveyed by the outer code / msg; data is null and carries no business data."
+
+msgid "data 为代练通改密接口返回的原始 JSON 对象（原样透传），字段由上游定义。"
+msgstr "data is the raw JSON object returned by DaiLianTong's change-password API (passed through as-is); its fields are defined by the upstream."
+
+msgid "data 为上游签到接口 Result1 字段的内容（原样透传），字段由上游定义。"
+msgstr "data is the content of the Result1 field of the upstream sign-in API (passed through as-is); its fields are defined by the upstream."
+
+msgid "data 为上游实名认证接口 Result 字段的内容（数组或对象，原样透传），字段由上游定义。"
+msgstr "data is the content of the Result field of the upstream real-name API (an array or object, passed through as-is); its fields are defined by the upstream."
+
+msgid "默认 data 为上游订单数组（字段由上游定义）；当 filter_sensitive=true 时，data 变为下列含过滤统计的对象。"
+msgstr "By default, data is the upstream order array (fields defined by the upstream); when filter_sensitive=true, data becomes the object with filter statistics listed below."
+
+msgid "过滤后保留的订单数组"
+msgstr "Orders kept after filtering"
+
+msgid "过滤前的订单总数"
+msgstr "Total number of orders before filtering"
+
+msgid "被过滤的订单数"
+msgstr "Number of filtered-out orders"
+
+msgid "过滤后剩余的订单数"
+msgstr "Number of orders remaining after filtering"
+
+msgid "被过滤订单及命中的敏感词"
+msgstr "Filtered-out orders and their matched sensitive words"
+
+msgid "被过滤的订单号"
+msgstr "Order ID of the filtered-out order"
+
+msgid "被过滤的订单标题"
+msgstr "Order title of the filtered-out order"
+
+msgid "命中该订单的敏感词"
+msgstr "Sensitive words matched in this order"
+
+msgid "data 为代练通订单详情接口返回的原始 JSON 对象（原样透传），字段由上游定义。"
+msgstr "data is the raw JSON object returned by DaiLianTong's order detail API (passed through as-is); its fields are defined by the upstream."
+
+msgid "data 为代练通接收订单接口返回的原始 JSON 对象（原样透传），字段由上游定义。"
+msgstr "data is the raw JSON object returned by DaiLianTong's receive-order API (passed through as-is); its fields are defined by the upstream."
+
+msgid "data 为代练通发布订单接口返回的原始 JSON 对象（原样透传），字段由上游定义。"
+msgstr "data is the raw JSON object returned by DaiLianTong's publish-order API (passed through as-is); its fields are defined by the upstream."
+
+msgid "data 为代练通删除订单接口返回的原始 JSON 对象（原样透传），字段由上游定义。"
+msgstr "data is the raw JSON object returned by DaiLianTong's delete-order API (passed through as-is); its fields are defined by the upstream."
+
+msgid "data 为上游「我的订单」接口 LevelOrderList 字段的订单数组（原样透传），每项字段由上游定义。"
+msgstr "data is the order array from the LevelOrderList field of the upstream my-orders API (passed through as-is); each item's fields are defined by the upstream."
+
+msgid "data 为代练通订单留言接口返回的原始 JSON 对象（原样透传），字段由上游定义。"
+msgstr "data is the raw JSON object returned by DaiLianTong's order-comment API (passed through as-is); its fields are defined by the upstream."
+
+msgid "data 为上游接口返回的完整响应对象（原样透传，含上游自身的 code / message / data），字段由上游定义。"
+msgstr "data is the full response object returned by the upstream API (passed through as-is, including the upstream's own code / message / data); its fields are defined by the upstream."
+
+msgid "后台启用的注册/登录方式列表"
+msgstr "List of enabled register/login methods"
+
+msgid "取值 email / phone"
+msgstr "Value: email or phone"
+
+msgid "用户名+密码注册是否可用（恒为 false）"
+msgstr "Whether username+password registration is available (always false)"
+
+msgid "选填：注册时提交的展示名，原样回带"
+msgstr "Optional: display name submitted at registration, echoed back"
+
+msgid "本次注册绑定的邮箱（提交邮箱时返回）"
+msgstr "Email bound in this registration (returned when email is submitted)"
+
+msgid "验证邮件是否发送成功"
+msgstr "Whether the verification email was sent successfully"
+
+msgid "本次注册绑定的手机号（提交手机号时返回）"
+msgstr "Phone bound in this registration (returned when phone is submitted)"
+
+msgid "注册短信是否发送成功"
+msgstr "Whether the registration SMS was sent successfully"
+
+msgid "恒为 true：需完成验证后才发放账号"
+msgstr "Always true: the account is issued only after verification"
+
+msgid "用户唯一 ID（UUID）"
+msgstr "Unique user ID (UUID)"
+
+msgid "系统分配的账号（6-12 位数字）"
+msgstr "System-assigned account (6-12 digits)"
+
+msgid "用户名（可空）"
+msgstr "Username (may be empty)"
+
+msgid "登录 Token，绑定本项目"
+msgstr "Login token, bound to this project"
+
+msgid "Token 过期时间（Y-m-d H:M:S）"
+msgstr "Token expiry time (Y-m-d H:M:S)"
+
+msgid "已绑定邮箱（未绑定时不返回）"
+msgstr "Bound email (omitted if not bound)"
+
+msgid "已绑定手机号（未绑定时不返回）"
+msgstr "Bound phone (omitted if not bound)"
+
+msgid "Token 是否有效（成功恒为 true）"
+msgstr "Whether the token is valid (always true on success)"
+
+msgid "邮箱是否已验证"
+msgstr "Whether the email is verified"
+
+msgid "手机号是否已验证"
+msgstr "Whether the phone is verified"
+
+msgid "项目唯一 ID（UUID）"
+msgstr "Unique project ID (UUID)"
+
+msgid "项目名称"
+msgstr "Project name"
+
+msgid "APPID（公开标识）"
+msgstr "APPID (public identifier)"
+
+msgid "Token 默认有效期（天）"
+msgstr "Default token validity (days)"
+
+msgid "项目启用状态"
+msgstr "Project enabled status"
+
+msgid "本次注册绑定的邮箱"
+msgstr "Email bound in this registration"
+
+msgid "本次注册绑定的手机号"
+msgstr "Phone bound in this registration"
+
+msgid "成功时 data 为 null：接口只下发验证码，不返回业务数据。"
+msgstr "On success data is null: the endpoint only sends a code and returns no business data."
+
+msgid "成功时 data 为 null：接口只返回操作结果。"
+msgstr "On success data is null: the endpoint only returns the operation result."
+
+msgid "成功时 data 为 null：接口只重发验证邮件。"
+msgstr "On success data is null: the endpoint only resends the verification email."
+
+msgid "成功时 data 为 null：接口只重发注册短信。"
+msgstr "On success data is null: the endpoint only resends the registration SMS."
+
+msgid "成功/失败均返回 HTML 结果页（非 JSON），data 不适用；调试面板显示 HTML 原文属正常。"
+msgstr "Both success and failure return an HTML result page (not JSON); data does not apply. Showing raw HTML in the debugger is expected."
+
+msgid "主分类列表"
+msgstr "Main category list"
+
+msgid "分类 ID，传给列表接口 type_id"
+msgstr "Category ID, pass to the list API as type_id"
+
+msgid "分类名称"
+msgstr "Category name"
+
+msgid "连续剧的子分类列表"
+msgstr "Sub-categories of TV series"
+
+msgid "子分类 ID，同样可传 type_id"
+msgstr "Sub-category ID, also usable as type_id"
+
+msgid "子分类名称"
+msgstr "Sub-category name"
+
+msgid "首页专题（label）列表"
+msgstr "Homepage topic (label) list"
+
+msgid "专题标识"
+msgstr "Topic key"
+
+msgid "专题名称"
+msgstr "Topic name"
+
+msgid "分类 ID（回带入参）"
+msgstr "Category ID (echoes the input)"
+
+msgid "该分类的子分类"
+msgstr "Sub-categories of this category"
+
+msgid "值，回传给列表接口 type_id"
+msgstr "Value, pass back to the list API as type_id"
+
+msgid "筛选条件分组（地区/题材/语言/年份/排序）"
+msgstr "Filter groups (area/genre/lang/year/order)"
+
+msgid "参数名（area/genre/lang/year/order）"
+msgstr "Parameter name (area/genre/lang/year/order)"
+
+msgid "分组名称"
+msgstr "Group name"
+
+msgid "该组的可选值"
+msgstr "Selectable values of this group"
+
+msgid "选项名称"
+msgstr "Option name"
+
+msgid "选项值，回传给同名参数"
+msgstr "Option value, pass back to the same-named parameter"
+
+msgid "轮播图"
+msgstr "Carousel"
+
+msgid "片名"
+msgstr "Title"
+
+msgid "详情页地址"
+msgstr "Detail page URL"
+
+msgid "封面图地址"
+msgstr "Cover image URL"
+
+msgid "角标/备注"
+msgstr "Badge / note"
+
+msgid "一句话简介"
+msgstr "Short intro"
+
+msgid "推荐区块列表"
+msgstr "Recommendation blocks"
+
+msgid "区块标题"
+msgstr "Block title"
+
+msgid "区块内影片"
+msgstr "Movies in the block"
+
+msgid "豆瓣评分"
+msgstr "Douban rating"
+
+msgid "影片列表"
+msgstr "Movie list"
+
+msgid "影片 ID（传给详情接口 vod_id）"
+msgstr "Movie ID, pass to the detail API as vod_id"
+
+msgid "播放源列表"
+msgstr "Play source list"
+
+msgid "剧情简介"
+msgstr "Synopsis"
+
+msgid "元数据键值对（导演/主演/上映等）"
+msgstr "Metadata key-value pairs (director/cast/release, etc.)"
+
+msgid "播放源名称"
+msgstr "Play source name"
+
+msgid "播放源序号，传给播放接口"
+msgstr "Play source index, pass to the play API"
+
+msgid "该源的选集列表"
+msgstr "Episode list of this source"
+
+msgid "集数序号，传给播放接口"
+msgstr "Episode index, pass to the play API"
+
+msgid "集数名称"
+msgstr "Episode name"
+
+msgid "播放页地址"
+msgstr "Play page URL"
+
+msgid "影片 ID（回带入参）"
+msgstr "Movie ID (echoes the input)"
+
+msgid "播放源序号（回带入参）"
+msgstr "Play source index (echoes the input)"
+
+msgid "集数序号（回带入参）"
+msgstr "Episode index (echoes the input)"
+
+msgid "m3u8 播放地址（带时效）"
+msgstr "m3u8 play URL (time-limited)"
+
+msgid "源站标识"
+msgstr "Upstream source flag"
+
+msgid "是否加密（源站字段，通常 0）"
+msgstr "Encrypted flag (upstream field, usually 0)"
+
+msgid "搜索关键词（回带入参）"
+msgstr "Search keyword (echoes the input)"
+
+msgid "搜索结果列表"
+msgstr "Search result list"
+
+msgid "榜单类型（回带入参）"
+msgstr "Ranking type (echoes the input)"
+
+msgid "榜单剧集列表"
+msgstr "Ranking drama list"
+
+msgid "排名"
+msgstr "Rank"
+
+msgid "剧集 ID（传给详情/播放接口）"
+msgstr "Series ID, pass to the detail/play API"
+
+msgid "剧名"
+msgstr "Drama title"
+
+msgid "热度（无则 null）"
+msgstr "Popularity (null if none)"
+
+msgid "评分（无则 null）"
+msgstr "Rating (null if none)"
+
+msgid "收藏数（无则 null）"
+msgstr "Favorites count (null if none)"
+
+msgid "点赞数（无则 null）"
+msgstr "Likes count (null if none)"
+
+msgid "题材标签"
+msgstr "Genre tags"
+
+msgid "分类树（一级）"
+msgstr "Category tree (top level)"
+
+msgid "一级分类标识（传给列表接口 category）"
+msgstr "Top-level slug, pass to the list API as category"
+
+msgid "一级分类名称"
+msgstr "Top-level category name"
+
+msgid "分类页地址"
+msgstr "Category page URL"
+
+msgid "二级题材（无则为空数组）"
+msgstr "Second-level genres (empty array if none)"
+
+msgid "二级标识（一级/二级形式）"
+msgstr "Second-level slug (top/second form)"
+
+msgid "二级题材名称"
+msgstr "Second-level genre name"
+
+msgid "分类标识（回带入参）"
+msgstr "Category slug (echoes the input)"
+
+msgid "短剧列表"
+msgstr "Drama list"
+
+msgid "剧集 ID（回带入参）"
+msgstr "Series ID (echoes the input)"
+
+msgid "总集数"
+msgstr "Total episodes"
+
+msgid "源站直链的连续可播集数"
+msgstr "Contiguous playable episodes from the upstream direct link"
+
+msgid "实际可播集数（playable=true 的集数）"
+msgstr "Actual playable episode count (playable=true)"
+
+msgid "全量集列表"
+msgstr "Full episode list"
+
+msgid "集号（从 1 开始）"
+msgstr "Episode number (starting from 1)"
+
+msgid "源站集 ID"
+msgstr "Upstream episode ID"
+
+msgid "该集是否可播"
+msgstr "Whether this episode is playable"
+
+msgid "来源：origin 源站直链 / stream 本站直出"
+msgstr "Source: origin (upstream direct link) / stream (served by this site)"
+
+msgid "集号（回带入参）"
+msgstr "Episode number (echoes the input)"
+
+msgid "是否可播（成功恒为 true）"
+msgstr "Whether playable (always true on success)"
+
+msgid "播放地址（带时效）"
+msgstr "Play URL (time-limited)"
+
+msgid "仅 source=stream：地址类型（mp4）"
+msgstr "Only source=stream: URL type (mp4)"
+
+msgid "仅 source=stream：出流画质（宽度上限）"
+msgstr "Only source=stream: output quality (max width)"
+
+msgid "仅 source=stream：产物是否已生成（false 需轮询）"
+msgstr "Only source=stream: whether the output is ready (poll while false)"
+
+msgid "仅 source=origin：源站集 ID"
+msgstr "Only source=origin: upstream episode ID"
+
+msgid "仅 source=origin：时长"
+msgstr "Only source=origin: duration"
+
+msgid "仅 source=origin：视频宽"
+msgstr "Only source=origin: video width"
+
+msgid "仅 source=origin：视频高"
+msgstr "Only source=origin: video height"
+
+msgid "仅 source=origin：封面图地址"
+msgstr "Only source=origin: poster image URL"
+
+msgid "榜单专有字段，列表接口恒为 null"
+msgstr "Ranking-only field, always null in the list API"
+
+msgid "总页数（搜索恒为 1）"
+msgstr "Total pages (always 1 for search)"
+
+msgid "成功返回视频二进制流（video/mp4，支持 Range）；生成中返回 202、生成失败 503、令牌无效或过期 403，均非统一 JSON 信封。"
+msgstr "On success returns a binary video stream (video/mp4, supports Range); 202 while generating, 503 on generation failure, 403 for invalid/expired token — none use the unified JSON envelope."
+
+msgid "连续剧"
+msgstr "TV Series"
+
+msgid "热门连续剧"
+msgstr "Popular TV Series"
+
+msgid "Netflix 专区"
+msgstr "Netflix Zone"
+
+msgid "动作片"
+msgstr "Action"
+
+msgid "大陆"
+msgstr "Mainland China"
+
+msgid "示例影片"
+msgstr "Sample Movie"
+
+msgid "本周最佳"
+msgstr "Best of the Week"
+
+msgid "更新至10集"
+msgstr "Updated to episode 10"
+
+msgid "导演"
+msgstr "Director"
+
+msgid "张三"
+msgstr "Zhang San"
+
+msgid "主演"
+msgstr "Starring"
+
+msgid "李四"
+msgstr "Li Si"
+
+msgid "上映"
+msgstr "Release"
+
+msgid "线路1"
+msgstr "Source 1"
+
+msgid "第1集"
+msgstr "Episode 1"
+
+msgid "保姆"
+msgstr "The Nanny"
+
+msgid "示例短剧"
+msgstr "Sample Drama"
+
+msgid "逆袭"
+msgstr "Comeback"
+
+msgid "甜宠"
+msgstr "Sweet Romance"
+
+msgid "爱情"
+msgstr "Romance"
+
+msgid "热门歌手列表"
+msgstr "Hot singers"
+
+msgid "歌手名"
+msgstr "Singer name"
+
+msgid "头像图片地址"
+msgstr "Avatar image URL"
+
+msgid "歌手页地址"
+msgstr "Singer page URL"
+
+msgid "歌曲飙升榜"
+msgstr "Rising songs chart"
+
+msgid "歌曲名"
+msgstr "Song name"
+
+msgid "歌手名列表"
+msgstr "Singer name list"
+
+msgid "流行趋势榜"
+msgstr "Trending chart"
+
+msgid "歌手基本信息"
+msgstr "Singer basic info"
+
+msgid "歌手名称"
+msgstr "Singer name"
+
+msgid "歌手简介"
+msgstr "Singer bio"
+
+msgid "歌曲列表"
+msgstr "Song list"
+
+msgid "歌曲基本信息"
+msgstr "Song basic info"
+
+msgid "分页信息；无分页时为 null"
+msgstr "Pagination info; null when unavailable"
+
+msgid "当前页 {page,url}"
+msgstr "Current page {page,url}"
+
+msgid "页面地址"
+msgstr "Page URL"
+
+msgid "首页 {page,url}；不存在为 null"
+msgstr "First page {page,url}; null when absent"
+
+msgid "上一页 {page,url}；不存在为 null"
+msgstr "Previous page {page,url}; null when absent"
+
+msgid "下一页 {page,url}；不存在为 null"
+msgstr "Next page {page,url}; null when absent"
+
+msgid "尾页 {page,url}；不存在为 null"
+msgstr "Last page {page,url}; null when absent"
+
+msgid "搜索结果歌曲列表"
+msgstr "Search result songs"
+
+msgid "搜索结果总条数"
+msgstr "Total search results"
+
+msgid "播放直链（解密后）；失败为空字符串"
+msgstr "Play URL (decrypted); empty string on failure"
+
+msgid "LRC 格式歌词；失败为空字符串"
+msgstr "Lyrics in LRC format; empty string on failure"
+
+msgid "随机推荐列表"
+msgstr "Random recommendations"
+
+msgid "音乐列表"
+msgstr "Music list"
+
+msgid "歌手列表"
+msgstr "Singer list"
+
+msgid "是否在线"
+msgstr "Is online"
+
+msgid "音乐 UUID（即 music_id）"
+msgstr "Music UUID (music_id)"
+
+msgid "该音乐的播放源列表"
+msgstr "Play sources of this music"
+
+msgid "所属音乐 UUID"
+msgstr "Owning music UUID"
+
+msgid "提交总条数"
+msgstr "Total submitted"
+
+msgid "成功入库条数"
+msgstr "Imported count"
+
+msgid "失败条数"
+msgstr "Failed count"
+
+msgid "失败明细列表"
+msgstr "Failure details"
+
+msgid "记录在数组中的下标（从 0 起）"
+msgstr "Record index in the array (0-based)"
+
+msgid "该记录的 name；取不到为空字符串"
+msgstr "Record name; empty string if unavailable"
+
+msgid "删除成功时 data 为 null（无返回数据）。"
+msgstr "On success data is null (no data returned)."
+
+msgid "该接口返回文件下载（Content-Disposition: attachment），不走 {code,msg,data} 统一包裹：内容为与「批量导入」同格式的 JSON 数组，≤9999 条为单个 .json，超出为 .zip 分片。"
+msgstr "This endpoint returns a file download (Content-Disposition: attachment) and does not use the unified {code,msg,data} envelope: the content is a JSON array in the same format as \"Bulk import\"; a single .json when <=9999 records, otherwise a split .zip archive."
+
+msgid "歌曲页地址"
+msgstr "Song page URL"
+
+msgid "视频/图文标题"
+msgstr "Video/post title"
+
+msgid "时长（秒）；图文为 null"
+msgstr "Duration (seconds); null for image posts"
+
+msgid "视频下载列表；图文为空数组"
+msgstr "Video download list; empty array for image posts"
+
+msgid "画质描述（如 1080P）"
+msgstr "Quality label (e.g. 1080P)"
+
+msgid "无水印视频地址"
+msgstr "Watermark-free video URL"
+
+msgid "文件大小（字节，可能为 null）"
+msgstr "File size (bytes, may be null)"
+
+msgid "图片下载列表；视频为空数组"
+msgstr "Image download list; empty array for videos"
+
+msgid "图片描述（如 图片1）"
+msgstr "Image label (e.g. Image 1)"
+
+msgid "图片原图地址"
+msgstr "Original image URL"
+
+msgid "文件大小（通常为 null）"
+msgstr "File size (usually null)"
+
+msgid "发布时间（Unix 秒级时间戳）"
+msgstr "Posted time (Unix timestamp in seconds)"
+
+msgid "代理列表"
+msgstr "Proxy list"
+
+msgid "代理端口"
+msgstr "Proxy port"
+
+msgid "协议：HTTP / SOCKS5"
+msgstr "Protocol: HTTP / SOCKS5"
+
+msgid "归属说明（固定为「国内动态」）"
+msgstr "Region note (fixed as \"Domestic dynamic\")"
+
+msgid "附加列内容；仅开启附加列参数时出现"
+msgstr "Extra columns; only present when extra-column params are enabled"
+
+msgid "代理认证账号；随账密成对出现时才有"
+msgstr "Proxy auth username; only when credentials are provided as a pair"
+
+msgid "代理认证密码；随账密成对出现时才有"
+msgstr "Proxy auth password; only when credentials are provided as a pair"
+
+msgid "可直接使用的代理地址；随账密成对出现时才有"
+msgstr "Ready-to-use proxy URL; only when credentials are provided as a pair"
+
+msgid "返回总数"
+msgstr "Total returned"
+
+msgid "本次返回数"
+msgstr "Returned this time"
+
+msgid "地区名（可能为空）"
+msgstr "Region name (may be empty)"
+
+msgid "地区编码（可能为空）"
+msgstr "Region code (may be empty)"
+
+msgid "运营商（可能为空）"
+msgstr "ISP (may be empty)"
+
+msgid "到期时间（可能为空）"
+msgstr "Expiry time (may be empty)"
+
+msgid "经国内中转的代理地址；未配置中转时无此字段"
+msgstr "Proxy URL via domestic relay; absent when no relay is configured"
+
+msgid "被验证的 IP"
+msgstr "Verified IP"
+
+msgid "是否为搜索引擎爬虫"
+msgstr "Whether it is a search engine spider"
+
+msgid "蜘蛛类型；非蜘蛛为「非蜘蛛」"
+msgstr "Spider type; \"Not a spider\" when it is not one"
+
+msgid "反向解析域名（PTR）"
+msgstr "Reverse DNS domain (PTR)"
+
+msgid "匹配的官方域名后缀；未匹配为「未匹配」"
+msgstr "Matched official domain suffix; \"Not matched\" when none"
+
+msgid "结果描述（如「查询成功」）"
+msgstr "Result description (e.g. \"Query succeeded\")"
+
+msgid "对外部服务查询耗时可能较长，属正常。"
+msgstr "Querying the external service may take a while; this is normal."
+
+msgid "以下字段为 stream=false 时的 data 结构；stream=true 时响应改为 SSE 文本流（逐帧推送，见上方说明），不走该结构。"
+msgstr "The fields below describe data when stream=false; with stream=true the response becomes an SSE text stream (pushed frame by frame, see above) and does not use this structure."
+
+msgid "模型回复正文（Markdown）"
+msgstr "Model reply text (Markdown)"
+
+msgid "对外模型标识"
+msgstr "Public model identifier"
+
+msgid "Token 用量；上游未返回时为 null"
+msgstr "Token usage; null when not returned by upstream"
+
+msgid "输入 Token 数"
+msgstr "Prompt tokens"
+
+msgid "输出 Token 数"
+msgstr "Completion tokens"
+
+msgid "总 Token 数"
+msgstr "Total tokens"
+
+msgid "结束原因；可能为 null"
+msgstr "Finish reason; may be null"
+
+msgid "可用模型列表"
+msgstr "Available model list"
+
+msgid "模型标识（传参 model 的取值）"
+msgstr "Model identifier (the value of the model param)"
+
+msgid "展示名"
+msgstr "Display name"
+
+msgid "是否支持视觉（可传 images）"
+msgstr "Whether vision is supported (images allowed)"
+
+msgid "上下文长度；未知为 null"
+msgstr "Context length; null when unknown"
+
+msgid "是否为默认模型"
+msgstr "Whether it is the default model"
+
+msgid "查询的接口路径"
+msgstr "Queried endpoint path"
+
+msgid "累计调用次数"
+msgstr "Total calls"
+
+msgid "今日调用次数"
+msgstr "Calls today"
+
+msgid "各服务调用量列表（按累计降序）"
+msgstr "Per-service call counts (descending by total)"
+
+msgid "服务前缀（如 /api/email/）"
+msgstr "Service prefix (e.g. /api/email/)"
+
+msgid "服务名称"
+msgstr "Service name"
+
+msgid "示例歌手"
+msgstr "Example Singer"
+
+msgid "示例歌曲"
+msgstr "Example Song"
+
+msgid "示例歌词"
+msgstr "Example lyrics"
+
+msgid "资源已存在: 同名且同歌手的音乐已存在"
+msgstr "Resource already exists: a music with the same name and singers already exists"
+
+msgid "示例视频标题"
+msgstr "Example video title"
+
+msgid "示例评论"
+msgstr "Example comment"
+
+msgid "国内动态"
+msgstr "Domestic dynamic"
+
+msgid "曲靖市"
+msgstr "Qujing"
+
+msgid "电信"
+msgstr "China Telecom"
+
+msgid "谷歌蜘蛛"
+msgstr "Google spider"
+
+msgid "反向DNS验证"
+msgstr "Reverse DNS verification"
+
+msgid "查询成功"
+msgstr "Query succeeded"
+
+msgid "示例回复内容"
+msgstr "Example reply content"
+
+msgid "收件人邮箱列表"
+msgstr "Recipient email list"
+
+msgid "收件人数量"
+msgstr "Recipient count"
+
+msgid "临时邮箱地址"
+msgstr "Temporary email address"
+
+msgid "客户端标识，查询邮件时回传"
+msgstr "Client ID, pass it back when fetching emails"
+
+msgid "发送失败归为外部服务错误。"
+msgstr "Sending failures are reported as an external service error."
+
+msgid "完整正文用列表里的 id 查「获取邮件详情」。"
+msgstr "Use the id from the list to fetch the full body via \u201cGet email detail\u201d."
+
+msgid "data 为可用后缀域名组成的字符串数组；上游异常时回退为内置默认域名。"
+msgstr "data is a string array of available suffix domains; falls back to the built-in default domains when the upstream fails."
+
+msgid "data 为上游 mail.cx 的邮件摘要列表，每项含 id / from_name / from_email / subject / preview_text / preview_status / size / created_at 等字段，以实际返回为准。"
+msgstr "data is the email summary list from the upstream mail.cx service; each item contains fields such as id / from_name / from_email / subject / preview_text / preview_status / size / created_at \u2014 refer to the actual response."
+
+msgid "data 为上游 mail.cx 返回的邮件详情原始 JSON，含 id / from / from_email / from_name / to / subject / text_body / html_body / attachments / date / created_at 等字段，以实际返回为准。"
+msgstr "data is the raw email-detail JSON returned by the upstream mail.cx service, containing fields such as id / from / from_email / from_name / to / subject / text_body / html_body / attachments / date / created_at \u2014 refer to the actual response."
+
+msgid "阿里云发送流水号"
+msgstr "Alibaba Cloud send transaction ID"
+
+msgid "外部流水号（透传返回）"
+msgstr "External serial number (passed through)"
+
+msgid "验证码，仅开启返回时有值"
+msgstr "Verification code; present only when returning it is enabled"
+
+msgid "核验结果：PASS/UNKNOWN"
+msgstr "Verification result: PASS/UNKNOWN"
+
+msgid "是否核验通过"
+msgstr "Whether verification passed"
+
+msgid "图形认证 appId（captchaId）"
+msgstr "Captcha appId (captchaId)"
+
+msgid "校验结果：success/fail"
+msgstr "Check result: success/fail"
+
+msgid "是否校验通过"
+msgstr "Whether the check passed"
+
+msgid "失败原因（成功为空）"
+msgstr "Failure reason (empty on success)"
+
+msgid "验证输出参数（风控信息）"
+msgstr "Verification output args (risk-control info)"
+
+msgid "验证码ID，校验时回传"
+msgstr "Captcha ID, pass it back when verifying"
+
+msgid "类型：char/arithmetic"
+msgstr "Kind: char/arithmetic"
+
+msgid "base64 图片（data URI）"
+msgstr "base64 image (data URI)"
+
+msgid "captcha_id 必须与答案一起回传给 verify；image 可直接用作 <img src>。"
+msgstr "captcha_id must be sent back to verify together with the answer; image can be used directly as an <img src>."
+
+msgid "缺口左上角 x 坐标"
+msgstr "X coordinate of the gap's top-left corner"
+
+msgid "缺口左上角 y 坐标"
+msgstr "Y coordinate of the gap's top-left corner"
+
+msgid "图片标识号，报错返分时用"
+msgstr "Image ID, used when reporting an error for a refund"
+
+msgid "识别结果文本"
+msgstr "Recognized text"
+
+msgid "结果校验值"
+msgstr "Result checksum"
+
+msgid "题分余额"
+msgstr "Credit balance (tifen)"
+
+msgid "锁定中的题分"
+msgstr "Locked credits (tifen)"
+
+msgid "data 随参数变化：probability=false 时为识别文本字符串；probability=true 时为对象 {text, probability}，其中 probability 为 ddddocr 的原始概率分布结构。"
+msgstr "data varies with the parameters: when probability=false it is the recognized text string; when probability=true it is an object {text, probability}, where probability is ddddocr's raw probability distribution."
+
+msgid "该接口不返回业务数据，成功时 data 为 null，结果以 code 与 msg 判断。"
+msgstr "This endpoint returns no business data; data is null on success \u2014 judge the result from code and msg."
+
+msgid "data 为目标检测结果数组，每个元素为 [x1, y1, x2, y2]，即目标边界框的左上角与右下角坐标（像素）。"
+msgstr "data is an array of detection results; each element is [x1, y1, x2, y2], the top-left and bottom-right coordinates (in pixels) of a target's bounding box."
+
+msgid "该接口不返回业务数据，成功时 data 为空对象 {}，结果以 code 与 msg 判断。"
+msgstr "This endpoint returns no business data; data is an empty object {} on success \u2014 judge the result from code and msg."
+
+msgid "平台业务错误（如账号密码错误、题分不足）返回 4xxxx，msg 为平台中文说明。"
+msgstr "Platform business errors (e.g. wrong account/password, insufficient credits) return 4xxxx, with the platform's Chinese description in msg."
+
+msgid "按官方标准价换算，1000 题分 ≈ 1 元。"
+msgstr "At the official standard rate, 1000 credits \u2248 1 CNY."
+
+msgid "存储后的文件名"
+msgstr "Stored file name"
+
+msgid "原始文件名"
+msgstr "Original file name"
+
+msgid "文件大小（字节）"
+msgstr "File size (bytes)"
+
+msgid "文件大小（MB，2 位小数）"
+msgstr "File size (MB, 2 decimals)"
+
+msgid "扩展名"
+msgstr "Extension"
+
+msgid "类型：image/video/file"
+msgstr "Type: image/video/file"
+
+msgid "相对 media 的路径"
+msgstr "Path relative to media"
+
+msgid "可访问地址（/media/...）"
+msgstr "Accessible URL (/media/...)"
+
+msgid "CDN 外链地址"
+msgstr "CDN direct link"
+
+msgid "文件名"
+msgstr "File name"
+
+msgid "存储后端"
+msgstr "Storage backend"
+
+msgid "原始大小（字节）"
+msgstr "Original size (bytes)"
+
+msgid "压缩后大小（字节）"
+msgstr "Compressed size (bytes)"
+
+msgid "压缩率"
+msgstr "Compression ratio"
+
+msgid "是否命中秒传"
+msgstr "Whether instant-upload (dedup) was hit"
+
+msgid "是否加密保护"
+msgstr "Whether password-protected"
+
+msgid "图片外链地址"
+msgstr "Image direct link"
+
+msgid "存储路径"
+msgstr "Storage path"
+
+msgid "文件大小（KB）"
+msgstr "File size (KB)"
+
+msgid "MIME 类型"
+msgstr "MIME type"
+
+msgid "MD5 值"
+msgstr "MD5 value"
+
+msgid "SHA-1 值"
+msgstr "SHA-1 value"
+
+msgid "多种引用格式"
+msgstr "Various reference formats"
+
+msgid "HTML 引用"
+msgstr "HTML embed"
+
+msgid "论坛 BBCode 引用"
+msgstr "Forum BBCode"
+
+msgid "Markdown 图片"
+msgstr "Markdown image"
+
+msgid "带链接的 Markdown"
+msgstr "Markdown with link"
+
+msgid "缩略图地址"
+msgstr "Thumbnail URL"
+
+msgid "池内可用 Token 数量"
+msgstr "Number of usable tokens in the pool"
+
+msgid "总容量合计（MB）"
+msgstr "Total capacity (MB)"
+
+msgid "总容量合计（字节）"
+msgstr "Total capacity (bytes)"
+
+msgid "已用容量合计（MB）"
+msgstr "Total used capacity (MB)"
+
+msgid "已用容量合计（字节）"
+msgstr "Total used capacity (bytes)"
+
+msgid "剩余容量合计（MB，看它判断补货）"
+msgstr "Total remaining capacity (MB; use it to decide restocking)"
+
+msgid "剩余容量合计（字节）"
+msgstr "Total remaining capacity (bytes)"
+
+msgid "每个 Token 的容量明细"
+msgstr "Per-token capacity details"
+
+msgid "Token 脱敏值（留首 6 末 4）"
+msgstr "Masked token (first 6 and last 4 kept)"
+
+msgid "该 Token 总容量（MB）"
+msgstr "This token's total capacity (MB)"
+
+msgid "该 Token 总容量（字节）"
+msgstr "This token's total capacity (bytes)"
+
+msgid "该 Token 已用（MB）"
+msgstr "This token's used capacity (MB)"
+
+msgid "该 Token 已用（字节）"
+msgstr "This token's used capacity (bytes)"
+
+msgid "该 Token 剩余（MB）"
+msgstr "This token's remaining capacity (MB)"
+
+msgid "该 Token 剩余（字节）"
+msgstr "This token's remaining capacity (bytes)"
+
+msgid "该 Token 的入库时间"
+msgstr "This token's creation time"
+
+msgid "本次提交的 Token 数（去重后）"
+msgstr "Tokens submitted (after dedup)"
+
+msgid "实际新增数量"
+msgstr "Actually created count"
+
+msgid "因已存在而跳过的数量"
+msgstr "Skipped count (already existed)"
+
+msgid "被跳过的 Token 脱敏列表"
+msgstr "Masked list of skipped tokens"
+
+msgid "每个新 Token 的容量（字节）"
+msgstr "Capacity of each new token (bytes)"
+
+msgid "每个新 Token 的容量（MB）"
+msgstr "Capacity of each new token (MB)"
+
+msgid "容量同时提供 MB（保留 2 位小数，便于阅读）与字节（便于计算）两种单位。"
+msgstr "Capacity is provided in both MB (2 decimals, easier to read) and bytes (easier to compute)."
+
+msgid "主键 ID"
+msgstr "Primary key ID"
+
+msgid "命中总条数"
+msgstr "Total matched count"
+
+msgid "是否超过单次上限被截断"
+msgstr "Whether truncated by the per-request limit"
+
+msgid "items 按 sort 降序排列；单次最多返回 500 条，超出时 truncated=true。"
+msgstr "items is sorted by sort descending; at most 500 records are returned per request, with truncated=true when exceeded."
+
+msgid "删除成功时 data 为 null，结果以 code 与 msg 判断。"
+msgstr "On successful deletion data is null; judge the result from code and msg."
+
+msgid "一次性票据"
+msgstr "One-time ticket"
+
+msgid "接入项目名称"
+msgstr "Connected project name"
+
+msgid "开发者联系方式列表"
+msgstr "Developer contact list"
+
+msgid "平台代码"
+msgstr "Platform code"
+
+msgid "平台图标"
+msgstr "Platform icon"
+
+msgid "值标签"
+msgstr "Value label"
+
+msgid "联系方式值"
+msgstr "Contact value"
+
+msgid "可点击链接（空串为纯文本）"
+msgstr "Clickable URL (empty string means plain text)"
+
+msgid "contacts[].url 为空串表示该平台未配置跳转模板，此时按纯文本展示。"
+msgstr "An empty contacts[].url means no jump template is configured for that platform; it is then shown as plain text."
+
+msgid "单价（点/次）"
+msgstr "Price (points per call)"
+
+msgid "留空=上级，兜底 %(default_price)s"
+msgstr "Blank = inherit; fallback %(default_price)s"
+
+msgid "单价按「服务 → 线路 → 端点」逐级继承：端点级填了就以端点为准，否则取上一级，最终兜底为上面这个默认值。调用成功（业务码 10000）才扣点，失败不扣。"
+msgstr "Price is inherited level by level (service → channel → endpoint): an endpoint-level value wins, otherwise the parent level is used, and the fallback is the default shown above. Points are deducted only on a successful call (business code 10000), never on failure."
+
+msgid "项目额度 - 超级管理员 - 小影API"
+msgstr "Project Credits - Super Admin - XiaoYingAPI"
+
+msgid "超级管理员,项目额度,充值,余额,点数"
+msgstr "super admin,project credits,recharge,balance,points"
+
+msgid "小影API 超级管理员：按接入项目查看额度余额、手动充值（含充值流水）。额度是接口调用的唯一门槛。"
+msgstr "XiaoYingAPI Super Admin: view each connected project's credit balance and top it up manually (with a recharge ledger). Credits are the only gate for API calls."
+
+msgid "额度是接口调用的唯一门槛：余额为 0 的项目什么都调不了，调用成功才按服务单价扣点。"
+msgstr "Credits are the only gate for API calls: a project with a zero balance cannot call anything, and points are deducted by the service price only on a successful call."
+
+msgid "目前没有支付功能，只能在这里手动充值；每笔充值都会记一条流水（含操作人），同时落一条操作日志。"
+msgstr "There is no payment feature yet, so top-ups can only be made manually here; every top-up is recorded in the ledger (with the operator) and also written to the audit log."
+
+msgid "正数是充值、负数是扣回（纠错用）。单价在「服务策略」页按服务 / 线路 / 端点三级配置，默认 1 点/次。"
+msgstr "A positive amount is a top-up, a negative amount is a claw-back (for corrections). Prices are configured on the Service Policies page at three levels (service / channel / endpoint), defaulting to 1 point per call."
+
+msgid "扣费跟着调用统计批量落库（每 5 秒或满 200 条一次），所以余额显示会比真实用量滞后几秒；余额可以为负，表示欠费，下次充值自动抵扣。"
+msgstr "Charges are written in batches along with call statistics (every 5 seconds or once 200 records accumulate), so the displayed balance lags the real usage by a few seconds; the balance may go negative, meaning arrears, which the next top-up offsets automatically."
+
+msgid "按项目名或 APPID 搜索"
+msgstr "Search by project name or APPID"
+
+msgid "匹配 %(n)s 个 / 共 %(total)s 个项目"
+msgstr "%(n)s matched / %(total)s projects in total"
+
+msgid "各项目余额与充值"
+msgstr "Project balances and top-ups"
+
+msgid "归属"
+msgstr "Owner"
+
+msgid "当前余额"
+msgstr "Current balance"
+
+msgid "充值 / 扣回"
+msgstr "Top-up / Claw-back"
+
+msgid "平台自有"
+msgstr "Platform-owned"
+
+msgid "点"
+msgstr "points"
+
+msgid "如 10000"
+msgstr "e.g. 10000"
+
+msgid "备注（可选）"
+msgstr "Remark (optional)"
+
+msgid "还没有接入项目"
+msgstr "No connected projects yet"
+
+msgid "充值流水"
+msgstr "Recharge ledger"
+
+msgid "金额"
+msgstr "Amount"
+
+msgid "调整后余额"
+msgstr "Balance after"
+
+msgid "暂无充值记录"
+msgstr "No recharge records yet"
+
+msgid "只显示最近 %(n)s 条；逐次扣费不在这里（见「调用统计」），余额对账以「充值合计 − 按统计折算的消耗」为准。"
+msgstr "Only the latest %(n)s records are shown; per-call charges are not listed here (see Call Statistics), and balance reconciliation should use total top-ups minus consumption derived from statistics."
+
+msgid "额度余额："
+msgstr "Credit balance: "
+
+msgid "去充值"
+msgstr "Top up"
+
+msgid "超级管理员,服务策略,状态,认证模式,单价,三级继承"
+msgstr "super admin,service policies,status,auth mode,price,three-level inheritance"
+
+msgid "小影API 超级管理员：按服务 / 线路 / 端点三级配置认证模式、对外状态与调用单价，逐级继承。"
+msgstr "XiaoYingAPI Super Admin: configure the auth mode, public status and call price at three levels (service / channel / endpoint), inherited level by level."
+
+msgid "逐级继承：服务 → 线路 → 端点，每一级都可单独设状态 / 认证模式 / 单价 / 文档可见性 / 使用范围；设为「跟随上级」则向上一级取，最终兜底为「正常 + 需要签名 + 1 点/次 + 文档展示 + 正常」。"
+msgstr "Level-by-level inheritance: service → channel → endpoint; each level can set its own status / auth mode / price / docs visibility / audience, and choosing \"inherit\" takes the value from the parent level, ultimately falling back to \"normal + signature required + 1 point per call + shown in docs + normal\"."
+
+msgid "调用单价（点/次）：调用成功（业务码 10000）才从接入项目余额里扣点，失败不扣。按「服务 → 线路 → 端点」逐级继承，端点级填了就以端点为准，未配置时兜底 1 点/次。余额在「项目额度」页充值。"
+msgstr "Call price (points per call): points are deducted from the connected project's balance only on a successful call (business code 10000), never on failure. It is inherited level by level (service → channel → endpoint); an endpoint-level value wins, and when nothing is configured the fallback is 1 point per call. Balances are topped up on the Project Credits page."
+
+msgid "点/次"
+msgstr "points/call"
+
+msgid "生效 %(p)s 点/次"
+msgstr "effective %(p)s points/call"
+
+msgid "选择我的项目"
+msgstr "Choose my project"
+
+msgid "— 选择一个项目自动填入 —"
+msgstr "— Pick a project to fill in automatically —"
+
+msgid "查看接入项目的 APPID / APPSECRET、额度余额，并可重置密钥。"
+msgstr "View the connected project's APPID / APPSECRET and credit balance, and reset the secret."
+
+msgid "额度"
+msgstr "Credits"
+
+msgid "接口调用成功（业务码 10000）时按服务单价扣点，失败调用不扣费。余额为 0 或负数时接口无法调用（开放接口除外），需联系管理员充值。额度由管理员手动充值，消耗略有延迟。"
+msgstr "Points are deducted by the service price when a call succeeds (business code 10000); failed calls are not charged. When the balance is zero or negative the API cannot be called (except open endpoints) and you need to contact an administrator to top up. Top-ups are made manually by an administrator and consumption is reflected with a slight delay."
+
+msgid "我的项目,接入项目,APPID,APPSECRET,额度余额"
+msgstr "my projects,connected projects,APPID,APPSECRET,credit balance"
+
+msgid "小影API 我的项目：自助创建接入项目、查看 APPID 与 APPSECRET、查看额度余额。"
+msgstr "XiaoYingAPI My Projects: create connected projects yourself, view APPID and APPSECRET, and check the credit balance."
+
+msgid "这里是你名下接入项目的 APPID / APPSECRET 与额度余额。签名规则见"
+msgstr "Here are the APPID / APPSECRET and credit balance of the connected projects you own. For signing rules see"
+
+msgid "额度余额"
+msgstr "Credit balance"
+
+msgid "额度为 0 或负数时接口无法调用（开放接口除外），需联系管理员充值。停用或删除项目也请联系管理员。"
+msgstr "When the credit balance is zero or negative the API cannot be called (except open endpoints); contact an administrator to top up. To disable or delete a project, also contact an administrator."
+
+msgid "消耗点数"
+msgstr "Points consumed"
+
+msgid "平均每次"
+msgstr "Avg per call"
+
+msgid "线路价格 - 超级管理员 - 小影API"
+msgstr "Route Pricing - Super Admin - XiaoYingAPI"
+
+msgid "线路价格"
+msgstr "Route Pricing"
+
+msgid "超级管理员,线路价格,单价,点数,计费"
+msgstr "super admin,route pricing,unit price,points,billing"
+
+msgid "小影API 超级管理员：按服务 / 线路 / 端点三级设置调用单价（点/次），逐级继承，兜底 1 点/次。"
+msgstr "XiaoYingAPI Super Admin: set the per-call unit price (points/call) at three levels (service / channel / endpoint), inherited level by level, with a fallback of 1 point per call."
+
+msgid "调用单价与「服务策略」解耦：服务策略管「能不能调」（状态 / 认证 / 文档可见性 / 使用范围），本页只管「调一次扣多少点」。"
+msgstr "The call price is decoupled from Service Policies: policies decide whether an endpoint can be called (status / auth / docs visibility / audience), while this page only decides how many points one call costs."
+
+msgid "只有成功调用（业务码 10000）才按单价扣点，失败不扣；扣费跟随调用统计批量落库，因此余额显示会滞后几秒，且允许为负（欠费）。"
+msgstr "Points are deducted only on a successful call (business code 10000), never on failure; charges are written in batches along with call statistics, so the displayed balance lags by a few seconds and may go negative (arrears)."
+
+msgid "保存立即生效（无需重启），并会清掉该节点的单价缓存；清空输入框即恢复「跟随上级」。"
+msgstr "Saving takes effect immediately (no restart) and clears the price cache for that node; clearing an input restores \"inherit\"."
+
+msgid "保存全部"
+msgstr "Save all"
+
+msgid "已设价"
+msgstr "Priced"
+
+msgid "生效"
+msgstr "Effective"
+
+msgid "服务价"
+msgstr "Service price"
+
+msgid "线路价"
+msgstr "Channel price"
+
+msgid "路径"
+msgstr "Path"
+
+msgid "生效单价"
+msgstr "Effective price"
+
+msgid "把服务树全量列出，逐节点填价：留空 = 跟随上级，填了就以该节点为准。当前有 %(n)s 个节点设了单价，未设置的按上级取，最终兜底 %(default_price)s 点/次。"
+msgstr "The full service tree is listed so you can price each node: leave blank to inherit, or enter a value to set it for that node. %(n)s nodes currently have a price; others inherit from their parent, ultimately falling back to %(default_price)s points/call."
+
+msgid "逐级继承：服务 → 线路 → 端点，端点级填了就以端点为准，否则取线路级、再否则取服务级，都没填则兜底 %(default_price)s 点/次。填 0 表示该节点免费。"
+msgstr "Level-by-level inheritance: service → channel → endpoint; an endpoint-level value wins, otherwise the channel level, then the service level, and when nothing is set the fallback is %(default_price)s points/call. Enter 0 to make that node free."
+
+msgid "已设置 %(n)s 个节点"
+msgstr "%(n)s nodes priced"
+
+msgid "超级管理员,服务策略,状态,认证模式,三级继承"
+msgstr "super admin,service policies,status,auth mode,three-level inheritance"
+
+msgid "逐级继承：服务 → 线路 → 端点，每一级都可单独设状态 / 认证模式 / 文档可见性 / 使用范围；设为「跟随上级」则向上一级取，最终兜底为「正常 + 需要签名 + 文档展示 + 正常」。"
+msgstr "Level-by-level inheritance: service → channel → endpoint; each level can set its own status / auth mode / docs visibility / audience, and choosing \"inherit\" takes the value from the parent level, ultimately falling back to \"normal + signature required + shown in docs + normal\"."
+
+msgid "额度与消耗"
+msgstr "Credits and consumption"
+
+msgid "全历史"
+msgstr "All-time"
+
+msgid "累计充值"
+msgstr "Total top-ups"
+
+msgid "流水净值"
+msgstr "Net ledger"
+
+msgid "累计消耗点数"
+msgstr "Total points consumed"
+
+msgid "平均每次消耗"
+msgstr "Avg per call"
+
+msgid "点/次（按当时单价结算）"
+msgstr "points/call (settled at the price in effect)"
+
+msgid "累计消耗按调用统计里的 cost_points 汇总（落库时按当时生效单价结算，改价不回填历史）；余额 = Σ充值 − 累计消耗，允许为负（欠费）。"
+msgstr "Total consumption is summed from cost_points in call statistics (settled at the price in effect when written; later price changes do not rewrite history); balance = total top-ups − total consumption, and may go negative (arrears)."
+
+msgid "调用成功一次扣的点数（失败不扣）"
+msgstr "Points deducted per successful call (not charged on failure)"
+
+msgid "免费"
+msgstr "Free"
+
+msgid "单价按「服务 → 线路 → 端点」逐级继承"
+msgstr "Price is inherited level by level (service → channel → endpoint)"
+
+msgid "端点价"
+msgstr "Endpoint price"
+
+msgid "默认价"
+msgstr "Default price"

@@ -11,7 +11,7 @@
   {% for item in page_obj.object_list %}
   <li>
     <a href="{% url 'website:feedback_detail' fb_app.app_id item.pk %}"
-       class="card border border-base-300 bg-base-100 transition-colors hover:border-primary/60">
+       class="card border border-base-300 bg-base-100">
       <div class="card-body gap-2 p-4 sm:p-5">
         <div class="flex flex-wrap items-center gap-2 text-xs text-base-content/60">
           <span class="badge badge-ghost badge-sm">{{ item.type_name }}</span>

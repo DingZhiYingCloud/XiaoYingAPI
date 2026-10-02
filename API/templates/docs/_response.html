@@ -1,0 +1,56 @@
+{% load i18n %}
+{% comment %}单个端点的「响应说明」区块。上下文：ep（EndpointSpec）。
+外层 {code,msg,data} 信封由页首「响应格式」区块统一说明，这里只描述 data 内部：
+声明了 response_fields 就渲染字段表（自研接口，结构固定）、response_note 渲染一段说明
+（透传上游接口，字段由上游决定不逐个承诺）、response_example 渲染真实返回示例。{% endcomment %}
+<div class="rounded-box border border-base-300 bg-base-200/30 p-3">
+  <div class="flex flex-wrap items-center gap-2">
+    <span class="text-sm font-semibold">{% trans "响应说明" %}</span>
+    <a href="#docs-response-envelope" class="text-xs link">{% trans "外层统一格式" %}</a>
+  </div>
+
+  {% if ep.response_note %}
+  <p class="mt-1.5 text-xs text-base-content/70">{{ ep.response_note }}</p>
+  {% endif %}
+
+  {% if ep.response_fields %}
+  <div class="mt-2 overflow-x-auto">
+    <table class="table table-xs">
+      <thead>
+        <tr>
+          <th class="whitespace-nowrap">{% trans "字段" %}</th>
+          <th class="whitespace-nowrap">{% trans "类型" %}</th>
+          <th>{% trans "说明" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in ep.response_fields %}
+        <tr>
+          <td class="whitespace-nowrap font-mono" style="padding-left: calc(0.75rem + {{ f.indent }}rem)">{{ f.name }}</td>
+          <td class="whitespace-nowrap text-base-content/60">{{ f.type }}</td>
+          <td class="text-base-content/70">{{ f.desc }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {% if ep.response_example %}
+  <div class="relative mt-2">
+    <span class="text-xs text-base-content/60">{% trans "返回示例" %}</span>
+    {# 复制按钮与 <pre data-copy-source> 必须同父：docs.js 按「按钮的父元素」查找被复制内容 #}
+    <button type="button" class="btn btn-ghost btn-xs absolute right-0 top-0" data-copy-target
+            data-copied="{% trans '已复制' %}">
+      <i data-lucide="copy" class="h-3.5 w-3.5"></i><span data-copy-label>{% trans "复制" %}</span>
+    </button>
+    <pre data-copy-source class="mt-1 max-h-72 overflow-auto rounded-box bg-base-200 p-2 font-mono text-xs">{{ ep.response_example }}</pre>
+  </div>
+  {% endif %}
+
+  {% if not ep.response_fields and not ep.response_note and not ep.response_example %}
+  <p class="mt-1.5 text-xs text-base-content/60">
+    {% trans "该接口未单独声明 data 结构，以上述外层统一格式为准。" %}
+  </p>
+  {% endif %}
+</div>

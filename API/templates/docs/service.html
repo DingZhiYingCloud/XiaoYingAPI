@@ -48,6 +48,11 @@
   </section>
   {% endif %}
 
+  {# ===== 统一响应格式（所有接口共用同一信封；各端点卡的「响应说明」会跳到这里） ===== #}
+  <div class="mt-5">
+    {% include 'docs/_response_envelope.html' %}
+  </div>
+
   {# ===== 非正常状态横幅（状态由超级管理员在「服务策略」页维护） ===== #}
   {% if status.status != 'normal' %}
   <div class="alert alert-soft mt-4 border border-base-300 {% if status.status == 'maintenance' %}alert-warning{% elif status.status == 'offline' %}alert-error{% elif status.status == 'dev' %}alert-info{% else %}alert-ghost{% endif %}">
@@ -79,7 +84,7 @@
     <div class="mt-4 flex flex-wrap items-center gap-2">
       <h2 class="text-lg font-semibold">{{ channel.name }}</h2>
       {% if channel.provider %}
-      <span class="badge badge-soft badge-secondary">{{ channel.provider }}</span>
+      <span class="badge badge-soft badge-secondary text-base-content">{{ channel.provider }}</span>
       {% endif %}
       {% if channel.auth_note == 'open' %}
       <span class="badge badge-success badge-sm">{% trans "开放 · 免签名" %}</span>
@@ -103,7 +108,9 @@
     <div class="mt-4 space-y-4">
       {% for ep in channel.endpoints %}
       {# ---------- 端点（id/data-ep-channel 供「接口目录」锚点直达） ---------- #}
+      {# data-local-params：本端点用到的「本机凭据」参数名（空格分隔），由 docs.js 发请求时从右侧栏取值带上 #}
       <article id="ep-{{ channel.slug }}-{{ ep.slug }}" data-ep-channel="{{ channel.slug }}"
+               data-local-params="{% for p in ep.params %}{% if p.local %}{{ p.name }} {% endif %}{% endfor %}"
                class="feel-card scroll-mt-20">
         <div class="card-body gap-3 p-4 sm:p-5">
           <header class="flex flex-wrap items-center gap-2">
@@ -111,6 +118,19 @@
             <code class="break-all font-mono text-sm">{{ ep.path }}</code>
             <span class="badge badge-soft badge-ghost badge-sm" title="{% trans '该接口历史累计调用次数（未登录也可见）' %}">
               {% blocktrans with n=ep.call_count %}累计调用 {{ n }} 次{% endblocktrans %}
+            </span>
+            {% if ep.price_detail.price == 0 %}
+            <span class="badge badge-soft badge-success badge-sm" title="{% trans '调用成功一次扣的点数（失败不扣）' %}">{% trans "免费" %}</span>
+            {% else %}
+            <span class="badge badge-soft badge-info badge-sm" title="{% trans '调用成功一次扣的点数（失败不扣）' %}">
+              {{ ep.price_detail.price|floatformat:"-4" }} {% trans "点/次" %}
+            </span>
+            {% endif %}
+            <span class="text-xs text-base-content/50" title="{% trans '单价按「服务 → 线路 → 端点」逐级继承' %}">
+              {% if ep.price_detail.source == 'endpoint' %}{% trans "端点价" %}
+              {% elif ep.price_detail.source == 'channel' %}{% trans "线路价" %}
+              {% elif ep.price_detail.source == 'service' %}{% trans "服务价" %}
+              {% else %}{% trans "默认价" %}{% endif %}
             </span>
           </header>
           <div>
@@ -173,9 +193,10 @@
           </div>
           {% endif %}
 
-          {# 参数表单 #}
+          {# 参数表单（标记 local 的「本机凭据」不在这里填，见右侧栏「本机凭据」卡片） #}
           <div class="grid gap-x-4 gap-y-3 sm:grid-cols-2">
             {% for p in ep.params %}
+            {% if not p.local %}
             <div class="{% if p.kind == 'textarea' or p.repeatable %}sm:col-span-2{% endif %}">
               <label class="fieldset-label" for="param-{{ channel.slug }}-{{ ep.slug }}-{{ p.name }}">
                 {{ p.label }}
@@ -212,6 +233,7 @@
               <p class="mt-0.5 text-xs text-info">{% blocktrans with hint=p.repeat_hint %}多值写法：{{ hint }}{% endblocktrans %}</p>
               {% endif %}
             </div>
+            {% endif %}
             {% endfor %}
           </div>
 
@@ -222,6 +244,9 @@
             {% endfor %}
           </ul>
           {% endif %}
+
+          {# ===== 响应说明（字段表 / 上游说明 / 返回示例；外层信封见页首「响应格式」） ===== #}
+          {% include 'docs/_response.html' with ep=ep %}
 
           {# 一键填写：端点在文档声明中提供 auto_fill_path 时渲染（调凭据生成接口填入本表单） #}
           {% if ep.auto_fill_path %}
@@ -388,13 +413,13 @@
               <span class="badge badge-xs {{ ep.method_badge }} mt-0.5 font-mono">{{ ep.method }}</span>
               <span class="min-w-0 flex-1">
                 <span class="block truncate text-sm">{{ ep.name }}</span>
-                <span class="block truncate font-mono text-xs text-base-content/50">{{ ep.path }}</span>
+                <span class="block truncate font-mono text-xs text-base-content/70">{{ ep.path }}</span>
               </span>
             </a>
             {% endfor %}
           </div>
           {% endfor %}
-          <p data-toc-empty class="hidden px-2 py-6 text-center text-xs text-base-content/50">
+          <p data-toc-empty class="hidden px-2 py-6 text-center text-xs text-base-content/70">
             {% trans "没有匹配的接口" %}
           </p>
         </div>
@@ -417,6 +442,13 @@
         </div>
         <form id="docs-auth-form" novalidate>
           {% csrf_token %}
+          {# 已登录时由 docs.js 拉取本账号的项目填充（未登录则整块隐藏）；选中即自动填入下面的 APPID/APPSECRET #}
+          <div id="docs-auth-projects" class="mb-2 hidden">
+            <label class="fieldset-label" for="doc-project-select">{% trans "选择我的项目" %}</label>
+            <select id="doc-project-select" class="select select-bordered select-sm w-full text-xs">
+              <option value="">{% trans "— 选择一个项目自动填入 —" %}</option>
+            </select>
+          </div>
           <label class="fieldset-label" for="doc-app-id">APPID</label>
           <input id="doc-app-id" type="text" class="input input-bordered w-full text-xs"
                  placeholder="{% trans 'app_ 开头，接入项目公开标识' %}" autocomplete="off" />
@@ -430,6 +462,42 @@
         </form>
       </div>
     </div>
+
+    {# 本机凭据卡：声明 local=True 的参数在这里填，值只存本机浏览器，调试时由 docs.js 自动带上 #}
+    {% if local_params %}
+    <div id="docs-local-card" class="feel-card" data-local-slug="{{ doc.slug }}">
+      <div class="card-body gap-3 p-4">
+        <div class="flex items-center justify-between">
+          <h2 class="card-title text-base">
+            <i data-lucide="clipboard-paste" class="h-4 w-4 shrink-0 opacity-60" aria-hidden="true"></i>
+            {% trans "本机凭据" %}
+          </h2>
+          <span class="badge badge-ghost badge-sm">{% trans "仅本机保存" %}</span>
+        </div>
+        {% for p in local_params %}
+        <label class="fieldset-label" for="local-cred-{{ p.name }}">
+          {{ p.label }}{% if p.required %}<span class="text-error">*</span>{% endif %}
+        </label>
+        {% if p.kind == 'textarea' %}
+        <textarea id="local-cred-{{ p.name }}" data-local-cred-name="{{ p.name }}"
+                  class="textarea textarea-bordered w-full text-xs" rows="4"
+                  placeholder="{{ p.placeholder }}" autocomplete="off">{{ p.default }}</textarea>
+        {% else %}
+        <input id="local-cred-{{ p.name }}" data-local-cred-name="{{ p.name }}" type="text"
+               class="input input-bordered w-full text-xs" placeholder="{{ p.placeholder }}"
+               value="{{ p.default }}" autocomplete="off" />
+        {% endif %}
+        {% if p.desc_html %}
+        <p class="text-xs text-base-content/60">{{ p.desc_html|safe }}</p>
+        {% endif %}
+        {% endfor %}
+        <p class="text-xs text-base-content/60">
+          {% trans "只保存在本机浏览器，不上传、不落库；调试用到它的接口时自动带上。" %}
+        </p>
+        <button type="button" id="docs-local-save" class="btn btn-outline btn-sm w-full">{% trans "保存到本机浏览器" %}</button>
+      </div>
+    </div>
+    {% endif %}
   </aside>
 
   </div>{# /flex #}
@@ -437,7 +505,7 @@
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'js/site/docs.js' %}?v=20261001a"></script>
+<script src="{% static 'js/site/docs.js' %}?v=20261002d"></script>
 {% if has_markdown %}
 {# AI 回复的 Markdown 渲染：marked 为第三方库（入库的 vendor 文件），渲染封装见 docs_markdown.js #}
 <script src="{% static 'js/vendor/marked.min.js' %}?v=20261001a"></script>

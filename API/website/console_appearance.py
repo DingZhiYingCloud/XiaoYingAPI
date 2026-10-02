@@ -15,7 +15,7 @@ from django.utils.translation import gettext as _
 from API.models import SiteAppearance
 from API.models.Website.appearance import PRESETS
 
-from .admin_auth import superadmin_required
+from .admin_auth import notify_success, superadmin_required
 
 # 文案覆盖的长度上限（与模型字段 max_length 保持一致）
 MAX_BADGE_LEN = 40
@@ -61,5 +61,5 @@ def _save(request):
     appearance.hero_title = title
     appearance.hero_subtitle = subtitle
     appearance.save()
-    messages.success(request, _('官网外观已保存，前台刷新即可看到新气质'))
+    notify_success(request, _('官网外观已保存，前台刷新即可看到新气质'))
     return back

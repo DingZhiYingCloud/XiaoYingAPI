@@ -51,7 +51,7 @@ from API.common.credential_crypto import hash_token
 from API.models import (CaptchaChallenge, ContactPlatform, Feedback, FeedbackAttachment,
                         FeedbackAuditLog, FeedbackReply, FeedbackReplyAttachment,
                         FeedbackSetting, FeedbackTicket, FeedbackType, ProjectContact,
-                        User, UserApp, UserToken)
+                        SecuritySetting, User, UserApp, UserToken)
 
 _PREFIX = f'FS{int(time.time())}'
 _stats = {'pass': 0, 'fail': 0, 'skip': 0}
@@ -494,13 +494,15 @@ def round_authorization(app, other_app, feedback_type):
     console = reverse('website:console_feedback')
     settings_url = reverse('website:console_feedback_settings')
 
+    # 默认「后台入口隐身」开启 → 匿名 / 非超管一律 404（与不存在的地址无差别）；关掉才 302
+    denied = 404 if SecuritySetting.get_solo().hide_console else 302
     for label, url in (('反馈管理', console), ('反馈中心设置', settings_url)):
-        _check(f'未登录访问{label}被重定向',
-               Client().get(url).status_code == 302)
+        _check(f'未登录访问{label}被拦（隐身 404 / 否则 302）',
+               Client().get(url).status_code == denied)
     plain = Client()
     plain.force_login(_django_user(is_superuser=False))
-    _check('非超管访问反馈管理被拒', plain.get(console).status_code == 302)
-    _check('非超管访问设置页被拒', plain.get(settings_url).status_code == 302)
+    _check('非超管访问反馈管理被拒', plain.get(console).status_code == denied)
+    _check('非超管访问设置页被拒', plain.get(settings_url).status_code == denied)
 
     admin = Client()
     admin.force_login(_django_user())
@@ -895,14 +897,15 @@ def round_contact_security(app):
     good.save(update_fields=['enabled', 'updated_time'])
 
     # 有绑定时平台不可删（PROTECT 的业务侧保护）
+    # 注意动作必须打到「开发者联系方式」页：平台字典的增删改由该页的分发器处理，
+    # 打到设置页会被拒（两个分发器互不越界，见 test_feedback.py 第九轮的越界断言）
     admin = Client()
     admin.force_login(_django_user())
-    admin.post(reverse('website:console_feedback_settings'),
-               {'action': 'platform_delete', 'id': str(good.pk)})
+    contacts_url = reverse('website:console_contacts')
+    admin.post(contacts_url, {'action': 'platform_delete', 'id': str(good.pk)})
     _check('有绑定时平台不可删除', ContactPlatform.objects.filter(pk=good.pk).exists())
     ProjectContact.objects.filter(app=app, platform=good).delete()
-    admin.post(reverse('website:console_feedback_settings'),
-               {'action': 'platform_delete', 'id': str(good.pk)})
+    admin.post(contacts_url, {'action': 'platform_delete', 'id': str(good.pk)})
     _check('清空绑定后可删除平台', not ContactPlatform.objects.filter(pk=good.pk).exists())
 
     # 超长联系方式

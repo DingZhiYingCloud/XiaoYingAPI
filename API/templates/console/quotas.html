@@ -1,0 +1,146 @@
+{% extends 'console/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "服务余量 - 超级管理员 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,服务余量,余额监控,低量告警,51代理,超级鹰" %}{% endblock %}
+{% block description %}{% trans "小影API 超级管理员：监控各上游服务账号的余量（51代理余额、超级鹰题分），低于阈值时邮件提醒。" %}{% endblock %}
+
+{% block console_content %}
+{% trans "监控上游服务账号还剩多少，低于设定阈值时发邮件提醒。" as ph_desc %}
+{% include 'console/_page_header.html' with icon='gauge' title='服务余量' desc=ph_desc %}
+
+{% include 'console/_messages.html' %}
+
+{# 规则说明（纯提示，中性灰） #}
+<div role="alert" class="alert alert-soft bg-base-200 mt-4 items-start py-3 text-sm">
+  <div class="space-y-1">
+    <p>
+      {% blocktrans with minutes=check_interval_minutes %}后台每 {{ minutes }} 分钟自动检查一轮，也可在下方点「立即检查」手动触发。{% endblocktrans %}
+    </p>
+    <p class="text-xs opacity-80">
+      {% trans "告警只发一次：余量跌破阈值时发一封邮件，之后不再重复；余量回升到阈值以上（或关闭该服务的通知）后重新武装，再次跌破时会再发一封。" %}
+    </p>
+    <p class="text-xs opacity-80">
+      {% trans "被监控的服务清单在代码里维护（API/apis/quota/services.py），新增服务只需在那里加一条。" %}
+    </p>
+  </div>
+</div>
+
+{# 手动检查（独立表单：与下面的保存表单不能嵌套） #}
+<div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+  <p class="text-xs text-base-content/60">
+    {% trans "取数失败只会记在「最近错误」里，不会覆盖上一次成功取得的余量。" %}
+  </p>
+  <form method="post" action="{% url 'website:console_quotas' %}">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="refresh" />
+    <button type="submit" class="btn btn-sm btn-outline">
+      <i data-lucide="refresh-cw" class="h-4 w-4"></i>{% trans "立即检查" %}
+    </button>
+  </form>
+</div>
+
+<form method="post" action="{% url 'website:console_quotas' %}" class="mt-4 grid gap-5">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="save" />
+
+  <fieldset class="con-panel p-4">
+    <legend class="px-1 text-base font-bold">{% trans "通知设置" %}</legend>
+    <label class="mt-2 grid gap-1">
+      <span class="font-semibold">{% trans "接收通知邮箱" %}</span>
+      <input type="email" name="notify_email" value="{{ setting.notify_email }}"
+             class="input input-bordered input-sm w-full max-w-md"
+             placeholder="{% trans '留空则不发通知' %}" />
+      <span class="text-xs text-base-content/70">
+        {% trans "所有服务的余量告警统一发到该邮箱；发送失败只记日志，不影响告警状态。" %}
+      </span>
+    </label>
+  </fieldset>
+
+  <fieldset class="con-panel p-4">
+    <legend class="px-1 text-base font-bold">{% trans "各服务阈值与通知" %}</legend>
+    <div class="con-table-wrap mt-2">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th class="whitespace-nowrap">{% trans "服务" %}</th>
+            <th class="whitespace-nowrap">{% trans "当前余量" %}</th>
+            <th class="whitespace-nowrap">{% trans "最低数量阈值" %}</th>
+            <th class="whitespace-nowrap">{% trans "启用通知" %}</th>
+            <th class="whitespace-nowrap">{% trans "通知方式" %}</th>
+            <th class="whitespace-nowrap">{% trans "状态" %}</th>
+            <th class="whitespace-nowrap">{% trans "最近检查" %}</th>
+            <th class="whitespace-nowrap">{% trans "最近告警" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr>
+            <td class="whitespace-nowrap">
+              <div class="font-medium">{{ row.name }}</div>
+              <code class="font-mono text-xs text-base-content/50">{{ row.code }}</code>
+            </td>
+            <td class="whitespace-nowrap">
+              {% if row.balance is not None %}
+              <span class="font-semibold {% if row.alert_active %}text-error{% endif %}">{{ row.balance }}</span>
+              <span class="text-xs text-base-content/60">{{ row.unit }}</span>
+              {% else %}
+              <span class="text-base-content/50">{% trans "未知" %}</span>
+              {% endif %}
+            </td>
+            <td class="whitespace-nowrap">
+              <div class="flex items-center gap-2">
+                <input type="number" step="any" min="0" name="threshold_{{ row.code }}"
+                       value="{{ row.threshold|default_if_none:'' }}"
+                       class="input input-bordered input-sm w-28"
+                       placeholder="{% trans '留空则不通知' %}" />
+                <span class="text-xs text-base-content/60">{{ row.unit }}</span>
+              </div>
+            </td>
+            <td class="whitespace-nowrap">
+              <input type="checkbox" name="notify_enabled_{{ row.code }}"
+                     class="toggle toggle-primary toggle-sm"
+                     {% if row.notify_enabled %}checked{% endif %} />
+            </td>
+            <td class="whitespace-nowrap">
+              <select name="notify_method_{{ row.code }}" class="select select-bordered select-sm">
+                {% for value, label in notify_methods %}
+                <option value="{{ value }}" {% if row.notify_method == value %}selected{% endif %}>{% trans label %}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td class="whitespace-nowrap">
+              {% if row.alert_active %}
+              <span class="badge badge-soft badge-error badge-sm">{% trans "告警中" %}</span>
+              {% elif row.last_error %}
+              <span class="badge badge-soft badge-warning badge-sm">{% trans "取数失败" %}</span>
+              {% elif row.last_checked_at %}
+              <span class="badge badge-soft badge-success badge-sm">{% trans "正常" %}</span>
+              {% else %}
+              <span class="badge badge-soft badge-ghost badge-sm">{% trans "未检查" %}</span>
+              {% endif %}
+              {% if row.last_error %}
+              <div class="mt-1 max-w-xs text-xs text-error/80">{{ row.last_error }}</div>
+              {% endif %}
+            </td>
+            <td class="whitespace-nowrap text-xs text-base-content/70">
+              {% if row.last_checked_at %}{{ row.last_checked_at|date:"Y-m-d H:i" }}{% else %}—{% endif %}
+            </td>
+            <td class="whitespace-nowrap text-xs text-base-content/70">
+              {% if row.last_notified_at %}{{ row.last_notified_at|date:"Y-m-d H:i" }}{% else %}—{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="mt-2 text-xs text-base-content/70">
+      {% trans "阈值留空表示该服务不通知；时间按服务器本地时区显示。" %}
+    </p>
+  </fieldset>
+
+  <div class="flex justify-end">
+    <button type="submit" class="btn btn-primary btn-sm">{% trans "保存设置" %}</button>
+  </div>
+</form>
+{% endblock %}

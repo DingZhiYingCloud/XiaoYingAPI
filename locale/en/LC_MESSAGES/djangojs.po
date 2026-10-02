@@ -969,3 +969,14 @@ msgstr "Captcha verification failed"
 msgid "图形验证出错"
 msgstr "Captcha verification error"
 
+# ---- 文档中心：在线调试的「等价 curl」 ----
+
+msgid "等价 curl"
+msgstr "Equivalent curl"
+
+msgid "该命令已包含本次生成的签名参数：5 分钟内有效、且只能执行一次（nonce 防重放）；需要再跑一次请重新点「发送请求」。"
+msgstr "This command already contains the signature generated for this call: it is valid for 5 minutes and can be used only once (nonce replay protection). Click \"Send request\" again to get a fresh signature."
+
+msgid "该接口需要签名，而本次未填写 APPID / APPSECRET，命令里没有签名参数；在右侧栏填写后重新发送，即可得到可直接执行的命令。"
+msgstr "This endpoint requires a signature, but no APPID / APPSECRET was provided, so the command has no signature parameters. Fill them in the sidebar and send again to get a ready-to-run command."
+

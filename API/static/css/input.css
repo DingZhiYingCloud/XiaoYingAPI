@@ -197,12 +197,12 @@
 
   .feel-h2 { font-weight: 800; line-height: 1.15; letter-spacing: -0.015em; }
 
-  /* 卡片皮肤：背景 / 描边 / 圆角 / 阴影 / 悬浮态都在这里，模板不再叠加 bg- / border- 工具类 */
+  /* 卡片皮肤：背景 / 描边 / 圆角 / 阴影都在这里，模板不再叠加 bg- / border- 工具类。
+     注意：**卡片不做悬浮态**（鼠标移上去不变形、不变色），避免长列表里一划就晃眼。 */
   .feel-card {
     border: 1px solid var(--color-base-300);
     border-radius: var(--radius-box);
     background: var(--color-base-100);
-    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
   }
 
   .feel-chip {
@@ -262,11 +262,6 @@
     background: color-mix(in oklab, var(--color-base-100) 84%, transparent);
     box-shadow: 0 14px 34px -24px color-mix(in oklab, var(--color-base-content) 50%, transparent);
   }
-  [data-feel='aurora'] .feel-card:hover {
-    transform: translateY(-3px);
-    border-color: color-mix(in oklab, var(--color-primary) 45%, transparent);
-    box-shadow: 0 26px 52px -26px color-mix(in oklab, var(--color-primary) 55%, transparent);
-  }
 
   /* ---------- 预设二：terminal 终端极客 ---------- */
   [data-feel='terminal'] .feel-hero { background: var(--color-base-100); }
@@ -292,10 +287,6 @@
     letter-spacing: 0.04em;
   }
   [data-feel='terminal'] .feel-card { border-radius: 0.25rem; box-shadow: none; }
-  [data-feel='terminal'] .feel-card:hover {
-    transform: translate(2px, -2px);
-    border-color: color-mix(in oklab, var(--color-primary) 60%, transparent);
-  }
   [data-feel='terminal'] .feel-artifact {
     border-radius: 0.25rem;
     box-shadow: 0 18px 40px -32px color-mix(in oklab, var(--color-base-content) 70%, transparent);
@@ -340,7 +331,6 @@
     background: transparent;
     box-shadow: none;
   }
-  [data-feel='editorial'] .feel-card:hover { border-top-color: var(--color-primary); }
   [data-feel='editorial'] .feel-artifact { border-radius: 0; box-shadow: none; }
 
   /* ---------- 预设四：neon 霓虹赛博 ---------- */
@@ -365,11 +355,6 @@
     background: color-mix(in oklab, var(--color-base-100) 92%, var(--color-primary) 6%);
     box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-primary) 12%, transparent),
       0 0 18px -8px color-mix(in oklab, var(--color-primary) 40%, transparent);
-  }
-  [data-feel='neon'] .feel-card:hover {
-    border-color: color-mix(in oklab, var(--color-primary) 70%, transparent);
-    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-primary) 30%, transparent),
-      0 0 30px -8px color-mix(in oklab, var(--color-primary) 65%, transparent);
   }
   [data-feel='neon'] .feel-artifact {
     border-color: color-mix(in oklab, var(--color-primary) 45%, transparent);
@@ -514,11 +499,6 @@
     border: 1px solid var(--color-base-300);
     border-radius: var(--radius-box);
     background: var(--color-base-100);
-    transition: border-color 0.18s ease, box-shadow 0.18s ease;
-  }
-  .con-metric:hover {
-    border-color: color-mix(in oklab, var(--color-primary) 40%, transparent);
-    box-shadow: 0 10px 26px -22px color-mix(in oklab, var(--color-base-content) 60%, transparent);
   }
   .con-metric-icon {
     display: flex;
@@ -649,5 +629,23 @@
     border-bottom: 1px solid var(--color-base-200);
     vertical-align: top;
   }
+}
+
+/* ===== 无障碍：daisyUI 把若干「次要文字」降到低不透明度，浅色主题下对比度不足 =====
+   daisyUI 5 给未选中 Tab 的文字用 `base-content 50%`（实测 3.33:1）、给菜单分组标题
+   `.menu-title` 用 `base-content 40%`（更低），都不达 WCAG AA（正文需 4.5:1）。
+   统一提到 75%（实测约 5.5:1）：既保住「次要」的层次感，又达标；颜色仍取自主题变量，
+   切换任意主题（含深色）自动跟随，不写死任何色值。
+   **刻意不套 @layer**：daisyUI 5 把组件样式放在 `utilities` 层里的嵌套子层
+   （`@layer utilities { @layer daisyui { … } }`），写在 `components` 层里的覆盖在层序上
+   永远输给它；而无层（unlayered）声明优先级高于任何 @layer，最稳妥、也不依赖 daisyUI
+   内部层名。选择器与 daisyUI 默认相同、只多一个 html 前缀（特异性更高）。
+   color-mix 不被支持时这些声明失效，回落到 daisyUI 的 var(--color-base-content)（不透明，对比度更好）。 */
+html .tab:is(.tabs > .tab):not(:checked, label:has(:checked), :hover, .tab-active, [aria-selected="true"], [aria-current="true"], [aria-current="page"]) {
+  color: color-mix(in oklab, var(--color-base-content) 75%, transparent);
+}
+
+html .menu-title {
+  color: color-mix(in oklab, var(--color-base-content) 75%, transparent);
 }
 

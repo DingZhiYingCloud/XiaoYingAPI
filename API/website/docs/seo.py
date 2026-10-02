@@ -4,7 +4,7 @@
 - 友情链接 friend_links：站点友情链接集合的 RESTful 增删改查。
 后续接入更多 SEO 能力（robots/sitemap/外链检测等）时在 channels 追加即可。
 """
-from .schema import ChannelSpec, EndpointSpec, ParamSpec, ServiceSpec
+from .schema import ChannelSpec, EndpointSpec, ParamSpec, ResponseFieldSpec, ServiceSpec
 
 # 状态选择：启用/禁用
 _STATUS_SEL = [
@@ -32,6 +32,24 @@ _BASE_FIELDS = {
 def _link_id_param():
     return ParamSpec('link_id', '友情链接 ID', kind='number', required=True,
                      placeholder='如：1', desc='路径参数：友情链接主键 ID（创建/列表返回）')
+
+
+# 单条友情链接的返回字段（创建 / 详情 / 更新三接口共用同一份序列化结构）
+_LINK_FIELDS = [
+    ResponseFieldSpec('id', 'int', '主键 ID'),
+    ResponseFieldSpec('name', 'string', '网站名称'),
+    ResponseFieldSpec('url', 'string', '网站链接'),
+    ResponseFieldSpec('description', 'string', '网站描述'),
+    ResponseFieldSpec('logo', 'string', 'Logo 链接'),
+    ResponseFieldSpec('category', 'string', '分类'),
+    ResponseFieldSpec('contact', 'string', '联系方式'),
+    ResponseFieldSpec('sort', 'int', '排序权重'),
+    ResponseFieldSpec('status', 'bool', '启用状态'),
+    ResponseFieldSpec('create_time', 'string', '创建时间'),
+    ResponseFieldSpec('updated_time', 'string', '更新时间'),
+]
+
+_LINK_EXAMPLE = '{"id": 1, "name": "Example", "url": "https://example.com", "description": "example site", "logo": "https://example.com/logo.png", "category": "tools", "contact": "admin@example.com", "sort": 0, "status": true, "create_time": "2026-09-01 10:00:00", "updated_time": "2026-09-01 10:00:00"}'
 
 
 SERVICE = ServiceSpec(
@@ -67,7 +85,24 @@ SERVICE = ServiceSpec(
                                                     {'value': 'false', 'label': 'false（禁用）'}],
                                            desc='选填：true/false'),
                              ],
-                             notes=['返回 data={items, total}，items 按 sort 降序排列。']),
+                             notes=['items 按 sort 降序排列；单次最多返回 500 条，超出时 truncated=true。'],
+                             response_fields=[
+                                 ResponseFieldSpec('items', 'array', '友情链接列表'),
+                                 ResponseFieldSpec('items[].id', 'int', '主键 ID'),
+                                 ResponseFieldSpec('items[].name', 'string', '网站名称'),
+                                 ResponseFieldSpec('items[].url', 'string', '网站链接'),
+                                 ResponseFieldSpec('items[].description', 'string', '网站描述'),
+                                 ResponseFieldSpec('items[].logo', 'string', 'Logo 链接'),
+                                 ResponseFieldSpec('items[].category', 'string', '分类'),
+                                 ResponseFieldSpec('items[].contact', 'string', '联系方式'),
+                                 ResponseFieldSpec('items[].sort', 'int', '排序权重'),
+                                 ResponseFieldSpec('items[].status', 'bool', '启用状态'),
+                                 ResponseFieldSpec('items[].create_time', 'string', '创建时间'),
+                                 ResponseFieldSpec('items[].updated_time', 'string', '更新时间'),
+                                 ResponseFieldSpec('total', 'int', '命中总条数'),
+                                 ResponseFieldSpec('truncated', 'bool', '是否超过单次上限被截断'),
+                             ],
+                             response_example='{"items": [{"id": 1, "name": "Example", "url": "https://example.com", "description": "example site", "logo": "https://example.com/logo.png", "category": "tools", "contact": "admin@example.com", "sort": 0, "status": true, "create_time": "2026-09-01 10:00:00", "updated_time": "2026-09-01 10:00:00"}], "total": 1, "truncated": false}'),
                 EndpointSpec('create', '创建友情链接', 'POST', '/api/seo/friend_links',
                              summary='新增一条友情链接（name 必填、url 必填且全局唯一）。',
                              params=[
@@ -83,10 +118,14 @@ SERVICE = ServiceSpec(
                                  _BASE_FIELDS['sort'],
                                  _BASE_FIELDS['status'],
                              ],
-                             notes=['url 已存在时返回数据冲突错误。']),
+                             notes=['url 已存在时返回数据冲突错误。'],
+                             response_fields=_LINK_FIELDS,
+                             response_example=_LINK_EXAMPLE),
                 EndpointSpec('detail', '获取单条', 'GET', '/api/seo/friend_links/<id>',
                              summary='按主键 id 获取一条友情链接详情。',
                              params=[_link_id_param()],
+                             response_fields=_LINK_FIELDS,
+                             response_example=_LINK_EXAMPLE,
                              path_params={'id': 'link_id'}),
                 EndpointSpec('update', '更新友情链接', 'PATCH', '/api/seo/friend_links/<id>',
                              summary='部分字段更新：只更新本次传入的字段，未传字段保持不变。',
@@ -102,10 +141,14 @@ SERVICE = ServiceSpec(
                                  _BASE_FIELDS['sort'],
                                  _BASE_FIELDS['status'],
                              ],
+                             response_fields=_LINK_FIELDS,
+                             response_example=_LINK_EXAMPLE,
                              path_params={'id': 'link_id'}),
                 EndpointSpec('delete', '删除友情链接', 'DELETE', '/api/seo/friend_links/<id>',
                              summary='按主键 id 删除一条友情链接。',
                              params=[_link_id_param()],
+                             # 删除成功无业务数据，data 为 null
+                             response_note='删除成功时 data 为 null，结果以 code 与 msg 判断。',
                              path_params={'id': 'link_id'}),
             ],
         ),

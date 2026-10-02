@@ -4,8 +4,15 @@
 - 代练丸子（llwanzi.com）能力封装：认证、用户资料、公共/个人订单查询与发布取消、余额。
 注意：多数接口需要代练丸子平台登录后的 authorization（形如 "Bearer xxx"）；
 发布/取消订单等操作会真实作用于账号，请用小号谨慎调试。
+
+响应说明：本服务是把代练丸子（llwanzi.com）上游接口原样透传封装（见 API/apis/DaiLianWanZi/
+与 SpiderServices/DaiLianWanZi/），data 即上游完整响应对象、结构由上游决定且可能随时变化，
+故不逐个承诺字段，统一说明其构成方式。
 """
 from .schema import ChannelSpec, EndpointSpec, ParamSpec, ServiceSpec
+
+# 全部接口均为上游透传：data 由上游决定、可能随时变化，不承诺具体字段，故抽为常量复用
+_UPSTREAM_NOTE = 'data 为上游接口返回的完整响应对象（原样透传，含上游自身的 code / message / data），字段由上游定义。'
 
 
 def _auth(desc='必填：平台登录令牌，形如 "Bearer xxx"'):
@@ -40,7 +47,8 @@ SERVICE = ServiceSpec(
                 # ---------- 认证 ----------
                 EndpointSpec('auth_send_code', '发送验证码', 'POST', '/api/dlwz/auth/send-code',
                              summary='发送登录验证码（内部自动完成图形验证码识别）。',
-                             params=[ParamSpec('phone', '手机号', kind='text', required=True, placeholder='13800138000')]),
+                             params=[ParamSpec('phone', '手机号', kind='text', required=True, placeholder='13800138000')],
+                             response_note=_UPSTREAM_NOTE),
                 EndpointSpec('auth_login', '登录', 'POST', '/api/dlwz/auth/login',
                              summary='验证码或密码登录；未注册手机号用验证码登录会自动注册。',
                              params=[
@@ -50,15 +58,18 @@ SERVICE = ServiceSpec(
                                            options=[{'value': 'VerificationCode', 'label': 'VerificationCode（验证码，默认）'},
                                                     {'value': 'Password', 'label': 'Password（密码）'}],
                                            default='VerificationCode'),
-                             ]),
+                             ],
+                             response_note=_UPSTREAM_NOTE),
                 # ---------- 用户 ----------
                 EndpointSpec('user_info', '用户信息', 'GET', '/api/dlwz/user/info',
-                             summary='获取当前登录用户信息。', params=[_auth()]),
+                             summary='获取当前登录用户信息。', params=[_auth()],
+                             response_note=_UPSTREAM_NOTE),
                 EndpointSpec('user_upload_avatar', '上传头像', 'POST', '/api/dlwz/user/upload-avatar',
                              summary='设置头像（传图片 URL）。',
                              params=[_auth(),
                                      ParamSpec('image', '头像图片URL', kind='text', required=True,
-                                               placeholder='https://…/avatar.png')]),
+                                               placeholder='https://…/avatar.png')],
+                             response_note=_UPSTREAM_NOTE),
                 EndpointSpec('user_set_profile', '设置个性信息', 'POST', '/api/dlwz/user/set-profile',
                              summary='设置用户名/签名/QQ（username 必填，其它按需传）。',
                              params=[
@@ -66,11 +77,14 @@ SERVICE = ServiceSpec(
                                  ParamSpec('username', '用户名', kind='text', required=True),
                                  ParamSpec('signature', '个性签名', kind='text'),
                                  ParamSpec('qq', 'QQ号', kind='text'),
-                             ]),
+                             ],
+                             response_note=_UPSTREAM_NOTE),
                 EndpointSpec('user_real_name', '实名认证信息', 'GET', '/api/dlwz/user/real-name',
-                             summary='查询实名认证信息。', params=[_auth()]),
+                             summary='查询实名认证信息。', params=[_auth()],
+                             response_note=_UPSTREAM_NOTE),
                 EndpointSpec('user_sign_in', '签到', 'POST', '/api/dlwz/user/sign-in',
-                             summary='每日签到。', params=[_auth()]),
+                             summary='每日签到。', params=[_auth()],
+                             response_note=_UPSTREAM_NOTE),
                 # ---------- 订单 ----------
                 EndpointSpec('orders_public', '公共订单列表', 'GET', '/api/dlwz/orders/public',
                              summary='大厅公共订单（默认王者、价格 10-50）。',
@@ -81,17 +95,20 @@ SERVICE = ServiceSpec(
                                  _int_opt('page_no', '页码', 1),
                                  _int_opt('page_size', '每页数量', 30),
                                  ParamSpec('game_id', '游戏ID', kind='number', default='1', desc='1=王者（默认）'),
-                             ]),
+                             ],
+                             response_note=_UPSTREAM_NOTE),
                 EndpointSpec('orders_search', '搜索订单', 'GET', '/api/dlwz/orders/search',
                              summary='按关键词搜索订单。',
                              params=[_auth(),
                                      ParamSpec('keyword', '关键词', kind='text', required=True),
                                      _int_opt('page_no', '页码', 1),
-                                     _int_opt('page_size', '每页数量', 10)]),
+                                     _int_opt('page_size', '每页数量', 10)],
+                             response_note=_UPSTREAM_NOTE),
                 EndpointSpec('orders_detail', '订单详情', 'GET', '/api/dlwz/orders/detail',
                              summary='查询单个订单详情。',
                              params=[_auth(),
-                                     ParamSpec('order_id', '订单ID', kind='text', required=True)]),
+                                     ParamSpec('order_id', '订单ID', kind='text', required=True)],
+                             response_note=_UPSTREAM_NOTE),
                 EndpointSpec('orders_publish', '发布订单', 'POST', '/api/dlwz/orders/publish',
                              summary='发布一笔代练订单（默认王者/排位/安卓QQ，真实下单）。',
                              params=[
@@ -123,15 +140,18 @@ SERVICE = ServiceSpec(
                                            desc='选填：默认平台图标'),
                                  ParamSpec('game_name', '游戏名称', kind='text', default='王者'),
                                  ParamSpec('game_leveling_type_name', '代练类型', kind='text', default='排位'),
-                             ]),
+                             ],
+                             response_note=_UPSTREAM_NOTE),
                 EndpointSpec('orders_cancel', '取消订单', 'POST', '/api/dlwz/orders/cancel',
                              summary='取消订单。',
                              params=[ParamSpec('order_id', '订单ID', kind='text', required=True),
-                                     _auth(desc='选填：平台登录令牌')]),
+                                     _auth(desc='选填：平台登录令牌')],
+                             response_note=_UPSTREAM_NOTE),
                 # ---------- 财务 ----------
                 EndpointSpec('user_balance', '我的余额', 'GET', '/api/dlwz/user/balance',
                              summary='查询账号余额（authorization 选填）。',
-                             params=[_auth(desc='选填：平台登录令牌')]),
+                             params=[_auth(desc='选填：平台登录令牌')],
+                             response_note=_UPSTREAM_NOTE),
             ],
         ),
     ],

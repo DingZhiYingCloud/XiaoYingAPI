@@ -1,0 +1,127 @@
+{% extends 'template.html' %}
+{% load static i18n %}
+
+{% block title %}{% blocktrans with name=app.name %}{{ name }} - 我的项目 - 小影API{% endblocktrans %}{% endblock %}
+{% block description %}{% trans "查看接入项目的 APPID / APPSECRET、额度余额，并可重置密钥。" %}{% endblock %}
+
+{% block content %}
+<section class="mx-auto w-full max-w-4xl px-4 py-8 sm:py-10">
+  <nav class="breadcrumbs text-sm">
+    <ul>
+      <li><a href="/">{% trans "首页" %}</a></li>
+      <li><a href="{% url 'website:my_projects' %}">{% trans "我的项目" %}</a></li>
+      <li>{{ app.name }}</li>
+    </ul>
+  </nav>
+
+  <div class="mt-2 flex flex-wrap items-center gap-3">
+    <h1 class="text-2xl font-bold sm:text-3xl">{{ app.name }}</h1>
+    {% if app.status %}
+    <span class="badge badge-soft badge-success badge-sm">{% trans "启用" %}</span>
+    {% else %}
+    <span class="badge badge-soft badge-ghost badge-sm">{% trans "已停用" %}</span>
+    {% endif %}
+  </div>
+
+  {% if messages %}
+  <div class="mt-5 flex flex-col gap-2">
+    {% for message in messages %}
+    <div role="alert" class="alert py-2 text-sm {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-error{% elif message.tags == 'warning' %}alert-warning{% else %}alert-info{% endif %}">
+      <span>{{ message }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# ===== 接入凭据 ===== #}
+  <section class="mt-5 rounded-box border border-base-300 bg-base-100 p-5">
+    <h2 class="text-lg font-semibold">{% trans "接入凭据" %}</h2>
+    <p class="mt-1 text-xs text-base-content/70">
+      {% trans "APPID 是公开标识；APPSECRET 是签名密钥，只放服务端，不要写进前端代码或公开仓库。" %}
+    </p>
+
+    <div class="mt-4 grid gap-4">
+      <div class="grid gap-1">
+        <span class="text-sm font-semibold">{% trans "APPID" %}</span>
+        <div class="flex flex-wrap items-center gap-2">
+          <code data-copy-source class="min-w-0 break-all rounded-box bg-base-200 px-2 py-1 font-mono text-xs">{{ app.app_id }}</code>
+          <button type="button" class="btn btn-ghost btn-xs" data-copy-target
+                  data-copied="{% trans '已复制' %}">
+            <i data-lucide="copy" class="h-3.5 w-3.5"></i><span data-copy-label>{% trans "复制" %}</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="grid gap-1">
+        <span class="text-sm font-semibold">{% trans "APPSECRET" %}</span>
+        <div class="flex flex-wrap items-center gap-2">
+          <code data-copy-source
+                class="min-w-0 break-all rounded-box bg-base-200 px-2 py-1 font-mono text-xs">
+            <span data-secret-real hidden>{{ app.app_secret }}</span>
+            <span data-secret-masked>{% trans "点击右侧「显示」查看" %}</span>
+          </code>
+          <button type="button" class="btn btn-ghost btn-xs" data-secret-toggle
+                  data-label-show="{% trans '显示' %}" data-label-hide="{% trans '隐藏' %}">
+            <i data-lucide="eye" class="h-3.5 w-3.5"></i><span data-secret-toggle-label>{% trans "显示" %}</span>
+          </button>
+          <button type="button" class="btn btn-ghost btn-xs" data-copy-target
+                  data-copied="{% trans '已复制' %}">
+            <i data-lucide="copy" class="h-3.5 w-3.5"></i><span data-copy-label>{% trans "复制" %}</span>
+          </button>
+        </div>
+      </div>
+
+      <dl class="grid gap-2 text-sm sm:grid-cols-2">
+        <div class="flex gap-2">
+          <dt class="text-base-content/60">{% trans "Token 有效天数" %}</dt>
+          <dd class="font-mono">{{ app.token_expire_days }}</dd>
+        </div>
+        <div class="flex gap-2">
+          <dt class="text-base-content/60">{% trans "创建时间" %}</dt>
+          <dd class="font-mono">{{ app.create_time|date:"Y-m-d H:i" }}</dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  {# ===== 额度 ===== #}
+  <section class="mt-4 rounded-box border border-base-300 bg-base-100 p-5">
+    <h2 class="text-lg font-semibold">{% trans "额度" %}</h2>
+    <div class="mt-3 grid gap-4 sm:grid-cols-2">
+      <div class="grid gap-1">
+        <span class="text-xs text-base-content/60">{% trans "当前余额" %}</span>
+        <span class="font-mono text-2xl font-semibold {% if app.balance <= 0 %}text-error{% endif %}">
+          {{ app.balance }}<span class="ml-1 text-sm font-normal text-base-content/60">{% trans "点" %}</span>
+        </span>
+      </div>
+      <div class="grid gap-1">
+        <span class="text-xs text-base-content/60">{% trans "累计调用" %}</span>
+        <span class="font-mono text-sm">{{ total_calls }}</span>
+      </div>
+    </div>
+    <p class="mt-3 text-xs text-base-content/70">
+      {% trans "接口调用成功（业务码 10000）时按服务单价扣点，失败调用不扣费。余额为 0 或负数时接口无法调用（开放接口除外），需联系管理员充值。额度由管理员手动充值，消耗略有延迟。" %}
+    </p>
+  </section>
+
+  {# ===== 危险操作 ===== #}
+  <section class="mt-4 rounded-box border border-error/40 bg-error/5 p-5">
+    <h2 class="text-lg font-semibold text-error">{% trans "重置 APPSECRET" %}</h2>
+    <p class="mt-1 text-xs text-base-content/70">
+      {% trans "重置后旧密钥立即失效，所有已接入的调用必须先换成新密钥才能继续使用。仅在密钥泄露等必要情况下操作。" %}
+    </p>
+    <form method="post" action="{% url 'website:my_project_detail' app.pk %}" class="mt-3"
+          data-confirm="{% trans '确认重置 APPSECRET？旧密钥会立即失效。' %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="reset_secret" />
+      <button type="submit" class="btn btn-error btn-sm">
+        <i data-lucide="refresh-cw" class="h-4 w-4"></i>{% trans "重置密钥" %}
+      </button>
+    </form>
+  </section>
+</section>
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'js/site/my_projects.js' %}?v=20261002a"></script>
+{% endblock %}

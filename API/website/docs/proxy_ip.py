@@ -4,7 +4,8 @@
 - juliang：巨量代理 IP（独享代理产品，key/sign 双模式凭据）
 - 51daili：51代理 IP（动态提取，账号三件套 + 套餐 ID 整组传参）
 """
-from .schema import ChannelSpec, EndpointSpec, ParamSpec, ServiceSpec
+from .schema import (ChannelSpec, EndpointSpec, ParamSpec, ResponseFieldSpec,
+                     ServiceSpec)
 
 
 def _num(name, label, default, desc=''):
@@ -99,7 +100,29 @@ SERVICE = ServiceSpec(
                                     'username 与 password 必须成对出现（传一个会返回 20001）；'
                                     '成对提供时每条代理附带可直接使用的 proxy 字段。',
                                     '附加列参数（city_name / ip_remain / auth_info 等）开启后，'
-                                    '该 IP 的附加内容统一放在 extra 字段，不影响 ip / port 解析。']),
+                                    '该 IP 的附加内容统一放在 extra 字段，不影响 ip / port 解析。'],
+                             response_fields=[
+                                 ResponseFieldSpec('proxies', 'array', '代理列表'),
+                                 ResponseFieldSpec('proxies[].ip', 'string', '代理 IP'),
+                                 ResponseFieldSpec('proxies[].port', 'string', '代理端口'),
+                                 ResponseFieldSpec('proxies[].protocol', 'string', '协议：HTTP / SOCKS5'),
+                                 ResponseFieldSpec('proxies[].region', 'string', '归属说明（固定为「国内动态」）'),
+                                 ResponseFieldSpec('proxies[].extra', 'string', '附加列内容；仅开启附加列参数时出现'),
+                                 ResponseFieldSpec('proxies[].username', 'string', '代理认证账号；随账密成对出现时才有'),
+                                 ResponseFieldSpec('proxies[].password', 'string', '代理认证密码；随账密成对出现时才有'),
+                                 ResponseFieldSpec('proxies[].proxy', 'string', '可直接使用的代理地址；随账密成对出现时才有'),
+                                 ResponseFieldSpec('total', 'int', '返回总数'),
+                                 ResponseFieldSpec('fetched', 'int', '本次返回数'),
+                             ],
+                             response_example='''{
+  "proxies": [
+    {"ip": "27.28.167.190", "port": "36629", "protocol": "HTTP", "region": "国内动态",
+     "username": "user", "password": "pass",
+     "proxy": "http://user:pass@27.28.167.190:36629"}
+  ],
+  "total": 1,
+  "fetched": 1
+}'''),
             ],
         ),
         ChannelSpec(
@@ -150,8 +173,6 @@ SERVICE = ServiceSpec(
                              notes=['uid / accessName / accessPassword / packid 必须**整组**传入：'
                                     '只传一部分返回 20001，一个都不传则整组回退平台 .env。',
                                     '平台 .env 未配置凭据时返回 40001（并说明缺哪些变量）。',
-                                    '每条代理含 ip / port / protocol / region（地区名）/ region_code（地区码）'
-                                    '/ isp（运营商）/ end_time（到期时间）。',
                                     '⚠️ 51代理 的节点**只从中国内地网络可达**：海外服务器拿正确账密直连也是一律'
                                     ' TCP 超时（实测 0/5）。因此平台尽量再给每条补一个 `proxy` 字段 ——'
                                     ' 那是**经国内中转**的形态（`http://<会话键>:<密钥>@<中转机>:17890`），'
@@ -168,7 +189,29 @@ SERVICE = ServiceSpec(
                                     'format=txt 时上游改回文本行（ip:port|地区|到期时间|运营商），'
                                     '服务端同样会解析成结构化字段；该模式下拿不到上游错误码，'
                                     '解析不出 ip:port 时会把上游原文作为失败原因返回。',
-                                    '账号密码错误时上游返回 10102，服务端会剥掉消息里的账号名前缀再返回。']),
+                                    '账号密码错误时上游返回 10102，服务端会剥掉消息里的账号名前缀再返回。'],
+                             response_fields=[
+                                 ResponseFieldSpec('proxies', 'array', '代理列表'),
+                                 ResponseFieldSpec('proxies[].ip', 'string', '代理 IP'),
+                                 ResponseFieldSpec('proxies[].port', 'string', '代理端口'),
+                                 ResponseFieldSpec('proxies[].protocol', 'string', '协议：HTTP / SOCKS5'),
+                                 ResponseFieldSpec('proxies[].region', 'string', '地区名（可能为空）'),
+                                 ResponseFieldSpec('proxies[].region_code', 'string', '地区编码（可能为空）'),
+                                 ResponseFieldSpec('proxies[].isp', 'string', '运营商（可能为空）'),
+                                 ResponseFieldSpec('proxies[].end_time', 'string', '到期时间（可能为空）'),
+                                 ResponseFieldSpec('proxies[].proxy', 'string', '经国内中转的代理地址；未配置中转时无此字段'),
+                                 ResponseFieldSpec('total', 'int', '返回总数'),
+                                 ResponseFieldSpec('fetched', 'int', '本次返回数'),
+                             ],
+                             response_example='''{
+  "proxies": [
+    {"ip": "1.2.3.4", "port": "8080", "protocol": "HTTP", "region": "曲靖市",
+     "region_code": "530300", "isp": "电信", "end_time": "2026-10-01 13:26:28",
+     "proxy": "http://sess:secret@relay.example.com:17890"}
+  ],
+  "total": 1,
+  "fetched": 1
+}'''),
             ],
         ),
     ],

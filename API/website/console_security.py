@@ -8,13 +8,12 @@
 保存走普通 POST + 重定向（与 `console_appearance.py` 同一套路）。
 鉴权：仅 Django is_superuser（见 admin_auth.superadmin_required）。
 """
-from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.utils.translation import gettext as _
 
 from API.models import SecuritySetting
 
-from .admin_auth import superadmin_required
+from .admin_auth import notify_success, superadmin_required
 
 
 @superadmin_required
@@ -36,5 +35,5 @@ def _save(request):
     setting = SecuritySetting.get_solo()
     setting.hide_console = 'hide_console' in request.POST
     setting.save()
-    messages.success(request, _('安全设置已保存'))
+    notify_success(request, _('安全设置已保存'))
     return redirect('website:console_security')

@@ -1,4 +1,4 @@
-/* API 文档中心交互：线路切换 / 鉴权本机保存 / 在线调试代调 / 响应展示
+/* API 文档中心交互：线路切换 / 鉴权与本机凭据本机保存 / 在线调试代调 / 响应展示
  * 依赖：页面含 {% csrf_token %}（#docs-auth-form 内）；调试结果由服务端 /docs/_call/ 代调返回。
  * 响应分两种：普通 JSON 一次性渲染；text/event-stream（AI 接口 stream=true）由服务端逐块透传，
  * 这里用 ReadableStream 逐帧读取并逐字打印（见 renderStream）。 */
@@ -249,6 +249,18 @@
   var authId = document.getElementById('doc-app-id');
   var authSecret = document.getElementById('doc-app-secret');
   var authSave = document.getElementById('docs-auth-save');
+  var authProjects = document.getElementById('docs-auth-projects');
+  var authSelect = document.getElementById('doc-project-select');
+
+  function saveAuth() {
+    localStorage.setItem(AUTH_KEY, JSON.stringify({
+      app_id: authId.value.trim(),
+      app_secret: authSecret.value.trim()
+    }));
+    var old = authSave.textContent;
+    authSave.textContent = gettext('已保存到本机');
+    setTimeout(function () { authSave.textContent = old; }, 1500);
+  }
 
   if (authSave && authId && authSecret) {
     try {
@@ -257,14 +269,88 @@
       if (saved && saved.app_secret) authSecret.value = saved.app_secret;
     } catch (e) { /* 忽略损坏的本地数据 */ }
 
-    authSave.addEventListener('click', function () {
-      localStorage.setItem(AUTH_KEY, JSON.stringify({
-        app_id: authId.value.trim(),
-        app_secret: authSecret.value.trim()
-      }));
-      var old = authSave.textContent;
-      authSave.textContent = gettext('已保存到本机');
-      setTimeout(function () { authSave.textContent = old; }, 1500);
+    authSave.addEventListener('click', saveAuth);
+
+    /* 「选择我的项目」下拉：选中即自动填入 APPID / APPSECRET 并存到本机。
+       项目清单由服务端按当前登录态下发（未登录返回空列表 → 整块不渲染），
+       密钥只存在这个响应与本机 localStorage 里，不写进页面 HTML。 */
+    if (authProjects && authSelect) {
+      fetch('/docs/_projects/', { headers: { 'Accept': 'application/json' } })
+        .then(function (resp) { return resp.json(); })
+        .then(function (body) {
+          var list = (body && body.data && body.data.projects) || [];
+          if (!list.length) return;
+          list.forEach(function (item) {
+            var opt = document.createElement('option');
+            opt.value = item.app_id;
+            opt.textContent = item.name;
+            opt.setAttribute('data-secret', item.app_secret || '');
+            authSelect.appendChild(opt);
+          });
+          // 已填的 APPID 若正是清单里的某个项目，下拉直接停在该项
+          var current = authId.value.trim();
+          if (current) {
+            list.some(function (item, index) {
+              if (item.app_id === current) { authSelect.selectedIndex = index + 1; return true; }
+              return false;
+            });
+          }
+          authProjects.classList.remove('hidden');
+        })
+        .catch(function () { /* 拉取失败保持隐藏，手动填写照旧可用 */ });
+
+      authSelect.addEventListener('change', function () {
+        var opt = authSelect.options[authSelect.selectedIndex];
+        if (!opt || !opt.value) return;
+        authId.value = opt.value;
+        authSecret.value = opt.getAttribute('data-secret') || '';
+        saveAuth();
+      });
+    }
+  }
+
+  /* ---------- 本机凭据：本机保存/回填（右侧栏卡片，文档声明 local=True 的参数） ----------
+   * 典型用途：抖音登录 Cookie 这类「长文本、只在本地留着、每次调试都要用」的凭据 ——
+   * 放在参数表单里就得每次重新粘贴，放在这里则是填一次、长期复用。
+   * 值只写进浏览器 localStorage（键按服务 slug 隔离），不上传、不落库。 */
+  var localCard = document.getElementById('docs-local-card');
+  var localFields = localCard ? localCard.querySelectorAll('[data-local-cred-name]') : [];
+  var LOCAL_KEY = localCard ? 'xyapi_docs_local_' + (localCard.dataset.localSlug || '') : '';
+  var localCreds = {};
+
+  if (localCard) {
+    try {
+      localCreds = JSON.parse(localStorage.getItem(LOCAL_KEY) || '{}') || {};
+    } catch (e) {
+      localCreds = {};                    // 忽略损坏的本地数据
+    }
+    localFields.forEach(function (field) {
+      var saved = localCreds[field.dataset.localCredName];
+      if (saved) field.value = saved;
+    });
+  }
+
+  /* 取本机凭据的当前值：以输入框里的实时值为准（改了没点「保存」也能直接用），
+     该凭据没有输入框时回落到上次保存的值 */
+  function localCredValue(name) {
+    for (var i = 0; i < localFields.length; i++) {
+      if (localFields[i].dataset.localCredName === name) return localFields[i].value.trim();
+    }
+    return String(localCreds[name] || '').trim();
+  }
+
+  var localSave = document.getElementById('docs-local-save');
+  if (localSave) {
+    localSave.addEventListener('click', function () {
+      var data = {};
+      localFields.forEach(function (field) {
+        data[field.dataset.localCredName] = field.value.trim();
+      });
+      localCreds = data;
+      localStorage.setItem(LOCAL_KEY, JSON.stringify(data));
+      var old = localSave.textContent;
+      localSave.textContent = gettext('已保存到本机');
+      setTimeout(function () { localSave.textContent = old; }, 1500);
     });
   }
 
@@ -474,6 +560,13 @@
       }
     });
 
+    // 本机凭据（如抖音登录 Cookie）：这类参数不在表单里，值取右侧栏「本机凭据」卡片
+    String(card.dataset.localParams || '').split(/\s+/).forEach(function (name) {
+      if (!name || params[name]) return;
+      var value = localCredValue(name);
+      if (value) params[name] = value;
+    });
+
     btn.disabled = true;
     var oldText = btn.textContent;
     btn.textContent = gettext('请求中…');
@@ -618,6 +711,41 @@
       }
     }
 
+    // 等价 curl：本次请求原样拼成的命令，粘贴到终端即可复现（含本次生成的签名参数）
+    if (data.curl) {
+      var curlBox = el('details', 'mt-2');
+      curlBox.appendChild(el('summary', 'cursor-pointer text-xs opacity-60', gettext('等价 curl')));
+      // 复制按钮单独占一行放在代码上方，避免绝对定位覆盖住首行代码；
+      // 按钮与 <pre> 必须是同一父节点，复制逻辑靠 btn.parentElement 找 data-copy-source。
+      var curlInner = el('div', 'mt-1 flex flex-col gap-1');
+      var curlBtn = el('button', 'btn btn-ghost btn-xs self-end');
+      curlBtn.type = 'button';
+      curlBtn.setAttribute('data-copy-target', '');
+      curlBtn.setAttribute('data-copied', gettext('已复制'));
+      var curlIcon = document.createElement('i');
+      curlIcon.className = 'h-3.5 w-3.5';
+      curlIcon.setAttribute('data-lucide', 'copy');
+      curlBtn.appendChild(curlIcon);
+      var curlLbl = el('span', '', gettext('复制'));
+      curlLbl.setAttribute('data-copy-label', '');
+      curlBtn.appendChild(curlLbl);
+      curlInner.appendChild(curlBtn);
+      var curlPre = el('pre', 'max-h-72 overflow-auto rounded-box bg-base-200 p-2 font-mono text-xs whitespace-pre-wrap');
+      curlPre.setAttribute('data-copy-source', '');
+      curlPre.textContent = data.curl;
+      curlInner.appendChild(curlPre);
+      curlBox.appendChild(curlInner);
+      var curlTip = '';
+      if (data.signed) {
+        curlTip = gettext('该命令已包含本次生成的签名参数：5 分钟内有效、且只能执行一次（nonce 防重放）；需要再跑一次请重新点「发送请求」。');
+      } else if (data.needs_sign) {
+        curlTip = gettext('该接口需要签名，而本次未填写 APPID / APPSECRET，命令里没有签名参数；在右侧栏填写后重新发送，即可得到可直接执行的命令。');
+      }
+      if (curlTip) curlBox.appendChild(el('p', 'mt-1 text-xs text-warning', curlTip));
+      wrap.appendChild(curlBox);
+      if (window.lucide && lucide.createIcons) lucide.createIcons();
+    }
+
     var body = parsed ? JSON.stringify(parsed, null, 2) : (data.text || gettext('(空响应)'));
 
     // Markdown 端点（如 AI 对话）的回复正文：渲染排版后展示，原始 JSON 收进折叠区备查
@@ -651,6 +779,42 @@
       detail: { resKey: resBox.id.replace(/^res-/, ''), parsed: parsed, http: http }
     }));
   }
+
+  /* ---------- 一键复制（按钮 data-copy-target + 同父的 data-copy-source） ----------
+   * 与站点其它页面（my_projects.js）同一套约定，便于统一维护；这里用事件委托：
+   * 响应面板里的「等价 curl」是调试返回后才动态插入的，静态绑定会漏掉。
+   * 按钮文案由 data-copied 传入（文案不硬编码在 JS 里）。 */
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text);
+    }
+    var area = document.createElement('textarea');
+    area.value = text;
+    area.setAttribute('readonly', '');
+    area.style.position = 'fixed';
+    area.style.top = '-1000px';
+    document.body.appendChild(area);
+    area.select();
+    try { document.execCommand('copy'); } catch (e) { /* 复制失败不阻断页面 */ }
+    document.body.removeChild(area);
+    return Promise.resolve();
+  }
+
+  document.addEventListener('click', function (event) {
+    var btn = event.target.closest ? event.target.closest('[data-copy-target]') : null;
+    if (!btn) return;
+    var box = btn.parentElement;
+    var source = box ? box.querySelector('[data-copy-source]') : null;
+    if (!source) return;
+    copyText(source.textContent.trim()).then(function () {
+      var label = btn.querySelector('[data-copy-label]');
+      var copied = btn.getAttribute('data-copied');
+      if (!label || !copied) return;
+      var original = label.textContent;
+      label.textContent = copied;
+      setTimeout(function () { label.textContent = original; }, 1200);
+    });
+  });
 
   /* 发送 / 清空 */
   document.querySelectorAll('[data-run-endpoint]').forEach(function (btn) {

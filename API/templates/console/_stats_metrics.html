@@ -30,6 +30,12 @@
   </div>
 
   <div class="stat">
+    <div class="stat-title">{% trans "消耗点数" %}</div>
+    <div class="stat-value font-mono text-2xl">{{ overview.points|floatformat:"-4" }}</div>
+    <div class="stat-desc">{% trans "平均每次" %} {{ overview.avg_points|floatformat:"-4" }} {% trans "点" %}</div>
+  </div>
+
+  <div class="stat">
     <div class="stat-title">{% trans "日内高峰时段" %}</div>
     <div class="stat-value font-mono text-2xl">{% if peak_hour %}{{ peak_hour.hour|stringformat:"02d" }}:00{% else %}—{% endif %}</div>
     <div class="stat-desc">

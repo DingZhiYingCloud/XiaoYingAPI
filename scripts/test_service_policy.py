@@ -6,9 +6,10 @@
     第 3 轮 三级继承（认证）：服务级 open 向上继承；端点级 auth 覆盖服务级
     第 4 轮 状态继承 + 「只有正常可调用」：maintenance→30004 / offline→30005 / dev→30006
              一律硬拦截（含合法签名），端点级 normal 可覆盖上层状态恢复可调用
-    第 5 轮 白名单继承：服务级 whitelist 只放行车名单项目；端点级 all 覆盖
+    第 5 轮 额度与单价继承：服务级单价 → 端点级覆写（0=免费 / 抬高）；余额不足返 30012；
+             未配置单价时兜底 DEFAULT_PRICE
     第 6 轮 前缀边界：/api/foo 的策略不得命中 /api/foobar/...
-    第 7 轮 缓存失效：改 status / auth_mode / 白名单后立即生效，不必等 TTL
+    第 7 轮 缓存失效：改 status / auth_mode / price 后立即生效，不必等 TTL
     第 8 轮 控制台页面：未登录跳转、超管可访问、含三级联动数据、增删改各自生效
     第 9 轮 三语（zh-hans / zh-hant / en）页面正常渲染且关键词已翻译
     第 10 轮 服务树枚举自证（真实路由 vs 文档注册表）
@@ -55,6 +56,10 @@ from django.urls import resolve, reverse
 
 from API.apis.user_center.sign import build_sign
 from API.common import StatusCode
+from API.common.credit_guard import (
+    invalidate_api_price_cache,
+    resolve_price,
+)
 from API.common.middleware import (
     invalidate_api_service_policy_cache,
     is_admin_only,
@@ -62,7 +67,8 @@ from API.common.middleware import (
     requires_auth,
     resolve_service_policy,
 )
-from API.models import ApiServicePolicy, UserApp
+from API.models import ApiPricePolicy, ApiServicePolicy, SecuritySetting, UserApp
+from API.models.Credit.price import DEFAULT_PRICE
 from API.website.docs.menu import build_docs_menu
 from API.website.service_presets import apply_presets, preset_rows
 from API.website.service_status import (
@@ -72,6 +78,8 @@ from API.website.service_status import (
     worst_status,
 )
 from API.website.service_tree import service_tree
+
+from _test_support import grant_credit
 
 # 建议策略清单里挑一条真实前缀做「新建 / 不覆盖 / 免签兜底」的验证对象。
 # 这些操作都在事务里做、结束整体回滚（见 round15），不改动库里的真实配置。
@@ -133,16 +141,20 @@ def _signed(app, extra=None):
 
 
 def _mk_app(tag):
-    return UserApp.objects.create(name=f'SvcApp{MARK}{tag}')
+    app = UserApp.objects.create(name=f'SvcApp{MARK}{tag}')
+    # 授权模型是「额度」：新项目默认 0 点，签名通过后会被 30012 拦掉、到不了业务层，
+    # 而本脚本多处要验证「签名通过后落到路由/状态判定」，故先补一笔额度
+    return grant_credit(app)
 
 
 def _mk_policy(**kwargs):
     """建策略（不触发模型 clean，等价于 DDL 直建；用于构造各种继承场景）"""
-    apps = kwargs.pop('apps', None)
-    policy = ApiServicePolicy.objects.create(**kwargs)
-    if apps:
-        policy.apps.set(apps)
-    return policy
+    return ApiServicePolicy.objects.create(**kwargs)
+
+
+def _mk_price(path_prefix, level, price):
+    """建一条调用单价（独立于服务策略的 ApiPricePolicy，行存在 = 显式设价）"""
+    return ApiPricePolicy.objects.create(path_prefix=path_prefix, level=level, price=price)
 
 
 def superadmin_client():
@@ -161,12 +173,14 @@ def superadmin_client():
 
 
 def cleanup():
-    """删除全部测试数据（策略的任一路径前缀包含 MARK 即删，含 extra_prefixes）"""
+    """删除全部测试数据（策略 / 单价 的路径前缀包含 MARK 即删，含 extra_prefixes）"""
     ids = [p.pk for p in ApiServicePolicy.objects.all()
            if any(MARK in prefix for prefix in p.all_prefixes)]
     ApiServicePolicy.objects.filter(pk__in=ids).delete()
+    ApiPricePolicy.objects.filter(path_prefix__contains=MARK).delete()
     UserApp.objects.filter(name__contains=MARK).delete()
     invalidate_api_service_policy_cache()
+    invalidate_api_price_cache()
 
 
 # ───────────────────────── 第 1 轮：fail-closed ─────────────────────────
@@ -207,7 +221,7 @@ def round2_captcha_open():
 def round3_auth_inherit():
     section('第 3 轮 三级继承（认证模式：服务 open → 线路/端点继承；端点 auth 覆盖）')
     _mk_policy(name=f'SvcOpen {MARK}', level='service', path_prefix=f'{BASE}open/',
-               auth_mode='open', status='inherit', app_scope='inherit')
+               auth_mode='open', status='inherit')
 
     check('线路级未设 → 继承服务级开放',
           requires_auth(f'{BASE}open/ch/any') is False)
@@ -215,7 +229,7 @@ def round3_auth_inherit():
           requires_auth(f'{BASE}open/ch/ep') is False)
 
     _mk_policy(name=f'EpAuth {MARK}', level='endpoint', path_prefix=f'{BASE}open/ch/ep',
-               auth_mode='auth', status='inherit', app_scope='inherit')
+               auth_mode='auth', status='inherit')
     check('端点级 auth 覆盖服务级 open', requires_auth(f'{BASE}open/ch/ep') is True)
     check('同服务其他端点仍继承开放', requires_auth(f'{BASE}open/ch/other') is False)
 
@@ -232,7 +246,7 @@ def round3_auth_inherit():
 def round4_status_inherit():
     section('第 4 轮 状态继承与状态拦截（只有 normal 可调用）')
     _mk_policy(name=f'SvcMaint {MARK}', level='service', path_prefix=f'{BASE}maint/',
-               status='maintenance', auth_mode='inherit', app_scope='inherit')
+               status='maintenance', auth_mode='inherit')
     check('服务级维护态生效', resolve_service_policy(f'{BASE}maint/x')['status'] == 'maintenance')
 
     anon = Client()
@@ -246,7 +260,7 @@ def round4_status_inherit():
           _code(resp) == StatusCode.SERVICE_MAINTENANCE, f'code={_code(resp)}')
 
     _mk_policy(name=f'EpNormal {MARK}', level='endpoint', path_prefix=f'{BASE}maint/ok',
-               status='normal', auth_mode='inherit', app_scope='inherit')
+               status='normal', auth_mode='inherit')
     check('端点级 normal 覆盖服务级维护态',
           resolve_service_policy(f'{BASE}maint/ok')['status'] == 'normal')
     resp = anon.get(f'{BASE}maint/ok')
@@ -255,7 +269,7 @@ def round4_status_inherit():
 
     # 已下线（offline）同样硬拦截，且用独立业务码 30005，便于调用方与「维护中」区分
     _mk_policy(name=f'SvcOffline {MARK}', level='service', path_prefix=f'{BASE}offline/',
-               status='offline', auth_mode='inherit', app_scope='inherit')
+               status='offline', auth_mode='inherit')
     check('服务级已下线生效',
           resolve_service_policy(f'{BASE}offline/x')['status'] == 'offline')
     resp = anon.get(f'{BASE}offline/x')
@@ -266,14 +280,14 @@ def round4_status_inherit():
           _code(resp) == StatusCode.SERVICE_OFFLINE, f'code={_code(resp)}')
     _mk_policy(name=f'EpNormalOffline {MARK}', level='endpoint',
                path_prefix=f'{BASE}offline/ok',
-               status='normal', auth_mode='inherit', app_scope='inherit')
+               status='normal', auth_mode='inherit')
     resp = anon.get(f'{BASE}offline/ok')
     check('端点级 normal 覆盖服务级已下线（落到 20011）',
           _code(resp) == StatusCode.AUTH_FAILED, f'code={_code(resp)}')
 
     # 「开发中」同样硬拦截（口径：只有 normal 可调用），用独立业务码 30006
     _mk_policy(name=f'SvcDev {MARK}', level='service', path_prefix=f'{BASE}dev/',
-               status='dev', auth_mode='inherit', app_scope='inherit')
+               status='dev', auth_mode='inherit')
     check('服务级开发中生效',
           resolve_service_policy(f'{BASE}dev/x')['status'] == 'dev')
     resp = anon.get(f'{BASE}dev/x')
@@ -283,35 +297,67 @@ def round4_status_inherit():
     check('开发中：携带合法签名仍返回 30006（未做签名校验）',
           _code(resp) == StatusCode.SERVICE_DEVELOPING, f'code={_code(resp)}')
     _mk_policy(name=f'EpNormalDev {MARK}', level='endpoint', path_prefix=f'{BASE}dev/ok',
-               status='normal', auth_mode='inherit', app_scope='inherit')
+               status='normal', auth_mode='inherit')
     resp = anon.get(f'{BASE}dev/ok')
     check('端点级 normal 覆盖服务级开发中（恢复可调用，落到 20011）',
           _code(resp) == StatusCode.AUTH_FAILED, f'code={_code(resp)}')
 
 
-# ───────────────────────── 第 5 轮：白名单继承 ─────────────────────────
+# ───────────────────────── 第 5 轮：额度与单价继承 ─────────────────────────
 
-def round5_whitelist_inherit(app_a, app_b):
-    section('第 5 轮 白名单继承（服务 whitelist 仅含 A；端点 all 覆盖）')
-    _mk_policy(name=f'SvcWl {MARK}', level='service', path_prefix=f'{BASE}wl/',
-               auth_mode='auth', app_scope='whitelist', apps=[app_a])
+def round5_credit_inherit(app_a, app_b):
+    section('第 5 轮 额度与单价继承（独立价格表：服务级 → 端点级覆写；余额不足 30012）')
+    # 服务级单价 5 点（写在独立的 ApiPricePolicy 上，与服务策略解耦）
+    _mk_price(f'{BASE}wl/', 'service', 5)
+    UserApp.objects.filter(pk=app_b.pk).update(balance=0)
+
+    check('服务级单价生效（端点未设时继承）',
+          resolve_price(f'{BASE}wl/probe') == 5)
+    check('同服务其它路径单价一致',
+          resolve_price(f'{BASE}wl/other') == 5)
 
     anon = Client()
     resp = anon.get(f'{BASE}wl/probe')
     check('未签名被拒（20011）', _code(resp) == StatusCode.AUTH_FAILED, f'code={_code(resp)}')
     resp = anon.get(f'{BASE}wl/probe', _signed(app_a))
-    check('名单内项目 A 通过（落到 20030）', _code(resp) == StatusCode.NOT_FOUND, f'code={_code(resp)}')
-    resp = anon.get(f'{BASE}wl/probe', _signed(app_b))
-    check('名单外项目 B 返回 20020', _code(resp) == StatusCode.FORBIDDEN, f'code={_code(resp)}')
-
-    _mk_policy(name=f'EpAll {MARK}', level='endpoint', path_prefix=f'{BASE}wl/probe',
-               auth_mode='inherit', app_scope='all')
-    resp = anon.get(f'{BASE}wl/probe', _signed(app_b))
-    check('端点级 all 覆盖服务级 whitelist（B 通过）',
+    check('余额充足的项目通过（落到 20030）',
           _code(resp) == StatusCode.NOT_FOUND, f'code={_code(resp)}')
+    resp = anon.get(f'{BASE}wl/probe', _signed(app_b))
+    check('余额为 0 的项目返回 30012',
+          _code(resp) == StatusCode.QUOTA_EXCEEDED, f'code={_code(resp)}')
+
+    # 端点级单价覆写：把该端点单价设为 0（免费）→ 零余额项目也能过
+    _mk_price(f'{BASE}wl/free', 'endpoint', 0)
+    check('端点级单价覆盖服务级（0 = 免费）',
+          resolve_price(f'{BASE}wl/free') == 0)
+    check('服务级其余路径仍按 5 点',
+          resolve_price(f'{BASE}wl/other') == 5)
+    resp = anon.get(f'{BASE}wl/free', _signed(app_b))
+    check('免费端点：零余额项目也能通过（落到 20030）',
+          _code(resp) == StatusCode.NOT_FOUND, f'code={_code(resp)}')
+
+    # 端点级抬高单价：余额 10 点的项目在 50 点的端点上被拒、在 5 点的路径上放行
+    _mk_price(f'{BASE}wl/pricey', 'endpoint', 50)
+    UserApp.objects.filter(pk=app_b.pk).update(balance=10)
+    check('端点级单价 50 覆盖服务级 5',
+          resolve_price(f'{BASE}wl/pricey') == 50)
+    resp = anon.get(f'{BASE}wl/pricey', _signed(app_b))
+    check('余额不足本次单价 → 30012',
+          _code(resp) == StatusCode.QUOTA_EXCEEDED, f'code={_code(resp)}')
     resp = anon.get(f'{BASE}wl/other', _signed(app_b))
-    check('同服务其他路径仍受白名单限制（B 返回 20020）',
-          _code(resp) == StatusCode.FORBIDDEN, f'code={_code(resp)}')
+    check('同一项目在低单价路径上放行（余额够付）',
+          _code(resp) == StatusCode.NOT_FOUND, f'code={_code(resp)}')
+
+    # 线路级单价：服务级 5 → 线路级 8（端点未设时取线路级）
+    _mk_price(f'{BASE}wl/ch/', 'channel', 8)
+    check('线路级单价覆盖服务级',
+          resolve_price(f'{BASE}wl/ch/probe') == 8)
+    check('线路级不影响同服务其它线路',
+          resolve_price(f'{BASE}wl/other') == 5)
+
+    # 未配置任何单价 → 兜底 DEFAULT_PRICE（保证「零额度什么都调不了」没有缺口）
+    check('未配置单价时兜底为 DEFAULT_PRICE',
+          resolve_price(f'{BASE}unpriced/x') == DEFAULT_PRICE)
 
 
 # ───────────────────────── 第 6 轮：前缀边界 ─────────────────────────
@@ -320,7 +366,7 @@ def round6_prefix_boundary():
     section('第 6 轮 前缀边界（/api/foo 不得命中 /api/foobar）')
     foo_prefix = f'{BASE}foo'
     _mk_policy(name=f'Boundary {MARK}', level='channel', path_prefix=foo_prefix,
-               auth_mode='open', status='inherit', app_scope='inherit')
+               auth_mode='open', status='inherit')
 
     check('精确匹配 /api/<MARK>foo 命中', requires_auth(f'{BASE}foo') is False)
     check('子路径 /api/<MARK>foo/child 命中', requires_auth(f'{BASE}foo/child') is False)
@@ -339,7 +385,7 @@ def round6_prefix_boundary():
 def round7_cache_invalidation(app_c):
     section('第 7 轮 缓存失效（改动立即生效，无需等 TTL）')
     policy = _mk_policy(name=f'Cache {MARK}', level='service', path_prefix=f'{BASE}cache/',
-                        auth_mode='open', status='normal', app_scope='inherit')
+                        auth_mode='open', status='normal')
     check('初始开放（并已填充缓存）', requires_auth(f'{BASE}cache/probe') is False)
 
     policy.auth_mode = 'auth'
@@ -351,25 +397,29 @@ def round7_cache_invalidation(app_c):
     check('改 status 后立即生效',
           resolve_service_policy(f'{BASE}cache/probe')['status'] == 'maintenance')
 
-    policy.auth_mode = 'auth'
-    policy.app_scope = 'whitelist'
+    # 单价改动同样即时生效（额度判定读的是独立价格表 + 它的进程内缓存）
+    # 先把状态恢复「正常」，否则请求会先被维护态 30004 拦下、测不到额度拦截
     policy.status = 'normal'
-    policy.save(update_fields=['auth_mode', 'app_scope', 'status', 'updated_time'])
-    check('白名单为空时项目不通过',
-          not _allowed(f'{BASE}cache/probe', app_c))
-    policy.apps.set([app_c])
-    check('加入白名单后立即放行（M2M 改动即时失效缓存）',
-          _allowed(f'{BASE}cache/probe', app_c))
+    policy.save(update_fields=['status', 'updated_time'])
+    UserApp.objects.filter(pk=app_c.pk).update(balance=1)
+    price_row = _mk_price(f'{BASE}cache/', 'service', 100)
+    check('新增单价后立即生效（缓存已失效）',
+          resolve_price(f'{BASE}cache/probe') == 100)
+    check('余额 1 点付不起 100 点 → 被额度拦下', not _allowed(f'{BASE}cache/probe', app_c))
+    price_row.price = 1
+    price_row.save(update_fields=['price', 'updated_time'])
+    check('单价降到 1 点后立即放行', _allowed(f'{BASE}cache/probe', app_c))
 
     invalidate_api_service_policy_cache()
+    invalidate_api_price_cache()
     check('显式失效函数可用', isinstance(requires_auth(f'{BASE}cache/probe'), bool))
 
 
 def _allowed(path, app):
-    """签名后是否放行（未被白名单拒绝）"""
+    """签名后是否放行（未被额度拒绝）"""
     anon = Client()
     resp = anon.get(path, _signed(app))
-    return _code(resp) != StatusCode.FORBIDDEN
+    return _code(resp) != StatusCode.QUOTA_EXCEEDED
 
 
 # ───────────────────────── 第 8 轮：控制台页面 ─────────────────────────
@@ -377,7 +427,10 @@ def _allowed(path, app):
 def round8_console(client, app_a):
     section('第 8 轮 控制台页面与增删改（/console/services/）')
     url = reverse('website:console_services')
-    check('匿名访问跳转登录（302）', Client().get(url).status_code == 302)
+    # 默认「后台入口隐身」开启 → 匿名一律 404（与不存在的地址无差别）；关掉隐身才 302。
+    # 写死 302 会在默认配置下恒失败（与 test_console_audit.py 同口径）。
+    denied = 404 if SecuritySetting.get_solo().hide_console else 302
+    check('匿名访问被拦（隐身 404 / 否则 302）', Client().get(url).status_code == denied)
 
     resp = client.get(url)
     body = resp.content.decode()
@@ -397,46 +450,45 @@ def round8_console(client, app_a):
     prefix = f'{BASE}console/'
     resp = client.post(url, {'action': 'create', 'name': f'Console {MARK}',
                              'service': prefix, 'status': 'normal', 'auth_mode': 'auth',
-                             'app_scope': 'whitelist', 'docs_visible': 'hidden',
-                             'audience': 'admin_only',
-                             'apps': [str(app_a.pk)], 'remark': 'created'})
+                             'docs_visible': 'hidden',
+                             'audience': 'admin_only', 'remark': 'created'})
     policy = ApiServicePolicy.objects.filter(path_prefix=prefix).first()
     check('视图新建策略成功（层级自动推导为服务级）',
           resp.status_code == 302 and policy is not None and policy.level == 'service')
-    check('新建时保存了白名单项目', policy is not None and policy.apps.count() == 1)
     check('新建时保存了文档可见性 / 使用范围',
           policy is not None and policy.docs_visible == 'hidden'
           and policy.audience == 'admin_only')
     check('新建后立即生效（需要认证）', requires_auth(f'{prefix}probe') is True)
+    check('服务策略表单已无单价输入（单价已迁到「线路价格」页）',
+          'name="price"' not in body)
 
     # 编辑（改为线路级 open）
     channel = f'{BASE}console/ch/'
     resp = client.post(url, {'action': 'edit', 'id': str(policy.pk), 'name': f'Console2 {MARK}',
                              'service': prefix, 'channels': [channel], 'status': 'normal',
-                             'auth_mode': 'open', 'app_scope': 'all', 'docs_visible': 'visible',
+                             'auth_mode': 'open', 'docs_visible': 'visible',
                              'audience': 'normal', 'remark': 'edited'})
     policy.refresh_from_db()
-    check('编辑生效（层级推导为线路级 / 模式 / 范围 / 备注）',
+    check('编辑生效（层级推导为线路级 / 模式 / 备注）',
           resp.status_code == 302 and policy.level == 'channel'
           and policy.path_prefix == channel and policy.auth_mode == 'open'
-          and policy.app_scope == 'all' and policy.remark == 'edited')
+          and policy.remark == 'edited')
     check('编辑生效（文档可见性 / 使用范围）',
           policy.docs_visible == 'visible' and policy.audience == 'normal')
-    check('编辑后白名单已清空', policy.apps.count() == 0)
     check('编辑后认证模式立即生效（开放）', requires_auth(f'{channel}probe') is False)
 
     # 表单校验
     client.post(url, {'action': 'create', 'name': '', 'service': prefix,
-                      'status': 'normal', 'auth_mode': 'auth', 'app_scope': 'all',
+                      'status': 'normal', 'auth_mode': 'auth',
                       'docs_visible': 'inherit', 'audience': 'inherit'})
     check('缺少名称被拒且不新建',
           ApiServicePolicy.objects.filter(path_prefix=channel).count() == 1)
     client.post(url, {'action': 'create', 'name': 'bad', 'service': 'no-slash',
-                      'status': 'normal', 'auth_mode': 'auth', 'app_scope': 'all',
+                      'status': 'normal', 'auth_mode': 'auth',
                       'docs_visible': 'inherit', 'audience': 'inherit'})
     check('非法服务被拒', not ApiServicePolicy.objects.filter(name='bad').exists())
     client.post(url, {'action': 'create', 'name': 'badfield', 'service': f'{BASE}badfield/',
-                      'status': 'normal', 'auth_mode': 'auth', 'app_scope': 'all',
+                      'status': 'normal', 'auth_mode': 'auth',
                       'docs_visible': 'whatever', 'audience': 'inherit'})
     check('非法文档可见性被拒', not ApiServicePolicy.objects.filter(name='badfield').exists())
 
@@ -444,7 +496,7 @@ def round8_console(client, app_a):
     old_pk = policy.pk
     resp = client.post(url, {'action': 'create', 'name': f'Takeover {MARK}',
                              'service': prefix, 'channels': [channel],
-                             'status': 'normal', 'auth_mode': 'auth', 'app_scope': 'all',
+                             'status': 'normal', 'auth_mode': 'auth',
                              'docs_visible': 'inherit', 'audience': 'inherit'})
     policy = ApiServicePolicy.objects.filter(path_prefix=channel).first()
     check('选中已占用线路 → 原策略让位、新策略接管',
@@ -558,12 +610,12 @@ def round11_status_icons():
 
     ch_prefix, ep_a, ep_b = f'{BASE}line/', f'{BASE}line/one', f'{BASE}line/two'
     line = _mk_policy(name=f'Line {MARK}', level='channel', path_prefix=ch_prefix,
-                      status='normal', auth_mode='inherit', app_scope='inherit')
+                      status='normal', auth_mode='inherit')
     check('线路无异常时状态为 normal',
           channel_status_fields([ep_a, ep_b])['status'] == 'normal')
 
     ep = _mk_policy(name=f'LineEp {MARK}', level='endpoint', path_prefix=ep_a,
-                    status='maintenance', auth_mode='inherit', app_scope='inherit')
+                    status='maintenance', auth_mode='inherit')
     check('端点级维护会体现在线路状态上',
           channel_status_fields([ep_a, ep_b])['status'] == 'maintenance')
     check('线路状态图标与配色随之变化',
@@ -715,7 +767,7 @@ def round13_multi_channel(client):
 
     resp = client.post(url, {'action': 'create', 'name': f'Multi {MARK}',
                              'service': svc, 'channels': [ch1, ch2],
-                             'status': 'normal', 'auth_mode': 'open', 'app_scope': 'inherit',
+                             'status': 'normal', 'auth_mode': 'open',
                              'docs_visible': 'inherit', 'audience': 'inherit'})
     policy = ApiServicePolicy.objects.filter(path_prefix=ch1).first()
     check('多选线路创建成功（一条策略两条线路）',
@@ -735,7 +787,7 @@ def round13_multi_channel(client):
     # 编辑：改成三条线路
     resp = client.post(url, {'action': 'edit', 'id': str(policy.pk), 'name': f'Multi2 {MARK}',
                              'service': svc, 'channels': [ch3, ch1, ch2],
-                             'status': 'maintenance', 'auth_mode': 'open', 'app_scope': 'inherit',
+                             'status': 'maintenance', 'auth_mode': 'open',
                              'docs_visible': 'inherit', 'audience': 'inherit'})
     policy.refresh_from_db()
     check('编辑可增删线路且三条均生效',
@@ -746,7 +798,7 @@ def round13_multi_channel(client):
     # 让位：另一条策略只接管其中一条 → 原策略保留其余线路
     client.post(url, {'action': 'create', 'name': f'Steal {MARK}',
                       'service': svc, 'channels': [ch2],
-                      'status': 'normal', 'auth_mode': 'auth', 'app_scope': 'inherit',
+                      'status': 'normal', 'auth_mode': 'auth',
                       'docs_visible': 'inherit', 'audience': 'inherit'})
     policy.refresh_from_db()
     thief = ApiServicePolicy.objects.filter(name=f'Steal {MARK}').first()
@@ -762,7 +814,7 @@ def round13_multi_channel(client):
     stolen = {ch1, ch3}
     client.post(url, {'action': 'create', 'name': f'StealAll {MARK}',
                       'service': svc, 'channels': [ch1, ch3],
-                      'status': 'normal', 'auth_mode': 'auth', 'app_scope': 'inherit',
+                      'status': 'normal', 'auth_mode': 'auth',
                       'docs_visible': 'inherit', 'audience': 'inherit'})
     check('全部线路被接管 → 原策略让位删除',
           not ApiServicePolicy.objects.filter(pk=policy.pk).exists()
@@ -779,16 +831,20 @@ def round14_bulk_delete(client):
     check('列表页含批量删除表单与勾选框',
           'name="action" value="delete_bulk"' in body and 'service_batch_form' in body
           and 'data-row-check' in body and 'data-select-all' in body and 'data-batch-delete' in body)
-    check('弹窗为三块分区 + 白名单默认可折叠',
-          'data-apps-panel' in body and 'data-app-scope' in body
-          and '作用范围' in body and '对外表现' in body and 'data-apps-search' in body)
+    check('弹窗为两块分区且无单价输入',
+          'name="price"' not in body and '作用范围' in body and '对外表现' in body)
+    check('白名单相关 UI 已彻底移除',
+          'data-apps-panel' not in body and 'data-app-scope' not in body
+          and '白名单' not in body)
+    check('列表页不再有单价列',
+          '项目范围' not in body and '生效结果' in body)
 
     svc = f'{BASE}bulk/'
     prefixes = [f'{svc}a/', f'{svc}b/', f'{svc}c/']
     for i, prefix in enumerate(prefixes):
         client.post(url, {'action': 'create', 'name': f'Bulk{i} {MARK}',
                           'service': svc, 'channels': [prefix],
-                          'status': 'normal', 'auth_mode': 'auth', 'app_scope': 'inherit',
+                          'status': 'normal', 'auth_mode': 'auth',
                           'docs_visible': 'inherit', 'audience': 'inherit'})
     ids = [str(p.pk) for p in ApiServicePolicy.objects.filter(path_prefix__in=prefixes)]
     check('三条策略已就绪（供批量删除）', len(ids) == 3, f'ids={ids}')
@@ -928,7 +984,7 @@ def main():
         round3_auth_inherit()
         round4_status_inherit()
         app_b = _mk_app('B')
-        round5_whitelist_inherit(app_a, app_b)
+        round5_credit_inherit(app_a, app_b)
         round6_prefix_boundary()
         app_c = _mk_app('C')
         round7_cache_invalidation(app_c)

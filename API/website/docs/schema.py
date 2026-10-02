@@ -43,6 +43,31 @@ class ParamSpec:
     repeat_hint: str = ''
     accept: str = ''
     dynamic_options: str = ''
+    # 本机凭据：该参数**不在**在线调试的参数表单里填，改由文档页右侧栏「本机凭据」卡片提供
+    # （值存在浏览器 localStorage，不上传、不落库），调试发请求时按参数名自动带上。
+    # 用于「长文本、只在本地留着、每次调试都要用」的凭据，如抖音登录 Cookie：
+    # 放在参数表单里就得每次重新粘贴，放在右栏则是填一次、保存一次、长期复用。
+    local: bool = False
+
+
+@dataclass
+class ResponseFieldSpec:
+    """响应体里某个字段的说明
+
+    **只描述 `data` 内部**：外层 `{code, msg, data}` 信封是所有接口统一的，由文档页的
+    「响应格式」区块统一说明，各端点不重复声明。
+
+    name 用点号 / `[]` 表达层级，如 `id`、`user.nickname`、`list[].play_url`：
+    一张**扁平表**就能说清嵌套结构，渲染时按层级缩进，不必嵌套 dataclass。
+
+    type 取值：string / int / float / bool / object / array / null（渲染时原样展示，
+    不做本语言映射，避免给调用方错误的类型暗示）。
+    """
+    name: str
+    type: str = 'string'
+    desc: str = ''
+    # 渲染用：按 name 的层级算出的缩进级别（由 docs_views._field_indent 填充，声明处不用写）
+    indent: int = 0
 
 
 @dataclass
@@ -85,6 +110,14 @@ class EndpointSpec:
     # 响应正文是 Markdown（如 AI 对话接口的 data.reply）：在线调试把正文按 Markdown 渲染排版，
     # 而非直接回显 JSON 里的原始字符串。声明后文档页会额外加载 marked 与 docs_markdown.js。
     markdown: bool = False
+    # ===== 响应说明（三者可组合；都不声明时端点页只显示「外层统一格式」的指引）=====
+    # 结构化字段表：适用于**结构固定**的接口（自研接口、固定信封的业务接口），读代码写准。
+    response_fields: List['ResponseFieldSpec'] = field(default_factory=list)
+    # 一段文字说明：适用于**透传上游**的接口 —— 字段由上游决定、随时可能变，
+    # 此时**不逐个承诺字段**（写了也会过期误导），改为说明 data 的构成方式。
+    response_note: str = ''
+    # 真实返回示例（JSON 文本原样展示）。可与上面两者组合；上游接口尤其推荐给一段真实示例。
+    response_example: str = ''
 
 
 @dataclass
@@ -97,7 +130,7 @@ class ChannelSpec:
     """
     slug: str
     name: str
-    provider: str = ''        # 线路/平台说明，如 “VMEmail(minmail.app) 临时邮箱”
+    provider: str = ''        # 线路/平台说明，如 “VMEmail（mail.cx）临时邮箱”
     auth_note: str = ''       # open / auth / inherit
     note: str = ''
     endpoints: List[EndpointSpec] = field(default_factory=list)

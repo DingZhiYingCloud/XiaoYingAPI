@@ -4,7 +4,7 @@
 - self：自研生成引擎（Pillow 绘制），支持字符图片 / 算术两类，服务端生成 + 一次性校验。
 后续新增验证码类型（如滑块）时在 channels / endpoints 追加即可。
 """
-from .schema import ChannelSpec, EndpointSpec, ParamSpec, ServiceSpec
+from .schema import ChannelSpec, EndpointSpec, ParamSpec, ResponseFieldSpec, ServiceSpec
 
 SERVICE = ServiceSpec(
     slug='captcha_self',
@@ -41,9 +41,14 @@ SERVICE = ServiceSpec(
                                            desc='选填：仅 kind=char 生效，取值 4-6（默认 4）'),
                              ],
                              notes=['请求方式 GET，参数放 query string；公开接口，无需项目签名。',
-                                    '返回 data.captcha_id 必须与答案一起回传给 verify；'
-                                    'data.image 为 base64 data URI，可直接用于 <img src>；'
-                                    'data.expire_in 为有效期（秒，默认 300）。']),
+                                    'captcha_id 必须与答案一起回传给 verify；image 可直接用作 <img src>。'],
+                             response_fields=[
+                                 ResponseFieldSpec('captcha_id', 'string', '验证码ID，校验时回传'),
+                                 ResponseFieldSpec('kind', 'string', '类型：char/arithmetic'),
+                                 ResponseFieldSpec('image', 'string', 'base64 图片（data URI）'),
+                                 ResponseFieldSpec('expire_in', 'int', '有效期（秒）'),
+                             ],
+                             response_example='{"captcha_id": "9f1c1f14-6b0a-4a3e-9c31-2c9b6f0d1a55", "kind": "char", "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg...", "expire_in": 300}'),
                 EndpointSpec('verify', '校验验证码', 'POST', '/api/captcha_self/verify',
                              summary='提交用户答案校验，一次性消费（校验后立即失效）。',
                              params=[
@@ -58,7 +63,11 @@ SERVICE = ServiceSpec(
                                     '校验通过：code=10000 且 data.passed=true；',
                                     '未通过（答案错误 / 已过期 / 已使用 / 不存在）：code=20003 且 data.passed=false，原因见 msg；',
                                     'captcha_id 非 UUID 时返回 code=20002，参数缺失时返回 code=20001。',
-                                    '答案一次性：同一条验证码重复提交只会成功一次，失败后需重新调用 generate。']),
+                                    '答案一次性：同一条验证码重复提交只会成功一次，失败后需重新调用 generate。'],
+                             response_fields=[
+                                 ResponseFieldSpec('passed', 'bool', '是否校验通过'),
+                             ],
+                             response_example='{"passed": true}'),
             ],
         ),
     ],

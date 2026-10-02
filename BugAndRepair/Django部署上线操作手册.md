@@ -41,14 +41,17 @@
 | 4 | 配置 `.env` 环境变量 | 至少 `SECRET_KEY`、`DEBUG=False`、`ALLOWED_HOSTS` | ☐ |
 | 5 | 收集静态文件 | `collectstatic --noinput` | ☐ |
 | 6 | 校验迁移文件已入库（A-05） | 线上只 `migrate`，禁止 `makemigrations` | ☐ |
-| 7 | 执行数据库迁移 | `migrate` | ☐ |
+| 7 | 执行数据库迁移 | `migrate`；**迁移 `0053` / `0054` 后既有项目余额一律为 0**，需在「项目额度」页逐个充值 | ☐ |
 | 8 | ~~重建 API 服务分类树~~ | **已废弃（分类树已移除）**：改用「服务策略」（服务/线路/端点三级继承），随迁移 `0028` 自动写入公开节点，无需命令 | ☐ |
+| 8.1 | 给接入项目充值额度 | 控制台「项目额度」`/console/credits/`：不充值则项目调用一切 `/api/`（开放接口除外）都返回 `30012 额度不足` | ☐ |
+| 8.2 | 设置调用单价 | 控制台「线路价格」`/console/prices/`：按服务 / 线路 / 端点三级设价（留空=跟随上级、兜底 1 点/次）；不设价则全部按默认 1 点/次 计费 | ☐ |
 | 9 | 创建超级管理员 | `createsuperuser`；**登录入口是 `/login/`** | ☐ |
 | 10 | 配置 uwsgi.ini | 仅监听回环地址 | ☐ |
 | 11 | 启动 uwsgi 并验证 | 看日志 `ready` + curl 首页 | ☐ |
 | 12 | 配置 Nginx 反向代理 | 指向 `127.0.0.1:{端口}` | ☐ |
 | 13 | 配置 SSL 证书 | 强制 HTTPS | ☐ |
 | 14 | 上线验证 | 官网页面 + 语言切换 + 接口签名 | ☐ |
+| 15 | 配置数据库自动备份 | 加一条 cron 跑 `scripts/backup_db.py`；**必须用 `www` 用户执行**；详见第八节 | ☐ |
 
 ---
 
@@ -258,6 +261,8 @@ runuser -u www -- $PY manage.py migrate
 ```bash
 $PY manage.py showmigrations    # 所有迁移应为 [X]（已应用）
 ```
+
+> ⚠️ **迁移 `0053` / `0054`（额度体系 + 单价独立成表）的连带操作**：本次改造把「服务白名单」下线、改为「**项目额度（点数余额）**」，并把调用单价从服务策略里**拆成独立的「线路价格」表**。迁移只做结构变更（`0053`：`ApiServicePolicy` 删 `app_scope` / `apps`、加 `price`；`UserApp` 删 `daily_limit` / `monthly_limit`、加 `balance`；新建 `app_credit_ledger`。`0054`：`ApiServicePolicy` 删 `price`、新建 `api_price_policy`、两张统计表加 `cost_points`，并把旧 `price` 非空值搬进新表），**不会给任何既有项目放行** —— 迁移后**全部既有接入项目的余额都是 `0`**，在充值之前它们调用一切 `/api/`（开放接口除外）都会返回 `30012 额度不足`。因此上线后请到控制台「**项目额度**」页 `/console/credits/`（左栏「数据运营」组）给需要放行的项目**逐个充值**（正数充值、负数扣回纠错），每笔都会记一条充值流水。新建 / 自助创建的项目同样默认 `0` 点，需超管手动充值。调用单价则在「**线路价格**」页 `/console/prices/`（左栏「接口治理」组）按服务 / 线路 / 端点三级设置，留空 = 跟随上级、兜底 `1` 点/次；不上线设价的话所有接口都按默认 1 点/次 计费。
 
 ---
 
@@ -560,3 +565,86 @@ proxy_set_header Host $host;
 
 > 一句话记法：**本地四项（`DEBUG` / `ALLOWED_HOSTS` / `XYAPI_COOKIE_ISOLATION` / uwsgi 监听地址）怎么宽松都行，生产一律反过来。**
 > `.env.example` 与本节是这两套口径的权威说明；本机 `.env` 里 `XYAPI_COOKIE_ISOLATION`、`PROXY_JULIANG_API_BASE` 的注释也标了两种取值，改 `.env` 前先读那几行。
+
+---
+
+## 八、数据库自动备份与恢复
+
+库是 SQLite（`db.sqlite3`），备份脚本为 `scripts/backup_db.py`（在线备份 + 完整性校验 + gzip + 按份数轮转）。
+
+### 1. 为什么不能直接 `cp db.sqlite3`
+
+库是**多 worker 并发写**的（uwsgi prefork + 后台巡检线程 + 批量导入），而且开了 WAL。`cp` 出来的副本很可能停在「写了一半」的状态——恢复时轻则丢最近的写入、重则直接 `database disk image is malformed`。脚本用的是 SQLite 官方的**在线备份接口**（`Connection.backup()`）：在事务边界上分页拷贝，**不用停服务、不阻塞写入**，产出的副本与源库自洽；落盘前还会对副本跑一次 `PRAGMA integrity_check`，不通过就报错退出并丢弃半成品（**绝不把坏备份留在备份目录里**）。
+
+### 2. 手工跑一次（先确认能用）
+
+```bash
+cd /www/XiaoYing/XiaoYingAPI
+runuser -u www -- .venv/bin/python scripts/backup_db.py            # 产出 ./backups/db-YYYYmmdd-HHMMSS.sqlite3.gz
+runuser -u www -- .venv/bin/python scripts/backup_db.py --keep 30  # 保留最新 30 份（默认 14）
+```
+
+常用参数：`--db`（源库，默认 `<项目根>/db.sqlite3`）、`--out`（输出目录，默认 `<项目根>/backups`）、`--keep`（保留份数，`0` = 不轮转）、`--no-compress`（直接产出 `.sqlite3`）。
+
+**必须用 `runuser -u www`**：以 root 跑会把产物写成 root 属主（第五节第 13 条），之后 `www` 自己反而删不掉、轮转失败。退出码约定：`0` 成功、`1` 失败（cron / 监控据此判断，失败不会静默）。
+
+### 3. 配置 cron（每天 03:30）
+
+```bash
+# 编辑 www 自己的 crontab（避免 root 属主问题，也免得 cron 环境缺 PATH/LANG）
+sudo -u www crontab -e
+```
+
+```cron
+# 每天 03:30 备份数据库，日志追加到 logs/backup.log
+# 注意：cron 的默认 PATH 很干净，用绝对路径；先 cd 进项目根，脚本按相对位置找 .venv
+30 3 * * * cd /www/XiaoYing/XiaoYingAPI && .venv/bin/python scripts/backup_db.py >> logs/backup.log 2>&1
+```
+
+> 用 `sudo -u www crontab -e` 而不是 `sudo crontab -e`：后者以 root 运行，产物会变成 root 属主。
+> 若坚持写在 root 的 crontab 里，命令必须包一层 `runuser -u www -- bash -c '...'`。
+
+**检查是否在跑**：`tail -n 5 logs/backup.log` 应能看到 `完成：db-….sqlite3.gz（… MB，校验通过）`；`ls -lh backups/` 里最新一份的时间应是当天。
+
+### 4. 备份目录不要暴露给 Nginx
+
+备份产物放在项目根的 `backups/`（已在 `.gitignore` 中忽略，不会入库）。**不要**把它放到 `static/` 或 `media/` 下——那两个目录由 Nginx 直接对外提供，等于把整库公开下载。第六节第 5 条的 Nginx 拦截规则（`location ~* ^/(db\.sqlite3|\.env|uwsgi\.ini|.*\.py)$ { deny all; }`）建议再补一条备份文件名模式：
+
+```nginx
+location ~* ^/backups/ { deny all; }
+```
+
+### 5. 恢复（先停服务，再覆盖）
+
+```bash
+cd /www/XiaoYing/XiaoYingAPI
+sudo systemctl stop <你的 uwsgi 服务名>          # 或 uwsgi --stop <pidfile>
+
+cp db.sqlite3 db.sqlite3.broken.$(date +%s)     # 先把坏库挪开，别直接毁掉
+gunzip -c backups/db-YYYYmmdd-HHMMSS.sqlite3.gz > db.sqlite3
+rm -f db.sqlite3-wal db.sqlite3-shm             # WAL/SHM 是旧库的伴生文件，必须一并清掉
+
+chown www:www db.sqlite3                        # 属主要对（见第五节第 13 条）
+sudo systemctl start <你的 uwsgi 服务名>
+runuser -u www -- .venv/bin/python manage.py migrate   # 若备份早于当前代码，补跑迁移
+```
+
+### 6. 异地副本要加密
+
+备份与源库同盘时，不加密不会新增暴露面（数据本来就在那儿）；但**拷到异地 / 对象存储前应当加密**，例如：
+
+```bash
+openssl enc -aes-256-cbc -pbkdf2 -in backups/db-xxx.sqlite3.gz -out db-xxx.sqlite3.gz.enc
+```
+
+顺带一提：备份里含**接入项目的 APPSECRET 与后台维护的 AI Key 的密文**，而它们的解密依赖 `.env` 的 `SECRET_KEY`——所以 `SECRET_KEY` 也必须单独妥善备份，否则只恢复数据库也解不开这些凭据（见第六节第 2 条）。
+
+### 7. 上线验证清单
+
+| 项 | 期望 |
+| --- | --- |
+| 手工跑一次 | 退出码 0，`backups/` 出现当天的 `.sqlite3.gz`，日志含「校验通过」 |
+| 产物属主 | `ls -l backups/` 是 `www:www`（不是 root） |
+| 恢复演练 | 随便挑一份备份按第 5 节恢复到一个**临时目录**下的库，`PRAGMA integrity_check` 返回 `ok` |
+| cron 生效 | 等到下一个 03:30（或临时把时间改成 1 分钟后）看 `logs/backup.log` 是否新增一行 |
+| 轮转 | 连续跑几次后 `ls backups/` 的份数不超过 `--keep` |

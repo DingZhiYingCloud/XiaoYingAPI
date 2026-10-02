@@ -21,14 +21,17 @@ from django.utils.translation import gettext as _
 
 # 键 -> (中文文案, 徽标样式, 图标名, 图标前景色, 说明)
 # 注：中文为源语言，展示时统一经 status_def() 翻译，请勿在本表内直接翻译。
+# 徽标一律加 `text-base-content`：软色徽标（badge-soft）默认的文字色就是主题里那支高亮色本身，
+# 在浅色主题下对比度只有 1.86:1（Lighthouse 实测，远低于 WCAG 要求的 4.5:1）。改用主题正文色后，
+# 浅色/深色主题下都达标；颜色的区分由底色软色 + 旁边的状态图标共同承担。
 STATUS_DEFS = {
-    'normal':      {'label': '正常',   'badge': 'badge-soft badge-success',
+    'normal':      {'label': '正常',   'badge': 'badge-soft badge-success text-base-content',
                     'icon': 'circle-check',  'fg': 'text-success', 'desc': '正常对外可用'},
-    'dev':         {'label': '开发中', 'badge': 'badge-soft badge-info',
+    'dev':         {'label': '开发中', 'badge': 'badge-soft badge-info text-base-content',
                     'icon': 'flask-conical', 'fg': 'text-info',    'desc': '开发/测试阶段，功能可能不稳定'},
-    'maintenance': {'label': '维护中', 'badge': 'badge-soft badge-warning',
+    'maintenance': {'label': '维护中', 'badge': 'badge-soft badge-warning text-base-content',
                     'icon': 'wrench',        'fg': 'text-warning', 'desc': '临时维护，暂停使用'},
-    'offline':     {'label': '已下线', 'badge': 'badge-soft badge-error',
+    'offline':     {'label': '已下线', 'badge': 'badge-soft badge-error text-base-content',
                     'icon': 'ban',           'fg': 'text-error',   'desc': '服务下线，不可用'},
 }
 STATUS_KEYS = list(STATUS_DEFS.keys())

@@ -15,21 +15,21 @@ from django.middleware.csrf import CsrfViewMiddleware
 from API.common import StatusCode
 from API.common import api_stats
 
+_logger = logging.getLogger('api.request')
+
 
 # ==================== 服务策略查询缓存 ====================
 # ApiAuthMiddleware 每个 /api/ 请求都会做一次策略前缀匹配。
 # 策略数量少、变更不频繁，引入进程内 TTL 缓存避免请求级 DB 查询：
 #   - 默认 60s，可用 settings.API_SERVICE_POLICY_CACHE_TTL 调整（秒）
-#   - 后台保存 / 删除策略、改动白名单（apps）后由 API/apps.py 的信号主动失效；
+#   - 后台保存 / 删除策略后由 API/apps.py 的信号主动失效；
 #     显式调用 invalidate_api_service_policy_cache() 亦可立即失效（测试 / 管理命令用）
-# 同时缓存「白名单策略 -> 授权项目 app_id 集合」，让白名单校验也走缓存、不逐请求查 M2M。
-_POLICY_CACHE = {'ts': 0.0, 'policies': [], 'apps': {}}
+_POLICY_CACHE = {'ts': 0.0, 'policies': []}
 
 
 def invalidate_api_service_policy_cache():
-    """立即使服务策略缓存失效（后台改动策略 / 白名单后调用）"""
+    """立即使服务策略缓存失效（后台改动策略后调用）"""
     _POLICY_CACHE['policies'] = []
-    _POLICY_CACHE['apps'] = {}
     _POLICY_CACHE['ts'] = 0.0
 
 
@@ -40,7 +40,8 @@ def _policy_nodes():
     故全部策略都参与匹配。
 
     一条策略可覆盖多条线路（``extra_prefixes``），故这里把每条策略按其全部前缀
-    展开成多个节点——节点仍带同一个策略 id，白名单等按 id 归属的语义不受影响。
+    展开成多个节点。端点级前缀由 service_tree 截断到最后一个静态段（不含转换器），
+    因此前缀匹配对所有层级都成立。
     """
     ttl = getattr(settings, 'API_SERVICE_POLICY_CACHE_TTL', 60)
     now = time.monotonic()
@@ -50,27 +51,24 @@ def _policy_nodes():
     policies = []
     for row in (ApiServicePolicy.objects
                 .values('id', 'path_prefix', 'extra_prefixes', 'status', 'auth_mode',
-                        'app_scope', 'docs_visible', 'audience')):
+                        'docs_visible', 'audience')):
         prefixes = [row['path_prefix'], *(row['extra_prefixes'] or [])]
         for prefix in prefixes:
             policies.append({**row, 'path_prefix': prefix})
-    apps = {}
-    for policy_id, app_id in (ApiServicePolicy.objects.filter(app_scope='whitelist')
-                              .values_list('id', 'apps__app_id')):
-        if app_id:
-            apps.setdefault(policy_id, set()).add(app_id)
     _POLICY_CACHE['policies'] = policies
-    _POLICY_CACHE['apps'] = apps
     _POLICY_CACHE['ts'] = now
     return policies
 
 
-def _prefix_match(path, prefix):
+def prefix_match(path, prefix):
     """前缀命中判定（带段边界，避免 /api/foo 误命中 /api/foobar）
 
     - path == prefix：精确命中；
     - prefix 以 '/' 结尾：目录式前缀，path 以其为前缀即命中；
     - 否则为叶子前缀：仅 path 等于它或以 ``prefix + '/'`` 开头才命中。
+
+    调用单价（`API/common/credit_guard.py`）复用同一套判定，保证「展示的价格」
+    与「真正扣费时用的价格」口径一致。
     """
     if path == prefix:
         return True
@@ -81,20 +79,14 @@ def _prefix_match(path, prefix):
 
 def _policy_chain(path):
     """命中该路径的全部策略，按 path_prefix 长度降序（最具体在前）"""
-    matched = [p for p in _policy_nodes() if _prefix_match(path, p['path_prefix'])]
+    matched = [p for p in _policy_nodes() if prefix_match(path, p['path_prefix'])]
     matched.sort(key=lambda p: len(p['path_prefix']), reverse=True)
     return matched
-
-
-def policy_allows_app(policy_id, app_id):
-    """该策略自己的白名单是否包含该调用项目"""
-    return app_id in _POLICY_CACHE['apps'].get(policy_id, set())
 
 
 # resolve_service_policy() 在各字段都没命中时的全局兜底（fail-closed）
 DEFAULT_STATUS = 'normal'
 DEFAULT_AUTH_MODE = 'auth'
-DEFAULT_APP_SCOPE = 'all'
 DEFAULT_DOCS_VISIBLE = 'visible'
 DEFAULT_AUDIENCE = 'normal'
 
@@ -103,39 +95,33 @@ def resolve_service_policy(path):
     """逐字段逐级继承，返回某路径的生效策略
 
     在该路径命中的策略链上（最具体在前），每个字段取第一个非 inherit 的值；
-    都没命中时用全局兜底：status=normal / auth_mode=auth（fail-closed）/ app_scope=all。
+    都没命中时用全局兜底：status=normal / auth_mode=auth（fail-closed）。
 
-    返回：{'status', 'auth_mode', 'app_scope', 'docs_visible', 'audience',
-          'whitelist_policy_id', 'chain'}
-    - whitelist_policy_id：生效值为 whitelist 时，那条策略的 id（白名单只认它自己的名单）
+    返回：{'status', 'auth_mode', 'docs_visible', 'audience', 'chain'}
+
+    注意：**调用单价不在这里** —— 单价由独立的 `ApiPricePolicy` 管理，见
+    `API/common/credit_guard.py` 的 `resolve_price()`。
     """
-    status = auth_mode = app_scope = None
+    status = auth_mode = None
     docs_visible = audience = None
-    whitelist_policy_id = None
     chain = _policy_chain(path)
     for policy in chain:
         if status is None and policy['status'] != 'inherit':
             status = policy['status']
         if auth_mode is None and policy['auth_mode'] != 'inherit':
             auth_mode = policy['auth_mode']
-        if app_scope is None and policy['app_scope'] != 'inherit':
-            app_scope = policy['app_scope']
-            if app_scope == 'whitelist':
-                whitelist_policy_id = policy['id']
         if docs_visible is None and policy['docs_visible'] != 'inherit':
             docs_visible = policy['docs_visible']
         if audience is None and policy['audience'] != 'inherit':
             audience = policy['audience']
-        if (status is not None and auth_mode is not None and app_scope is not None
+        if (status is not None and auth_mode is not None
                 and docs_visible is not None and audience is not None):
             break
     return {
         'status': status or DEFAULT_STATUS,
         'auth_mode': auth_mode or DEFAULT_AUTH_MODE,
-        'app_scope': app_scope or DEFAULT_APP_SCOPE,
         'docs_visible': docs_visible or DEFAULT_DOCS_VISIBLE,
         'audience': audience or DEFAULT_AUDIENCE,
-        'whitelist_policy_id': whitelist_policy_id,
         'chain': chain,
     }
 
@@ -250,11 +236,15 @@ class ApiRequestLogMiddleware:
             'request_id=%s method=%s path=%s status=%s cost_ms=%.1f app=%s',
             request.request_id, request.method, request.path, response.status_code,
             cost_ms, app_id)
-        # 调用统计（A-03）：进程内聚合 + 批量落库，见 API/common/api_stats.py。
+        # 调用统计（A-03）：进程内聚合 + 后台批量落库，见 API/common/api_stats.py。
         # 统计失败不影响业务（模块内已兜底），仅 /api/ 请求计入；
         # 路径取路由模板并归一参数，避免带 UUID 的接口被拆成大量行。
-        api_stats.record(api_stats.request_path(request), cost_ms,
-                         api_stats.business_code(response), app_id)
+        # 这里再兜一层：响应已经生成好了，统计出任何问题都不该把它变成 500。
+        try:
+            api_stats.record(api_stats.request_path(request), cost_ms,
+                             api_stats.business_code(response), app_id)
+        except Exception:
+            self._logger.exception('调用统计记录失败（不影响业务响应）')
         return response
 
 
@@ -301,9 +291,11 @@ class ApiAuthMiddleware:
        · 需要签名：校验签名（app_id/timestamp/nonce/sign），通过后把项目对象挂到
          request.auth_app 供视图直接使用；失败返回统一 20011
        · 开放：仅显式 open 的策略节点，以及 PUBLIC_PATHS 列出的公开路径（GET / HEAD）
-    4. **项目白名单（签名通过后）**：生效 app_scope=whitelist 且当前项目不在
-       这条策略的名单内 → 返回 20020（FORBIDDEN）。open 模式不校验签名、拿不到调用项目，
-       白名单对其无意义。
+    4. **额度判定（签名通过后）**：项目余额 < 本次调用的生效单价 → 返回 30012（额度不足）。
+       单价来自独立的「线路价格」表（`ApiPricePolicy`），按「服务 / 线路 / 端点」三级继承
+       （端点覆写服务级），兜底 1 点/次；实际扣减不在这里做，而是在调用统计批量落库时
+       按「成功调用」计费（见 API/common/credit_guard.py）。open 模式不校验签名、
+       拿不到调用项目，额度对其无意义。
 
     对外签名契约与原先视图内校验完全一致，对接方无感知。
     """
@@ -344,13 +336,20 @@ class ApiAuthMiddleware:
                         'data': None,
                     })
                 request.auth_app = result
-                # 3) 白名单：签名通过（已拿到调用项目）后再判；open 模式无签名，白名单不生效
-                if (effective['app_scope'] == 'whitelist'
-                        and not policy_allows_app(effective['whitelist_policy_id'],
-                                                  result.app_id)):
+                # 3) 额度：余额 < 本次单价 → 30012（额度不足）。
+                #    单价来自独立的「线路价格」表（进程内缓存），开销极低；
+                #    open 模式无签名，拿不到调用项目，不判。
+                from API.common.credit_guard import insufficient, resolve_price
+                try:
+                    shortage = insufficient(result, resolve_price(request.path))
+                except Exception:
+                    _logger.exception('额度判定失败，本次放行: app=%s',
+                                      getattr(result, 'app_id', '-'))
+                    shortage = None
+                if shortage:
                     return JsonResponse({
-                        'code': StatusCode.FORBIDDEN,
-                        'msg': f'该项目未获授权调用此服务: {result.app_id}',
+                        'code': StatusCode.QUOTA_EXCEEDED,
+                        'msg': shortage,
                         'data': None,
                     })
         return self.get_response(request)

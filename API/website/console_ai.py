@@ -21,7 +21,7 @@ from django.utils.translation import gettext as _
 from API.apis.ai.BuiltInModel import utils as ai_utils
 from API.models import AiModel, AiProvider, AiSystemPrompt
 
-from .admin_auth import superadmin_required
+from .admin_auth import notify_success, superadmin_required
 
 # 厂商标识：英文小写 + 数字，允许 - 与 _
 _CODE_RE = re.compile(r'^[a-z0-9][a-z0-9_-]*$')
@@ -138,7 +138,7 @@ def _provider_create(request):
     provider = AiProvider()
     _apply_provider(data, provider)
     provider.save()
-    messages.success(request, _('厂商「%(name)s」已创建') % {'name': provider.name})
+    notify_success(request, _('厂商「%(name)s」已创建') % {'name': provider.name})
     return _redirect()
 
 
@@ -149,14 +149,14 @@ def _provider_edit(request, provider):
         return _redirect()
     _apply_provider(data, provider)
     provider.save()
-    messages.success(request, _('厂商「%(name)s」已保存') % {'name': provider.name})
+    notify_success(request, _('厂商「%(name)s」已保存') % {'name': provider.name})
     return _redirect()
 
 
 def _provider_toggle(request, provider):
     provider.enabled = not provider.enabled
     provider.save(update_fields=['enabled', 'updated_time'])
-    messages.success(request, _('厂商「%(name)s」已启用') % {'name': provider.name}
+    notify_success(request, _('厂商「%(name)s」已启用') % {'name': provider.name}
                      if provider.enabled
                      else _('厂商「%(name)s」已停用，其下所有模型立即不可用') % {'name': provider.name})
     return _redirect()
@@ -165,7 +165,7 @@ def _provider_toggle(request, provider):
 def _provider_delete(request, provider):
     name = provider.name
     provider.delete()          # 其下模型随外键级联删除
-    messages.success(request, _('厂商「%(name)s」及其模型已删除') % {'name': name})
+    notify_success(request, _('厂商「%(name)s」及其模型已删除') % {'name': name})
     return _redirect()
 
 
@@ -173,7 +173,7 @@ def _provider_test(request, provider):
     """连通性测试：用该厂商的地址与 Key 发一条极短请求，当场验证配置是否可用"""
     ok, detail = ai_utils.test_provider(provider)
     if ok:
-        messages.success(request, _('连通性测试通过：%(detail)s') % {'detail': detail})
+        notify_success(request, _('连通性测试通过：%(detail)s') % {'detail': detail})
     else:
         messages.error(request, _('连通性测试失败：%(detail)s') % {'detail': detail})
     return _redirect()
@@ -317,7 +317,7 @@ def _model_create(request):
     model = AiModel()
     _apply_model(data, model)
     model.save()
-    messages.success(request, _('模型「%(name)s」已创建') % {'name': model.name})
+    notify_success(request, _('模型「%(name)s」已创建') % {'name': model.name})
     return _redirect()
 
 
@@ -328,14 +328,14 @@ def _model_edit(request, model):
         return _redirect()
     _apply_model(data, model)
     model.save()
-    messages.success(request, _('模型「%(name)s」已保存') % {'name': model.name})
+    notify_success(request, _('模型「%(name)s」已保存') % {'name': model.name})
     return _redirect()
 
 
 def _model_toggle(request, model):
     model.enabled = not model.enabled
     model.save(update_fields=['enabled', 'updated_time'])
-    messages.success(request, _('模型「%(name)s」已上架') % {'name': model.name}
+    notify_success(request, _('模型「%(name)s」已上架') % {'name': model.name}
                      if model.enabled
                      else _('模型「%(name)s」已下架') % {'name': model.name})
     return _redirect()
@@ -348,14 +348,14 @@ def _model_set_default(request, model):
     AiModel.objects.filter(is_default=True).exclude(pk=model.pk).update(is_default=False)
     model.is_default = True
     model.save(update_fields=['is_default', 'updated_time'])
-    messages.success(request, _('已把「%(name)s」设为默认模型') % {'name': model.name})
+    notify_success(request, _('已把「%(name)s」设为默认模型') % {'name': model.name})
     return _redirect()
 
 
 def _model_delete(request, model):
     name = model.name
     model.delete()
-    messages.success(request, _('模型「%(name)s」已删除') % {'name': name})
+    notify_success(request, _('模型「%(name)s」已删除') % {'name': name})
     return _redirect()
 
 
@@ -405,7 +405,7 @@ def _prompt_create(request):
     prompt = AiSystemPrompt()
     _apply_prompt(data, prompt)
     prompt.save()
-    messages.success(request, _('系统提示词「%(name)s」已创建') % {'name': prompt.name})
+    notify_success(request, _('系统提示词「%(name)s」已创建') % {'name': prompt.name})
     return _redirect()
 
 
@@ -416,14 +416,14 @@ def _prompt_edit(request, prompt):
         return _redirect()
     _apply_prompt(data, prompt)
     prompt.save()
-    messages.success(request, _('系统提示词「%(name)s」已保存') % {'name': prompt.name})
+    notify_success(request, _('系统提示词「%(name)s」已保存') % {'name': prompt.name})
     return _redirect()
 
 
 def _prompt_toggle(request, prompt):
     prompt.enabled = not prompt.enabled
     prompt.save(update_fields=['enabled', 'updated_time'])
-    messages.success(request, _('系统提示词「%(name)s」已启用') % {'name': prompt.name}
+    notify_success(request, _('系统提示词「%(name)s」已启用') % {'name': prompt.name}
                      if prompt.enabled
                      else _('系统提示词「%(name)s」已停用，停用期间视同不存在') % {'name': prompt.name})
     return _redirect()
@@ -434,14 +434,14 @@ def _prompt_set_global(request, prompt):
     AiSystemPrompt.objects.filter(is_global=True).exclude(pk=prompt.pk).update(is_global=False)
     prompt.is_global = True
     prompt.save(update_fields=['is_global', 'updated_time'])
-    messages.success(request, _('已把「%(name)s」设为全局共享提示词') % {'name': prompt.name})
+    notify_success(request, _('已把「%(name)s」设为全局共享提示词') % {'name': prompt.name})
     return _redirect()
 
 
 def _prompt_delete(request, prompt):
     name = prompt.name
     prompt.delete()            # 引用它的模型外键置空 → 自动回落到全局共享那条
-    messages.success(request, _('系统提示词「%(name)s」已删除') % {'name': name})
+    notify_success(request, _('系统提示词「%(name)s」已删除') % {'name': name})
     return _redirect()
 
 

@@ -4,7 +4,8 @@
 - sv4759：4759 蜘蛛 IP 验证 —— 判断某个 IP 是否属于搜索引擎爬虫。
 后续接入更多验证线路时在 channels 追加即可。
 """
-from .schema import ChannelSpec, EndpointSpec, ParamSpec, ServiceSpec
+from .schema import (ChannelSpec, EndpointSpec, ParamSpec, ResponseFieldSpec,
+                     ServiceSpec)
 
 SERVICE = ServiceSpec(
     slug='spider_verification',
@@ -34,7 +35,25 @@ SERVICE = ServiceSpec(
                                            desc='必填：合法的 IPv4 或 IPv6 地址'),
                              ],
                              notes=['GET 查询接口；本服务需项目签名。',
-                                    '对外部服务查询耗时可能较长，属正常；接口返回 data 为爬虫验证结果（含是否为爬虫及来源类型，以实际返回为准）。']),
+                                    '对外部服务查询耗时可能较长，属正常。'],
+                             response_fields=[
+                                 ResponseFieldSpec('ip', 'string', '被验证的 IP'),
+                                 ResponseFieldSpec('is_spider', 'bool', '是否为搜索引擎爬虫'),
+                                 ResponseFieldSpec('spider_type', 'string', '蜘蛛类型；非蜘蛛为「非蜘蛛」'),
+                                 ResponseFieldSpec('ptr_domain', 'string', '反向解析域名（PTR）'),
+                                 ResponseFieldSpec('matched_domain', 'string', '匹配的官方域名后缀；未匹配为「未匹配」'),
+                                 ResponseFieldSpec('verify_method', 'string', '验证方式'),
+                                 ResponseFieldSpec('result', 'string', '结果描述（如「查询成功」）'),
+                             ],
+                             response_example='''{
+  "ip": "66.249.65.205",
+  "is_spider": true,
+  "spider_type": "谷歌蜘蛛",
+  "ptr_domain": "crawl-66-249-65-205.googlebot.com",
+  "matched_domain": "googlebot.com",
+  "verify_method": "反向DNS验证",
+  "result": "查询成功"
+}'''),
             ],
         ),
     ],

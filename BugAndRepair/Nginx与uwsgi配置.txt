@@ -8,6 +8,14 @@ map $uri $media_disposition {
     ~*\.(svg|html?|xhtml|xml|js|mht|mhtml|php|phtml)$  "attachment";
 }
 
+# S-08 兜底：显式拒绝这些敏感路径的下载。它们本来就不该出现在 Web 根下（Django 侧也没有
+# 对应路由），但一旦静态映射写错、或以后有人加了 alias / 改了 root，这条 deny 就是最后一道
+# 闸 —— db.sqlite3 与 .env 落到公网等于整站数据与凭据全失守。
+# （与《Django部署上线操作手册》第六节第 5 条口径一致；API/static 下没有 .py，故 .*\.py 不会误伤）
+location ~* ^/(db\.sqlite3|db\.sqlite3-wal|db\.sqlite3-shm|\.env|uwsgi\.ini|.*\.py)$ { deny all; }
+# 数据库自动备份目录（scripts/backup_db.py 产物）：含整库数据，绝不能对外提供
+location ~* ^/backups/ { deny all; }
+
 location /static/ {
     alias {XIAOYING_API_ROOT}/static/;
     expires 30d; # 浏览器缓存30天

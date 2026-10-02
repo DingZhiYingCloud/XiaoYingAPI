@@ -291,17 +291,42 @@ def build_messages(content, messages_json=None, system_prompt=None, images=None,
 
 # ==================== HTTP 调用 ====================
 REQUEST_TIMEOUT = 120
-"""对话请求超时（秒）；AI 生成本就慢"""
+"""**后台线程**（反馈审核线程等）的对话超时（秒）；后台不怕慢，给足时间"""
+SYNC_TIMEOUT = 55
+"""**同步**调用（跑在 web 请求线程里）的对话超时（秒）
+
+为什么比后台短：同步调用每一秒都占着 uwsgi worker，而线上 Nginx 的
+`proxy_read_timeout` 默认只有 60s —— 非流式接口一旦超过约 60s，客户端拿到的已经是
+网关超时，worker 再跑下去纯属白占（而且服务端日志还会多出一条「其实是客户端早已走了」
+的慢请求）。压到 55s 让服务端的失败**早于**网关，错误对调用方也更可读。
+"""
 TEST_TIMEOUT = 20
 """后台「测试连通性」的超时（秒），只发一条极短请求"""
 
 # ── 重试配置 ──
 _MAX_RETRIES = 3
-"""最大重试次数（含首次请求，即最多实际发 _MAX_RETRIES 次）"""
+"""**后台线程**调用的最大请求次数（含首次），即最多实际发 _MAX_RETRIES 次"""
+SYNC_MAX_ATTEMPTS = 1
+"""**同步**调用的最大请求次数（含首次）—— 即**不重试**
+
+为什么同步不重试：每多一次重试就多占 worker 一整个 timeout，最坏（3 次 × 120s
+加上 2/4/8s 退避）单个请求能把 worker 占住约 6 分钟，几个并发就能把 prefork 的
+worker 打满、整站不可用；而且走到重试时上游往往整体不可用，重试多半还是失败，
+只是把「快速失败」变成「慢慢失败」。后台线程不怕慢，重试能提高成功率，故仍保留。
+"""
 _RETRY_DELAYS = [2, 4, 8]
 """指数退避间隔（秒），依次为 2s、4s、8s"""
 _RETRYABLE_STATUSES = {502, 503, 504}
 """可重试的 HTTP 状态码（网关/服务暂时不可用）"""
+
+
+def _call_params(background, timeout, attempts):
+    """把 (超时, 尝试次数) 归一：未显式指定时按 background 取对应口径"""
+    if timeout is None:
+        timeout = REQUEST_TIMEOUT if background else SYNC_TIMEOUT
+    if attempts is None:
+        attempts = _MAX_RETRIES if background else SYNC_MAX_ATTEMPTS
+    return timeout, max(1, attempts)
 
 
 def _handle_api_error(resp):
@@ -316,7 +341,7 @@ def _handle_api_error(resp):
         return resp.text or f"HTTP {resp.status_code}"
 
 
-def _request_with_retry(method, url, **kwargs):
+def _request_with_retry(method, url, attempts=_MAX_RETRIES, **kwargs):
     """带指数退避重试的 HTTP 请求
 
     仅在以下情况重试：
@@ -324,10 +349,13 @@ def _request_with_retry(method, url, **kwargs):
         - 服务端 5xx 临时错误 (502/503/504)
     业务错误 (4xx) 不重试，直接返回。
 
-    :return: (resp, None) — 拿到响应；(None, error_msg) — 所有重试耗尽
+    :param attempts: 最多实际发送几次（含首次）。同步路径传 1（不重试），
+        后台路径用默认的 _MAX_RETRIES。口径见 SYNC_MAX_ATTEMPTS 的说明。
+    :return: (resp, None) — 拿到响应；(None, error_msg) — 所有尝试耗尽
     """
+    attempts = max(1, attempts)
     last_error, resp = None, None
-    for attempt in range(_MAX_RETRIES):
+    for attempt in range(attempts):
         try:
             resp = requests.request(method, url, **kwargs)
             if resp.status_code not in _RETRYABLE_STATUSES:
@@ -337,10 +365,19 @@ def _request_with_retry(method, url, **kwargs):
             last_error = str(e)
             resp = None
 
-        if attempt < _MAX_RETRIES - 1:
-            time.sleep(_RETRY_DELAYS[attempt])
+        if attempt < attempts - 1:
+            # 退避表比尝试次数短时取最后一项，避免 attempts 调大后越界
+            time.sleep(_RETRY_DELAYS[min(attempt, len(_RETRY_DELAYS) - 1)])
 
     return resp, last_error
+
+
+def _upstream_fail_msg(err, attempts):
+    """上游彻底失败时的文案：说清「实际发了几次」，与真实重试口径一致"""
+    attempts = max(1, attempts)
+    if attempts > 1:
+        return f'上游请求失败（已尝试 {attempts} 次）: {err}'
+    return f'上游请求失败: {err}'
 
 
 def _headers(target):
@@ -366,19 +403,23 @@ def _build_payload(target, messages, stream, temperature=None, max_tokens=None, 
     return payload
 
 
-def chat_completion(target, messages, timeout=REQUEST_TIMEOUT,
+def chat_completion(target, messages, timeout=None, attempts=None, background=False,
                     temperature=None, max_tokens=None, stop=None):
     """非流式对话，返回完整回复。
 
     :param target: resolve_target() 的返回值
     :param messages: build_messages() 的返回值
+    :param background: True=后台线程调用（保留多次重试与更长超时）；
+        False（默认）= web 请求线程里的同步调用，只发一次且超时更短。
+        取舍见 SYNC_MAX_ATTEMPTS / SYNC_TIMEOUT 的说明。
     :return: (True, {'reply', 'model', 'usage', 'finish_reason'}) / (False, 错误信息)
     """
+    timeout, attempts = _call_params(background, timeout, attempts)
     payload = _build_payload(target, messages, False, temperature, max_tokens, stop)
-    resp, err = _request_with_retry('POST', target['url'], json=payload,
+    resp, err = _request_with_retry('POST', target['url'], attempts=attempts, json=payload,
                                    headers=_headers(target), timeout=timeout)
     if resp is None:
-        return False, f'上游请求失败（重试 {_MAX_RETRIES} 次后放弃）: {err}'
+        return False, _upstream_fail_msg(err, attempts)
     if resp.status_code != 200:
         return False, f'上游返回错误 ({resp.status_code}): {_handle_api_error(resp)}'
 
@@ -400,7 +441,7 @@ def chat_completion(target, messages, timeout=REQUEST_TIMEOUT,
     }
 
 
-def stream_chat_completion(target, messages, timeout=REQUEST_TIMEOUT,
+def stream_chat_completion(target, messages, timeout=None, attempts=None, background=False,
                            temperature=None, max_tokens=None, stop=None):
     """流式对话，生成器逐块 yield SSE 数据行。
 
@@ -416,13 +457,16 @@ def stream_chat_completion(target, messages, timeout=REQUEST_TIMEOUT,
     错误处理：首次 yield 前出错 → 抛 ValueError（由视图转成错误 SSE 行）；
     流中出错 → 记录后结束。
 
+    :param background: 同 chat_completion —— 默认按**同步**口径（只发一次、超时更短），
+        后台线程调用时显式传 True
     :raises ValueError: 上游请求失败或返回非 200
     """
+    timeout, attempts = _call_params(background, timeout, attempts)
     payload = _build_payload(target, messages, True, temperature, max_tokens, stop)
-    resp, err = _request_with_retry('POST', target['url'], json=payload,
+    resp, err = _request_with_retry('POST', target['url'], attempts=attempts, json=payload,
                                    headers=_headers(target), stream=True, timeout=timeout)
     if resp is None:
-        raise ValueError(f'上游请求失败（重试 {_MAX_RETRIES} 次后放弃）: {err}')
+        raise ValueError(_upstream_fail_msg(err, attempts))
     if resp.status_code != 200:
         raise ValueError(f'上游返回错误 ({resp.status_code}): {_handle_api_error(resp)}')
 

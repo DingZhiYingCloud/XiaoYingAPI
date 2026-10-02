@@ -19,8 +19,12 @@
     call_count   - 调用次数（累加）
     cost_sum_ms  - 总耗时（毫秒，累加，用于算平均）
     cost_max_ms  - 最大耗时（毫秒，取最大值）
+    cost_points  - 消耗点数（累加；只对成功调用按当时生效单价结算，失败调用记 0）
 
 写入口径见 API/common/api_stats.py（进程内缓冲 + 批量 UPSERT 累加，两张表同一批落库）。
+
+`cost_points` 是「按当时单价结算」的**历史真值**：批量落库那一刻用当次生效单价算出并累加，
+之后改价不会回填历史行，因此「累计消耗」永远可对账。
 """
 import uuid
 
@@ -48,6 +52,8 @@ class ApiCallStat(BaseModel):
     call_count = models.PositiveIntegerField('调用次数', default=0)
     cost_sum_ms = models.PositiveBigIntegerField('总耗时(毫秒)', default=0)
     cost_max_ms = models.PositiveIntegerField('最大耗时(毫秒)', default=0)
+    cost_points = models.DecimalField('消耗点数', max_digits=20, decimal_places=4, default=0,
+                                      help_text='成功调用按当时生效单价结算的点数（失败调用记 0）')
 
     class Meta:
         db_table = 'api_call_stat'
@@ -88,6 +94,8 @@ class ApiCallStatHour(BaseModel):
     call_count = models.PositiveIntegerField('调用次数', default=0)
     cost_sum_ms = models.PositiveBigIntegerField('总耗时(毫秒)', default=0)
     cost_max_ms = models.PositiveIntegerField('最大耗时(毫秒)', default=0)
+    cost_points = models.DecimalField('消耗点数', max_digits=20, decimal_places=4, default=0,
+                                      help_text='成功调用按当时生效单价结算的点数（失败调用记 0）')
 
     class Meta:
         db_table = 'api_call_stat_hour'

@@ -31,6 +31,8 @@ django.setup()
 from API.models import UserApp
 from API.apis.user_center.sign import build_sign
 
+from _test_support import grant_credit
+
 BASE = 'http://127.0.0.1:10001'
 _stats = {'pass': 0, 'fail': 0}
 
@@ -81,6 +83,9 @@ def request(method, path, params=None, app=None, sign=True):
 def main():
     print(f'真实 HTTP 验证开始 -> {BASE}')
     app = UserApp.objects.create(name=f'LIVE{int(time.time())}', token_expire_days=7, status=True)
+    # 授权模型是「额度」：新项目默认 0 点，签名通过后会被 30012 拦掉、到不了业务层
+    # （「不存在路径 → JSON 404」那条也会变成 30012）。先补一笔额度，恢复本脚本的验证目标。
+    grant_credit(app)
     try:
         # 1. 显式 open 节点（captcha_auth/aliyun 开放集成，config 供 H5 前端初始化）：无签名直接通过
         st, r = request('GET', '/api/captcha_auth/aliyun/config', sign=False)

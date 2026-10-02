@@ -20,7 +20,7 @@ from django.utils.translation import gettext as _
 
 from API.models import Announcement
 
-from .admin_auth import superadmin_required
+from .admin_auth import notify_success, superadmin_required
 from .console import _derive_prefix, _tree_lookup
 from .service_tree import service_tree
 
@@ -146,7 +146,7 @@ def _handle_post(request):
             messages.error(request, error)
         else:
             item = Announcement.objects.create(**data)
-            messages.success(request, _('公告「%(title)s」已发布') % {'title': item.title})
+            notify_success(request, _('公告「%(title)s」已发布') % {'title': item.title})
         return redirect('website:console_announcements')
 
     item = _item_or_none(request.POST.get('id'))
@@ -162,14 +162,14 @@ def _handle_post(request):
             for field, value in data.items():
                 setattr(item, field, value)
             item.save()
-            messages.success(request, _('公告「%(title)s」已保存') % {'title': item.title})
+            notify_success(request, _('公告「%(title)s」已保存') % {'title': item.title})
     elif action == 'toggle':
         item.enabled = not item.enabled
         item.save(update_fields=['enabled', 'updated_time'])
-        messages.success(request, _('公告已启用') if item.enabled else _('公告已停用'))
+        notify_success(request, _('公告已启用') if item.enabled else _('公告已停用'))
     elif action == 'delete':
         item.delete()
-        messages.success(request, _('已删除该公告'))
+        notify_success(request, _('已删除该公告'))
     else:
         messages.error(request, _('不支持的操作'))
     return redirect('website:console_announcements')

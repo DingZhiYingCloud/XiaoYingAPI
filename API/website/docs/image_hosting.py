@@ -4,7 +4,7 @@
 - scdn： scdn.io 图床（上传图片，返回 CDN 直链）
 - picui：PicUI 图床（上传图片 + 服务端 Token 池管理）
 """
-from .schema import ChannelSpec, EndpointSpec, ParamSpec, ServiceSpec
+from .schema import ChannelSpec, EndpointSpec, ParamSpec, ResponseFieldSpec, ServiceSpec
 
 SERVICE = ServiceSpec(
     slug='image_hosting',
@@ -68,9 +68,19 @@ SERVICE = ServiceSpec(
                              ],
                              notes=['请求体为 multipart/form-data（文件字段 image，可直接用下方“选择文件”上传）；'
                                     '用 image_url 时也可用 application/x-www-form-urlencoded。',
-                                    '返回 data 含 url / filename / storage_backend / 压缩统计 / deduped（是否秒传） / password_protected。',
                                     '服务端按 SHA-256 秒传：命中时 message 为「图片已存在，秒传成功！」，deduped=true。',
-                                    '本服务需项目签名（app_id/timestamp/nonce/sign）；在线调试由服务端自动代签。']),
+                                    '本服务需项目签名（app_id/timestamp/nonce/sign）；在线调试由服务端自动代签。'],
+                             response_fields=[
+                                 ResponseFieldSpec('url', 'string', 'CDN 外链地址'),
+                                 ResponseFieldSpec('filename', 'string', '文件名'),
+                                 ResponseFieldSpec('storage_backend', 'string', '存储后端'),
+                                 ResponseFieldSpec('original_size', 'int', '原始大小（字节）'),
+                                 ResponseFieldSpec('compressed_size', 'int', '压缩后大小（字节）'),
+                                 ResponseFieldSpec('compression_ratio', 'float', '压缩率'),
+                                 ResponseFieldSpec('deduped', 'bool', '是否命中秒传'),
+                                 ResponseFieldSpec('password_protected', 'bool', '是否加密保护'),
+                             ],
+                             response_example='{"url": "https://img.scdn.io/xxxx.jpg", "filename": "xxxx.jpg", "storage_backend": "local", "original_size": 123456, "compressed_size": 98765, "compression_ratio": 80.01, "deduped": false, "password_protected": false}'),
             ],
         ),
         ChannelSpec(
@@ -104,34 +114,55 @@ SERVICE = ServiceSpec(
                              notes=['请求体为 multipart/form-data（文件字段 image，可直接用下方“选择文件”上传）。',
                                     'PicUI 账号 Token 由服务端 Token 池自动选取，调用方无需（也无法）指定；'
                                     '上传成功后按 PicUI 返回的图片大小扣减该 Token 容量，容量用尽自动删除并切换下一个。',
-                                    '返回 data 含 url / size_kb / size_bytes / mimetype / extension / md5 / sha1 /'
-                                    ' links（html、bbcode、markdown、markdown_with_link、thumbnail_url 等）。',
                                     '令牌池告警：上传后若池内剩余容量跌破 50MB，系统会自动向管理员邮箱'
                                     '（环境变量 QQ_MAIL_ACCOUNT，未配置则不发送）发送一封补货提醒邮件；'
                                     '该告警只在「跌破」的那一次发送，补货回到 50MB 以上后再次跌破才会重新告警。',
                                     'Token 池为空或容量均已用尽时返回 50002，请先调用「导入 Token」接口补充。',
-                                    '本服务需项目签名（app_id/timestamp/nonce/sign）；在线调试由服务端自动代签。']),
+                                    '本服务需项目签名（app_id/timestamp/nonce/sign）；在线调试由服务端自动代签。'],
+                             response_fields=[
+                                 ResponseFieldSpec('url', 'string', '图片外链地址'),
+                                 ResponseFieldSpec('name', 'string', '文件名'),
+                                 ResponseFieldSpec('pathname', 'string', '存储路径'),
+                                 ResponseFieldSpec('origin_name', 'string', '原始文件名'),
+                                 ResponseFieldSpec('size_kb', 'int', '文件大小（KB）'),
+                                 ResponseFieldSpec('size_bytes', 'int', '文件大小（字节）'),
+                                 ResponseFieldSpec('mimetype', 'string', 'MIME 类型'),
+                                 ResponseFieldSpec('extension', 'string', '扩展名'),
+                                 ResponseFieldSpec('md5', 'string', 'MD5 值'),
+                                 ResponseFieldSpec('sha1', 'string', 'SHA-1 值'),
+                                 ResponseFieldSpec('links', 'object', '多种引用格式'),
+                                 ResponseFieldSpec('links.html', 'string', 'HTML 引用'),
+                                 ResponseFieldSpec('links.bbcode', 'string', '论坛 BBCode 引用'),
+                                 ResponseFieldSpec('links.markdown', 'string', 'Markdown 图片'),
+                                 ResponseFieldSpec('links.markdown_with_link', 'string', '带链接的 Markdown'),
+                                 ResponseFieldSpec('links.thumbnail_url', 'string', '缩略图地址'),
+                             ],
+                             response_example='{"url": "https://v2.picui.cn/i/2026/07/01/xxxx.jpg", "name": "xxxx.jpg", "pathname": "/i/2026/07/01/xxxx.jpg", "origin_name": "photo.jpg", "size_kb": 120, "size_bytes": 122880, "mimetype": "image/jpeg", "extension": "jpg", "md5": "0f3d2c1b4a5968778695a4b3c2d1e0f1", "sha1": "0f3d2c1b4a5968778695a4b3c2d1e0f1a2b3c4d", "links": {"html": "<img src=\\"https://v2.picui.cn/i/2026/07/01/xxxx.jpg\\">", "bbcode": "[img]https://v2.picui.cn/i/2026/07/01/xxxx.jpg[/img]", "markdown": "![xxxx.jpg](https://v2.picui.cn/i/2026/07/01/xxxx.jpg)", "markdown_with_link": "[![xxxx.jpg](https://v2.picui.cn/i/2026/07/01/xxxx.jpg)](https://v2.picui.cn/i/2026/07/01/xxxx.jpg)", "thumbnail_url": "https://v2.picui.cn/i/2026/07/01/xxxx.jpg"}}'),
                 EndpointSpec('list_tokens', '查询 Token 池', 'GET', '/api/ImageHosting/picui/tokens',
                              summary='查看 Token 池整体容量与每个 Token 的已用 / 剩余容量（Token 已脱敏）。',
                              params=[],
-                             notes=['返回 data 顶层字段：',
-                                    'count：当前池内可用的 Token 数量',
-                                    'total_capacity_mb：全部 Token 的总容量合计（MB）',
-                                    'total_used_mb：全部 Token 的已用容量合计（MB）',
-                                    'total_remaining_mb：全部 Token 的剩余容量合计（MB）'
-                                    '—— 即系统当前还能上传的总容量，看这个字段判断是否要补货',
-                                    'total_capacity_bytes / total_used_bytes / total_remaining_bytes：'
-                                    '与上面三项一一对应的字节值，便于程序精确计算',
-                                    'items：池内每个 Token 的明细，字段如下：',
-                                    'items[].token：Token 脱敏值（保留首 6 位与末 4 位，如 657|uN****afdb）',
-                                    'items[].capacity_mb / items[].capacity_bytes：该 Token 的总容量',
-                                    'items[].used_mb / items[].used_bytes：该 Token 的已用容量',
-                                    'items[].remaining_mb / items[].remaining_bytes：该 Token 的剩余容量'
-                                    '（= 容量 − 已用，最小为 0）',
-                                    'items[].create_time：该 Token 的入库时间',
-                                    '单位说明：容量同时提供 MB（保留 2 位小数，便于阅读）与字节（便于计算）两种单位。',
+                             notes=['容量同时提供 MB（保留 2 位小数，便于阅读）与字节（便于计算）两种单位。',
                                     '容量用尽（已用 ≥ 容量）的 Token 会被自动删除，因此 items 中出现的 Token 均可继续使用；'
-                                    '服务器只做容量记账，不参与图片存储。']),
+                                    '服务器只做容量记账，不参与图片存储。'],
+                             response_fields=[
+                                 ResponseFieldSpec('count', 'int', '池内可用 Token 数量'),
+                                 ResponseFieldSpec('total_capacity_mb', 'float', '总容量合计（MB）'),
+                                 ResponseFieldSpec('total_capacity_bytes', 'int', '总容量合计（字节）'),
+                                 ResponseFieldSpec('total_used_mb', 'float', '已用容量合计（MB）'),
+                                 ResponseFieldSpec('total_used_bytes', 'int', '已用容量合计（字节）'),
+                                 ResponseFieldSpec('total_remaining_mb', 'float', '剩余容量合计（MB，看它判断补货）'),
+                                 ResponseFieldSpec('total_remaining_bytes', 'int', '剩余容量合计（字节）'),
+                                 ResponseFieldSpec('items', 'array', '每个 Token 的容量明细'),
+                                 ResponseFieldSpec('items[].token', 'string', 'Token 脱敏值（留首 6 末 4）'),
+                                 ResponseFieldSpec('items[].capacity_mb', 'float', '该 Token 总容量（MB）'),
+                                 ResponseFieldSpec('items[].capacity_bytes', 'int', '该 Token 总容量（字节）'),
+                                 ResponseFieldSpec('items[].used_mb', 'float', '该 Token 已用（MB）'),
+                                 ResponseFieldSpec('items[].used_bytes', 'int', '该 Token 已用（字节）'),
+                                 ResponseFieldSpec('items[].remaining_mb', 'float', '该 Token 剩余（MB）'),
+                                 ResponseFieldSpec('items[].remaining_bytes', 'int', '该 Token 剩余（字节）'),
+                                 ResponseFieldSpec('items[].create_time', 'string', '该 Token 的入库时间'),
+                             ],
+                             response_example='{"count": 1, "total_capacity_mb": 50.0, "total_capacity_bytes": 52428800, "total_used_mb": 12.34, "total_used_bytes": 12942336, "total_remaining_mb": 37.66, "total_remaining_bytes": 39486464, "items": [{"token": "657|uN****afdb", "capacity_mb": 50.0, "capacity_bytes": 52428800, "used_mb": 12.34, "used_bytes": 12942336, "remaining_mb": 37.66, "remaining_bytes": 39486464, "create_time": "2026-09-01 10:00:00"}]}'),
                 EndpointSpec('add_tokens', '导入 Token', 'POST', '/api/ImageHosting/picui/tokens',
                              summary='向 Token 池新增一个或多个 Token（支持直接输入，也支持上传按行存放的 Token 文件）。',
                              params=[
@@ -149,11 +180,16 @@ SERVICE = ServiceSpec(
                                     'tokens 支持重复字段、逗号或换行分隔，一次可提交多个 Token；'
                                     'Token 内不能含空格等空白字符（文件里若带注释/多余列会被拒绝，避免导入无效 Token）。',
                                     'token_file 为按行存放 Token 的文本文件（一行一个），可与 tokens 同时使用。',
-                                    '返回 data 字段：submitted 本次提交的 Token 数（已按行/逗号拆分并去重）；'
-                                    'created 实际新增数量；duplicated 因已存在而跳过的数量；'
-                                    'duplicated_tokens 被跳过的 Token 脱敏列表；'
-                                    'capacity_bytes / capacity_mb 每个新 Token 的容量。',
-                                    '单次最多导入 1000 个 Token；本服务需项目签名（app_id/timestamp/nonce/sign）。']),
+                                    '单次最多导入 1000 个 Token；本服务需项目签名（app_id/timestamp/nonce/sign）。'],
+                             response_fields=[
+                                 ResponseFieldSpec('submitted', 'int', '本次提交的 Token 数（去重后）'),
+                                 ResponseFieldSpec('created', 'int', '实际新增数量'),
+                                 ResponseFieldSpec('duplicated', 'int', '因已存在而跳过的数量'),
+                                 ResponseFieldSpec('duplicated_tokens', 'array', '被跳过的 Token 脱敏列表'),
+                                 ResponseFieldSpec('capacity_bytes', 'int', '每个新 Token 的容量（字节）'),
+                                 ResponseFieldSpec('capacity_mb', 'float', '每个新 Token 的容量（MB）'),
+                             ],
+                             response_example='{"submitted": 3, "created": 2, "duplicated": 1, "duplicated_tokens": ["657|uN****afdb"], "capacity_bytes": 52428800, "capacity_mb": 50.0}'),
             ],
         ),
     ],

@@ -18,10 +18,11 @@ from urllib.parse import urlencode
 import markdown
 from django.http import JsonResponse, StreamingHttpResponse
 from django.shortcuts import render
-from django.views.decorators.http import require_POST
+from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_GET, require_POST
 
 from API.apis.user_center.sign import build_sign
-from API.common import api_stats_query
+from API.common import StatusCode, api_stats_query
 from .docs import ALL_ENDPOINT_SPECS, ALL_ENDPOINTS, all_docs, get_doc, localize
 from .services import SERVICES, localize as localize_services
 
@@ -71,6 +72,49 @@ def index(request):
     })
 
 
+def errors(request):
+    """/docs/errors/ 对外错误码总表：按状态码类别分组，给出触发场景与处理建议。
+
+    内容源见 API.website.docs.errors（只收录真的会返回的码）。
+    """
+    from .docs.errors import error_groups
+    groups = error_groups()
+    return render(request, 'docs/errors.html', {
+        'groups': groups,
+        'total': sum(len(group['codes']) for group in groups),
+    })
+
+
+@require_GET
+@never_cache
+def my_projects(request):
+    """/docs/_projects/ 当前访客可选用的接入项目（含密钥）
+
+    文档页右侧「鉴权设置」卡的下拉数据源：选中即自动填入 APPID / APPSECRET，
+    省得去「我的项目」页手抄。**密钥只在这个响应里下发**，不写进文档页 HTML
+    —— 文档页是公开且可被缓存的，把密钥渲染进去会被缓存 / 分享出去。
+
+    取谁的项目：
+    - 官网会话已登录（普通用户）→ 该用户名下的启用项目；
+    - Django 超管会话（控制台登录）→ 全部启用项目（超管本就能在控制台看到所有密钥）；
+    - 都没登录 → 空列表（不泄露任何信息，前端据此隐藏下拉）。
+    """
+    from API.models import UserApp
+    from .my_projects import _current_app_user
+
+    user = _current_app_user(request)
+    if user is not None:
+        apps = UserApp.objects.filter(owner=user, status=True)
+    elif getattr(request.user, 'is_superuser', False):
+        apps = UserApp.objects.filter(status=True)
+    else:
+        apps = UserApp.objects.none()
+    projects = [{'app_id': app.app_id, 'name': app.name, 'app_secret': app.app_secret}
+                for app in apps.order_by('name')]
+    return JsonResponse({'code': StatusCode.SUCCESS, 'msg': '成功',
+                         'data': {'projects': projects}})
+
+
 # 说明文本的 Markdown 渲染。
 # 各服务文档的「服务说明 / 线路说明 / 端点备注 / 参数说明」本来就按 Markdown 书写
 # （**加粗**、`代码`、列表），若原样交给模板只会把记号显示出来，故渲染前统一转成 HTML。
@@ -113,6 +157,15 @@ def _attach_markdown(doc):
             endpoint.notes_html = [_md_inline(n) for n in endpoint.notes]
             for param in endpoint.params:
                 param.desc_html = _md_inline(param.desc)
+            # 响应字段表：按字段路径算缩进层级（`list[].id` → 1、`a.b.c` → 2），
+            # 让一张扁平表在页面上呈现层级；嵌套说明不需要另建树形结构
+            for field_spec in endpoint.response_fields:
+                field_spec.indent = _field_indent(field_spec.name)
+
+
+def _field_indent(name):
+    """字段路径的缩进层级：按 `.` 分段，段数 - 1（顶层字段为 0）"""
+    return max(0, len([part for part in str(name).split('.') if part]) - 1)
 
 
 def service(request, slug: str):
@@ -121,6 +174,7 @@ def service(request, slug: str):
     服务策略里被设为「文档隐藏」的服务 / 端点不会出现在本页：服务级隐藏返回 404，
     端点级隐藏从列表中移除（某线路下端点全部隐藏时，该线路也不再展示）。
     """
+    from API.common.credit_guard import resolve_price_detail
     from API.common.middleware import is_docs_hidden
     from .service_status import annotate as _annotate_status, channel_status_fields
     doc = get_doc(slug)
@@ -139,6 +193,8 @@ def service(request, slug: str):
         for endpoint in channel.endpoints:
             endpoint.call_count = counts.get(endpoint.path, 0)
             endpoint.method_badge = METHOD_BADGES.get(endpoint.method, 'badge-ghost')
+            # 调用单价（点/次）：公开信息，来源可能是端点级 / 线路级 / 服务级 / 默认
+            endpoint.price_detail = resolve_price_detail(endpoint.path)
             # 库内账号选择器：本服务声明了账号查询接口、且该端点用 account_id 传登录凭据时渲染
             # （取库内账号 UUID 的端点都能靠它一键填入，省得手抄）
             if doc.account_search_path and any(p.name == 'account_id' for p in endpoint.params):
@@ -152,6 +208,16 @@ def service(request, slug: str):
     _resolve_dynamic_options(doc)
     # 说明类文本按 Markdown 渲染成 HTML（翻译之后再做，见 _attach_markdown）
     _attach_markdown(doc)
+    # 本机凭据（声明 local=True 的参数，如抖音登录 Cookie）：不在参数表单里渲染，
+    # 改由右侧栏「本机凭据」卡片提供。同一凭据可能被多个端点复用，按参数名去重，
+    # 展示信息取首次声明的那一份（label / 说明 / 占位符，此时已翻译并渲染好 HTML）。
+    local_params, seen_names = [], set()
+    for channel in doc.channels:
+        for endpoint in channel.endpoints:
+            for param in endpoint.params:
+                if param.local and param.name not in seen_names:
+                    seen_names.add(param.name)
+                    local_params.append(param)
     # 是否真的渲染出了公告（有则加载公告条的展开 / 关闭增强脚本）
     has_announcement = bool(
         doc.announcements
@@ -178,6 +244,7 @@ def service(request, slug: str):
                    'has_register_ui': has_register_ui, 'has_picker': has_picker,
                    'has_markdown': has_markdown,
                    'has_announcement': has_announcement,
+                   'local_params': local_params,
                    'endpoint_count': endpoint_count})
 
 
@@ -266,6 +333,61 @@ def _stream_through(response):
     out['Cache-Control'] = 'no-cache'
     out['X-Accel-Buffering'] = 'no'   # 禁用 nginx 缓冲，保证分片逐块抵达浏览器
     return out
+
+
+def _shell_quote(value) -> str:
+    """POSIX shell 单引号转义：拼出的 curl 要能直接粘进终端执行"""
+    return "'" + str(value).replace("'", "'\\''") + "'"
+
+
+def _param_pairs(params):
+    """把 {k: v} / {k: [v1, v2]} 摊平成 [(k, v)]（同名多值 = 多次传参）"""
+    pairs = []
+    for key, value in params.items():
+        if isinstance(value, (list, tuple)):
+            pairs.extend((key, str(item)) for item in value)
+        else:
+            pairs.append((key, str(value)))
+    return pairs
+
+
+def _curl_command(base_url, method, groups, auth_params, files):
+    """由本次实际转发的请求拼出「等价 curl」，供调试面板一键复制
+
+    形态与代调转发完全一致（粘贴执行即可复现本次请求）：
+      GET    —— 业务参数与签名参数都在 query；
+      POST   —— 两者都在 urlencoded 表单体（与签名口径一致）；含文件时用 -F（文件路径留占位符）；
+      PATCH  —— 签名参数在 query（非 POST 的 request.POST 为空），业务参数在 urlencoded 体；
+      DELETE —— 签名参数在 query，业务参数（如有）以 JSON 体发送。
+    """
+    def body_pairs(params):
+        out = []
+        for key, value in _param_pairs(params):
+            out.append('-d ' + _shell_quote(f'{key}={value}'))
+        return out
+
+    if method == 'GET':
+        query = urlencode({**groups, **auth_params}, doseq=True)
+        return ' \\\n  '.join(['curl', _shell_quote(f'{base_url}?{query}' if query else base_url)])
+
+    if method == 'POST':
+        lines = ['curl -X POST', _shell_quote(base_url)] + body_pairs({**groups, **auth_params})
+        lines += ['-F ' + _shell_quote(f'{name}=@<本地文件路径>') for name in files]
+        return ' \\\n  '.join(lines)
+
+    if method == 'PATCH':
+        query = urlencode(auth_params, doseq=True)
+        url = f'{base_url}?{query}' if query else base_url
+        return ' \\\n  '.join(['curl -X PATCH', _shell_quote(url)] + body_pairs(groups))
+
+    # DELETE
+    query = urlencode(auth_params, doseq=True)
+    url = f'{base_url}?{query}' if query else base_url
+    lines = ['curl -X DELETE', _shell_quote(url)]
+    if groups:
+        lines += ['-H ' + _shell_quote('Content-Type: application/json'),
+                  '-d ' + _shell_quote(json.dumps(groups, ensure_ascii=False))]
+    return ' \\\n  '.join(lines)
 
 
 @require_POST
@@ -385,6 +507,15 @@ def call(request):
         return JsonResponse({'http_status': 400, 'json': None,
                              'text': '文件上传仅支持 POST 接口'})
 
+    # 等价 curl（供面板一键复制）：必须在路径占位符替换、签名参数生成之后拼，
+    # 才能反映本次真正发出去的请求。needs_sign 用与中间件同口径的 requires_auth 判定。
+    from API.common.middleware import requires_auth
+    curl_text = _curl_command(request.build_absolute_uri(path), method,
+                              groups, auth_params, files)
+    curl_meta = {'curl': curl_text,
+                 'signed': bool(auth_params),
+                 'needs_sign': requires_auth(declared_path)}
+
     # 站内转发（复用同一 Django 进程，完整走一遍认证/业务中间件）
     from django.test import Client
     client = Client(raise_request_exception=False)
@@ -444,7 +575,6 @@ def call(request):
         if method == 'GET':
             query = urlencode(groups, doseq=True)
             open_url = request.build_absolute_uri(f'{path}?{query}' if query else path)
-        from API.common.middleware import requires_auth
         return JsonResponse({
             'http_status': response.status_code,
             'elapsed_ms': elapsed_ms,
@@ -452,17 +582,20 @@ def call(request):
             'content_length': response.get('Content-Length') or '',
             'json': None,
             'open_url': open_url,
-            # 该端点是否真的要签名：用与中间件同一口径的 requires_auth 判定
-            # （不能拿「本次有没有生成签名参数」当依据 —— 那取决于用户有没有填鉴权卡片）
-            'needs_sign': requires_auth(path),
             'text': '该接口返回二进制 / 流式内容（如视频流），调试面板不回显正文；'
                     '请把该地址直接交给播放器或浏览器打开。',
+            **curl_meta,
         })
 
     # 其余流式文本响应（非 SSE）没有 .content，必须先消费 streaming_content；
     # 否则读取时会抛 AttributeError 让调试接口整个 500（原实现只按普通响应处理）。
     if response.streaming:
-        raw = b''.join(response.streaming_content).decode('utf-8', 'ignore')
+        # 消费内层流式正文后必须显式关闭：中途异常（解码失败 / 上游断流）时若只依赖 GC，
+        # 底层连接与临时文件会在不确定的时间才被回收（与 _stream_through 的口径一致）。
+        try:
+            raw = b''.join(response.streaming_content).decode('utf-8', 'ignore')
+        finally:
+            response.close()
     else:
         raw = response.content.decode('utf-8', 'ignore')
     parsed = None
@@ -480,4 +613,5 @@ def call(request):
         'content_type': content_type,
         'json': parsed,
         'text': raw,
+        **curl_meta,
     })

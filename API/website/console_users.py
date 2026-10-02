@@ -33,7 +33,7 @@ from API.apis.user_center.users.utils import (
 )
 from API.models import User, UserApp, UserLoginLog, UserToken, UserVerifyRecord
 
-from .admin_auth import superadmin_required
+from .admin_auth import notify_success, superadmin_required
 
 # 列表分页
 PAGE_SIZE_CHOICES = (20, 50, 100)
@@ -363,7 +363,7 @@ def _action_create(request):
     if not ok:
         messages.error(request, result)
         return redirect('website:console_users')
-    messages.success(request, _('用户创建成功：账号 %(account)s（请转告用户，账号与密码即可登录）')
+    notify_success(request, _('用户创建成功：账号 %(account)s（请转告用户，账号与密码即可登录）')
                      % {'account': result.account})
     return redirect('website:console_user_detail', user_id=result.pk)
 
@@ -377,7 +377,7 @@ def _action_edit(request, user):
     elif not result:
         messages.info(request, _('资料未发生变化'))
     else:
-        messages.success(request, _('资料已更新（换绑的邮箱/手机号需用户重新验证后才能用于登录）'))
+        notify_success(request, _('资料已更新（换绑的邮箱/手机号需用户重新验证后才能用于登录）'))
     return _redirect_after(request, user)
 
 
@@ -386,7 +386,7 @@ def _action_reset_password(request, user):
     if not ok:
         messages.error(request, result)
     else:
-        messages.success(request, _('密码已重置，该用户全部项目的登录态已作废，需重新登录'))
+        notify_success(request, _('密码已重置，该用户全部项目的登录态已作废，需重新登录'))
     return _redirect_after(request, user)
 
 
@@ -394,10 +394,10 @@ def _action_set_status(request, user, banned):
     user.status = not banned
     user.save(update_fields=['status', 'updated_time'])
     if banned:
-        messages.success(request, _('已封禁「%(account)s」：该用户所有项目都无法登录')
+        notify_success(request, _('已封禁「%(account)s」：该用户所有项目都无法登录')
                          % {'account': user.account})
     else:
-        messages.success(request, _('已解封「%(account)s」') % {'account': user.account})
+        notify_success(request, _('已解封「%(account)s」') % {'account': user.account})
     return _redirect_after(request, user)
 
 
@@ -407,6 +407,6 @@ def _action_delete(request, user):
         return redirect('website:console_user_detail', user_id=user.pk)
     account = user.account
     user.delete()  # 级联删除该用户的 Token、验证记录、登录日志
-    messages.success(request, _('用户「%(account)s」已删除（含其 Token、验证记录与登录日志）')
+    notify_success(request, _('用户「%(account)s」已删除（含其 Token、验证记录与登录日志）')
                      % {'account': account})
     return redirect('website:console_users')

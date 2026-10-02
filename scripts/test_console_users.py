@@ -38,7 +38,8 @@ from django.urls import reverse
 from django.utils import timezone
 
 from API.apis.user_center.users import utils as uc_utils
-from API.models import AuthMethod, User, UserApp, UserLoginLog, UserToken, UserVerifyRecord
+from API.models import (AuthMethod, SecuritySetting, User, UserApp, UserLoginLog, UserToken,
+                        UserVerifyRecord)
 
 RUN = str(int(time.time()))
 MARK = f'xytest{RUN}'
@@ -409,10 +410,13 @@ def round7_actions(client, user_a, apps):
 def round8_permission(client, admin, user_a):
     section('第 8 轮 权限与多语言')
     anon = Client()
-    check('匿名访问列表页 302 跳登录',
-          anon.get(reverse('website:console_users')).status_code == 302)
-    check('匿名访问详情页 302 跳登录',
-          anon.get(reverse('website:console_user_detail', args=[user_a.pk])).status_code == 302)
+    # 默认「后台入口隐身」开启 → 匿名一律 404（与不存在的地址无差别）；关掉隐身才 302。
+    # 写死 302 会在默认配置下恒失败（与 test_console_audit.py 同口径）。
+    denied = 404 if SecuritySetting.get_solo().hide_console else 302
+    check('匿名访问列表页被拦（隐身 404 / 否则 302）',
+          anon.get(reverse('website:console_users')).status_code == denied)
+    check('匿名访问详情页被拦（隐身 404 / 否则 302）',
+          anon.get(reverse('website:console_user_detail', args=[user_a.pk])).status_code == denied)
 
     detail = reverse('website:console_user_detail', args=[user_a.pk])
     resp = client.get(detail)

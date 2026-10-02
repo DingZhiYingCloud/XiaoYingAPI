@@ -15,6 +15,17 @@
         {% trans "文档中心首页" %}
       </a>
     </li>
+    <li>
+      <a href="{% url 'website:docs_errors' %}" {% if request.path == '/docs/errors/' %}class="active"{% endif %}>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 opacity-60">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 8v4" />
+          <path d="M12 16h.01" />
+        </svg>
+        {% trans "错误码" %}
+      </a>
+    </li>
     {% for node in docs_menu %}
     <li>
       {# 服务名前置「服务对外状态」图标（正常/开发中/维护中/已下线）；文案、图标名与配色均取自 service_status，勿在此写死 #}

@@ -1,0 +1,94 @@
+{% extends 'console/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "操作日志 - 超级管理员 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,操作日志,审计留痕,控制台" %}{% endblock %}
+{% block description %}{% trans "小影API 超级管理员：查看控制台写操作留痕（谁在何时改了哪个功能）。" %}{% endblock %}
+
+{% block console_content %}
+{% blocktrans with total=total asvar ph_desc %}共 {{ total }} 条留痕；只记写操作（新建 / 保存 / 删除 / 启用停用），看页面与搜索这类读操作不记。{% endblocktrans %}
+{% include 'console/_page_header.html' with icon='history' title='操作日志' desc=ph_desc %}
+
+{% include 'console/_messages.html' %}
+
+{# 规则说明（纯提示，中性灰） #}
+<div role="alert" class="alert alert-soft bg-base-200 mt-4 items-start py-3 text-sm">
+  <div class="space-y-1">
+    <p>{% trans "留痕在服务端统一采集（所有控制台视图的必经入口），新增页面不会漏记。" %}</p>
+    <p class="text-xs opacity-80">
+      {% trans "「说明」就是操作者当时看到的那句成功提示；操作失败也留痕（状态码 3xx、说明为空）。" %}
+    </p>
+  </div>
+</div>
+
+{# 筛选（GET 表单，回车即可提交） #}
+<form method="get" class="mt-4 flex flex-wrap items-end gap-2">
+  <label class="grid gap-1">
+    <span class="text-xs text-base-content/70">{% trans "关键词" %}</span>
+    <input type="search" name="q" value="{{ keyword }}"
+           class="input input-sm input-bordered w-52"
+           placeholder="{% trans '路径 / 说明 / 动作 / 对象' %}" />
+  </label>
+  <label class="grid gap-1">
+    <span class="text-xs text-base-content/70">{% trans "操作者" %}</span>
+    <select name="operator" class="select select-sm select-bordered">
+      <option value="">{% trans "全部" %}</option>
+      {% for name in operator_options %}
+      <option value="{{ name }}" {% if name == operator_filter %}selected{% endif %}>{{ name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label class="grid gap-1">
+    <span class="text-xs text-base-content/70">{% trans "功能" %}</span>
+    <select name="view" class="select select-sm select-bordered">
+      <option value="">{% trans "全部" %}</option>
+      {% for opt in view_options %}
+      <option value="{{ opt.value }}" {% if opt.value == view_filter %}selected{% endif %}>{{ opt.label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <button type="submit" class="btn btn-sm btn-primary">{% trans "筛选" %}</button>
+  <a href="{% url 'website:console_audit' %}" class="btn btn-sm btn-ghost">{% trans "重置" %}</a>
+</form>
+
+{# 留痕列表 #}
+<div class="con-table-wrap mt-3">
+  <table class="table table-sm">
+    <thead>
+      <tr>
+        <th class="whitespace-nowrap">{% trans "时间" %}</th>
+        <th class="whitespace-nowrap">{% trans "操作者" %}</th>
+        <th class="whitespace-nowrap">{% trans "功能" %}</th>
+        <th class="whitespace-nowrap">{% trans "动作" %}</th>
+        <th class="whitespace-nowrap">{% trans "对象" %}</th>
+        <th>{% trans "说明" %}</th>
+        <th class="whitespace-nowrap">{% trans "来源" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for log in page_obj %}
+      <tr>
+        <td class="whitespace-nowrap text-xs">{{ log.create_time|date:"Y-m-d H:i:s" }}</td>
+        <td class="whitespace-nowrap text-sm">{{ log.operator|default:"—" }}</td>
+        <td class="whitespace-nowrap text-sm">{{ log.view_label|default:"—" }}</td>
+        <td class="whitespace-nowrap">
+          <span class="badge badge-ghost badge-sm">{{ log.action|default:log.method }}</span>
+        </td>
+        <td class="whitespace-nowrap text-xs">{{ log.target|default:"—" }}</td>
+        <td class="max-w-md text-sm">{{ log.note|default:"—" }}</td>
+        <td class="whitespace-nowrap text-xs text-base-content/70">
+          <div>{{ log.ip|default:"—" }}</div>
+          <div class="text-base-content/60">{{ log.method }} · {{ log.status_code }}</div>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="7" class="py-6 text-center text-sm text-base-content/60">{% trans "暂无记录" %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% include 'console/_pagination.html' %}
+{% endblock %}

@@ -248,7 +248,7 @@ path('upload/', include('API.apis.uploads.urls')),  # 文件上传
 | 对象 | 规范 | 示例 |
 |------|------|------|
 | 服务文件夹 | snake_case（新建）；历史 PascalCase 目录保留不动 | 新建 `captcha_self/`；存量 `DaiLianTong/`、`ProxyIp/` |
-| 线路 / 子文件夹 | snake_case 或来源 / 平台原名，保持可读 | `xiaoying/`、`music_2t58/`、`VMEmail/`、`aliyun/` |
+| 线路 / 子文件夹 | snake_case 或来源 / 平台原名，保持可读 | `xiaoying/`、`music_2t58/`、`movie_555/`、`aliyun/` |
 | 三件套文件名 | **固定**为 `urls.py` / `request.py` / `utils.py` | — |
 | 视图函数 | snake_case，以 `_view` 结尾 | `image_upload_view`、`create_view`、`musics_view` |
 | 路由 name | `服务_动作` 或 `线路_动作`，全局唯一 | `upload_image`、`feedback_create`、`xiaoying_musics` |

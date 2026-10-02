@@ -9,7 +9,7 @@
 反馈中心的主体能力（提交 / 附件 / 公开区 / 回复）都在**我们托管的反馈页**上完成，
 子项目零代码接入（详见 intro 的接入说明），后台管理入口在 `/console/feedback/`。
 """
-from .schema import ChannelSpec, EndpointSpec, ParamSpec, ServiceSpec
+from .schema import ChannelSpec, EndpointSpec, ParamSpec, ResponseFieldSpec, ServiceSpec
 
 SERVICE = ServiceSpec(
     slug='feedback',
@@ -73,10 +73,16 @@ SERVICE = ServiceSpec(
                                   desc='用户在**你项目下**的 UAC Token（Token 绑定项目，跨项目的 Token 无效）'),
                     ],
                     notes=[
-                        '返回 data.ticket / data.expire_in / data.app_id / data.app_name。',
                         '票据一次性且 5 分钟过期：用完或过期即废，重复使用会被忽略（反馈页按游客处理）。',
                         '拼接方式：/feedback/<app_id>/?ticket=<ticket>，作为链接或 iframe 地址交浏览器打开。',
                     ],
+                    response_fields=[
+                        ResponseFieldSpec('ticket', 'string', '一次性票据'),
+                        ResponseFieldSpec('expire_in', 'int', '有效期（秒）'),
+                        ResponseFieldSpec('app_id', 'string', '接入项目 APPID'),
+                        ResponseFieldSpec('app_name', 'string', '接入项目名称'),
+                    ],
+                    response_example='{"ticket": "b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6", "expire_in": 300, "app_id": "app_xxxxxxxx", "app_name": "Example App"}',
                 ),
                 EndpointSpec(
                     'contacts', '查询项目开发者联系方式', 'GET', '/api/feedback/contacts',
@@ -88,10 +94,21 @@ SERVICE = ServiceSpec(
                                   desc='在后台「接入项目」里查到的 APPID'),
                     ],
                     notes=[
-                        '返回 data.contacts 数组，每项含 platform / name / icon / label / value / url；'
-                        'url 为空串表示该平台未配置跳转模板，此时按纯文本展示。',
+                        'contacts[].url 为空串表示该平台未配置跳转模板，此时按纯文本展示。',
                         '平台被停用或该项目的该项被清空后，对应条目不再返回。',
                     ],
+                    response_fields=[
+                        ResponseFieldSpec('app_id', 'string', '接入项目 APPID'),
+                        ResponseFieldSpec('app_name', 'string', '接入项目名称'),
+                        ResponseFieldSpec('contacts', 'array', '开发者联系方式列表'),
+                        ResponseFieldSpec('contacts[].platform', 'string', '平台代码'),
+                        ResponseFieldSpec('contacts[].name', 'string', '平台名称'),
+                        ResponseFieldSpec('contacts[].icon', 'string', '平台图标'),
+                        ResponseFieldSpec('contacts[].label', 'string', '值标签'),
+                        ResponseFieldSpec('contacts[].value', 'string', '联系方式值'),
+                        ResponseFieldSpec('contacts[].url', 'string', '可点击链接（空串为纯文本）'),
+                    ],
+                    response_example='{"app_id": "app_xxxxxxxx", "app_name": "Example App", "contacts": [{"platform": "qq", "name": "QQ", "icon": "https://cdn.example.com/qq.svg", "label": "QQ", "value": "12345678", "url": "https://wpa.qq.com/msgrd?v=3&uin=12345678"}]}',
                 ),
             ],
         ),

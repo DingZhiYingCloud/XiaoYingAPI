@@ -52,6 +52,8 @@ from API.apis.user_center.sign import build_sign
 from API.common.api_stats import purge_app
 from API.models import UserApp
 
+from _test_support import grant_credit
+
 _HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_CONFIG = os.path.join(_HERE, 'api_smoke_config.json')
 
@@ -208,6 +210,9 @@ def resolve_app(cfg):
         return SimpleNamespace(app_id=app_id, app_secret=app_secret), None
     name = f'SMOKE{int(time.time())}'
     app = UserApp.objects.create(name=name, token_expire_days=7, status=True)
+    # 授权模型是「额度」：新项目默认 0 点，任何签名调用都会被拦成 30012 额度不足。
+    # 全量冒烟要覆盖全部服务，故先给临时项目补一笔额度（临时项目跑完会删除）。
+    grant_credit(app)
     return app, app
 
 

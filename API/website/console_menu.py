@@ -10,7 +10,7 @@
 | --- | --- | --- |
 | 概览 | 控制台自身 | 控制台首页 |
 | 安全 | 控制台自身的防护 | 安全设置 |
-| 接口治理 | 对外提供的 API 本身 | 服务策略、接口公告、AI 模型 |
+| 接口治理 | 对外提供的 API 本身 | 服务策略、线路价格、接口公告、AI 模型 |
 | 数据运营 | 接入方 / 流量 / 站点与内容 | 接入项目、调用统计、官网外观、红果短剧 |
 | 用户支持 | 用户体系与用户声音 | 用户管理、问题反馈 |
 
@@ -63,6 +63,12 @@ MENU = [
                 'desc': '控制台自身的安全开关：后台入口隐身（未登录访问后台一律返回 404，'
                         '防止被路径探测发现入口）。',
             },
+            {
+                'key': 'console_audit', 'name': '操作日志', 'url': 'website:console_audit',
+                'icon': 'history',
+                'desc': '控制台写操作的审计留痕：谁在什么时候改了哪个功能、结果如何。'
+                        '由所有控制台视图的必经入口统一采集，新增页面不会漏记。',
+            },
         ],
     },
     {
@@ -71,7 +77,12 @@ MENU = [
         'items': [
             {
                 'key': 'console_services', 'name': '服务策略', 'url': 'website:console_services',
-                'icon': 'shield-check', 'desc': '按服务 / 线路 / 端点三级配置认证模式、对外状态与项目白名单，逐级继承。',
+                'icon': 'shield-check', 'desc': '按服务 / 线路 / 端点三级配置认证模式、对外状态、文档可见性与使用范围，逐级继承。',
+            },
+            {
+                'key': 'console_prices', 'name': '线路价格', 'url': 'website:console_prices',
+                'icon': 'tags', 'desc': '按服务 / 线路 / 端点三级设置调用单价（点/次），逐级继承、兜底 1 点/次；'
+                                        '只对成功调用扣费。与服务策略解耦。',
             },
             {
                 'key': 'console_announcements', 'name': '接口公告', 'url': 'website:console_announcements',
@@ -92,8 +103,26 @@ MENU = [
                 'icon': 'boxes', 'desc': '创建 / 编辑 / 启停 / 删除接入项目；APPID、APPSECRET 由系统自动生成。',
             },
             {
+                'key': 'console_credits', 'name': '项目额度', 'url': 'website:console_credits',
+                'icon': 'circle-dollar-sign',
+                'desc': '按项目查看额度余额、手动充值（含充值流水）。额度是唯一的调用门槛：'
+                        '余额为 0 的项目什么都调不了，调用成功才按服务单价扣点。',
+            },
+            {
                 'key': 'console_stats', 'name': '调用统计', 'url': 'website:console_stats',
                 'icon': 'chart-column', 'desc': '按服务、接口、项目与结果查看调用量与耗时。',
+            },
+            {
+                'key': 'console_quotas', 'name': '服务余量', 'url': 'website:console_quotas',
+                'icon': 'gauge',
+                'desc': '监控上游服务账号还剩多少（51代理余额、超级鹰题分），可逐项设置最低数量阈值，'
+                        '低于阈值时发邮件提醒（告警只发一次，恢复后重新武装）。',
+            },
+            {
+                'key': 'console_upstreams', 'name': '上游故障告警', 'url': 'website:console_upstreams',
+                'icon': 'activity',
+                'desc': '按服务监控上游调用失败率（业务码 4xxxx 的占比），超过阈值时发邮件提醒'
+                        '（告警只发一次，恢复后重新武装）。',
             },
             {
                 'key': 'console_appearance', 'name': '官网外观', 'url': 'website:console_appearance',

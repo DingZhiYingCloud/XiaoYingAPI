@@ -3,7 +3,7 @@
 
 {% block title %}{% trans "小影API - 通用 API 聚合服务平台" %}{% endblock %}
 {% block keywords %}{% trans "小影API,API聚合,免费API,接口平台,视频解析,代理IP,短信验证,用户中心" %}{% endblock %}
-{% block description %}{% blocktrans with n=services|length %}小影API 是一个通用 API 聚合服务平台，聚合音乐、视频解析、AI、代理IP、验证码、短信、邮箱、用户中心等 {{ n }} 类服务能力，统一签名认证与标准 JSON 响应，即开即用。{% endblocktrans %}{% endblock %}
+{% block description %}{% blocktrans with n=services|length %}小影API 是一个通用 API 聚合服务平台，聚合音乐、视频解析、AI、代理IP、验证码、短信、邮箱、用户中心等 {{ n }} 类服务能力，统一签名认证与标准 JSON 响应，注册免费、调用按次消耗项目额度（点数）。{% endblocktrans %}{% endblock %}
 
 {% block content %}
 
@@ -57,6 +57,9 @@
         </li>
         <li class="feel-chip gap-1.5">
           <i data-lucide="terminal" class="h-3.5 w-3.5 text-accent" aria-hidden="true"></i>{% trans "文档页在线调试" %}
+        </li>
+        <li class="feel-chip gap-1.5">
+          <i data-lucide="coins" class="h-3.5 w-3.5 text-warning" aria-hidden="true"></i>{% trans "按次计费 · 点数余额" %}
         </li>
       </ul>
     </div>
@@ -152,6 +155,7 @@
     <h2 class="feel-h2 mt-3 text-3xl sm:text-4xl">{% trans "想得到的接口，基本都在这里" %}</h2>
     <p class="feel-sub mt-3 text-sm sm:text-base">
       {% blocktrans with n=services|length %}聚合 {{ n }} 类服务能力，全部统一在 <code class="font-mono text-xs text-primary">/api/</code> 前缀下对外提供；可用的服务点开即进文档页调试。{% endblocktrans %}
+      {% trans "调用按次消耗项目额度（点数），单价以文档页标价为准。" %}
     </p>
   </div>
 
@@ -159,7 +163,7 @@
     {% for svc in services %}
     {% if svc.slug %}
     <a href="/docs/{{ svc.slug }}/"
-       class="feel-card group flex flex-col gap-3 p-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+       class="feel-card flex flex-col gap-3 p-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
     {% else %}
     <div class="feel-card flex flex-col gap-3 p-5 opacity-70">
     {% endif %}
@@ -169,7 +173,7 @@
           <i data-lucide="{{ svc.status_icon }}" class="h-3.5 w-3.5" aria-hidden="true"></i>{{ svc.status_label }}
         </span>
       </div>
-      <code class="font-mono text-xs text-base-content/50">{{ svc.url_prefix }}</code>
+      <code class="font-mono text-xs text-base-content/70">{{ svc.url_prefix }}</code>
       <p class="flex-1 text-sm leading-relaxed text-base-content/70">{{ svc.desc }}</p>
       <div class="flex flex-wrap items-center gap-1.5">
         {% for tag in svc.tags %}
@@ -178,7 +182,7 @@
         {% if svc.slug %}
         <span class="ml-auto flex items-center gap-1 text-xs font-medium text-primary">
           {% trans "查看文档" %}
-          <i data-lucide="arrow-right" class="h-3.5 w-3.5 transition group-hover:translate-x-0.5" aria-hidden="true"></i>
+          <i data-lucide="arrow-right" class="h-3.5 w-3.5 opacity-60" aria-hidden="true"></i>
         </span>
         {% endif %}
       </div>
@@ -198,24 +202,24 @@
 
     <ol class="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <li class="feel-card p-5">
-        <span class="font-mono text-3xl font-bold text-primary/30">01</span>
+        <span class="font-mono text-3xl font-bold text-primary">01</span>
         <h3 class="mt-2 font-semibold">{% trans "注册账号" %}</h3>
-        <p class="mt-1 text-sm text-base-content/70">{% trans "使用用户名、邮箱或手机号注册小影API账号。" %}</p>
+        <p class="mt-1 text-sm text-base-content/70">{% trans "使用用户名、邮箱或手机号注册小影API账号，注册与登录均免费。" %}</p>
       </li>
       <li class="feel-card p-5">
-        <span class="font-mono text-3xl font-bold text-primary/30">02</span>
-        <h3 class="mt-2 font-semibold">{% trans "开通接入项目" %}</h3>
-        <p class="mt-1 text-sm text-base-content/70">{% trans "联系管理员开通接入项目，获取专属 APPID 与 APPSECRET。" %}</p>
+        <span class="font-mono text-3xl font-bold text-primary">02</span>
+        <h3 class="mt-2 font-semibold">{% trans "创建接入项目" %}</h3>
+        <p class="mt-1 text-sm text-base-content/70">{% trans "登录后在「我的项目」自助创建，立即获得专属 APPID 与 APPSECRET，创建项目免费。" %}</p>
       </li>
       <li class="feel-card p-5">
-        <span class="font-mono text-3xl font-bold text-primary/30">03</span>
+        <span class="font-mono text-3xl font-bold text-primary">03</span>
         <h3 class="mt-2 font-semibold">{% trans "阅读接口文档" %}</h3>
         <p class="mt-1 text-sm text-base-content/70">{% trans "按文档组装请求参数并完成 HMAC-SHA256 签名，或直接在文档页在线调试。" %}</p>
       </li>
       <li class="feel-card p-5">
-        <span class="font-mono text-3xl font-bold text-primary/30">04</span>
-        <h3 class="mt-2 font-semibold">{% trans "开始调用" %}</h3>
-        <p class="mt-1 text-sm text-base-content/70">{% blocktrans %}统一 <code class="font-mono text-xs">{ code, msg, data }</code> 响应，解析即可用。{% endblocktrans %}</p>
+        <span class="font-mono text-3xl font-bold text-primary">04</span>
+        <h3 class="mt-2 font-semibold">{% trans "充值额度并调用" %}</h3>
+        <p class="mt-1 text-sm text-base-content/70">{% blocktrans %}为项目充值点数后即可调用（新项目默认 0 额度）；成功后按次扣点、失败不扣，统一 <code class="font-mono text-xs">{ code, msg, data }</code> 响应。{% endblocktrans %}</p>
       </li>
     </ol>
 
@@ -241,7 +245,13 @@
     <details class="collapse collapse-arrow feel-card">
       <summary class="collapse-title font-medium">{% trans "接入项目需要自己创建吗？APPID/APPSECRET 怎么获取？" %}</summary>
       <div class="collapse-content text-sm leading-relaxed text-base-content/70">
-        {% blocktrans %}接入项目由小影API管理员在后台开通并发放 APPID / APPSECRET。APPSECRET 请务必保存在你的服务端，严禁写入前端代码或提交到仓库。{% endblocktrans %}
+        {% blocktrans %}登录后在「我的项目」页自助创建接入项目，创建后即可看到 APPID / APPSECRET，创建项目免费。APPSECRET 请务必保存在你的服务端，严禁写入前端代码或提交到仓库。{% endblocktrans %}
+      </div>
+    </details>
+    <details class="collapse collapse-arrow feel-card">
+      <summary class="collapse-title font-medium">{% trans "调用接口要收费吗？额度怎么算？" %}</summary>
+      <div class="collapse-content text-sm leading-relaxed text-base-content/70">
+        {% blocktrans %}注册、登录、创建项目与浏览文档均免费。调用接口按次消耗项目额度（点数），单价以接口文档页标价为准（未单独配置的服务默认 1 点/次）；只有调用成功才扣点，失败不扣。新建项目默认 0 额度，额度不足时无法调用接口（开放接口除外），请联系管理员充值。{% endblocktrans %}
       </div>
     </details>
     <details class="collapse collapse-arrow feel-card">

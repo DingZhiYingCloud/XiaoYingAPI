@@ -41,10 +41,17 @@ def _json_response(code, data=None, msg=None):
 
 
 def _client_ip(request):
-    """获取客户端 IP（优先反向代理透传头，兜底 REMOTE_ADDR）"""
+    """获取客户端 IP（用于登录防爆破计数）
+
+    X-Forwarded-For 取**最后一段**：本站 Nginx 用 `$proxy_add_x_forwarded_for`，真实来源
+    地址被**追加在末尾**，前面几段客户端可随意伪造 —— 取第一段会让「换假 IP 即重置失败
+    计数」，绕过 S-03 的连续失败锁定。口径须与官网 views._client_ip 保持一致。
+    """
     xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
     if xff:
-        return xff.split(',')[0].strip()
+        parts = [seg.strip() for seg in xff.split(',') if seg.strip()]
+        if parts:
+            return parts[-1]
     real_ip = request.META.get('HTTP_X_REAL_IP', '')
     if real_ip:
         return real_ip.strip()

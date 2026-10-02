@@ -9,7 +9,7 @@
 """
 from SpiderServices.Chaojiying.utils import CODETYPES
 
-from .schema import ChannelSpec, EndpointSpec, ParamSpec, ServiceSpec
+from .schema import ChannelSpec, EndpointSpec, ParamSpec, ResponseFieldSpec, ServiceSpec
 
 # 图片来源：页面在线调试支持 ①直接上传图片文件 ②填图片 URL / base64 字符串
 _IMG_NOTE = '文件字段与 URL/base64 字段至少提供一个；同时提供时文件优先。'
@@ -163,7 +163,12 @@ SERVICE = ServiceSpec(
                                  _bool_sel('beta', 'Beta 模型', desc='true 时使用 Beta 版 OCR 模型（对部分验证码更准）'),
                              ],
                              notes=['本服务需项目签名；上传文件时请求体为 multipart/form-data。',
-                                    _IMG_NOTE]),
+                                    _IMG_NOTE],
+                             # data 随 probability 参数变化，结构由 ddddocr 模型输出决定，不逐个承诺字段
+                             response_note='data 随参数变化：probability=false 时为识别文本字符串；'
+                                           'probability=true 时为对象 {text, probability}，'
+                                           '其中 probability 为 ddddocr 的原始概率分布结构。',
+                             response_example='"8k3m"'),
                 EndpointSpec('set_ranges', '设置 OCR 字符范围', 'POST', '/api/ddddocr/set-ranges',
                              summary='设置本次识别实例的字符范围（预定义编号或自定义字符集）。',
                              params=[
@@ -172,14 +177,18 @@ SERVICE = ServiceSpec(
                                            desc='必填：预定义 0=数字/1=小写/2=大写/3=大小写/4=小写+数字/5=大写+数字/6=大小写+数字/7=默认；或自定义字符串，如 "0123456789"'),
                                  _bool_sel('beta', 'Beta 模型', desc='选填：配合 Beta 模型使用'),
                              ],
-                             notes=['注意：后端每次调用都会新建识别实例，此接口只对“该次调用”的实例生效，不会改变之后 /ocr 请求的字符集。']),
+                             notes=['注意：后端每次调用都会新建识别实例，此接口只对“该次调用”的实例生效，不会改变之后 /ocr 请求的字符集。'],
+                             response_note='该接口不返回业务数据，成功时 data 为 null，结果以 code 与 msg 判断。'),
                 EndpointSpec('detect', '目标检测', 'POST', '/api/ddddocr/detect',
                              summary='检测图片中的目标位置，返回各目标的边界框与置信度。',
                              params=[
                                  _img_file_param('image', '图片文件(上传)'),
                                  _url_param('image_url', '或 图片URL/base64'),
                              ],
-                             notes=[_IMG_NOTE]),
+                             notes=[_IMG_NOTE],
+                             response_note='data 为目标检测结果数组，每个元素为 [x1, y1, x2, y2]，'
+                                           '即目标边界框的左上角与右下角坐标（像素）。',
+                             response_example='[[24, 60, 102, 138]]'),
                 EndpointSpec('slide_match', '滑块匹配（边缘匹配法）', 'POST', '/api/ddddocr/slide-match',
                              summary='通过边缘检测匹配滑块小图在背景大图中的缺口位置（算法一）。',
                              params=[
@@ -189,8 +198,12 @@ SERVICE = ServiceSpec(
                                  _url_param('bg_image_url', '或 背景图片URL/base64'),
                                  _bool_sel('simple_target', '简单目标模式', desc='选填：默认 false'),
                              ],
-                             notes=['滑块（slide_image / slide_image_url）与背景（bg_image / bg_image_url）各至少提供其一；同时提供时文件优先。',
-                                    '成功返回 data={target_x, target_y}，即缺口左上角坐标。']),
+                             notes=['滑块（slide_image / slide_image_url）与背景（bg_image / bg_image_url）各至少提供其一；同时提供时文件优先。'],
+                             response_fields=[
+                                 ResponseFieldSpec('target_x', 'int', '缺口左上角 x 坐标'),
+                                 ResponseFieldSpec('target_y', 'int', '缺口左上角 y 坐标'),
+                             ],
+                             response_example='{"target_x": 128, "target_y": 45}'),
                 EndpointSpec('slide_comparison', '滑块匹配（差异比较法）', 'POST', '/api/ddddocr/slide-comparison',
                              summary='直接比较滑块图与背景图差异定位缺口（算法二）。',
                              params=[
@@ -199,8 +212,12 @@ SERVICE = ServiceSpec(
                                  _img_file_param('bg_image', '背景图片(上传)'),
                                  _url_param('bg_image_url', '或 背景图片URL/base64'),
                              ],
-                             notes=['滑块（slide_image / slide_image_url）与背景（bg_image / bg_image_url）各至少提供其一；同时提供时文件优先。',
-                                    '成功返回 data={target_x, target_y}。']),
+                             notes=['滑块（slide_image / slide_image_url）与背景（bg_image / bg_image_url）各至少提供其一；同时提供时文件优先。'],
+                             response_fields=[
+                                 ResponseFieldSpec('target_x', 'int', '缺口左上角 x 坐标'),
+                                 ResponseFieldSpec('target_y', 'int', '缺口左上角 y 坐标'),
+                             ],
+                             response_example='{"target_x": 128, "target_y": 45}'),
             ],
         ),
         ChannelSpec(
@@ -227,10 +244,15 @@ SERVICE = ServiceSpec(
                              ],
                              notes=['图片来源三选一：上传 file 文件、填 image(base64)、填 image(http 图片地址)；'
                                     '图片不超过 2MB，推荐 bmp / jpg / png，分辨率比例要正常。',
-                                    '成功返回 data = {pic_id(图片标识号，报错返分时用), pic_str(识别结果), md5(校验值)}；'
                                     '平台业务错误（如账号密码错误、题分不足）返回 4xxxx，msg 为平台中文说明。',
                                     '识别结果的大小写以平台为准（英文数字类通常返回**小写**），比对时请自行做大小写归一。',
-                                    '各类型的题分单价与折合人民币见本页「服务说明」中的价格表。']),
+                                    '各类型的题分单价与折合人民币见本页「服务说明」中的价格表。'],
+                             response_fields=[
+                                 ResponseFieldSpec('pic_id', 'string', '图片标识号，报错返分时用'),
+                                 ResponseFieldSpec('pic_str', 'string', '识别结果文本'),
+                                 ResponseFieldSpec('md5', 'string', '结果校验值'),
+                             ],
+                             response_example='{"pic_id": "9160109360600112681", "pic_str": "8k3m", "md5": "0f3d2c1b4a5968778695a4b3c2d1e0f1"}'),
                 EndpointSpec('report_error', '报错返分', 'POST', '/api/chaojiying/report-error',
                              summary='识别结果确实错误时退回题分（须在拿到 pic_id 后 3 分钟内调用）。',
                              params=[
@@ -239,12 +261,17 @@ SERVICE = ServiceSpec(
                                            desc='必填：识别接口返回的 pic_id'),
                              ],
                              notes=['平台限制：**仅限识别结果确实错误时调用**，对正确结果报错会被评估信用；'
-                                    '部分识别类型不支持返分；超过 3 分钟失效。']),
+                                    '部分识别类型不支持返分；超过 3 分钟失效。'],
+                             response_note='该接口不返回业务数据，成功时 data 为空对象 {}，结果以 code 与 msg 判断。'),
                 EndpointSpec('score', '查询题分余额', 'GET', '/api/chaojiying/score',
                              summary='查询本站平台账号的题分余额（用于确认可用额度）。',
                              params=[],
-                             notes=['成功返回 data = {tifen(题分), tifen_lock(锁定题分)}；'
-                                    '按官方标准价换算，1000 题分 ≈ 1 元。']),
+                             notes=['按官方标准价换算，1000 题分 ≈ 1 元。'],
+                             response_fields=[
+                                 ResponseFieldSpec('tifen', 'int', '题分余额'),
+                                 ResponseFieldSpec('tifen_lock', 'int', '锁定中的题分'),
+                             ],
+                             response_example='{"tifen": 1000, "tifen_lock": 0}'),
             ],
         ),
     ],

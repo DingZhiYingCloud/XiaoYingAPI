@@ -32,13 +32,22 @@
 的反馈，登录用户提交的内容不进公开区。
 """
 import uuid
+from datetime import timedelta
 
 from django.conf import settings
 from django.db import models
+from django.db.models import Q
+from django.utils import timezone
 
 from API.common.base import BaseModel
 from API.models.Projects.app import UserApp
 from API.models.Users.user import User
+
+# 「审核中」超过这个时长仍未出结果即视为卡住、允许其它进程接管。
+# 抢占标记是落库的（见 feedback/ai.py 的条件更新），进程被 kill 时不会回退 ——
+# 没有这个兜底，一条反馈会永远停在「审核中」，队列再也不认它。
+# 取值须明显大于一次审核的正常耗时（含上游 AI 重试），避免把还在跑的审核抢掉。
+AI_RUNNING_STALE_MINUTES = 10
 
 
 class FeedbackType(BaseModel):
@@ -194,8 +203,17 @@ class Feedback(BaseModel):
 
     @classmethod
     def pending_ai_queryset(cls):
-        """待 AI 审核的队列（后台审核线程按提交时间先进先出取一条）"""
-        return cls.objects.filter(ai_status=cls.AiStatus.PENDING).order_by('create_time')
+        """待 AI 审核的队列（后台审核线程按提交时间先进先出取一条）
+
+        除「待审核」外，一并纳入**卡住的「审核中」**：抢占标记是落库的，进程被 kill
+        （部署重启 uwsgi、OOM）时不会回退，那条反馈就永远停在「审核中」而队列再也不认它。
+        超过 AI_RUNNING_STALE_MINUTES 仍未出结果的一律视为可接管。
+        """
+        stale = timezone.now() - timedelta(minutes=AI_RUNNING_STALE_MINUTES)
+        return cls.objects.filter(
+            Q(ai_status=cls.AiStatus.PENDING)
+            | Q(ai_status=cls.AiStatus.RUNNING, updated_time__lt=stale)
+        ).order_by('create_time')
 
 
 class FeedbackReply(BaseModel):

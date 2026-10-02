@@ -73,6 +73,9 @@ class StatusCode:
     # 资源不足 30010-30019
     INSUFFICIENT_BALANCE = 30010
     INSUFFICIENT_STOCK = 30011
+    # 额度不足：接入项目余额低于本次调用的生效单价（扣费与判定见 API/common/credit_guard.py）。
+    # 与 RATE_LIMITED(20040) 区分开——那个是「请求太频繁」，这个是「余额用完了」，调用方需去充值。
+    QUOTA_EXCEEDED = 30012
 
     # ==================== 4xxxx 第三方/外部服务错误 ====================
 
@@ -136,6 +139,7 @@ class StatusCode:
 
         INSUFFICIENT_BALANCE: '余额不足',
         INSUFFICIENT_STOCK: '库存不足',
+        QUOTA_EXCEEDED: '额度不足',
 
         EXTERNAL_API_FAILED: '外部API调用失败',
         EXTERNAL_API_TIMEOUT: '外部API调用超时',

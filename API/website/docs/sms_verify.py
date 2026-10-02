@@ -4,7 +4,7 @@
 - 阿里云 aliyun：阿里云号码认证（Dypnsapi）发送/核验短信验证码，两个 POST 接口。
 后续接入更多短信渠道（如三网、国际短信等）时在 channels 追加即可。
 """
-from .schema import ChannelSpec, EndpointSpec, ParamSpec, ServiceSpec
+from .schema import ChannelSpec, EndpointSpec, ParamSpec, ResponseFieldSpec, ServiceSpec
 
 # 重复发送处理：覆盖旧码 / 保留旧码
 _DUP_POLICY = [
@@ -77,7 +77,13 @@ SERVICE = ServiceSpec(
                                  _out_id_param(),
                              ],
                              notes=['请求体为 application/x-www-form-urlencoded 表单；本服务需项目签名（app_id/timestamp/nonce/sign）。',
-                                    '发送成功即返回 code=10000；频控触发时提示等待（interval 秒）后再试。']),
+                                    '发送成功即返回 code=10000；频控触发时提示等待（interval 秒）后再试。'],
+                             response_fields=[
+                                 ResponseFieldSpec('biz_id', 'string', '阿里云发送流水号'),
+                                 ResponseFieldSpec('out_id', 'string', '外部流水号（透传返回）'),
+                                 ResponseFieldSpec('verify_code', 'string', '验证码，仅开启返回时有值'),
+                             ],
+                             response_example='{"biz_id": "9006197469364984400", "out_id": "", "verify_code": ""}'),
                 EndpointSpec('check', '核验短信验证码', 'POST', '/api/sms_verify/aliyun/check',
                              summary='核验用户输入的验证码是否正确/是否过期。',
                              params=[
@@ -92,7 +98,13 @@ SERVICE = ServiceSpec(
                                  _out_id_param(),
                              ],
                              notes=['接口请求成功统一返回 code=10000；业务结果以 data.verify_result 判断：',
-                                    'PASS=核验成功，UNKNOWN=核验失败（验证码错误或已过期）。']),
+                                    'PASS=核验成功，UNKNOWN=核验失败（验证码错误或已过期）。'],
+                             response_fields=[
+                                 ResponseFieldSpec('verify_result', 'string', '核验结果：PASS/UNKNOWN'),
+                                 ResponseFieldSpec('passed', 'bool', '是否核验通过'),
+                                 ResponseFieldSpec('out_id', 'string', '外部流水号（透传返回）'),
+                             ],
+                             response_example='{"verify_result": "PASS", "passed": true, "out_id": ""}'),
             ],
         ),
     ],

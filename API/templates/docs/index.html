@@ -30,6 +30,9 @@
       <span class="feel-chip gap-1.5">
         <i data-lucide="list-tree" class="h-3.5 w-3.5 text-secondary" aria-hidden="true"></i>{% trans "服务 / 线路展开" %}
       </span>
+      <span class="feel-chip gap-1.5">
+        <i data-lucide="coins" class="h-3.5 w-3.5 text-warning" aria-hidden="true"></i>{% trans "每个端点标注单价" %}
+      </span>
       {# 服务状态图例：图标与文案均取自 service_status（单一数据源），与左侧导航/服务卡片一致 #}
       {% for st in status_legend %}
       <span class="badge {{ st.badge }} gap-1">
@@ -66,7 +69,7 @@
         {% for svc in services %}
         {% if svc.registered and svc.status != 'dev' and svc.status != 'offline' %}
         <a href="/docs/{{ svc.slug }}/"
-           class="feel-card group flex flex-col gap-2 p-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+           class="feel-card flex flex-col gap-2 p-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
         {% else %}
         <div class="feel-card flex flex-col gap-2 p-4 opacity-75" aria-disabled="true">
         {% endif %}
@@ -82,7 +85,7 @@
             <span class="truncate font-mono text-primary">{{ svc.slug }}</span>
             <span class="flex shrink-0 items-center gap-1.5">
               <span class="feel-chip">{% blocktrans with n=svc.channel_count %}{{ n }} 线路{% endblocktrans %}</span>
-              <i data-lucide="arrow-right" class="h-3.5 w-3.5 text-primary transition group-hover:translate-x-0.5" aria-hidden="true"></i>
+              <i data-lucide="arrow-right" class="h-3.5 w-3.5 text-primary" aria-hidden="true"></i>
             </span>
             {% else %}
             <span class="opacity-60">{% trans "文档接入中" %}</span>
@@ -94,6 +97,11 @@
         </div>
         {% endif %}
         {% endfor %}
+      </div>
+
+      {# ===== 统一响应格式 + 错误码入口（所有服务的接口共用同一信封） ===== #}
+      <div class="mt-6">
+        {% include 'docs/_response_envelope.html' %}
       </div>
     </div>
 

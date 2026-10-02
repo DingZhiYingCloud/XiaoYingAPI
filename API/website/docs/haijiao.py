@@ -6,7 +6,7 @@
 
 接入方拿到授权后可拉取各栏目内容；帖内配图为源站混淆地址，需按本页说明自行解密。
 """
-from .schema import ChannelSpec, EndpointSpec, ParamSpec, ServiceSpec
+from .schema import ChannelSpec, EndpointSpec, ParamSpec, ResponseFieldSpec, ServiceSpec
 
 # 站点域名只有一个出处：爬虫层的 utils（海角域名每日变动，运行时由 current_base_url() 自动跟随）。
 # 这里是模块导入时的兜底值，仅用于文档里的示例地址；真实域名以「今日域名」接口返回为准。
@@ -125,6 +125,67 @@ _IMAGE_DECRYPT_HELP = [
 ]
 
 
+# 通用响应字段：多处复用的列表 / 分页结构，集中声明避免逐端点重复（与上面的 _IMAGE_NOTES 同一思路）
+# 分页信息（内容列表 / 搜索 / 评论 / 礼物 / 流水等接口的 data.pagination 结构一致）
+_PAGINATION_FIELDS = [
+    ResponseFieldSpec('pagination', 'object', '分页信息'),
+    ResponseFieldSpec('pagination.page', 'int', '当前页码'),
+    ResponseFieldSpec('pagination.page_size', 'int', '每页条数'),
+    ResponseFieldSpec('pagination.total', 'int', '总条数'),
+    ResponseFieldSpec('pagination.total_page', 'int', '总页数'),
+]
+
+# 帖子条目（内容列表 / 搜索 / 我点赞过的 / 我收藏的 / 我的帖子共用同一结构）
+_POST_FIELDS = [
+    ResponseFieldSpec('results[].topic_id', 'int', '帖子 ID'),
+    ResponseFieldSpec('results[].title', 'string', '标题'),
+    ResponseFieldSpec('results[].excerpt', 'string', '摘要'),
+    ResponseFieldSpec('results[].node', 'object', '所属板块'),
+    ResponseFieldSpec('results[].node.id', 'int', '板块 ID'),
+    ResponseFieldSpec('results[].node.name', 'string', '板块名称'),
+    ResponseFieldSpec('results[].tags', 'array', '标签列表'),
+    ResponseFieldSpec('results[].tags[].id', 'int', '标签 ID'),
+    ResponseFieldSpec('results[].tags[].name', 'string', '标签名'),
+    ResponseFieldSpec('results[].author', 'object', '作者信息'),
+    ResponseFieldSpec('results[].author.id', 'int', '作者用户 ID'),
+    ResponseFieldSpec('results[].author.nickname', 'string', '作者昵称'),
+    ResponseFieldSpec('results[].author.vip', 'int', '作者 VIP 等级'),
+    ResponseFieldSpec('results[].images', 'array', '配图加密地址列表'),
+    ResponseFieldSpec('results[].has_video', 'bool', '是否含视频'),
+    ResponseFieldSpec('results[].money_type', 'int', '货币类型'),
+    ResponseFieldSpec('results[].view_count', 'int', '浏览数'),
+    ResponseFieldSpec('results[].comment_count', 'int', '评论数'),
+    ResponseFieldSpec('results[].like_count', 'int', '点赞数'),
+    ResponseFieldSpec('results[].create_time', 'string', '发布时间'),
+    ResponseFieldSpec('results[].last_comment_time', 'string', '最后评论时间'),
+]
+
+# 用户名片（用户主页信息 / 我关注的人 / 我的粉丝共用）
+_USER_CARD_FIELDS = [
+    ResponseFieldSpec('results[].user_id', 'int', '用户 ID'),
+    ResponseFieldSpec('results[].nickname', 'string', '昵称'),
+    ResponseFieldSpec('results[].avatar', 'string', '头像地址'),
+    ResponseFieldSpec('results[].avatar_encrypted', 'bool', '头像是否需解码'),
+    ResponseFieldSpec('results[].description', 'string', '个性签名'),
+    ResponseFieldSpec('results[].fans_count', 'int', '粉丝数'),
+    ResponseFieldSpec('results[].vip', 'int', 'VIP 等级'),
+    ResponseFieldSpec('results[].famous', 'bool', '是否名人'),
+    ResponseFieldSpec('results[].certified', 'bool', '是否认证'),
+    ResponseFieldSpec('results[].is_followed', 'bool', '我是否已关注'),
+]
+
+# 我的帖子额外字段（在帖子条目基础上追加的审核相关信息）
+_MINE_EXTRA_FIELDS = [
+    ResponseFieldSpec('results[].pending_id', 'int', '待审 ID'),
+    ResponseFieldSpec('results[].source_status', 'int', '源站状态码'),
+    ResponseFieldSpec('results[].remarks', 'string', '审核失败原因'),
+    ResponseFieldSpec('results[].has_pic', 'bool', '是否含图片'),
+    ResponseFieldSpec('results[].has_audio', 'bool', '是否含音频'),
+    ResponseFieldSpec('results[].is_top', 'bool', '是否置顶'),
+    ResponseFieldSpec('results[].is_cream', 'bool', '是否加精'),
+    ResponseFieldSpec('results[].is_original', 'bool', '是否原创'),
+]
+
 SERVICE = ServiceSpec(
     slug='haijiao',
     name='海角社区',
@@ -188,7 +249,21 @@ SERVICE = ServiceSpec(
                                  '本接口供外部系统（自建反代 / 书签 / 公告）查询当前域名。',
                                  '结果为服务端缓存值（默认 30 分钟），无需频繁调用；'
                                  '源站全部入口都探测不到时返回 EXTERNAL_API_FAILED。',
-                             ]),
+                             ],
+                             response_fields=[
+                                 ResponseFieldSpec('domain', 'string', '今日大陆可访问域名'),
+                                 ResponseFieldSpec('backup_domain', 'string', '备用域名'),
+                                 ResponseFieldSpec('abroad_domain', 'string', '海外永久域名'),
+                                 ResponseFieldSpec('movie_domain', 'string', '影视站域名'),
+                                 ResponseFieldSpec('customer_service', 'string', '客服邮箱'),
+                             ],
+                             response_example="""{
+  "domain": "https://www.example.com",
+  "backup_domain": "https://www.example2.com",
+  "abroad_domain": "https://www.example8.com",
+  "movie_domain": "https://movie.example.com",
+  "customer_service": "service@example.com"
+}"""),
                 EndpointSpec('topics', '内容列表', 'GET',
                              '/api/haijiao/topics',
                              summary='按栏目获取社区内容列表，支持分页。',
@@ -216,7 +291,32 @@ SERVICE = ServiceSpec(
                                  'tab 非法返回 PARAM_VALUE_INVALID；page 非整数返回 PARAM_FORMAT_ERROR，'
                                  '小于 1 返回 PARAM_VALUE_INVALID。',
                                  '配图解密（重要）：',
-                             ] + _IMAGE_NOTES),
+                             ] + _IMAGE_NOTES,
+                             response_fields=[
+                                 ResponseFieldSpec('tab', 'string', '当前栏目'),
+                             ] + _PAGINATION_FIELDS + _POST_FIELDS,
+                             response_example="""{
+  "tab": "hot",
+  "pagination": {"page": 1, "page_size": 20, "total": 137, "total_page": 7},
+  "results": [
+    {
+      "topic_id": 2274377,
+      "title": "Post title",
+      "excerpt": "Post excerpt ...",
+      "node": {"id": 179, "name": "Node name"},
+      "tags": [{"id": 12, "name": "tag name"}],
+      "author": {"id": 13820512, "nickname": "nickname", "vip": 0},
+      "images": ["https://pic.xxx.top/hjstore/images/xxxx_mini.jpg.txt"],
+      "has_video": false,
+      "money_type": 0,
+      "view_count": 128,
+      "comment_count": 3,
+      "like_count": 5,
+      "create_time": "2026-09-26 12:00:00",
+      "last_comment_time": "2026-09-27 08:00:00"
+    }
+  ]
+}"""),
                 EndpointSpec('search', '搜索', 'GET',
                              '/api/haijiao/search',
                              summary='按关键词搜索帖子，支持分页与板块筛选。',
@@ -244,7 +344,34 @@ SERVICE = ServiceSpec(
                                  'page 非整数返回 PARAM_FORMAT_ERROR、小于 1 返回 PARAM_VALUE_INVALID。',
                                  '无匹配结果时 data.results 为空数组，不报错。',
                                  '配图解密（重要，图片字段与内容列表同源）：',
-                             ] + _IMAGE_NOTES),
+                             ] + _IMAGE_NOTES,
+                             response_fields=[
+                                 ResponseFieldSpec('key', 'string', '搜索关键词'),
+                                 ResponseFieldSpec('node_id', 'int', '限定的板块 ID'),
+                             ] + _PAGINATION_FIELDS + _POST_FIELDS,
+                             response_example="""{
+  "key": "keyword",
+  "node_id": 0,
+  "pagination": {"page": 1, "page_size": 20, "total": 8, "total_page": 1},
+  "results": [
+    {
+      "topic_id": 2274377,
+      "title": "Post title",
+      "excerpt": "Post excerpt ...",
+      "node": {"id": 179, "name": "Node name"},
+      "tags": [{"id": 12, "name": "tag name"}],
+      "author": {"id": 13820512, "nickname": "nickname", "vip": 0},
+      "images": ["https://pic.xxx.top/hjstore/images/xxxx_mini.jpg.txt"],
+      "has_video": false,
+      "money_type": 0,
+      "view_count": 128,
+      "comment_count": 3,
+      "like_count": 5,
+      "create_time": "2026-09-26 12:00:00",
+      "last_comment_time": "2026-09-27 08:00:00"
+    }
+  ]
+}"""),
                 EndpointSpec('topic_detail', '帖子详情', 'GET',
                              '/api/haijiao/topic/detail',
                              summary='获取单个帖子的详情：正文、原图、视频附件、互动数据与相关推荐。',
@@ -276,7 +403,79 @@ SERVICE = ServiceSpec(
                                  'user_id / user_token 只传其一返回 PARAM_MISSING；帖子不存在返回 EXTERNAL_API_FAILED。',
                                  '作者头像（author.avatar / avatar_encrypted）说明：',
                                  '配图解密（重要）：',
-                             ] + _AVATAR_NOTES + _IMAGE_NOTES),
+                             ] + _AVATAR_NOTES + _IMAGE_NOTES,
+                             response_fields=[
+                                 ResponseFieldSpec('topic_id', 'int', '帖子 ID'),
+                                 ResponseFieldSpec('title', 'string', '标题'),
+                                 ResponseFieldSpec('excerpt', 'string', '摘要'),
+                                 ResponseFieldSpec('node', 'object', '所属板块'),
+                                 ResponseFieldSpec('node.id', 'int', '板块 ID'),
+                                 ResponseFieldSpec('node.name', 'string', '板块名称'),
+                                 ResponseFieldSpec('tags', 'array', '标签列表'),
+                                 ResponseFieldSpec('tags[].id', 'int', '标签 ID'),
+                                 ResponseFieldSpec('tags[].name', 'string', '标签名'),
+                                 ResponseFieldSpec('author', 'object', '作者信息'),
+                                 ResponseFieldSpec('author.id', 'int', '作者用户 ID'),
+                                 ResponseFieldSpec('author.nickname', 'string', '作者昵称'),
+                                 ResponseFieldSpec('author.vip', 'int', '作者 VIP 等级'),
+                                 ResponseFieldSpec('author.avatar', 'string', '作者头像地址'),
+                                 ResponseFieldSpec('author.avatar_encrypted', 'bool', '头像是否需解码'),
+                                 ResponseFieldSpec('content', 'string', '正文 HTML（原样返回）'),
+                                 ResponseFieldSpec('images', 'array', '原图加密地址列表'),
+                                 ResponseFieldSpec('videos', 'array', '视频附件列表'),
+                                 ResponseFieldSpec('videos[].id', 'int', '附件 ID'),
+                                 ResponseFieldSpec('videos[].cover', 'string', '视频封面地址'),
+                                 ResponseFieldSpec('videos[].url', 'string', '源站原始 m3u8（不可直接播放）'),
+                                 ResponseFieldSpec('videos[].play_url', 'string', '本服务可播放的列表地址'),
+                                 ResponseFieldSpec('has_video', 'bool', '是否含视频'),
+                                 ResponseFieldSpec('money_type', 'int', '货币类型'),
+                                 ResponseFieldSpec('purchased', 'bool', '调用方是否已购买'),
+                                 ResponseFieldSpec('view_count', 'int', '浏览数'),
+                                 ResponseFieldSpec('comment_count', 'int', '评论数'),
+                                 ResponseFieldSpec('like_count', 'int', '点赞数'),
+                                 ResponseFieldSpec('is_cream', 'bool', '是否加精'),
+                                 ResponseFieldSpec('is_top', 'bool', '是否置顶'),
+                                 ResponseFieldSpec('is_original', 'bool', '是否原创'),
+                                 ResponseFieldSpec('create_time', 'string', '发布时间'),
+                                 ResponseFieldSpec('last_comment_time', 'string', '最后评论时间'),
+                                 ResponseFieldSpec('related', 'array', '相关推荐列表'),
+                                 ResponseFieldSpec('related[].topic_id', 'int', '帖子 ID'),
+                                 ResponseFieldSpec('related[].title', 'string', '标题'),
+                                 ResponseFieldSpec('related[].description', 'string', '描述'),
+                                 ResponseFieldSpec('related[].cover', 'string', '封面地址'),
+                                 ResponseFieldSpec('related[].view_count', 'int', '浏览数'),
+                                 ResponseFieldSpec('related[].comment_count', 'int', '评论数'),
+                                 ResponseFieldSpec('related[].buy_count', 'int', '购买数'),
+                             ],
+                             response_example="""{
+  "topic_id": 2271652,
+  "title": "Post title",
+  "excerpt": "Post excerpt ...",
+  "node": {"id": 179, "name": "Node name"},
+  "tags": [{"id": 12, "name": "tag name"}],
+  "author": {"id": 13820512, "nickname": "nickname", "vip": 0,
+             "avatar": "https://www.xxx.top/images/common/avatar/12.jpg",
+             "avatar_encrypted": false},
+  "content": "<p>Post content ...</p>",
+  "images": ["https://pic.xxx.top/hjstore/images/xxxx.jpg.txt"],
+  "videos": [{"id": 14141834, "cover": "https://pic.xxx.top/hjstore/covers/xxxx.jpg",
+              "url": "https://cdn.xxx.top/video/xxxx.m3u8",
+              "play_url": "/api/haijiao/video/m3u8?topic_id=2271652&attachment_id=14141834"}],
+  "has_video": true,
+  "money_type": 0,
+  "purchased": true,
+  "view_count": 1280,
+  "comment_count": 23,
+  "like_count": 56,
+  "is_cream": false,
+  "is_top": false,
+  "is_original": true,
+  "create_time": "2026-09-26 12:00:00",
+  "last_comment_time": "2026-09-27 08:00:00",
+  "related": [{"topic_id": 2270962, "title": "Related title", "description": "Related desc",
+               "cover": "https://pic.xxx.top/hjstore/covers/yyyy.jpg",
+               "view_count": 300, "comment_count": 5, "buy_count": 1}]
+}"""),
                 EndpointSpec('topic_comments', '帖子评论列表', 'GET',
                              '/api/haijiao/topic/comments',
                              summary='分页获取帖子的评论（按楼层倒序，最新在前），可按「只看楼主」筛选。',
@@ -311,7 +510,59 @@ SERVICE = ServiceSpec(
                                  'page 非数字 / 小于 1 返回 PARAM_FORMAT_ERROR / PARAM_VALUE_INVALID；'
                                  'search_type 非 0 / 1 返回 PARAM_VALUE_INVALID；帖子不存在返回 EXTERNAL_API_FAILED。',
                                  '作者头像（author.avatar / avatar_encrypted）说明：',
-                             ] + _AVATAR_NOTES),
+                             ] + _AVATAR_NOTES,
+                             response_fields=[
+                                 ResponseFieldSpec('topic_id', 'int', '帖子 ID'),
+                                 ResponseFieldSpec('search_type', 'int', '筛选类型'),
+                             ] + _PAGINATION_FIELDS + [
+                                 ResponseFieldSpec('results[].comment_id', 'int', '评论 ID'),
+                                 ResponseFieldSpec('results[].floor', 'int', '楼层'),
+                                 ResponseFieldSpec('results[].content', 'string', '正文（纯文本）'),
+                                 ResponseFieldSpec('results[].images', 'array', '配图加密地址列表'),
+                                 ResponseFieldSpec('results[].author', 'object', '作者信息'),
+                                 ResponseFieldSpec('results[].author.id', 'int', '作者用户 ID'),
+                                 ResponseFieldSpec('results[].author.nickname', 'string', '作者昵称'),
+                                 ResponseFieldSpec('results[].author.avatar', 'string', '作者头像地址'),
+                                 ResponseFieldSpec('results[].author.avatar_encrypted', 'bool', '头像是否需解码'),
+                                 ResponseFieldSpec('results[].author.vip', 'int', '作者 VIP 等级'),
+                                 ResponseFieldSpec('results[].author.famous', 'bool', '是否名人'),
+                                 ResponseFieldSpec('results[].author.certified', 'bool', '是否认证'),
+                                 ResponseFieldSpec('results[].like_count', 'int', '点赞数'),
+                                 ResponseFieldSpec('results[].liked', 'bool', '我是否点过赞'),
+                                 ResponseFieldSpec('results[].reply_count', 'int', '子评论总数'),
+                                 ResponseFieldSpec('results[].replies', 'array', '内联子评论预览'),
+                                 ResponseFieldSpec('results[].is_sale', 'bool', '是否付费评论'),
+                                 ResponseFieldSpec('results[].price', 'int', '付费价格'),
+                                 ResponseFieldSpec('results[].buy_count', 'int', '购买数'),
+                                 ResponseFieldSpec('results[].create_time', 'string', '发布时间'),
+                                 ResponseFieldSpec('results[].pretty_time', 'string', '相对时间'),
+                             ],
+                             response_example="""{
+  "topic_id": 2272780,
+  "search_type": 0,
+  "pagination": {"page": 1, "page_size": 20, "total": 36, "total_page": 2},
+  "results": [
+    {
+      "comment_id": 51081038,
+      "floor": 36,
+      "content": "Comment text ...",
+      "images": ["https://pic.xxx.top/hjstore/images/cccc.jpg.txt"],
+      "author": {"id": 13820512, "nickname": "nickname",
+                 "avatar": "https://www.xxx.top/images/common/avatar/12.jpg",
+                 "avatar_encrypted": false, "vip": 0,
+                 "famous": false, "certified": false},
+      "like_count": 2,
+      "liked": false,
+      "reply_count": 1,
+      "replies": [],
+      "is_sale": false,
+      "price": 0,
+      "buy_count": 0,
+      "create_time": "2026-09-27 08:00:00",
+      "pretty_time": "1 day ago"
+    }
+  ]
+}"""),
                 EndpointSpec('comment_replies', '二级评论列表', 'GET',
                              '/api/haijiao/comment/replies',
                              summary='分页获取某条主评论下的二级评论（子评论）。',
@@ -341,7 +592,53 @@ SERVICE = ServiceSpec(
                                  'page 非数字 / 小于 1 返回 PARAM_FORMAT_ERROR / PARAM_VALUE_INVALID；'
                                  '源站异常返回 EXTERNAL_API_FAILED。',
                                  '作者头像（author.avatar / avatar_encrypted）说明：',
-                             ] + _AVATAR_NOTES),
+                             ] + _AVATAR_NOTES,
+                             response_fields=[
+                                 ResponseFieldSpec('comment_id', 'int', '主评论 ID'),
+                             ] + _PAGINATION_FIELDS + [
+                                 ResponseFieldSpec('results[].comment_id', 'int', '评论 ID'),
+                                 ResponseFieldSpec('results[].root_comment_id', 'int', '所属主评论 ID'),
+                                 ResponseFieldSpec('results[].parent_comment_id', 'int', '直接回复的评论 ID'),
+                                 ResponseFieldSpec('results[].author', 'object', '作者信息'),
+                                 ResponseFieldSpec('results[].author.id', 'int', '作者用户 ID'),
+                                 ResponseFieldSpec('results[].author.nickname', 'string', '作者昵称'),
+                                 ResponseFieldSpec('results[].author.avatar', 'string', '作者头像地址'),
+                                 ResponseFieldSpec('results[].author.avatar_encrypted', 'bool', '头像是否需解码'),
+                                 ResponseFieldSpec('results[].author.vip', 'int', '作者 VIP 等级'),
+                                 ResponseFieldSpec('results[].author.famous', 'bool', '是否名人'),
+                                 ResponseFieldSpec('results[].author.certified', 'bool', '是否认证'),
+                                 ResponseFieldSpec('results[].content', 'string', '正文（纯文本）'),
+                                 ResponseFieldSpec('results[].quote', 'string', '引用的评论内容'),
+                                 ResponseFieldSpec('results[].like_count', 'int', '点赞数'),
+                                 ResponseFieldSpec('results[].liked', 'bool', '我是否点过赞'),
+                                 ResponseFieldSpec('results[].reply_count', 'int', '本条子回复数'),
+                                 ResponseFieldSpec('results[].last_replies', 'array', '内联最新子回复预览'),
+                                 ResponseFieldSpec('results[].create_time', 'string', '发布时间'),
+                                 ResponseFieldSpec('results[].pretty_time', 'string', '相对时间'),
+                             ],
+                             response_example="""{
+  "comment_id": 51081038,
+  "pagination": {"page": 1, "page_size": 20, "total": 3, "total_page": 1},
+  "results": [
+    {
+      "comment_id": 51081039,
+      "root_comment_id": 51081038,
+      "parent_comment_id": 51081038,
+      "author": {"id": 1001, "nickname": "user",
+                 "avatar": "https://www.xxx.top/images/common/avatar/8.jpg",
+                 "avatar_encrypted": false, "vip": 0,
+                 "famous": false, "certified": false},
+      "content": "Reply text ...",
+      "quote": "",
+      "like_count": 0,
+      "liked": false,
+      "reply_count": 0,
+      "last_replies": [],
+      "create_time": "2026-09-27 08:30:00",
+      "pretty_time": "1 day ago"
+    }
+  ]
+}"""),
                 EndpointSpec('topic_nodes', '板块列表', 'GET',
                              '/api/haijiao/topic/nodes',
                              summary='获取发帖可选板块（按层级返回 children，供联动选择）。',
@@ -351,7 +648,37 @@ SERVICE = ServiceSpec(
                                  'description / vip_limit / display / children（子板块同结构，可嵌套多层）。',
                                  '发帖时传所选**叶子板块**的 node_id（见「发帖」接口）。',
                                  '板块属站点级公共数据，服务端缓存，变更不频繁。',
-                             ]),
+                             ],
+                             response_fields=[
+                                 ResponseFieldSpec('ver', 'int', '板块数据版本号'),
+                                 ResponseFieldSpec('list', 'array', '顶层板块数组'),
+                                 ResponseFieldSpec('list[].node_id', 'int', '板块 ID'),
+                                 ResponseFieldSpec('list[].parent_id', 'int', '父板块 ID'),
+                                 ResponseFieldSpec('list[].name', 'string', '板块名称'),
+                                 ResponseFieldSpec('list[].icon', 'string', '板块图标地址'),
+                                 ResponseFieldSpec('list[].description', 'string', '板块说明'),
+                                 ResponseFieldSpec('list[].vip_limit', 'int', '所需 VIP 等级'),
+                                 ResponseFieldSpec('list[].display', 'int', '是否显示'),
+                                 ResponseFieldSpec('list[].children', 'array', '子板块数组（结构相同）'),
+                             ],
+                             response_example="""{
+  "ver": 12,
+  "list": [
+    {
+      "node_id": 1,
+      "parent_id": 0,
+      "name": "Node name",
+      "icon": "https://www.xxx.top/images/nodes/1.png",
+      "description": "Node description",
+      "vip_limit": 0,
+      "display": 1,
+      "children": [
+        {"node_id": 179, "parent_id": 1, "name": "Child node", "icon": "",
+         "description": "", "vip_limit": 0, "display": 1, "children": []}
+      ]
+    }
+  ]
+}"""),
                 EndpointSpec('topic_tags', '标签池', 'GET',
                              '/api/haijiao/topic/tags',
                              summary='分页获取发帖可选标签（源站标签池，每页 20 条，最新在前）。',
@@ -366,7 +693,15 @@ SERVICE = ServiceSpec(
                                  '发帖的 tags 参数传**标签名**（不是 tag_id）：不在池中的名称会被源站当作新标签，'
                                  '因此自定义标签直接写名称即可。',
                                  'page 非数字 / 小于 1 返回 PARAM_FORMAT_ERROR / PARAM_VALUE_INVALID。',
-                             ]),
+                             ],
+                             response_fields=_PAGINATION_FIELDS + [
+                                 ResponseFieldSpec('results[].tag_id', 'int', '标签 ID'),
+                                 ResponseFieldSpec('results[].tag_name', 'string', '标签名'),
+                             ],
+                             response_example="""{
+  "pagination": {"page": 1, "page_size": 20, "total": 500, "total_page": 25},
+  "results": [{"tag_id": 1024, "tag_name": "tag name"}]
+}"""),
                 EndpointSpec('topic_upload', '上传发帖媒体', 'POST',
                              '/api/haijiao/topic/upload',
                              summary='上传发帖用的图片 / 视频，返回附件 ID 与可直接嵌入正文的 HTML 片段。',
@@ -390,7 +725,19 @@ SERVICE = ServiceSpec(
                                  '上传只产生附件、不会自动带进帖子：正文里靠 data-id 关联，未发帖的附件可忽略。',
                                  '格式不支持 / 图片超过 10MB 返回 PARAM_VALUE_INVALID；未选文件 / 凭据缺失返回 '
                                  'PARAM_MISSING；账号不存在返回 NOT_FOUND（20030）。',
-                             ]),
+                             ],
+                             response_fields=[
+                                 ResponseFieldSpec('attachment_id', 'int', '附件 ID'),
+                                 ResponseFieldSpec('category', 'string', '附件类型（images/video）'),
+                                 ResponseFieldSpec('url', 'string', '附件地址（视频为空串）'),
+                                 ResponseFieldSpec('html', 'string', '可拼进正文的 HTML 片段'),
+                             ],
+                             response_example="""{
+  "attachment_id": 14166286,
+  "category": "images",
+  "url": "https://pic.xxx.top/hjstore/images/xxxx.jpg",
+  "html": "<img src=\\"https://pic.xxx.top/hjstore/images/xxxx.jpg\\" data-id=\\"14166286\\"/>"
+}"""),
                 EndpointSpec('topic_create', '发帖', 'POST',
                              '/api/haijiao/topic/create',
                              summary='发布帖子（板块 / 标签 / 标题 / 正文 / 图片视频）。',
@@ -439,6 +786,11 @@ SERVICE = ServiceSpec(
                                  'type 不在 0-2、reward_hours 不在 72-240 等返回 PARAM_VALUE_INVALID；'
                                  '账号不存在返回 NOT_FOUND（20030）。',
                              ],
+                             response_fields=[
+                                 ResponseFieldSpec('topic_id', 'int', '帖子 ID（待审核时为空）'),
+                                 ResponseFieldSpec('pending', 'bool', '是否待审核'),
+                             ],
+                             response_example="""{"topic_id": 2274377, "pending": false}""",
                              tool_path='/haijiao/post/',
                              tool_label='去发帖页发布'),
                 EndpointSpec('topic_mine', '我的帖子', 'GET',
@@ -472,7 +824,40 @@ SERVICE = ServiceSpec(
                                  'status 非三种取值返回 PARAM_VALUE_INVALID；page 非数字 / 小于 1 返回 '
                                  'PARAM_FORMAT_ERROR / PARAM_VALUE_INVALID；凭据缺失返回 PARAM_MISSING；'
                                  '账号不存在返回 NOT_FOUND（20030）。',
-                             ]),
+                             ],
+                             response_fields=[
+                                 ResponseFieldSpec('status', 'string', '审核状态'),
+                             ] + _PAGINATION_FIELDS + _POST_FIELDS + _MINE_EXTRA_FIELDS,
+                             response_example="""{
+  "status": "published",
+  "pagination": {"page": 1, "page_size": 10, "total": 3, "total_page": 1},
+  "results": [
+    {
+      "topic_id": 2274377,
+      "title": "Post title",
+      "excerpt": "Post excerpt ...",
+      "node": {"id": 179, "name": "Node name"},
+      "tags": [{"id": 12, "name": "tag name"}],
+      "author": {"id": 13820512, "nickname": "nickname", "vip": 0},
+      "images": [],
+      "has_video": false,
+      "money_type": 0,
+      "view_count": 0,
+      "comment_count": 0,
+      "like_count": 0,
+      "create_time": "2026-09-26 12:00:00",
+      "last_comment_time": "",
+      "pending_id": null,
+      "source_status": 0,
+      "remarks": "",
+      "has_pic": false,
+      "has_audio": false,
+      "is_top": false,
+      "is_cream": false,
+      "is_original": false
+    }
+  ]
+}"""),
                 EndpointSpec('gift_list', '礼物列表', 'GET',
                              '/api/haijiao/gift/list',
                              summary='打赏可选的礼物清单（金币 / 钻石礼物），含各自价格。',
@@ -495,6 +880,30 @@ SERVICE = ServiceSpec(
                                  'kind 非两种取值返回 PARAM_VALUE_INVALID；page 非数字 / 小于 1 返回 '
                                  'PARAM_FORMAT_ERROR / PARAM_VALUE_INVALID。',
                              ],
+                             response_fields=[
+                                 ResponseFieldSpec('kind', 'string', '礼物类型'),
+                             ] + _PAGINATION_FIELDS + [
+                                 ResponseFieldSpec('results[].item_id', 'int', '礼物 ID'),
+                                 ResponseFieldSpec('results[].name', 'string', '礼物名称'),
+                                 ResponseFieldSpec('results[].desc', 'string', '礼物说明'),
+                                 ResponseFieldSpec('results[].kind', 'string', '礼物类型（gold/diamond）'),
+                                 ResponseFieldSpec('results[].money_type', 'int', '货币类型（1 金币 2 钻石）'),
+                                 ResponseFieldSpec('results[].price', 'int', '原价'),
+                                 ResponseFieldSpec('results[].sale_price', 'int', '实际单价'),
+                                 ResponseFieldSpec('results[].img', 'string', '礼物图片地址'),
+                                 ResponseFieldSpec('results[].expire_time', 'string', '过期时间'),
+                                 ResponseFieldSpec('results[].vip_limit', 'int', '所需 VIP 等级'),
+                             ],
+                             response_example="""{
+  "kind": "gold",
+  "pagination": {"page": 1, "page_size": 20, "total": 6, "total_page": 1},
+  "results": [
+    {"item_id": 1, "name": "Lollipop", "desc": "Gift description", "kind": "gold",
+     "money_type": 1, "price": 5, "sale_price": 5,
+     "img": "https://www.xxx.top/images/gifts/1.png",
+     "expire_time": "", "vip_limit": 0}
+  ]
+}""",
                              gift_picker_path='/api/haijiao/gift/list'),
                 EndpointSpec('topic_give', '给帖子送金币（打赏）', 'GET',
                              '/api/haijiao/topic/give',
@@ -529,6 +938,37 @@ SERVICE = ServiceSpec(
                                  '小于 1 / 大于 99 返回 PARAM_FORMAT_ERROR / PARAM_VALUE_INVALID；帖子不存在、'
                                  '礼物不存在、金币不足等源站拒绝返回 EXTERNAL_API_FAILED（以错误消息区分）。',
                              ],
+                             response_fields=[
+                                 ResponseFieldSpec('topic_id', 'int', '帖子 ID'),
+                                 ResponseFieldSpec('item', 'object', '所赠礼物'),
+                                 ResponseFieldSpec('item.item_id', 'int', '礼物 ID'),
+                                 ResponseFieldSpec('item.name', 'string', '礼物名称'),
+                                 ResponseFieldSpec('item.desc', 'string', '礼物说明'),
+                                 ResponseFieldSpec('item.kind', 'string', '礼物类型'),
+                                 ResponseFieldSpec('item.money_type', 'int', '货币类型（1 金币 2 钻石）'),
+                                 ResponseFieldSpec('item.price', 'int', '原价'),
+                                 ResponseFieldSpec('item.sale_price', 'int', '实际单价'),
+                                 ResponseFieldSpec('item.img', 'string', '礼物图片地址'),
+                                 ResponseFieldSpec('item.expire_time', 'string', '过期时间'),
+                                 ResponseFieldSpec('item.vip_limit', 'int', '所需 VIP 等级'),
+                                 ResponseFieldSpec('quantity', 'int', '赠送数量'),
+                                 ResponseFieldSpec('total_cost', 'int', '本次花费'),
+                                 ResponseFieldSpec('receiver', 'object', '收礼人信息'),
+                                 ResponseFieldSpec('receiver.user_id', 'int', '收礼人用户 ID'),
+                                 ResponseFieldSpec('receiver.nickname', 'string', '收礼人昵称'),
+                                 ResponseFieldSpec('money', 'object', '赠送后余额'),
+                             ],
+                             response_example="""{
+  "topic_id": 2274377,
+  "item": {"item_id": 1, "name": "Lollipop", "desc": "Gift description", "kind": "gold",
+           "money_type": 1, "price": 5, "sale_price": 5,
+           "img": "https://www.xxx.top/images/gifts/1.png",
+           "expire_time": "", "vip_limit": 0},
+  "quantity": 1,
+  "total_cost": 5,
+  "receiver": {"user_id": 13820512, "nickname": "author nickname"},
+  "money": {"gold": 995, "diamond": 0}
+}""",
                              gift_picker_path='/api/haijiao/gift/list'),
                 EndpointSpec('user_follow', '关注 / 取消关注用户', 'GET',
                              '/api/haijiao/user/follow',
@@ -557,7 +997,13 @@ SERVICE = ServiceSpec(
                                  'target_user_id 缺失返回 PARAM_MISSING、非数字 / 小于 1 返回 '
                                  'PARAM_FORMAT_ERROR / PARAM_VALUE_INVALID；action 非两种取值返回 PARAM_VALUE_INVALID；'
                                  '凭据缺失返回 PARAM_MISSING；账号不存在返回 NOT_FOUND（20030）。',
-                             ]),
+                             ],
+                             response_fields=[
+                                 ResponseFieldSpec('target_user_id', 'int', '目标用户 ID'),
+                                 ResponseFieldSpec('action', 'string', '动作（follow/unfollow）'),
+                                 ResponseFieldSpec('followed', 'bool', '操作后的关注状态'),
+                             ],
+                             response_example="""{"target_user_id": 13820512, "action": "follow", "followed": true}"""),
                 EndpointSpec('user_follow_batch', '批量关注 / 取消关注', 'POST',
                              '/api/haijiao/user/follow/batch',
                              summary='让账号库里全部账号，都对同一个目标用户执行关注（或取关）。',
@@ -585,7 +1031,37 @@ SERVICE = ServiceSpec(
                                  '请自行控制频率；需要更保守可改用「关注 / 取消关注用户」逐个、间隔执行。',
                                  'target_user_id 缺失返回 PARAM_MISSING、非数字 / 小于 1 返回 '
                                  'PARAM_FORMAT_ERROR / PARAM_VALUE_INVALID；action 非两种取值返回 PARAM_VALUE_INVALID。',
-                             ]),
+                             ],
+                             response_fields=[
+                                 ResponseFieldSpec('target_user_id', 'int', '目标用户 ID'),
+                                 ResponseFieldSpec('action', 'string', '动作（follow/unfollow）'),
+                                 ResponseFieldSpec('total', 'int', '账号总数'),
+                                 ResponseFieldSpec('success_count', 'int', '成功数'),
+                                 ResponseFieldSpec('already_count', 'int', '无需操作数'),
+                                 ResponseFieldSpec('skipped_count', 'int', '跳过数'),
+                                 ResponseFieldSpec('failed_count', 'int', '失败数'),
+                                 ResponseFieldSpec('items', 'array', '逐账号结果'),
+                                 ResponseFieldSpec('items[].account_id', 'string', '库内账号 ID'),
+                                 ResponseFieldSpec('items[].user_id', 'string', '源站用户 ID'),
+                                 ResponseFieldSpec('items[].username', 'string', '用户名'),
+                                 ResponseFieldSpec('items[].state', 'string', '状态（done/already/skipped/failed）'),
+                                 ResponseFieldSpec('items[].message', 'string', '结果说明'),
+                             ],
+                             response_example="""{
+  "target_user_id": 13820512,
+  "action": "follow",
+  "total": 3,
+  "success_count": 2,
+  "already_count": 0,
+  "skipped_count": 1,
+  "failed_count": 0,
+  "items": [
+    {"account_id": "0b2e6f4a-1c3d-4e5f-8a9b-0c1d2e3f4a5b", "user_id": "13820512",
+     "username": "xy_abc123456", "state": "done", "message": ""},
+    {"account_id": "1c3d4e5f-2a3b-4c5d-8e9f-0a1b2c3d4e5f", "user_id": "13820513",
+     "username": "xy_def789012", "state": "skipped", "message": "目标用户就是该账号自己"}
+  ]
+}"""),
                 EndpointSpec('ranking', '排行榜', 'GET',
                              '/api/haijiao/ranking',
                              summary='首页排行榜：粉丝榜 / 点赞榜 / 人气榜，每个榜单另有总榜 / 月榜 / 周榜。',
@@ -614,7 +1090,41 @@ SERVICE = ServiceSpec(
                                  '源站首页排行榜还有**消费榜**（consume），本服务未开放。',
                                  'board、period 传入约定外的取值都返回 PARAM_VALUE_INVALID（20003）。',
                                  '头像说明：',
-                             ] + _AVATAR_NOTES),
+                             ] + _AVATAR_NOTES,
+                             response_fields=[
+                                 ResponseFieldSpec('board', 'string', '榜单维度'),
+                                 ResponseFieldSpec('board_label', 'string', '榜单维度名称'),
+                                 ResponseFieldSpec('period', 'string', '榜单周期'),
+                                 ResponseFieldSpec('period_label', 'string', '榜单周期名称'),
+                                 ResponseFieldSpec('total', 'int', '榜单人数'),
+                                 ResponseFieldSpec('results', 'array', '榜单数据'),
+                                 ResponseFieldSpec('results[].rank', 'int', '名次'),
+                                 ResponseFieldSpec('results[].user_id', 'int', '用户 ID'),
+                                 ResponseFieldSpec('results[].nickname', 'string', '昵称'),
+                                 ResponseFieldSpec('results[].avatar', 'string', '头像地址'),
+                                 ResponseFieldSpec('results[].avatar_encrypted', 'bool', '头像是否需解码'),
+                                 ResponseFieldSpec('results[].vip', 'int', 'VIP 等级'),
+                                 ResponseFieldSpec('results[].famous', 'bool', '是否名人'),
+                                 ResponseFieldSpec('results[].certified', 'bool', '是否认证'),
+                                 ResponseFieldSpec('results[].value', 'int', '榜单数值'),
+                                 ResponseFieldSpec('results[].title', 'object', '用户头衔'),
+                                 ResponseFieldSpec('results[].title.id', 'int', '头衔 ID'),
+                                 ResponseFieldSpec('results[].title.name', 'string', '头衔名称'),
+                                 ResponseFieldSpec('results[].title.icon', 'string', '头衔图标'),
+                             ],
+                             response_example="""{
+  "board": "fans",
+  "board_label": "粉丝",
+  "period": "all",
+  "period_label": "总榜",
+  "total": 101,
+  "results": [
+    {"rank": 1, "user_id": 13820512, "nickname": "nickname",
+     "avatar": "https://www.xxx.top/images/common/avatar/12.jpg",
+     "avatar_encrypted": false, "vip": 0, "famous": false, "certified": false,
+     "value": 12000, "title": {"id": 3, "name": "Title name", "icon": ""}}
+  ]
+}"""),
                 EndpointSpec('user_info', '用户主页信息', 'GET',
                              '/api/haijiao/user/info',
                              summary='按用户 ID 查一个人的主页信息：昵称、头像、签名、发帖数、粉丝数、我是否已关注。',
@@ -634,7 +1144,41 @@ SERVICE = ServiceSpec(
                                  'target_user_id 缺失返回 PARAM_MISSING、非数字 / 小于 1 返回 '
                                  'PARAM_FORMAT_ERROR / PARAM_VALUE_INVALID；用户不存在返回 EXTERNAL_API_FAILED。',
                                  '头像说明（author.avatar / results[].avatar）：',
-                             ] + _AVATAR_NOTES),
+                             ] + _AVATAR_NOTES,
+                             response_fields=[
+                                 ResponseFieldSpec('user_id', 'int', '用户 ID'),
+                                 ResponseFieldSpec('nickname', 'string', '昵称'),
+                                 ResponseFieldSpec('avatar', 'string', '头像地址'),
+                                 ResponseFieldSpec('avatar_encrypted', 'bool', '头像是否需解码'),
+                                 ResponseFieldSpec('description', 'string', '个性签名'),
+                                 ResponseFieldSpec('fans_count', 'int', '粉丝数'),
+                                 ResponseFieldSpec('vip', 'int', 'VIP 等级'),
+                                 ResponseFieldSpec('famous', 'bool', '是否名人'),
+                                 ResponseFieldSpec('certified', 'bool', '是否认证'),
+                                 ResponseFieldSpec('is_followed', 'bool', '我是否已关注'),
+                                 ResponseFieldSpec('topic_count', 'int', '发帖数'),
+                                 ResponseFieldSpec('video_count', 'int', '视频数'),
+                                 ResponseFieldSpec('comment_count', 'int', '评论数'),
+                                 ResponseFieldSpec('favorite_count', 'int', '收藏数'),
+                                 ResponseFieldSpec('like_count', 'int', '获赞数'),
+                             ],
+                             response_example="""{
+  "user_id": 13820512,
+  "nickname": "nickname",
+  "avatar": "https://www.xxx.top/images/common/avatar/12.jpg",
+  "avatar_encrypted": false,
+  "description": "Signature text",
+  "fans_count": 1200,
+  "vip": 0,
+  "famous": false,
+  "certified": false,
+  "is_followed": false,
+  "topic_count": 12,
+  "video_count": 3,
+  "comment_count": 45,
+  "favorite_count": 8,
+  "like_count": 260
+}"""),
                 EndpointSpec('user_wealth', '账号余额', 'GET',
                              '/api/haijiao/user/wealth',
                              summary='查当前账号的金币 / 钻石余额（打赏、签到的配套）。',
@@ -644,7 +1188,9 @@ SERVICE = ServiceSpec(
                                  '返回 data：gold（金币）/ diamond（钻石）。',
                                  '打赏（给帖子送金币）前可先用本接口确认余额够不够，避免提交后才被源站拒绝。',
                                  '凭据缺失返回 PARAM_MISSING；账号不存在返回 NOT_FOUND（20030）。',
-                             ]),
+                             ],
+                             response_note='data 为源站余额对象的原样透传，当前含 gold（金币）与 diamond（钻石）'
+                                           '两个字段，具体字段以源站返回为准。'),
                 EndpointSpec('user_wealth_log', '金币 / 钻石流水', 'GET',
                              '/api/haijiao/user/wealth/log',
                              summary='查当前账号的金币 / 钻石收支流水（分页，最新在前）。',
@@ -664,7 +1210,23 @@ SERVICE = ServiceSpec(
                                  '打赏 / 签到是否真的到账，用本接口核对最直接。',
                                  'kind 非两种取值返回 PARAM_VALUE_INVALID；page 非数字 / 小于 1 返回 '
                                  'PARAM_FORMAT_ERROR / PARAM_VALUE_INVALID；凭据缺失返回 PARAM_MISSING。',
-                             ]),
+                             ],
+                             response_fields=[
+                                 ResponseFieldSpec('kind', 'string', '流水类型'),
+                             ] + _PAGINATION_FIELDS + [
+                                 ResponseFieldSpec('results[].amount', 'int', '变动数额（正收入负支出）'),
+                                 ResponseFieldSpec('results[].balance_after', 'int', '变动后余额'),
+                                 ResponseFieldSpec('results[].time', 'string', '发生时间'),
+                                 ResponseFieldSpec('results[].description', 'string', '流水说明'),
+                             ],
+                             response_example="""{
+  "kind": "gold",
+  "pagination": {"page": 1, "page_size": 20, "total": 42, "total_page": 3},
+  "results": [
+    {"amount": 20, "balance_after": 1020, "time": "2026-10-01 09:00:00",
+     "description": "Task: daily sign-in"}
+  ]
+}"""),
                 EndpointSpec('user_following', '我关注的人', 'GET',
                              '/api/haijiao/user/following',
                              summary='列出当前账号关注了哪些人（源站一次返回全部、不翻页）。',
@@ -678,7 +1240,19 @@ SERVICE = ServiceSpec(
                                  '提醒：列表项里的 is_followed 实测源站恒返回 false（列表里的人本来就是已关注），'
                                  '别用它做判断；「用户主页信息」里的 is_followed 才可信。',
                                  '凭据缺失返回 PARAM_MISSING；账号不存在返回 NOT_FOUND（20030）。',
-                             ]),
+                             ],
+                             response_fields=[
+                                 ResponseFieldSpec('total', 'int', '关注总数'),
+                             ] + _USER_CARD_FIELDS,
+                             response_example="""{
+  "total": 1,
+  "results": [
+    {"user_id": 13820512, "nickname": "nickname",
+     "avatar": "https://www.xxx.top/images/common/avatar/12.jpg",
+     "avatar_encrypted": false, "description": "Signature text", "fans_count": 1200,
+     "vip": 0, "famous": false, "certified": false, "is_followed": false}
+  ]
+}"""),
                 EndpointSpec('user_fans', '我的粉丝', 'GET',
                              '/api/haijiao/user/fans',
                              summary='分页列出当前账号的粉丝。',
@@ -692,7 +1266,17 @@ SERVICE = ServiceSpec(
                                  '粉丝数可在「用户主页信息」的 fans_count 里直接看到，本接口用来翻具体是谁。',
                                  'page 非数字 / 小于 1 返回 PARAM_FORMAT_ERROR / PARAM_VALUE_INVALID；'
                                  '凭据缺失返回 PARAM_MISSING。',
-                             ]),
+                             ],
+                             response_fields=_PAGINATION_FIELDS + _USER_CARD_FIELDS,
+                             response_example="""{
+  "pagination": {"page": 1, "page_size": 20, "total": 88, "total_page": 5},
+  "results": [
+    {"user_id": 13820512, "nickname": "nickname",
+     "avatar": "https://www.xxx.top/images/common/avatar/12.jpg",
+     "avatar_encrypted": false, "description": "Signature text", "fans_count": 1200,
+     "vip": 0, "famous": false, "certified": false, "is_followed": false}
+  ]
+}"""),
                 EndpointSpec('topic_like_state', '查询是否已点赞', 'GET',
                              '/api/haijiao/topic/like/state',
                              summary='查当前账号是否已经给某帖子点过赞（点赞前先查，避免重复提交）。',
@@ -708,7 +1292,12 @@ SERVICE = ServiceSpec(
                                  '但先查一次可以少发一次无效请求。',
                                  'topic_id 缺失返回 PARAM_MISSING、非数字返回 PARAM_FORMAT_ERROR；'
                                  '凭据缺失返回 PARAM_MISSING。',
-                             ]),
+                             ],
+                             response_fields=[
+                                 ResponseFieldSpec('topic_id', 'int', '帖子 ID'),
+                                 ResponseFieldSpec('liked', 'bool', '是否已点赞'),
+                             ],
+                             response_example="""{"topic_id": 2274377, "liked": false}"""),
                 EndpointSpec('topic_like', '点赞 / 取消点赞', 'POST',
                              '/api/haijiao/topic/like',
                              summary='给帖子点赞，或取消点赞（源站按「点赞后的目标状态」提交）。',
@@ -729,7 +1318,13 @@ SERVICE = ServiceSpec(
                                  '点赞数变化可在「帖子详情」的 like_count 看到；点赞过的帖子用「我点赞过的帖子」查。',
                                  'topic_id 缺失返回 PARAM_MISSING、非数字返回 PARAM_FORMAT_ERROR；'
                                  'action 非两种取值返回 PARAM_VALUE_INVALID；帖子不存在返回 EXTERNAL_API_FAILED。',
-                             ]),
+                             ],
+                             response_fields=[
+                                 ResponseFieldSpec('topic_id', 'int', '帖子 ID'),
+                                 ResponseFieldSpec('action', 'string', '动作（like/unlike）'),
+                                 ResponseFieldSpec('liked', 'bool', '操作后的状态'),
+                             ],
+                             response_example="""{"topic_id": 2274377, "action": "like", "liked": true}"""),
                 EndpointSpec('topic_like_batch', '批量点赞 / 取消点赞', 'POST',
                              '/api/haijiao/topic/like/batch',
                              summary='让账号库里全部账号，都给同一篇帖子点赞（或取消点赞）。',
@@ -756,7 +1351,35 @@ SERVICE = ServiceSpec(
                                  '源站可能限制甚至封号，请自行控制频率；需要更保守就用「点赞 / 取消点赞」逐个执行。',
                                  'topic_id 缺失返回 PARAM_MISSING、非数字返回 PARAM_FORMAT_ERROR；'
                                  'action 非两种取值返回 PARAM_VALUE_INVALID。',
-                             ]),
+                             ],
+                             response_fields=[
+                                 ResponseFieldSpec('topic_id', 'int', '帖子 ID'),
+                                 ResponseFieldSpec('action', 'string', '动作（like/unlike）'),
+                                 ResponseFieldSpec('total', 'int', '账号总数'),
+                                 ResponseFieldSpec('success_count', 'int', '成功数'),
+                                 ResponseFieldSpec('already_count', 'int', '无需操作数'),
+                                 ResponseFieldSpec('skipped_count', 'int', '跳过数'),
+                                 ResponseFieldSpec('failed_count', 'int', '失败数'),
+                                 ResponseFieldSpec('items', 'array', '逐账号结果'),
+                                 ResponseFieldSpec('items[].account_id', 'string', '库内账号 ID'),
+                                 ResponseFieldSpec('items[].user_id', 'string', '源站用户 ID'),
+                                 ResponseFieldSpec('items[].username', 'string', '用户名'),
+                                 ResponseFieldSpec('items[].state', 'string', '状态（done/already/skipped/failed）'),
+                                 ResponseFieldSpec('items[].message', 'string', '结果说明'),
+                             ],
+                             response_example="""{
+  "topic_id": 2274377,
+  "action": "like",
+  "total": 3,
+  "success_count": 3,
+  "already_count": 0,
+  "skipped_count": 0,
+  "failed_count": 0,
+  "items": [
+    {"account_id": "0b2e6f4a-1c3d-4e5f-8a9b-0c1d2e3f4a5b", "user_id": "13820512",
+     "username": "xy_abc123456", "state": "done", "message": ""}
+  ]
+}"""),
                 EndpointSpec('topic_liked', '我点赞过的帖子', 'GET',
                              '/api/haijiao/topic/liked',
                              summary='分页列出当前账号点过赞的帖子。',
@@ -770,7 +1393,29 @@ SERVICE = ServiceSpec(
                                  'page 非数字 / 小于 1 返回 PARAM_FORMAT_ERROR / PARAM_VALUE_INVALID；'
                                  '凭据缺失返回 PARAM_MISSING。',
                                  '配图解密（重要）：',
-                             ] + _IMAGE_NOTES),
+                             ] + _IMAGE_NOTES,
+                             response_fields=_PAGINATION_FIELDS + _POST_FIELDS,
+                             response_example="""{
+  "pagination": {"page": 1, "page_size": 20, "total": 15, "total_page": 1},
+  "results": [
+    {
+      "topic_id": 2274377,
+      "title": "Post title",
+      "excerpt": "Post excerpt ...",
+      "node": {"id": 179, "name": "Node name"},
+      "tags": [{"id": 12, "name": "tag name"}],
+      "author": {"id": 13820512, "nickname": "nickname", "vip": 0},
+      "images": ["https://pic.xxx.top/hjstore/images/xxxx_mini.jpg.txt"],
+      "has_video": false,
+      "money_type": 0,
+      "view_count": 128,
+      "comment_count": 3,
+      "like_count": 5,
+      "create_time": "2026-09-26 12:00:00",
+      "last_comment_time": "2026-09-27 08:00:00"
+    }
+  ]
+}"""),
                 EndpointSpec('favorite_folders', '我的收藏夹', 'GET',
                              '/api/haijiao/favorite/folders',
                              summary='列出当前账号的收藏夹（「我的收藏」页左侧那一栏）。',
@@ -781,7 +1426,21 @@ SERVICE = ServiceSpec(
                                  'count 是该收藏夹里的帖子数（源站提供）。一个收藏都没有时 results 为空数组。',
                                  'folder_id 可回填到「我收藏的帖子」按夹筛选。',
                                  '凭据缺失返回 PARAM_MISSING；源站拒绝（如登录态失效）返回 EXTERNAL_API_FAILED。',
-                             ]),
+                             ],
+                             response_fields=[
+                                 ResponseFieldSpec('total', 'int', '收藏夹总数'),
+                                 ResponseFieldSpec('results', 'array', '收藏夹列表'),
+                                 ResponseFieldSpec('results[].folder_id', 'int', '收藏夹 ID'),
+                                 ResponseFieldSpec('results[].name', 'string', '收藏夹名称'),
+                                 ResponseFieldSpec('results[].count', 'int', '夹内帖子数'),
+                             ],
+                             response_example="""{
+  "total": 2,
+  "results": [
+    {"folder_id": 26918701, "name": "My favorites", "count": 12},
+    {"folder_id": 26918702, "name": "Later", "count": 3}
+  ]
+}"""),
                 EndpointSpec('favorite_topics', '我收藏的帖子', 'GET',
                              '/api/haijiao/favorite/topics',
                              summary='分页列出当前账号收藏的帖子，可按收藏夹筛选。',
@@ -800,7 +1459,29 @@ SERVICE = ServiceSpec(
                                  'folder_id 非数字返回 PARAM_FORMAT_ERROR、小于 0 返回 PARAM_VALUE_INVALID；'
                                  '凭据缺失返回 PARAM_MISSING。',
                                  '配图解密（重要）：',
-                             ] + _IMAGE_NOTES),
+                             ] + _IMAGE_NOTES,
+                             response_fields=_PAGINATION_FIELDS + _POST_FIELDS,
+                             response_example="""{
+  "pagination": {"page": 1, "page_size": 20, "total": 12, "total_page": 1},
+  "results": [
+    {
+      "topic_id": 2232393,
+      "title": "Post title",
+      "excerpt": "Post excerpt ...",
+      "node": {"id": 179, "name": "Node name"},
+      "tags": [{"id": 12, "name": "tag name"}],
+      "author": {"id": 13820512, "nickname": "nickname", "vip": 0},
+      "images": ["https://pic.xxx.top/hjstore/images/xxxx_mini.jpg.txt"],
+      "has_video": false,
+      "money_type": 0,
+      "view_count": 128,
+      "comment_count": 3,
+      "like_count": 5,
+      "create_time": "2026-09-26 12:00:00",
+      "last_comment_time": "2026-09-27 08:00:00"
+    }
+  ]
+}"""),
                 EndpointSpec('favorite_add', '收藏帖子', 'POST',
                              '/api/haijiao/favorite/add',
                              summary='把帖子收藏到指定收藏夹（不传 folder_id 即默认收藏夹）。',
@@ -819,7 +1500,13 @@ SERVICE = ServiceSpec(
                                  'topic_id 缺失 / 非数字返回 PARAM_MISSING / PARAM_FORMAT_ERROR；'
                                  'folder_id 非数字返回 PARAM_FORMAT_ERROR、小于 0 返回 PARAM_VALUE_INVALID。',
                                  '收藏结果可用「我的收藏夹」（count 变化）与「我收藏的帖子」核对。',
-                             ]),
+                             ],
+                             response_fields=[
+                                 ResponseFieldSpec('topic_id', 'int', '帖子 ID'),
+                                 ResponseFieldSpec('folder_id', 'int', '收藏夹 ID'),
+                                 ResponseFieldSpec('action', 'string', '动作（add）'),
+                             ],
+                             response_example="""{"topic_id": 2232393, "folder_id": 26918701, "action": "add"}"""),
                 EndpointSpec('favorite_delete', '取消收藏帖子', 'POST',
                              '/api/haijiao/favorite/delete',
                              summary='取消对某篇帖子的收藏。',
@@ -833,7 +1520,12 @@ SERVICE = ServiceSpec(
                                  '返回 data：topic_id / action（remove）。',
                                  '**取消未收藏的帖子源站会拒绝**（消息「无法删除无效的数据」），返回 EXTERNAL_API_FAILED。',
                                  'topic_id 缺失 / 非数字返回 PARAM_MISSING / PARAM_FORMAT_ERROR。',
-                             ]),
+                             ],
+                             response_fields=[
+                                 ResponseFieldSpec('topic_id', 'int', '帖子 ID'),
+                                 ResponseFieldSpec('action', 'string', '动作（remove）'),
+                             ],
+                             response_example="""{"topic_id": 2232393, "action": "remove"}"""),
                 EndpointSpec('favorite_delete_batch', '批量取消收藏', 'POST',
                              '/api/haijiao/favorite/delete/batch',
                              summary='一次取消多篇帖子的收藏（逐条串行，单次最多 50 个）。',
@@ -854,7 +1546,27 @@ SERVICE = ServiceSpec(
                                  '请把客户端超时留够；只取消几篇时和「取消收藏帖子」没有区别。',
                                  'topic_ids 缺失 / 全为空返回 PARAM_MISSING；含非整数项返回 PARAM_FORMAT_ERROR；'
                                  '含小于 1 的项、或超过 50 个返回 PARAM_VALUE_INVALID。',
-                             ]),
+                             ],
+                             response_fields=[
+                                 ResponseFieldSpec('total', 'int', '总条数'),
+                                 ResponseFieldSpec('success_count', 'int', '成功数'),
+                                 ResponseFieldSpec('skipped_count', 'int', '本来就没收藏数'),
+                                 ResponseFieldSpec('failed_count', 'int', '失败数'),
+                                 ResponseFieldSpec('items', 'array', '逐条结果'),
+                                 ResponseFieldSpec('items[].topic_id', 'int', '帖子 ID'),
+                                 ResponseFieldSpec('items[].state', 'string', '状态（done/skipped/failed）'),
+                                 ResponseFieldSpec('items[].message', 'string', '结果说明'),
+                             ],
+                             response_example="""{
+  "total": 2,
+  "success_count": 1,
+  "skipped_count": 1,
+  "failed_count": 0,
+  "items": [
+    {"topic_id": 2232393, "state": "done", "message": ""},
+    {"topic_id": 2270962, "state": "skipped", "message": "本来就没收藏"}
+  ]
+}"""),
                 EndpointSpec('favorite_folder_add', '新建收藏夹', 'POST',
                              '/api/haijiao/favorite/folder/add',
                              summary='新建一个收藏夹（源站规则：名称 1-12 位字符、不可同名）。',
@@ -871,7 +1583,13 @@ SERVICE = ServiceSpec(
                                  '再用同一个名字新建会报「已存在!」。若确实要复用某个名字，请另换一个。',
                                  'folder_name 缺失返回 PARAM_MISSING；超过 12 位返回 PARAM_VALUE_INVALID（不必等源站拒绝）。',
                                  '本接口只做「新建」；重命名请用「重命名收藏夹」。',
-                             ]),
+                             ],
+                             response_fields=[
+                                 ResponseFieldSpec('folder_id', 'int', '收藏夹 ID'),
+                                 ResponseFieldSpec('name', 'string', '收藏夹名称'),
+                                 ResponseFieldSpec('count', 'int', '夹内帖子数'),
+                             ],
+                             response_example="""{"folder_id": 26918701, "name": "My favorites", "count": 0}"""),
                 EndpointSpec('favorite_folder_rename', '重命名收藏夹', 'POST',
                              '/api/haijiao/favorite/folder/rename',
                              summary='给收藏夹改名（源站规则：名称 1-12 位字符、不可同名）。',
@@ -895,7 +1613,13 @@ SERVICE = ServiceSpec(
                                  '⚠️ **改完名字不会释放旧名**（源站的名字占用缺陷）：改名后想用回旧名字会报「已存在!」。',
                                  'folder_id 缺失 / 非数字 / 小于 1 返回 PARAM_MISSING / PARAM_FORMAT_ERROR /'
                                  ' PARAM_VALUE_INVALID；folder_name 缺失返回 PARAM_MISSING、超过 12 位返回 PARAM_VALUE_INVALID。',
-                             ]),
+                             ],
+                             response_fields=[
+                                 ResponseFieldSpec('folder_id', 'int', '收藏夹 ID'),
+                                 ResponseFieldSpec('name', 'string', '新名称'),
+                                 ResponseFieldSpec('action', 'string', '动作（rename）'),
+                             ],
+                             response_example="""{"folder_id": 26918701, "name": "New name", "action": "rename"}"""),
                 EndpointSpec('favorite_folder_delete', '删除收藏夹', 'POST',
                              '/api/haijiao/favorite/folder/delete',
                              summary='删除一个收藏夹（源站要求夹内为空）。',
@@ -912,7 +1636,12 @@ SERVICE = ServiceSpec(
                                  '收藏夹不存在或不属于该账号时同样拒绝（消息「无权限操作他人的收藏夹」）。',
                                  '⚠️ **删掉的名字不会释放**（源站的名字占用缺陷）：删除后想再建同名收藏夹会报「已存在!」。',
                                  'folder_id 缺失 / 非数字 / 小于 1 返回 PARAM_MISSING / PARAM_FORMAT_ERROR / PARAM_VALUE_INVALID。',
-                             ]),
+                             ],
+                             response_fields=[
+                                 ResponseFieldSpec('folder_id', 'int', '收藏夹 ID'),
+                                 ResponseFieldSpec('action', 'string', '动作（delete）'),
+                             ],
+                             response_example="""{"folder_id": 26918701, "action": "delete"}"""),
                 EndpointSpec('image', '图片解码', 'GET',
                              '/api/haijiao/image',
                              summary='传入加密图片地址，服务端解码后返回真实图片，可直接用于 <img src>。',
@@ -933,6 +1662,8 @@ SERVICE = ServiceSpec(
                                  'url 缺失返回 PARAM_MISSING；地址非法返回 PARAM_VALUE_INVALID。',
                                  '不清楚加密地址怎么解？点上方「解密说明」，里面有完整的原理、步骤与 Python / JS 参考代码。',
                              ],
+                             response_note='响应不是 {code, msg, data} 信封，而是真实图片二进制'
+                                           '（Content-Type 为 image/jpeg 等），可直接用于 <img src>。',
                              image_help=_IMAGE_DECRYPT_HELP),
                 EndpointSpec('video_m3u8', '视频播放列表', 'GET',
                              '/api/haijiao/video/m3u8',
@@ -957,7 +1688,9 @@ SERVICE = ServiceSpec(
                                  '播放器无法为请求附带签名参数，故不参与签名校验；'
                                  '如需收紧，可在超管控制台「服务策略」里改回「需要签名」。',
                                  'topic_id / attachment_id 缺失返回 PARAM_MISSING，非整数返回 PARAM_FORMAT_ERROR。',
-                             ]),
+                             ],
+                             response_note='响应不是 {code, msg, data} 信封，而是 m3u8 播放列表文本'
+                                           '（Content-Type: application/vnd.apple.mpegurl），可直接交给播放器加载。'),
                 EndpointSpec('register_captcha', '取注册验证码', 'POST',
                              '/api/haijiao/register/captcha',
                              summary='两步式注册的第一步：取注册验证码图片（供人工识别），可选经 51代理 请求。',
@@ -982,6 +1715,20 @@ SERVICE = ServiceSpec(
                                  '本页下方提供「批量注册」面板：填数量 → 取多张验证码 → 每张图旁输入框逐个填码 →'
                                  '「一键注册」，用户名 / 密码 / 邮箱由服务端自动生成（用户名统一 xy_ 前缀）。',
                              ],
+                             response_fields=[
+                                 ResponseFieldSpec('captcha_token', 'string', '验证码会话 Token'),
+                                 ResponseFieldSpec('captcha_image', 'string', '验证码图片（data URI）'),
+                                 ResponseFieldSpec('expires_in', 'int', '有效期（秒）'),
+                                 ResponseFieldSpec('use_proxy', 'bool', '是否经代理'),
+                                 ResponseFieldSpec('proxy', 'string', '代理出口（IP:端口）'),
+                             ],
+                             response_example="""{
+  "captcha_token": "Xq3fZk9m1nPQ...",
+  "captcha_image": "data:image/png;base64,iVBORw0KGgo...",
+  "expires_in": 600,
+  "use_proxy": false,
+  "proxy": null
+}""",
                              batch_register_path='/api/haijiao/register/batch'),
                 EndpointSpec('register', '提交注册', 'POST',
                              '/api/haijiao/register',
@@ -1010,8 +1757,22 @@ SERVICE = ServiceSpec(
                                  '「用户名已存在 / 邮箱已被注册」等返回 RESOURCE_ALREADY_EXISTS（20031）。',
                                  '验证码一次性：无论成功与否，该 captcha_token 都会立即作废。',
                                  '本接口会在对方站点真实创建账号，请合规使用；'
-                                 '如需限制调用方，可在超管控制台「服务策略」把本服务设为「仅白名单项目」可调用。',
+                                 '如需限制调用方，可在超管控制台「服务策略」调整本服务的调用单价或状态。',
                              ],
+                             response_fields=[
+                                 ResponseFieldSpec('user_id', 'int', '源站用户 ID'),
+                                 ResponseFieldSpec('username', 'string', '用户名'),
+                                 ResponseFieldSpec('nickname', 'string', '昵称'),
+                                 ResponseFieldSpec('email', 'string', '邮箱'),
+                                 ResponseFieldSpec('token', 'string', '登录凭证'),
+                             ],
+                             response_example="""{
+  "user_id": 13820512,
+  "username": "xy_abc123456",
+  "nickname": "nickname",
+  "email": "xy_abc123456@abcxyz.com",
+  "token": "eyJ0eXAiOiJKV1QiLCJhbGci..."
+}""",
                              auto_fill_path='/api/haijiao/register/credentials'),
                 EndpointSpec('register_credentials', '生成注册账号凭据', 'POST',
                              '/api/haijiao/register/credentials',
@@ -1023,7 +1784,17 @@ SERVICE = ServiceSpec(
                                  '符合源站用户名长度上限）；密码 10 位（必含大写/小写/数字）；'
                                  '邮箱 = <用户名>@<6 位随机小写字母>.com。',
                                  '本接口只生成不注册：需要创建账号请用「提交注册」或「批量注册」。',
-                             ]),
+                             ],
+                             response_fields=[
+                                 ResponseFieldSpec('username', 'string', '用户名'),
+                                 ResponseFieldSpec('password', 'string', '密码'),
+                                 ResponseFieldSpec('email', 'string', '邮箱'),
+                             ],
+                             response_example="""{
+  "username": "xy_abc123456",
+  "password": "Ab3xY9kLm2",
+  "email": "xy_abc123456@abcxyz.com"
+}"""),
                 EndpointSpec('register_batch', '批量注册', 'POST',
                              '/api/haijiao/register/batch',
                              summary='批量注册：按验证码逐条注册，用户名 / 密码 / 邮箱由服务端自动生成，'
@@ -1042,7 +1813,30 @@ SERVICE = ServiceSpec(
                                  '成功注册的账号会自动写入本服务的账号库（见「账号列表」）。',
                                  'items 缺失返回 PARAM_MISSING；不是合法 JSON 数组返回 PARAM_FORMAT_ERROR；'
                                  '超过 20 项返回 PARAM_VALUE_INVALID。',
-                             ]),
+                             ],
+                             response_fields=[
+                                 ResponseFieldSpec('total', 'int', '总条数'),
+                                 ResponseFieldSpec('success_count', 'int', '成功数'),
+                                 ResponseFieldSpec('failed_count', 'int', '失败数'),
+                                 ResponseFieldSpec('items', 'array', '逐项结果'),
+                                 ResponseFieldSpec('items[].index', 'int', '序号（从 0 开始）'),
+                                 ResponseFieldSpec('items[].success', 'bool', '是否成功'),
+                                 ResponseFieldSpec('items[].username', 'string', '用户名'),
+                                 ResponseFieldSpec('items[].password', 'string', '密码'),
+                                 ResponseFieldSpec('items[].email', 'string', '邮箱'),
+                                 ResponseFieldSpec('items[].user_id', 'int', '源站用户 ID'),
+                                 ResponseFieldSpec('items[].token', 'string', '登录凭证'),
+                                 ResponseFieldSpec('items[].msg', 'string', '失败原因'),
+                             ],
+                             response_example="""{
+  "total": 1,
+  "success_count": 1,
+  "failed_count": 0,
+  "items": [
+    {"index": 0, "success": true, "username": "xy_abc123456", "password": "Ab3xY9kLm2",
+     "email": "xy_abc123456@abcxyz.com", "user_id": 13820512, "token": "eyJ0eXAiOiJKV1Qi..."}
+  ]
+}"""),
                 EndpointSpec('login', '账号登录', 'POST',
                              '/api/haijiao/login',
                              summary='登录海角社区账号，返回可用 token；支持直传账号或按库内账号 ID 登录。',
@@ -1064,7 +1858,23 @@ SERVICE = ServiceSpec(
                                  '正常风控下无需图形验证码。',
                                  '参数缺失返回 PARAM_MISSING；账号不存在返回 NOT_FOUND（20030）；'
                                  '密码错误等校验不通过返回 PARAM_VALUE_INVALID（msg 为源站原因）。',
-                             ]),
+                             ],
+                             response_fields=[
+                                 ResponseFieldSpec('account_id', 'string', '库内账号 ID'),
+                                 ResponseFieldSpec('user_id', 'int', '源站用户 ID'),
+                                 ResponseFieldSpec('username', 'string', '用户名'),
+                                 ResponseFieldSpec('nickname', 'string', '昵称'),
+                                 ResponseFieldSpec('email', 'string', '邮箱'),
+                                 ResponseFieldSpec('token', 'string', '登录凭证'),
+                             ],
+                             response_example="""{
+  "account_id": "0b2e6f4a-1c3d-4e5f-8a9b-0c1d2e3f4a5b",
+  "user_id": 13820512,
+  "username": "xy_abc123456",
+  "nickname": "nickname",
+  "email": "xy_abc123456@abcxyz.com",
+  "token": "eyJ0eXAiOiJKV1QiLCJhbGci..."
+}"""),
                 EndpointSpec('sign_in', '金币签到', 'POST',
                              '/api/haijiao/sign-in',
                              summary='每日金币签到（20 金币/天）；支持按库内账号或直传登录凭据。',
@@ -1089,7 +1899,23 @@ SERVICE = ServiceSpec(
                                  '（含「本地记录」/「源站确认」两种来源，见 message）/ closed=签到任务未开放。',
                                  '参数缺失返回 PARAM_MISSING；库内账号不存在返回 NOT_FOUND（20030）；'
                                  '账号未存 token 时按参数缺失处理。',
-                             ]),
+                             ],
+                             response_fields=[
+                                 ResponseFieldSpec('account_id', 'string', '库内账号 ID'),
+                                 ResponseFieldSpec('user_id', 'string', '源站用户 ID'),
+                                 ResponseFieldSpec('username', 'string', '用户名'),
+                                 ResponseFieldSpec('state', 'string', '签到状态（signed/already/closed）'),
+                                 ResponseFieldSpec('amount', 'int', '本次到账金币'),
+                                 ResponseFieldSpec('message', 'string', '说明'),
+                             ],
+                             response_example="""{
+  "account_id": "0b2e6f4a-1c3d-4e5f-8a9b-0c1d2e3f4a5b",
+  "user_id": "13820512",
+  "username": "xy_abc123456",
+  "state": "signed",
+  "amount": 20,
+  "message": ""
+}"""),
                 EndpointSpec('sign_in_batch', '一键签到全部账号', 'POST',
                              '/api/haijiao/sign-in/batch',
                              summary='对账号表里所有已存 token 的账号逐个执行金币签到（一键全签）。',
@@ -1105,7 +1931,32 @@ SERVICE = ServiceSpec(
                                  'state / amount / msg）。',
                                  '本接口不修改密码 / token 等账号资料，仅回写各账号的「最近签到日期」，'
                                  '可安全重复调用。',
-                             ]),
+                             ],
+                             response_fields=[
+                                 ResponseFieldSpec('total', 'int', '账号总数'),
+                                 ResponseFieldSpec('success_count', 'int', '本次新签数'),
+                                 ResponseFieldSpec('already_count', 'int', '今日已签数'),
+                                 ResponseFieldSpec('failed_count', 'int', '失败数'),
+                                 ResponseFieldSpec('items', 'array', '逐账号结果'),
+                                 ResponseFieldSpec('items[].account_id', 'string', '库内账号 ID'),
+                                 ResponseFieldSpec('items[].user_id', 'string', '源站用户 ID'),
+                                 ResponseFieldSpec('items[].username', 'string', '用户名'),
+                                 ResponseFieldSpec('items[].state', 'string', '状态（signed/already/failed）'),
+                                 ResponseFieldSpec('items[].amount', 'int', '到账金币'),
+                                 ResponseFieldSpec('items[].msg', 'string', '结果说明'),
+                             ],
+                             response_example="""{
+  "total": 2,
+  "success_count": 1,
+  "already_count": 1,
+  "failed_count": 0,
+  "items": [
+    {"account_id": "0b2e6f4a-1c3d-4e5f-8a9b-0c1d2e3f4a5b", "user_id": "13820512",
+     "username": "xy_abc123456", "state": "signed", "amount": 20, "msg": ""},
+    {"account_id": "1c3d4e5f-2a3b-4c5d-8e9f-0a1b2c3d4e5f", "user_id": "13820513",
+     "username": "xy_def789012", "state": "already", "amount": 0, "msg": "今天已签到（本地记录）"}
+  ]
+}"""),
                 EndpointSpec('accounts_list', '账号列表', 'GET',
                              '/api/haijiao/accounts',
                              summary='分页查询已入库的海角社区账号（注册成功会自动入库）。',
@@ -1126,7 +1977,35 @@ SERVICE = ServiceSpec(
                                  'email、nickname、remark 与 has_password / has_token 标记。',
                                  '出于安全，列表**不回传**密码与 token 明文；需要密码请传 with_password=true，'
                                  '需要 token 请查「账号详情」，或直接调「账号登录」（会回写最新 token）。',
-                             ]),
+                             ],
+                             response_fields=[
+                                 ResponseFieldSpec('total', 'int', '账号总数'),
+                                 ResponseFieldSpec('page', 'int', '当前页码'),
+                                 ResponseFieldSpec('page_size', 'int', '每页条数'),
+                                 ResponseFieldSpec('items', 'array', '账号列表'),
+                                 ResponseFieldSpec('items[].account_id', 'string', '库内账号 ID'),
+                                 ResponseFieldSpec('items[].user_id', 'string', '源站用户 ID'),
+                                 ResponseFieldSpec('items[].username', 'string', '用户名'),
+                                 ResponseFieldSpec('items[].email', 'string', '邮箱'),
+                                 ResponseFieldSpec('items[].nickname', 'string', '昵称'),
+                                 ResponseFieldSpec('items[].remark', 'string', '备注'),
+                                 ResponseFieldSpec('items[].has_password', 'bool', '是否已存密码'),
+                                 ResponseFieldSpec('items[].has_token', 'bool', '是否已存 Token'),
+                                 ResponseFieldSpec('items[].create_time', 'string', '创建时间'),
+                                 ResponseFieldSpec('items[].updated_time', 'string', '更新时间'),
+                                 ResponseFieldSpec('items[].password', 'string', '密码明文（仅 with_password=true）'),
+                             ],
+                             response_example="""{
+  "total": 1,
+  "page": 1,
+  "page_size": 10,
+  "items": [
+    {"account_id": "0b2e6f4a-1c3d-4e5f-8a9b-0c1d2e3f4a5b", "user_id": "13820512",
+     "username": "xy_abc123456", "email": "xy_abc123456@abcxyz.com", "nickname": "nickname",
+     "remark": "", "has_password": true, "has_token": true,
+     "create_time": "2026-09-26 12:00:00", "updated_time": "2026-09-27 08:00:00"}
+  ]
+}"""),
                 EndpointSpec('accounts_create', '新增账号', 'POST',
                              '/api/haijiao/accounts',
                              summary='手动新增一条账号记录（注册成功也会自动入库，此接口用于补录/导入）。',
@@ -1141,7 +2020,33 @@ SERVICE = ServiceSpec(
                                  ParamSpec('token', '登录Token', desc='选填：登录凭证（落库 AES 加密）。'),
                                  ParamSpec('remark', '备注', desc='选填：备注。'),
                              ],
-                             notes=['必填项缺失返回 PARAM_MISSING；源站用户 ID 已存在返回 RESOURCE_ALREADY_EXISTS（20031）。']),
+                             notes=['必填项缺失返回 PARAM_MISSING；源站用户 ID 已存在返回 RESOURCE_ALREADY_EXISTS（20031）。'],
+                             response_fields=[
+                                 ResponseFieldSpec('account_id', 'string', '库内账号 ID'),
+                                 ResponseFieldSpec('user_id', 'string', '源站用户 ID'),
+                                 ResponseFieldSpec('username', 'string', '用户名'),
+                                 ResponseFieldSpec('email', 'string', '邮箱'),
+                                 ResponseFieldSpec('nickname', 'string', '昵称'),
+                                 ResponseFieldSpec('remark', 'string', '备注'),
+                                 ResponseFieldSpec('has_password', 'bool', '是否已存密码'),
+                                 ResponseFieldSpec('has_token', 'bool', '是否已存 Token'),
+                                 ResponseFieldSpec('create_time', 'string', '创建时间'),
+                                 ResponseFieldSpec('updated_time', 'string', '更新时间'),
+                                 ResponseFieldSpec('token', 'string', '登录凭证'),
+                             ],
+                             response_example="""{
+  "account_id": "0b2e6f4a-1c3d-4e5f-8a9b-0c1d2e3f4a5b",
+  "user_id": "13820512",
+  "username": "xy_abc123456",
+  "email": "xy_abc123456@abcxyz.com",
+  "nickname": "nickname",
+  "remark": "",
+  "has_password": true,
+  "has_token": true,
+  "create_time": "2026-09-26 12:00:00",
+  "updated_time": "2026-09-26 12:00:00",
+  "token": "eyJ0eXAiOiJKV1QiLCJhbGci..."
+}"""),
                 EndpointSpec('accounts_detail', '账号详情', 'GET',
                              '/api/haijiao/accounts/<uuid>',
                              summary='按账号 ID 查询单条账号（含 token 明文）。',
@@ -1154,6 +2059,34 @@ SERVICE = ServiceSpec(
                                                default='false',
                                                desc='选填：是否在返回中携带密码明文，默认 false。')],
                              notes=['账号不存在返回 NOT_FOUND（20030）。'],
+                             response_fields=[
+                                 ResponseFieldSpec('account_id', 'string', '库内账号 ID'),
+                                 ResponseFieldSpec('user_id', 'string', '源站用户 ID'),
+                                 ResponseFieldSpec('username', 'string', '用户名'),
+                                 ResponseFieldSpec('email', 'string', '邮箱'),
+                                 ResponseFieldSpec('nickname', 'string', '昵称'),
+                                 ResponseFieldSpec('remark', 'string', '备注'),
+                                 ResponseFieldSpec('has_password', 'bool', '是否已存密码'),
+                                 ResponseFieldSpec('has_token', 'bool', '是否已存 Token'),
+                                 ResponseFieldSpec('create_time', 'string', '创建时间'),
+                                 ResponseFieldSpec('updated_time', 'string', '更新时间'),
+                                 ResponseFieldSpec('token', 'string', '登录凭证'),
+                                 ResponseFieldSpec('password', 'string', '密码明文（仅 with_password=true）'),
+                             ],
+                             response_example="""{
+  "account_id": "0b2e6f4a-1c3d-4e5f-8a9b-0c1d2e3f4a5b",
+  "user_id": "13820512",
+  "username": "xy_abc123456",
+  "email": "xy_abc123456@abcxyz.com",
+  "nickname": "nickname",
+  "remark": "",
+  "has_password": true,
+  "has_token": true,
+  "create_time": "2026-09-26 12:00:00",
+  "updated_time": "2026-09-27 08:00:00",
+  "token": "eyJ0eXAiOiJKV1QiLCJhbGci...",
+  "password": "Ab3xY9kLm2"
+}""",
                              path_params={'uuid': 'account_id'}),
                 EndpointSpec('accounts_update', '更新账号', 'PATCH',
                              '/api/haijiao/accounts/<uuid>',
@@ -1169,6 +2102,32 @@ SERVICE = ServiceSpec(
                                  ParamSpec('remark', '备注', desc='选填。'),
                              ],
                              notes=['user_id 是源站身份标识，**不可修改**；账号不存在返回 NOT_FOUND（20030）。'],
+                             response_fields=[
+                                 ResponseFieldSpec('account_id', 'string', '库内账号 ID'),
+                                 ResponseFieldSpec('user_id', 'string', '源站用户 ID'),
+                                 ResponseFieldSpec('username', 'string', '用户名'),
+                                 ResponseFieldSpec('email', 'string', '邮箱'),
+                                 ResponseFieldSpec('nickname', 'string', '昵称'),
+                                 ResponseFieldSpec('remark', 'string', '备注'),
+                                 ResponseFieldSpec('has_password', 'bool', '是否已存密码'),
+                                 ResponseFieldSpec('has_token', 'bool', '是否已存 Token'),
+                                 ResponseFieldSpec('create_time', 'string', '创建时间'),
+                                 ResponseFieldSpec('updated_time', 'string', '更新时间'),
+                                 ResponseFieldSpec('token', 'string', '登录凭证'),
+                             ],
+                             response_example="""{
+  "account_id": "0b2e6f4a-1c3d-4e5f-8a9b-0c1d2e3f4a5b",
+  "user_id": "13820512",
+  "username": "xy_abc123456",
+  "email": "xy_abc123456@abcxyz.com",
+  "nickname": "nickname",
+  "remark": "updated",
+  "has_password": true,
+  "has_token": true,
+  "create_time": "2026-09-26 12:00:00",
+  "updated_time": "2026-09-27 09:00:00",
+  "token": "eyJ0eXAiOiJKV1QiLCJhbGci..."
+}""",
                              path_params={'uuid': 'account_id'}),
                 EndpointSpec('accounts_delete', '删除账号', 'DELETE',
                              '/api/haijiao/accounts/<uuid>',
@@ -1176,6 +2135,7 @@ SERVICE = ServiceSpec(
                              params=[ParamSpec('account_id', '账号 ID', required=True,
                                                desc='路径参数：账号 UUID（文档页代调时填入 account_id 即可）')],
                              notes=['仅删除本服务的记录，不会影响源站账号；账号不存在返回 NOT_FOUND（20030）。'],
+                             response_note='成功时无业务数据（data 为 null）。',
                              path_params={'uuid': 'account_id'}),
             ],
         ),

@@ -39,6 +39,7 @@ from django.utils import timezone
 from API.common import StatusCode
 from API.common import api_stats_query as query
 from API.common.api_stats import service_of
+from API.models.Security.setting import SecuritySetting
 from API.models.Statistics.api_call_stat import (
     HOUR_RETENTION_DAYS, ApiCallStat, ApiCallStatHour,
 )
@@ -392,17 +393,24 @@ def round7_pages():
         check('英文页状态码说明已翻译（Authentication failed）',
               'Authentication failed' in en_body and '认证失败' not in en_body)
 
+        # 匿名访问控制台：默认「后台入口隐身」开启 → 一律 404（与不存在的地址无差别，
+        # 避免后台入口被路径探测发现）；关掉隐身才 302 跳登录。断言须按当前开关取值，
+        # 写死 302 会在默认配置下恒失败（与 test_console_audit.py 同口径）。
         anon = Client()
+        expected = 404 if SecuritySetting.get_solo().hide_console else 302
         resp = anon.get('/console/stats/')
-        check('匿名访问总览页 302 跳登录',
-              resp.status_code == 302 and '/login/' in resp['Location'],
+        check('匿名访问总览页被拦（隐身 404 / 否则 302）',
+              resp.status_code == expected
+              and (expected == 404 or '/login/' in resp['Location']),
               f'status={resp.status_code}')
         resp = anon.get(reverse('website:console_stats_service', args=['api/_statstest']))
-        check('匿名访问服务详情页 302 跳登录', resp.status_code == 302
-              and '/login/' in resp['Location'], f'status={resp.status_code}')
+        check('匿名访问服务详情页被拦', resp.status_code == expected
+              and (expected == 404 or '/login/' in resp['Location']),
+              f'status={resp.status_code}')
         resp = anon.get(reverse('website:console_stats_app', args=[TEST_APP]))
-        check('匿名访问项目详情页 302 跳登录', resp.status_code == 302
-              and '/login/' in resp['Location'], f'status={resp.status_code}')
+        check('匿名访问项目详情页被拦', resp.status_code == expected
+              and (expected == 404 or '/login/' in resp['Location']),
+              f'status={resp.status_code}')
     finally:
         if created_admin:
             created_admin.delete()

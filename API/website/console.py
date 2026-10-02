@@ -2,18 +2,21 @@
 
 - home_view：控制台首页（关键指标概览 + 模块入口，入口取自 console_menu 声明）；
 - projects_view：接入项目（UserApp）增删改查；
-- services_view：API 服务策略（服务 / 线路 / 端点三级继承、状态、认证模式、项目白名单）增删改查。
+- services_view：API 服务策略（服务 / 线路 / 端点三级继承、状态、认证模式、文档可见性、使用范围）增删改查；
+- stats_view / stats_service_view / stats_app_view：API 调用统计看板（含消耗点数与额度口径）。
 
 鉴权：仅 Django is_superuser 可访问（见 admin_auth.py），
 未登录/非超管会被自动重定向到统一登录；普通用户不可见/不可访问。
 说明：接入项目的 APPID/APPSECRET 由系统自动生成；创建后仅此页一次性展示新密钥。
+
+调用单价不在这里：由独立的「线路价格」页（console_prices.py，`ApiPricePolicy`）管理。
 """
 import uuid
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
-from django.db.models import Count, Q
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.translation import gettext as _
@@ -25,7 +28,7 @@ from API.common.middleware import resolve_service_policy, requires_auth
 from API.models import Announcement, ApiServicePolicy, Feedback, User, UserApp
 from API.models.Statistics.api_call_stat import NO_APP
 
-from .admin_auth import superadmin_required
+from .admin_auth import notify_success, superadmin_required
 from .service_presets import apply_presets, preset_rows
 from .service_status import status_def
 from .service_tree import service_tree
@@ -83,7 +86,7 @@ def _handle_project_action(request):
         except IntegrityError:
             messages.error(request, _('应用名称已存在，请更换'))
             return redirect('website:console_projects')
-        messages.success(request, _('项目创建成功，请复制并妥善保存下方的 APPID 与 APPSECRET（仅此一次展示）'))
+        notify_success(request, _('项目创建成功，请复制并妥善保存下方的 APPID 与 APPSECRET（仅此一次展示）'))
         return redirect(f"{reverse('website:console_projects')}?created={app.pk}")
 
     if action in ('edit', 'delete'):
@@ -97,7 +100,7 @@ def _handle_project_action(request):
             # 统计表按 APPID 聚合且只追加：项目删掉后历史行不会消失，会在看板上变成「已删除项目」，
             # 因此删除项目时一并清理（服务端缓冲可能残留极少量未落库的行，由看板的标签兜底）
             purged = purge_app(deleted_app_id)
-            messages.success(request, _('项目「%(name)s」已删除，其全部 Token 已同步失效') % {'name': app.name})
+            notify_success(request, _('项目「%(name)s」已删除，其全部 Token 已同步失效') % {'name': app.name})
             if purged:
                 messages.info(request, _('同时清理该项目的调用统计 %(n)s 行') % {'n': purged})
             return redirect('website:console_projects')
@@ -125,7 +128,7 @@ def _handle_project_action(request):
         except IntegrityError:
             messages.error(request, _('应用名称已存在，请更换'))
             return redirect('website:console_projects')
-        messages.success(request, _('项目「%(name)s」已更新') % {'name': app.name})
+        notify_success(request, _('项目「%(name)s」已更新') % {'name': app.name})
         return redirect('website:console_projects')
 
     messages.error(request, _('不支持的操作'))
@@ -134,7 +137,8 @@ def _handle_project_action(request):
 
 def _render_projects(request):
     keyword = (request.GET.get('q') or '').strip()
-    apps = UserApp.objects.all()
+    # select_related('owner')：模板要显示归属用户的账号，避免每个项目多一次查询
+    apps = UserApp.objects.select_related('owner')
     if keyword:
         apps = apps.filter(Q(name__icontains=keyword) | Q(app_id__icontains=keyword))
     apps = apps.order_by('-create_time')
@@ -186,11 +190,6 @@ def _policy_mode_labels():
     return {value: _(label) for value, label in ApiServicePolicy.AUTH_MODE_CHOICES}
 
 
-def _policy_scope_labels():
-    """项目范围：值 -> 已翻译文案"""
-    return {value: _(label) for value, label in ApiServicePolicy.APP_SCOPE_CHOICES}
-
-
 def _policy_docs_visible_labels():
     """文档可见性：值 -> 已翻译文案"""
     return {value: _(label) for value, label in ApiServicePolicy.DOCS_VISIBLE_CHOICES}
@@ -227,21 +226,21 @@ def _tree_lookup(tree):
 
 
 def _render_services(request):
-    """渲染策略列表：层级 / 路径 / 状态 / 认证模式 / 生效结果 / 项目范围 / 白名单数
+    """渲染策略列表：层级 / 路径 / 状态 / 认证模式 / 生效结果 / 文档可见性 / 使用范围
 
     「生效结果」直接复用认证中间件的 resolve_service_policy() / requires_auth()，
     保证页面显示与接口实际鉴权一致。
+    调用单价不在这里（已与服务策略解耦），见「线路价格」页（console_prices.py）。
     """
     level_labels = _policy_level_labels()
     status_labels = _policy_status_labels()
     mode_labels = _policy_mode_labels()
-    scope_labels = _policy_scope_labels()
     docs_visible_labels = _policy_docs_visible_labels()
     audience_labels = _policy_audience_labels()
     tree = service_tree()
     lookup = _tree_lookup(tree)
     policies = []
-    for policy in ApiServicePolicy.objects.annotate(whitelist_count=Count('apps')):
+    for policy in ApiServicePolicy.objects.all():
         effective = resolve_service_policy(policy.path_prefix)
         eff_status = status_def(effective['status'])
         # 一条策略可覆盖多条线路：逐前缀给出中文路径标签（未登记的留空）
@@ -261,21 +260,16 @@ def _render_services(request):
             'status_label': status_labels[policy.status],
             'auth_mode': policy.auth_mode,
             'auth_mode_label': mode_labels[policy.auth_mode],
-            'app_scope': policy.app_scope,
-            'scope_label': scope_labels[policy.app_scope],
             'docs_visible': policy.docs_visible,
             'docs_visible_label': docs_visible_labels[policy.docs_visible],
             'audience': policy.audience,
             'audience_label': audience_labels[policy.audience],
-            'whitelist_count': policy.whitelist_count,
             'remark': policy.remark,
             'effective_status_label': eff_status['label'],
             'effective_status_badge': eff_status['badge'],
             'effective_auth': requires_auth(policy.path_prefix),
-            'effective_scope': effective['app_scope'],
             'effective_docs_visible': effective['docs_visible'],
             'effective_audience': effective['audience'],
-            'app_ids': [str(pk) for pk in policy.apps.values_list('pk', flat=True)],
         })
     # 建议策略预览（「一键新建建议策略」用）：逐条标注「新建 / 已存在」，
     # 让操作前就能核对会补哪些、哪些已在了。清单见 API/website/service_presets.py。
@@ -296,10 +290,8 @@ def _render_services(request):
         'level_choices': list(level_labels.items()),
         'status_choices': list(status_labels.items()),
         'mode_choices': list(mode_labels.items()),
-        'scope_choices': list(scope_labels.items()),
         'docs_visible_choices': list(docs_visible_labels.items()),
         'audience_choices': list(audience_labels.items()),
-        'apps': UserApp.objects.order_by('name'),
     })
 
 
@@ -407,11 +399,10 @@ def _let_existing_yield(prefixes, keep_policy=None):
 
 
 def _policy_form_data(request):
-    """读取并校验策略表单，返回 (data, error)；data['apps'] 为白名单项目查询集"""
+    """读取并校验策略表单，返回 (data, error)"""
     name = (request.POST.get('name') or '').strip()
     status = (request.POST.get('status') or '').strip()
     mode = (request.POST.get('auth_mode') or '').strip()
-    scope = (request.POST.get('app_scope') or '').strip()
     docs_visible = (request.POST.get('docs_visible') or '').strip()
     audience = (request.POST.get('audience') or '').strip()
     remark = (request.POST.get('remark') or '').strip()
@@ -425,8 +416,6 @@ def _policy_form_data(request):
         return None, _('非法的服务状态')
     if mode not in _policy_mode_labels():
         return None, _('非法的认证模式')
-    if scope not in _policy_scope_labels():
-        return None, _('非法的项目范围')
     if docs_visible not in _policy_docs_visible_labels():
         return None, _('非法的文档可见性')
     if audience not in _policy_audience_labels():
@@ -438,18 +427,11 @@ def _policy_form_data(request):
                          extra_prefixes=extra_prefixes).clean()
     except ValidationError as exc:
         return None, '；'.join(exc.messages)
-    app_ids = []
-    for raw in request.POST.getlist('apps'):
-        try:
-            app_ids.append(uuid.UUID(str(raw)))
-        except (ValueError, TypeError):
-            continue
     return {
         'name': name, 'level': level, 'path_prefix': path_prefix,
         'extra_prefixes': extra_prefixes, 'status': status,
-        'auth_mode': mode, 'app_scope': scope,
+        'auth_mode': mode,
         'docs_visible': docs_visible, 'audience': audience, 'remark': remark,
-        'apps': UserApp.objects.filter(pk__in=app_ids),
     }, None
 
 
@@ -465,11 +447,9 @@ def _action_create_policy(request):
     if error:
         messages.error(request, error)
         return redirect('website:console_services')
-    apps = data.pop('apps')
     yielded = _let_existing_yield({data['path_prefix'], *data['extra_prefixes']})
     policy = ApiServicePolicy.objects.create(**data)
-    policy.apps.set(apps)
-    messages.success(request, _('服务策略「%(name)s」已创建') % {'name': policy.name})
+    notify_success(request, _('服务策略「%(name)s」已创建') % {'name': policy.name})
     _notify_yielded(request, yielded)
     return redirect('website:console_services')
 
@@ -479,14 +459,12 @@ def _action_edit_policy(request, policy):
     if error:
         messages.error(request, error)
         return redirect('website:console_services')
-    apps = data.pop('apps')
     yielded = _let_existing_yield({data['path_prefix'], *data['extra_prefixes']},
                                   keep_policy=policy)
     for field, value in data.items():
         setattr(policy, field, value)
     policy.save()  # post_save 信号自动使策略缓存失效，改动对接口鉴权立即生效
-    policy.apps.set(apps)
-    messages.success(request, _('服务策略「%(name)s」已更新') % {'name': policy.name})
+    notify_success(request, _('服务策略「%(name)s」已更新') % {'name': policy.name})
     _notify_yielded(request, yielded)
     return redirect('website:console_services')
 
@@ -496,18 +474,18 @@ def _action_toggle_policy(request, policy):
     if policy.status == 'maintenance':
         policy.status = 'normal'
         policy.save(update_fields=['status', 'updated_time'])
-        messages.success(request, _('服务策略「%(name)s」已启用') % {'name': policy.name})
+        notify_success(request, _('服务策略「%(name)s」已启用') % {'name': policy.name})
     else:
         policy.status = 'maintenance'
         policy.save(update_fields=['status', 'updated_time'])
-        messages.success(request, _('服务策略「%(name)s」已停用，该服务进入维护态') % {'name': policy.name})
+        notify_success(request, _('服务策略「%(name)s」已停用，该服务进入维护态') % {'name': policy.name})
     return redirect('website:console_services')
 
 
 def _action_delete_policy(request, policy):
     name = policy.name
     policy.delete()
-    messages.success(request, _('服务策略「%(name)s」已删除') % {'name': name})
+    notify_success(request, _('服务策略「%(name)s」已删除') % {'name': name})
     return redirect('website:console_services')
 
 
@@ -520,7 +498,7 @@ def _action_delete_policies(request):
     queryset = ApiServicePolicy.objects.filter(pk__in=ids)
     deleted = queryset.count()
     queryset.delete()
-    messages.success(request, _('已删除 %(n)s 条服务策略') % {'n': deleted})
+    notify_success(request, _('已删除 %(n)s 条服务策略') % {'n': deleted})
     return redirect('website:console_services')
 
 
@@ -531,7 +509,7 @@ def _action_apply_presets(request):
     """
     created, existed = apply_presets()
     if created:
-        messages.success(request, _('已新建 %(n)s 条建议策略') % {'n': len(created)})
+        notify_success(request, _('已新建 %(n)s 条建议策略') % {'n': len(created)})
     if existed:
         messages.info(request, _('另有 %(n)s 条建议策略已存在，未改动') % {'n': len(existed)})
     if not created and not existed:
@@ -794,6 +772,7 @@ def stats_app_view(request, app_id):
     context.update({
         'app_id': app_id,
         'app_name': _app_label(app_id, _app_names([app_id])),
+        'credit': stats_query.app_credit_summary(app_id),
         'services': _mark_rates(_service_rows(
             stats_query.service_ranking(days, app_id=app_id), names)),
         'endpoints': _mark_rates(_endpoint_rows(

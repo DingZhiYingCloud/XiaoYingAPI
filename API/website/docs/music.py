@@ -4,7 +4,8 @@
 - 爱听音乐网 2t58：4 个只读接口（爬虫抓取，均为 GET）
 - 小影音乐 xiaoying：Music / MusicSource 的 RESTful 增删改查 + 批量 JSON 导入/导出
 """
-from .schema import ChannelSpec, EndpointSpec, ParamSpec, ServiceSpec
+from .schema import (ChannelSpec, EndpointSpec, ParamSpec, ResponseFieldSpec,
+                     ServiceSpec)
 
 # 通用歌手多值提示（小影音乐支持同一字段多次传，页面调试用逗号/换行拆分后多次发送）
 _SINGER_HINT = '多个歌手用逗号或换行分隔（服务端会按多次传参拆成歌手列表）'
@@ -33,17 +34,100 @@ SERVICE = ServiceSpec(
             note='抓取热门/歌手/歌曲/搜索数据。url 参数必须为 2t58.com 域名地址。',
             endpoints=[
                 EndpointSpec('home', '首页数据', 'GET', '/api/music/2t58/home',
-                             summary='返回热门歌手、歌曲飙升榜、流行趋势榜三个模块。'),
+                             summary='返回热门歌手、歌曲飙升榜、流行趋势榜三个模块。',
+                             response_fields=[
+                                 ResponseFieldSpec('hot_singers', 'array', '热门歌手列表'),
+                                 ResponseFieldSpec('hot_singers[].name', 'string', '歌手名'),
+                                 ResponseFieldSpec('hot_singers[].image', 'string', '头像图片地址'),
+                                 ResponseFieldSpec('hot_singers[].singer_url', 'string', '歌手页地址'),
+                                 ResponseFieldSpec('rising_chart', 'array', '歌曲飙升榜'),
+                                 ResponseFieldSpec('rising_chart[].song_name', 'string', '歌曲名'),
+                                 ResponseFieldSpec('rising_chart[].artists', 'array', '歌手名列表'),
+                                 ResponseFieldSpec('rising_chart[].song_url', 'string', '歌曲页地址'),
+                                 ResponseFieldSpec('trend_chart', 'array', '流行趋势榜'),
+                                 ResponseFieldSpec('trend_chart[].song_name', 'string', '歌曲名'),
+                                 ResponseFieldSpec('trend_chart[].artists', 'array', '歌手名列表'),
+                                 ResponseFieldSpec('trend_chart[].song_url', 'string', '歌曲页地址'),
+                             ],
+                             response_example='''{
+  "hot_singers": [
+    {"name": "示例歌手", "image": "https://img.2t58.com/xxx.jpg",
+     "singer_url": "https://www.2t58.com/singer/bm1z/1.html"}
+  ],
+  "rising_chart": [
+    {"song_name": "示例歌曲", "artists": ["示例歌手"],
+     "song_url": "https://www.2t58.com/song/d3dkc2t3.html"}
+  ],
+  "trend_chart": [
+    {"song_name": "示例歌曲", "artists": ["示例歌手"],
+     "song_url": "https://www.2t58.com/song/d3dkc2t3.html"}
+  ]
+}'''),
                 EndpointSpec('singer', '歌手详情', 'GET', '/api/music/2t58/singer',
                              summary='歌手基本信息 + 歌曲列表（含分页）。',
                              params=[ParamSpec('url', '歌手页 URL', kind='text', required=True,
                                                placeholder='https://www.2t58.com/singer/bm1z/1.html',
-                                               desc='2t58.com 歌手歌曲列表页完整地址（必填）')]),
+                                               desc='2t58.com 歌手歌曲列表页完整地址（必填）')],
+                             response_fields=[
+                                 ResponseFieldSpec('singer', 'object', '歌手基本信息'),
+                                 ResponseFieldSpec('singer.name', 'string', '歌手名称'),
+                                 ResponseFieldSpec('singer.cover', 'string', '封面图地址'),
+                                 ResponseFieldSpec('singer.intro', 'string', '歌手简介'),
+                                 ResponseFieldSpec('songs', 'array', '歌曲列表'),
+                                 ResponseFieldSpec('songs[].song_name', 'string', '歌曲名'),
+                                 ResponseFieldSpec('songs[].artists', 'array', '歌手名列表'),
+                                 ResponseFieldSpec('songs[].song_url', 'string', '歌曲页地址'),
+                                 ResponseFieldSpec('pagination', 'object', '分页信息；无分页时为 null'),
+                                 ResponseFieldSpec('pagination.current', 'object', '当前页 {page,url}'),
+                                 ResponseFieldSpec('pagination.current.page', 'int', '页码'),
+                                 ResponseFieldSpec('pagination.current.url', 'string', '页面地址'),
+                                 ResponseFieldSpec('pagination.first', 'object', '首页 {page,url}；不存在为 null'),
+                                 ResponseFieldSpec('pagination.prev', 'object', '上一页 {page,url}；不存在为 null'),
+                                 ResponseFieldSpec('pagination.next', 'object', '下一页 {page,url}；不存在为 null'),
+                                 ResponseFieldSpec('pagination.last', 'object', '尾页 {page,url}；不存在为 null'),
+                             ],
+                             response_example='''{
+  "singer": {"name": "示例歌手", "cover": "https://img.2t58.com/xxx.jpg",
+             "intro": "歌手简介"},
+  "songs": [
+    {"song_name": "示例歌曲", "artists": ["示例歌手"],
+     "song_url": "https://www.2t58.com/song/d3dkc2t3.html"}
+  ],
+  "pagination": {
+    "current": {"page": 1, "url": "https://www.2t58.com/singer/bm1z/1.html"},
+    "first": null,
+    "prev": null,
+    "next": {"page": 2, "url": "https://www.2t58.com/singer/bm1z/2.html"},
+    "last": {"page": 5, "url": "https://www.2t58.com/singer/bm1z/5.html"}
+  }
+}'''),
                 EndpointSpec('song', '歌曲详情', 'GET', '/api/music/2t58/song',
                              summary='歌曲基本信息 + 播放链接 + 歌词 + 每日推荐。',
                              params=[ParamSpec('url', '歌曲页 URL', kind='text', required=True,
                                                placeholder='https://www.2t58.com/song/d3dkc2t3.html',
-                                               desc='2t58.com 歌曲详情页完整地址（必填）')]),
+                                               desc='2t58.com 歌曲详情页完整地址（必填）')],
+                             response_fields=[
+                                 ResponseFieldSpec('song', 'object', '歌曲基本信息'),
+                                 ResponseFieldSpec('song.song_name', 'string', '歌曲名'),
+                                 ResponseFieldSpec('song.artists', 'array', '歌手名列表'),
+                                 ResponseFieldSpec('song.cover', 'string', '封面图地址'),
+                                 ResponseFieldSpec('play_url', 'string', '播放直链（解密后）；失败为空字符串'),
+                                 ResponseFieldSpec('lyrics', 'string', 'LRC 格式歌词；失败为空字符串'),
+                                 ResponseFieldSpec('daily_recommend', 'array', '随机推荐列表'),
+                                 ResponseFieldSpec('daily_recommend[].song_name', 'string', '歌曲名'),
+                                 ResponseFieldSpec('daily_recommend[].artists', 'array', '歌手名列表'),
+                                 ResponseFieldSpec('daily_recommend[].song_url', 'string', '歌曲页地址'),
+                             ],
+                             response_example='''{
+  "song": {"song_name": "示例歌曲", "artists": ["示例歌手"],
+           "cover": "https://img.2t58.com/xxx.jpg"},
+  "play_url": "https://music.2t58.com/xxx.mp3",
+  "lyrics": "示例歌词",
+  "daily_recommend": [
+    {"song_name": "示例歌曲", "artists": ["示例歌手"],
+     "song_url": "https://www.2t58.com/song/d3dkc2t3.html"}
+  ]
+}'''),
                 EndpointSpec('search', '搜索音乐', 'GET', '/api/music/2t58/search',
                              summary='按关键词搜索歌曲（分页）。',
                              params=[
@@ -51,7 +135,36 @@ SERVICE = ServiceSpec(
                                            placeholder='如：王小草', desc='搜索关键词（必填）'),
                                  ParamSpec('page', '页码', kind='number', default='1',
                                            desc='选填：页码，正整数，默认 1'),
-                             ]),
+                             ],
+                             response_fields=[
+                                 ResponseFieldSpec('songs', 'array', '搜索结果歌曲列表'),
+                                 ResponseFieldSpec('songs[].song_name', 'string', '歌曲名'),
+                                 ResponseFieldSpec('songs[].artists', 'array', '歌手名列表'),
+                                 ResponseFieldSpec('songs[].song_url', 'string', '歌曲页地址'),
+                                 ResponseFieldSpec('pagination', 'object', '分页信息；无分页时为 null'),
+                                 ResponseFieldSpec('pagination.current', 'object', '当前页 {page,url}'),
+                                 ResponseFieldSpec('pagination.current.page', 'int', '页码'),
+                                 ResponseFieldSpec('pagination.current.url', 'string', '页面地址'),
+                                 ResponseFieldSpec('pagination.first', 'object', '首页 {page,url}；不存在为 null'),
+                                 ResponseFieldSpec('pagination.prev', 'object', '上一页 {page,url}；不存在为 null'),
+                                 ResponseFieldSpec('pagination.next', 'object', '下一页 {page,url}；不存在为 null'),
+                                 ResponseFieldSpec('pagination.last', 'object', '尾页 {page,url}；不存在为 null'),
+                                 ResponseFieldSpec('total', 'int', '搜索结果总条数'),
+                             ],
+                             response_example='''{
+  "songs": [
+    {"song_name": "示例歌曲", "artists": ["示例歌手"],
+     "song_url": "https://www.2t58.com/song/d3dkc2t3.html"}
+  ],
+  "pagination": {
+    "current": {"page": 1, "url": "https://www.2t58.com/so/%E7%8E%8B%E5%B0%8F%E8%8D%89/1.html"},
+    "first": null,
+    "prev": null,
+    "next": {"page": 2, "url": "https://www.2t58.com/so/%E7%8E%8B%E5%B0%8F%E8%8D%89/2.html"},
+    "last": {"page": 3, "url": "https://www.2t58.com/so/%E7%8E%8B%E5%B0%8F%E8%8D%89/3.html"}
+  },
+  "total": 30
+}'''),
             ],
         ),
         ChannelSpec(
@@ -74,7 +187,31 @@ SERVICE = ServiceSpec(
                                  ParamSpec('page', '页码', kind='number', default='1', desc='选填：默认 1'),
                                  ParamSpec('page_size', '每页条数', kind='number', default='10',
                                            desc='选填：1-100，默认 10'),
-                             ]),
+                             ],
+                             response_fields=[
+                                 ResponseFieldSpec('items', 'array', '音乐列表'),
+                                 ResponseFieldSpec('items[].id', 'string', '音乐 UUID'),
+                                 ResponseFieldSpec('items[].name', 'string', '音乐名称'),
+                                 ResponseFieldSpec('items[].singer', 'array', '歌手列表'),
+                                 ResponseFieldSpec('items[].online', 'bool', '是否在线'),
+                                 ResponseFieldSpec('items[].create_time', 'string', '创建时间'),
+                                 ResponseFieldSpec('items[].updated_time', 'string', '更新时间'),
+                                 ResponseFieldSpec('total', 'int', '总条数'),
+                                 ResponseFieldSpec('page', 'int', '当前页码'),
+                                 ResponseFieldSpec('page_size', 'int', '每页条数'),
+                                 ResponseFieldSpec('total_pages', 'int', '总页数'),
+                             ],
+                             response_example='''{
+  "items": [
+    {"id": "5f8e0b2c-1a3d-4e5f-8a9b-0c1d2e3f4a5b", "name": "示例歌曲",
+     "singer": ["示例歌手"], "online": true,
+     "create_time": "2026-10-01 12:00:00", "updated_time": "2026-10-01 12:00:00"}
+  ],
+  "total": 1,
+  "page": 1,
+  "page_size": 10,
+  "total_pages": 1
+}'''),
                 EndpointSpec('create_music', '创建音乐', 'POST', '/api/music/xiaoying/musics',
                              summary='新建一条音乐，返回 music_id（UUID），供详情/播放源关联使用。',
                              params=[
@@ -89,14 +226,58 @@ SERVICE = ServiceSpec(
                                            default='true', desc='选填：默认 true'),
                              ],
                              notes=['去重规则：同名且同歌手（忽略顺序、大小写与首尾空格）视为重复，返回 20031；'
-                                    '名称相同但歌手不同（多/少/换歌手）可正常入库。']),
+                                    '名称相同但歌手不同（多/少/换歌手）可正常入库。'],
+                             response_fields=[
+                                 ResponseFieldSpec('id', 'string', '音乐 UUID（即 music_id）'),
+                                 ResponseFieldSpec('name', 'string', '音乐名称'),
+                                 ResponseFieldSpec('singer', 'array', '歌手列表'),
+                                 ResponseFieldSpec('online', 'bool', '是否在线'),
+                                 ResponseFieldSpec('create_time', 'string', '创建时间'),
+                                 ResponseFieldSpec('updated_time', 'string', '更新时间'),
+                             ],
+                             response_example='''{
+  "id": "5f8e0b2c-1a3d-4e5f-8a9b-0c1d2e3f4a5b",
+  "name": "示例歌曲",
+  "singer": ["示例歌手"],
+  "online": true,
+  "create_time": "2026-10-01 12:00:00",
+  "updated_time": "2026-10-01 12:00:00"
+}'''),
                 EndpointSpec('music_detail', '获取音乐详情', 'GET',
                              '/api/music/xiaoying/musics/<uuid>',
                              summary='按音乐 UUID 查询单条音乐，同时返回其全部播放源（music_sources）。',
                              params=[ParamSpec('music_id', '音乐 UUID', kind='text', required=True,
                                                placeholder='创建音乐返回的 music_id',
                                                desc='路径参数：音乐 UUID（文档页代调时请替换 URL 中的 <uuid>）')],
-                             path_params={'uuid': 'music_id'}),
+                             path_params={'uuid': 'music_id'},
+                             response_fields=[
+                                 ResponseFieldSpec('id', 'string', '音乐 UUID'),
+                                 ResponseFieldSpec('name', 'string', '音乐名称'),
+                                 ResponseFieldSpec('singer', 'array', '歌手列表'),
+                                 ResponseFieldSpec('online', 'bool', '是否在线'),
+                                 ResponseFieldSpec('create_time', 'string', '创建时间'),
+                                 ResponseFieldSpec('updated_time', 'string', '更新时间'),
+                                 ResponseFieldSpec('music_sources', 'array', '该音乐的播放源列表'),
+                                 ResponseFieldSpec('music_sources[].id', 'string', '播放源 UUID'),
+                                 ResponseFieldSpec('music_sources[].music_id', 'string', '所属音乐 UUID'),
+                                 ResponseFieldSpec('music_sources[].url', 'string', '播放链接'),
+                                 ResponseFieldSpec('music_sources[].create_time', 'string', '创建时间'),
+                                 ResponseFieldSpec('music_sources[].updated_time', 'string', '更新时间'),
+                             ],
+                             response_example='''{
+  "id": "5f8e0b2c-1a3d-4e5f-8a9b-0c1d2e3f4a5b",
+  "name": "示例歌曲",
+  "singer": ["示例歌手"],
+  "online": true,
+  "create_time": "2026-10-01 12:00:00",
+  "updated_time": "2026-10-01 12:00:00",
+  "music_sources": [
+    {"id": "9c1d2e3f-4a5b-6c7d-8e9f-0a1b2c3d4e5f",
+     "music_id": "5f8e0b2c-1a3d-4e5f-8a9b-0c1d2e3f4a5b",
+     "url": "https://music.example.com/xxx.mp3",
+     "create_time": "2026-10-01 12:00:00", "updated_time": "2026-10-01 12:00:00"}
+  ]
+}'''),
                 EndpointSpec('update_music', '更新音乐', 'PATCH',
                              '/api/music/xiaoying/musics/<uuid>',
                              summary='部分字段更新音乐（singer 为整体替换）。',
@@ -113,13 +294,30 @@ SERVICE = ServiceSpec(
                              ],
                              notes=['去重规则：更新后若与他条「同名且同歌手」会返回 20031（排除自身）；'
                                     '只改名称或只改歌手到不冲突的组合均可正常更新。'],
-                             path_params={'uuid': 'music_id'}),
+                             path_params={'uuid': 'music_id'},
+                             response_fields=[
+                                 ResponseFieldSpec('id', 'string', '音乐 UUID'),
+                                 ResponseFieldSpec('name', 'string', '音乐名称'),
+                                 ResponseFieldSpec('singer', 'array', '歌手列表'),
+                                 ResponseFieldSpec('online', 'bool', '是否在线'),
+                                 ResponseFieldSpec('create_time', 'string', '创建时间'),
+                                 ResponseFieldSpec('updated_time', 'string', '更新时间'),
+                             ],
+                             response_example='''{
+  "id": "5f8e0b2c-1a3d-4e5f-8a9b-0c1d2e3f4a5b",
+  "name": "示例歌曲",
+  "singer": ["示例歌手"],
+  "online": false,
+  "create_time": "2026-10-01 12:00:00",
+  "updated_time": "2026-10-02 09:30:00"
+}'''),
                 EndpointSpec('delete_music', '删除音乐', 'DELETE',
                              '/api/music/xiaoying/musics/<uuid>',
                              summary='按 UUID 删除音乐（其播放源级联删除）。',
                              params=[ParamSpec('music_id', '音乐 UUID', kind='text', required=True,
                                                desc='路径参数：要删除的音乐 UUID')],
-                             path_params={'uuid': 'music_id'}),
+                             path_params={'uuid': 'music_id'},
+                             response_note='删除成功时 data 为 null（无返回数据）。'),
                 EndpointSpec('create_source', '创建播放源', 'POST', '/api/music/xiaoying/music_sources',
                              summary='给某首音乐新增一个播放链接。',
                              params=[
@@ -128,7 +326,21 @@ SERVICE = ServiceSpec(
                                            desc='音乐 UUID（必填，须已存在）'),
                                  ParamSpec('url', '播放链接', kind='text', required=True,
                                            placeholder='https://...', desc='播放地址（必填，需合法 URL）'),
-                             ]),
+                             ],
+                             response_fields=[
+                                 ResponseFieldSpec('id', 'string', '播放源 UUID'),
+                                 ResponseFieldSpec('music_id', 'string', '所属音乐 UUID'),
+                                 ResponseFieldSpec('url', 'string', '播放链接'),
+                                 ResponseFieldSpec('create_time', 'string', '创建时间'),
+                                 ResponseFieldSpec('updated_time', 'string', '更新时间'),
+                             ],
+                             response_example='''{
+  "id": "9c1d2e3f-4a5b-6c7d-8e9f-0a1b2c3d4e5f",
+  "music_id": "5f8e0b2c-1a3d-4e5f-8a9b-0c1d2e3f4a5b",
+  "url": "https://music.example.com/xxx.mp3",
+  "create_time": "2026-10-01 12:00:00",
+  "updated_time": "2026-10-01 12:00:00"
+}'''),
                 EndpointSpec('update_source', '更新播放源', 'PATCH',
                              '/api/music/xiaoying/music_sources/<uuid>',
                              summary='部分字段更新播放源（music_id/url）。',
@@ -137,13 +349,28 @@ SERVICE = ServiceSpec(
                                            desc='路径参数：播放源 UUID'),
                                  ParamSpec('url', '播放链接', kind='text', desc='选填：新播放地址'),
                              ],
-                             path_params={'uuid': 'source_id'}),
+                             path_params={'uuid': 'source_id'},
+                             response_fields=[
+                                 ResponseFieldSpec('id', 'string', '播放源 UUID'),
+                                 ResponseFieldSpec('music_id', 'string', '所属音乐 UUID'),
+                                 ResponseFieldSpec('url', 'string', '播放链接'),
+                                 ResponseFieldSpec('create_time', 'string', '创建时间'),
+                                 ResponseFieldSpec('updated_time', 'string', '更新时间'),
+                             ],
+                             response_example='''{
+  "id": "9c1d2e3f-4a5b-6c7d-8e9f-0a1b2c3d4e5f",
+  "music_id": "5f8e0b2c-1a3d-4e5f-8a9b-0c1d2e3f4a5b",
+  "url": "https://music.example.com/new.mp3",
+  "create_time": "2026-10-01 12:00:00",
+  "updated_time": "2026-10-02 09:30:00"
+}'''),
                 EndpointSpec('delete_source', '删除播放源', 'DELETE',
                              '/api/music/xiaoying/music_sources/<uuid>',
                              summary='按 UUID 删除播放源。',
                              params=[ParamSpec('source_id', '播放源 UUID', kind='text', required=True,
                                                desc='路径参数：播放源 UUID')],
-                             path_params={'uuid': 'source_id'}),
+                             path_params={'uuid': 'source_id'},
+                             response_note='删除成功时 data 为 null（无返回数据）。'),
                 EndpointSpec('import_musics', '批量导入', 'POST', '/api/music/xiaoying/import',
                              summary='上传 JSON 文件批量导入音乐+播放源（单文件 ≤10MB、单次 ≤9999 条，不去重）。',
                              params=[
@@ -154,7 +381,24 @@ SERVICE = ServiceSpec(
                              ],
                              notes=['示例单条：{"name":"晴天","singer":["周杰伦"],"online":true,"music_sources":["https://..."]}',
                                     '部分成功：单条记录失败只回滚该条；同名且同歌手的重复记录'
-                                    '（与库中已有或同文件内前面已接受者比较，忽略顺序/大小写）计入 failures，其余正常入库。']),
+                                    '（与库中已有或同文件内前面已接受者比较，忽略顺序/大小写）计入 failures，其余正常入库。'],
+                             response_fields=[
+                                 ResponseFieldSpec('total', 'int', '提交总条数'),
+                                 ResponseFieldSpec('success_count', 'int', '成功入库条数'),
+                                 ResponseFieldSpec('failed_count', 'int', '失败条数'),
+                                 ResponseFieldSpec('failures', 'array', '失败明细列表'),
+                                 ResponseFieldSpec('failures[].index', 'int', '记录在数组中的下标（从 0 起）'),
+                                 ResponseFieldSpec('failures[].name', 'string', '该记录的 name；取不到为空字符串'),
+                                 ResponseFieldSpec('failures[].msg', 'string', '失败原因'),
+                             ],
+                             response_example='''{
+  "total": 2,
+  "success_count": 1,
+  "failed_count": 1,
+  "failures": [
+    {"index": 1, "name": "示例歌曲", "msg": "资源已存在: 同名且同歌手的音乐已存在"}
+  ]
+}'''),
                 EndpointSpec('export_musics', '批量导出', 'GET', '/api/music/xiaoying/export',
                              summary='导出全部音乐（与导入格式一致，可直接回灌导入）：≤9999 条返回单个 .json；超出返回 .zip（内含多个 ≤9999 条的 json）。',
                              params=[
@@ -170,7 +414,10 @@ SERVICE = ServiceSpec(
                                     'curl 需加 -OJ 或 -o 保存文件。',
                                     '导出内容与「批量导入」的 JSON 数组格式完全一致（name / singer / online / music_sources），可直接回灌导入。',
                                     '≤9999 条返回单个 .json；超出返回 .zip，内含 xiaoying_music_1.json、xiaoying_music_2.json…每个文件 ≤9999 条。',
-                                    '文档页在线调试面板对二进制 zip 只能显示乱码文本，建议用 curl / 代码下载。']),
+                                    '文档页在线调试面板对二进制 zip 只能显示乱码文本，建议用 curl / 代码下载。'],
+                             response_note='该接口返回文件下载（Content-Disposition: attachment），'
+                                           '不走 {code,msg,data} 统一包裹：内容为与「批量导入」同格式的 JSON 数组，'
+                                           '≤9999 条为单个 .json，超出为 .zip 分片。'),
             ],
         ),
     ],

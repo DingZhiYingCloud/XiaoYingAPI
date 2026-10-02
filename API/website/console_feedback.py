@@ -27,6 +27,7 @@
 
 鉴权：仅 Django is_superuser（见 admin_auth.superadmin_required）。
 """
+import logging
 import uuid
 from urllib.parse import parse_qsl, urlencode, urlsplit
 
@@ -45,7 +46,9 @@ from API.models import (AiModel, ContactPlatform, Feedback, FeedbackAttachment,
                         FeedbackAuditLog, FeedbackReply, FeedbackReplyAttachment,
                         FeedbackSetting, FeedbackType, ProjectContact, UserApp)
 
-from .admin_auth import superadmin_required
+from .admin_auth import notify_success, superadmin_required
+
+logger = logging.getLogger('api.feedback')
 
 # 列表每页可选条数
 PAGE_SIZES = (20, 50, 100)
@@ -301,14 +304,38 @@ def _act_review_reply(request, feedback):
 
 
 def _act_resubmit(request, feedback):
-    """立即送审：同步跑一遍提交内容审核（结果直接写回反馈）"""
-    ok, message = review_submission(feedback)
-    feedback.refresh_from_db(fields=['status', 'ai_status'])
+    """立即送审：同步跑一遍提交内容审核（结果直接写回反馈）
+
+    先做一次条件抢占（把「非审核中」置为「审核中」）：后台审核线程用的是同一套口径，
+    这样管理员点按与线程同时命中同一条反馈时只有一方真的调用 AI —— 否则会写出两条
+    AI 驳回回复、两份审核留痕，还白烧一次额度。
+    """
+    claimed = Feedback.objects.filter(pk=feedback.pk).exclude(
+        ai_status=Feedback.AiStatus.RUNNING).update(
+        ai_status=Feedback.AiStatus.RUNNING, updated_time=timezone.now())
+    if not claimed:
+        messages.error(request, _('该反馈正在审核中，请稍候'))
+        return _back(request, '/console/feedback/')
+
+    try:
+        ok, message = review_submission(feedback)
+        feedback.refresh_from_db(fields=['status', 'ai_status'])
+    except Feedback.DoesNotExist:
+        # 审核期间反馈被删除：给可读提示，而不是让它冒泡成 500
+        messages.error(request, _('该反馈已被删除'))
+        return _back(request, '/console/feedback/')
+    except Exception:
+        logger.exception('立即送审失败: feedback=%s', feedback.pk)
+        Feedback.objects.filter(pk=feedback.pk).update(
+            ai_status=Feedback.AiStatus.FAILED, updated_time=timezone.now())
+        messages.error(request, _('审核过程出错，请稍后重试'))
+        return _back(request, '/console/feedback/')
+
     text = _('审核结果：%(result)s（业务状态 %(status)s / 审核状态 %(ai)s）') % {
         'result': message, 'status': feedback.get_status_display(),
         'ai': feedback.get_ai_status_display()}
     if ok:
-        messages.success(request, text)
+        notify_success(request, text)
     else:
         messages.error(request, text)
     return _back(request, '/console/feedback/')
@@ -317,7 +344,7 @@ def _act_resubmit(request, feedback):
 def _act_toggle_public(request, feedback):
     feedback.public_hidden = not feedback.public_hidden
     feedback.save(update_fields=['public_hidden', 'updated_time'])
-    messages.success(request, _('已从公开区撤下') if feedback.public_hidden
+    notify_success(request, _('已从公开区撤下') if feedback.public_hidden
                      else _('已恢复到公开区'))
     return _back(request, '/console/feedback/')
 
@@ -328,20 +355,20 @@ def _act_close(request, feedback):
         return _back(request, '/console/feedback/')
     feedback.status = Feedback.Status.CLOSED
     feedback.save(update_fields=['status', 'updated_time'])
-    messages.success(request, _('已关闭该反馈'))
+    notify_success(request, _('已关闭该反馈'))
     return _back(request, '/console/feedback/')
 
 
 def _act_reopen(request, feedback):
     feedback.status = Feedback.Status.PROCESSING
     feedback.save(update_fields=['status', 'updated_time'])
-    messages.success(request, _('已重新打开，状态改为「待处理」'))
+    notify_success(request, _('已重新打开，状态改为「待处理」'))
     return _back(request, '/console/feedback/')
 
 
 def _act_delete(request, feedback):
     feedback.delete()      # 回复 / 附件 / 审核留痕随外键级联删除
-    messages.success(request, _('该反馈及其回复已删除'))
+    notify_success(request, _('该反馈及其回复已删除'))
     return redirect('/console/feedback/')
 
 
@@ -450,7 +477,7 @@ def _act_save_setting(request):
         setattr(setting, field, int(raw))
 
     setting.save()
-    messages.success(request, _('反馈中心设置已保存'))
+    notify_success(request, _('反馈中心设置已保存'))
     return redirect('website:console_feedback_settings')
 
 
@@ -495,7 +522,7 @@ def _act_type_create(request):
     feedback_type = FeedbackType()
     _apply_type(data, feedback_type)
     feedback_type.save()
-    messages.success(request, _('反馈类型「%(name)s」已创建') % {'name': feedback_type.name})
+    notify_success(request, _('反馈类型「%(name)s」已创建') % {'name': feedback_type.name})
     return redirect('website:console_feedback_settings')
 
 
@@ -506,14 +533,14 @@ def _act_type_edit(request, feedback_type):
         return redirect('website:console_feedback_settings')
     _apply_type(data, feedback_type)
     feedback_type.save()
-    messages.success(request, _('反馈类型「%(name)s」已保存') % {'name': feedback_type.name})
+    notify_success(request, _('反馈类型「%(name)s」已保存') % {'name': feedback_type.name})
     return redirect('website:console_feedback_settings')
 
 
 def _act_type_toggle(request, feedback_type):
     feedback_type.enabled = not feedback_type.enabled
     feedback_type.save(update_fields=['enabled', 'updated_time'])
-    messages.success(request, _('反馈类型「%(name)s」已启用') % {'name': feedback_type.name}
+    notify_success(request, _('反馈类型「%(name)s」已启用') % {'name': feedback_type.name}
                      if feedback_type.enabled
                      else _('反馈类型「%(name)s」已停用，提交页不再出现') % {'name': feedback_type.name})
     return redirect('website:console_feedback_settings')
@@ -522,7 +549,7 @@ def _act_type_toggle(request, feedback_type):
 def _act_type_delete(request, feedback_type):
     name = feedback_type.name
     feedback_type.delete()      # 历史反馈的类型外键置空 → 展示为「未分类」
-    messages.success(request, _('反馈类型「%(name)s」已删除，历史反馈显示为「未分类」') % {'name': name})
+    notify_success(request, _('反馈类型「%(name)s」已删除，历史反馈显示为「未分类」') % {'name': name})
     return redirect('website:console_feedback_settings')
 
 
@@ -563,7 +590,7 @@ def _act_platform_create(request):
         return redirect('website:console_contacts')
     platform = ContactPlatform(**data)
     platform.save()
-    messages.success(request, _('联系方式平台「%(name)s」已创建') % {'name': platform.name})
+    notify_success(request, _('联系方式平台「%(name)s」已创建') % {'name': platform.name})
     return redirect('website:console_contacts')
 
 
@@ -575,14 +602,14 @@ def _act_platform_edit(request, platform):
     for field, value in data.items():
         setattr(platform, field, value)
     platform.save()
-    messages.success(request, _('联系方式平台「%(name)s」已保存') % {'name': platform.name})
+    notify_success(request, _('联系方式平台「%(name)s」已保存') % {'name': platform.name})
     return redirect('website:console_contacts')
 
 
 def _act_platform_toggle(request, platform):
     platform.enabled = not platform.enabled
     platform.save(update_fields=['enabled', 'updated_time'])
-    messages.success(request, _('联系方式平台「%(name)s」已启用') % {'name': platform.name}
+    notify_success(request, _('联系方式平台「%(name)s」已启用') % {'name': platform.name}
                      if platform.enabled
                      else _('联系方式平台「%(name)s」已停用，各项目前台不再展示') % {'name': platform.name})
     return redirect('website:console_contacts')
@@ -594,7 +621,7 @@ def _act_platform_delete(request, platform):
         messages.error(request, _('平台「%(name)s」下还有项目已填联系方式，请先清空再删除') % {'name': name})
         return redirect('website:console_contacts')
     platform.delete()
-    messages.success(request, _('联系方式平台「%(name)s」已删除') % {'name': name})
+    notify_success(request, _('联系方式平台「%(name)s」已删除') % {'name': name})
     return redirect('website:console_contacts')
 
 
@@ -619,7 +646,7 @@ def _act_contact_save(request):
             app=app, platform=platform, defaults={'value': value})
         saved += 1
 
-    messages.success(request, _('「%(name)s」的联系方式已保存（%(saved)d 项）')
+    notify_success(request, _('「%(name)s」的联系方式已保存（%(saved)d 项）')
                      % {'name': app.name, 'saved': saved}
                      if not cleared else
                      _('「%(name)s」的联系方式已保存（%(saved)d 项，清空 %(cleared)d 项）')

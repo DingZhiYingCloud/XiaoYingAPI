@@ -47,6 +47,9 @@ logs/
 # 爬虫运行时产物（结果/缓存/待处理队列，随抓取不断变化）
 SpiderServices/*/output/
 
+# 数据库自动备份产物（scripts/backup_db.py 生成，含整库数据，禁止入库）
+/backups/
+
 # 数据库文件
 *.db
 *.sqlite3

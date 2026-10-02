@@ -154,10 +154,6 @@
     {"name": "自研验证码-校验", "method": "POST", "path": "/api/captcha_self/verify",
      "params": {"captcha_id": "${CaptchaId}", "answer": "${CaptchaSelfAnswer}"}, "expect": [10000, 20003]},
 
-    {"name": "邮箱-虚拟邮箱(minmail)生成", "method": "POST", "path": "/api/email/VMEmail/minmail/generate",
-     "save": {"VisitorId": "data.visitor_id"}},
-    {"name": "邮箱-虚拟邮箱(minmail)邮件列表", "method": "GET", "path": "/api/email/VMEmail/minmail/emails",
-     "params": {"visitor_id": "${VisitorId}"}},
     {"name": "邮箱-v1发送邮件", "method": "POST", "path": "/api/email/v1/send",
      "params": {"subject": "冒烟测试邮件", "body": "这是一封 API 冒烟测试邮件。", "recipients": "${TestEmail}"}},
     {"name": "邮箱-mail.cx可用域名", "method": "GET", "path": "/api/VMEmail_mailcx/domains"},
@@ -171,9 +167,9 @@
     {"name": "反馈-换票据(缺token)", "method": "POST", "path": "/api/feedback/ticket",
      "expect": [20001]},
     {"name": "反馈-查联系方式(缺app_id)", "method": "GET", "path": "/api/feedback/contacts",
-     "expect": [20001]},
+     "sign": false, "expect": [20001]},
     {"name": "反馈-查联系方式(项目不存在)", "method": "GET", "path": "/api/feedback/contacts",
-     "params": {"app_id": "app_not_exist_0000000000000000"}, "expect": [20030]},
+     "sign": false, "params": {"app_id": "app_not_exist_0000000000000000"}, "expect": [20030]},
 
     {"name": "音乐-2t58首页", "method": "GET", "path": "/api/music/2t58/home", "expect": [10000, 40001]},
     {"name": "音乐-2t58搜索", "method": "GET", "path": "/api/music/2t58/search",

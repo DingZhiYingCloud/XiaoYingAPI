@@ -97,10 +97,17 @@ def _json(code, msg='', data=None):
 
 
 def _client_ip(request):
-    """客户端 IP（优先反向代理透传头，兜底 REMOTE_ADDR），用于登录防爆破计数"""
+    """客户端 IP，用于登录防爆破计数
+
+    X-Forwarded-For 取**最后一段**：本站 Nginx 用 `$proxy_add_x_forwarded_for`，会把真实
+    来源地址**追加在末尾**，而前面几段是客户端自己就能伪造的。取第一段等于让攻击者每次夹带
+    一个不同的假 IP 就能重置失败计数，S-03 的「连续失败锁定」形同虚设。
+    """
     xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
     if xff:
-        return xff.split(',')[0].strip()
+        parts = [seg.strip() for seg in xff.split(',') if seg.strip()]
+        if parts:
+            return parts[-1]
     return request.META.get('HTTP_X_REAL_IP', '') or request.META.get('REMOTE_ADDR', '')
 
 

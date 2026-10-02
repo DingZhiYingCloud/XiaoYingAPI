@@ -5,9 +5,12 @@ from API.models.Users.user import User, UserLoginLog, UserToken, UserVerifyRecor
 from API.models.Users.auth_method import AuthMethod
 from API.models.Projects.app import UserApp
 from API.models.Auth.policy import ApiServicePolicy
+from API.models.Credit.ledger import AppCreditLedger
+from API.models.Credit.price import DEFAULT_PRICE, ApiPricePolicy
 from API.models.Email.email_template import EmailTemplate
 from API.models.Feedback.contact import ContactPlatform, ProjectContact
 from API.models.Feedback.feedback import (
+    AI_RUNNING_STALE_MINUTES,
     Feedback,
     FeedbackAttachment,
     FeedbackAuditLog,
@@ -24,7 +27,12 @@ from API.models.Haijiao.account import HaijiaoAccount
 from API.models.Docs.announcement import Announcement
 from API.models.AI.provider import AiModel, AiProvider, AiSystemPrompt
 from API.models.Website.appearance import SiteAppearance
+from API.models.Security.audit import ConsoleAuditLog
 from API.models.Security.setting import SecuritySetting
+from API.models.Quota.service import QuotaService
+from API.models.Quota.setting import QuotaSetting
+from API.models.Monitor.setting import UpstreamAlertSetting
+from API.models.Monitor.state import UpstreamAlertState
 
 __all__ = [
     'BaseModel',
@@ -38,7 +46,11 @@ __all__ = [
     'AuthMethod',
     'UserApp',
     'ApiServicePolicy',
+    'AppCreditLedger',
+    'ApiPricePolicy',
+    'DEFAULT_PRICE',
     'EmailTemplate',
+    'AI_RUNNING_STALE_MINUTES',
     'Feedback',
     'FeedbackType',
     'FeedbackReply',
@@ -60,4 +72,9 @@ __all__ = [
     'AiModel',
     'SiteAppearance',
     'SecuritySetting',
+    'ConsoleAuditLog',
+    'QuotaService',
+    'QuotaSetting',
+    'UpstreamAlertSetting',
+    'UpstreamAlertState',
 ]
