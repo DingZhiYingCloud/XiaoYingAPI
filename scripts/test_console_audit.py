@@ -6,6 +6,8 @@
     第 3 轮 失败也留痕、说明为空：POST 一个不存在的 action（视图 messages.error + 302）
     第 4 轮 非超管不留痕：匿名 POST 被拦（404 隐身 / 302 跳登录）且不产生记录
     第 5 轮 列表页：展示 / 三种筛选 / 菜单高亮 / 三语渲染无中文回退
+    第 6 轮 动作码翻成人话：prompt_delete → 删除提示词（原始码留在悬停提示）、
+             未知码原样显示、按中文说法可搜到、英文页显示英文动作名
 
 隔离策略：审计表是只追加的事实表，故**记录测试前的最大 id**，结束时删掉之后新增的全部行；
 期间被改动的安全开关按快照还原。
@@ -179,6 +181,32 @@ def round5_list(client, admin):
     check('繁体页已翻译（无简体回退）', '操作日誌' in html and '操作者' in html)
 
 
+# ───────────────── 第 6 轮：动作码翻成人话 ─────────────────
+
+def round6_action_labels(client):
+    section('第 6 轮 动作码翻成人话（prompt_delete → 删除提示词）')
+    # 造一条带已知动作码的留痕（第 3 轮那条是未知码，用于验证「兜底原样显示」）
+    log = ConsoleAuditLog.objects.create(
+        operator='xytest-audit', method='POST', path='/console/ai/', view_name='console_ai',
+        action='prompt_delete', target='', note='提示词「测试」已删除', status_code=302,
+        ip='127.0.0.1', user_agent='xytest-audit-agent')
+
+    body = client.get(URL).content.decode('utf-8')
+    check('动作码已翻成中文', '删除提示词' in body and '>prompt_delete<' not in body)
+    check('原始动作码留在悬停提示里（便于对照代码）', 'title="prompt_delete"' in body)
+    check('未知动作码原样显示（绝不丢信息）', 'xytest_no_such_action' in body)
+    check('来源列也翻成人话（提交 · 成功，不再是 POST · 302）',
+          '提交 · 成功' in body and 'POST · 302' not in body)
+
+    resp = client.get(URL, {'q': '删除提示词'})
+    check('按中文说法搜索能命中（按动作中文名反查）',
+          resp.status_code == 200 and log.path in resp.content.decode('utf-8'))
+
+    html = client.get(URL, HTTP_ACCEPT_LANGUAGE='en').content.decode('utf-8')
+    check('英文页显示英文动作名', 'Delete prompt' in html and 'Submit · Succeeded' in html,
+          '未找到英文动作名')
+
+
 def main():
     max_id = ConsoleAuditLog.objects.order_by('-id').values_list('id', flat=True).first() or 0
     hide_console = SecuritySetting.get_solo().hide_console
@@ -190,6 +218,7 @@ def main():
         round3_failed_write(client)
         round4_anonymous()
         round5_list(client, admin)
+        round6_action_labels(client)
     finally:
         created = ConsoleAuditLog.objects.filter(id__gt=max_id).count()
         ConsoleAuditLog.objects.filter(id__gt=max_id).delete()

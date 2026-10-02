@@ -1,20 +1,57 @@
 {% load static i18n %}
-{% comment %}调用统计：三张图表（趋势 / 时段分布 / 状态码）。
+{% comment %}控制台图表脚本（Chart.js 自托管，见 vendor/chart.umd.min.js）：
+- 调用统计三页：趋势 / 时段分布 / 状态码；
+- 控制台首页：调用趋势（成功 / 失败堆叠柱）、服务调用排行（横向条）。
 用法：在 {% block js %} 里 {% include 'console/_stats_charts_js.html' %}；
-数据由对应卡片 partial 的 json_script 提供，元素不存在则自动跳过。
+数据由对应卡片 partial 的 json_script 提供，元素不存在则自动跳过，故同一份脚本可被多页复用。
 Chart.js 用 defer 加载（200KB，原先同步加载会阻塞本页解析）；
 defer 脚本在 DOMContentLoaded 之前执行完，故初始化统一放进 DOMContentLoaded 里，顺序仍可保证。{% endcomment %}
 <script defer src="{% static 'js/vendor/chart.umd.min.js' %}"></script>
 <script>
+/* 已建的图表（换主题时要就地改色重绘，见本文件末尾的 xyapi:themechange） */
+var charts = [];
+
+/* 用主题变量取前景色，保证明/暗主题下坐标轴与图例都读得清。
+   daisyUI 的主题变量是 oklch()，而 Chart.js 4 的颜色解析器只认 hex / rgb / hsl ——
+   直接把 oklch 传进去会被判成无效色、按黑色绘制，暗色主题下刻度文字就看不见了。
+   这里借原生 canvas 归一成 rgb()（原生 canvas 认识 oklch）。 */
+function themeColor(name, fallback) {
+  var raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  if (!raw || !window.Chart) return raw || fallback;
+  var probe = document.createElement('canvas');
+  probe.width = probe.height = 1;
+  var ctx = probe.getContext('2d');
+  ctx.fillStyle = '#000001';   // 哨兵：颜色解析不出来时 canvas 会保持它，据此退回 fallback
+  ctx.fillStyle = raw;
+  ctx.fillRect(0, 0, 1, 1);
+  var px = ctx.getImageData(0, 0, 1, 1).data;
+  if (px[0] === 0 && px[1] === 0 && px[2] === 1) return fallback;
+  return 'rgb(' + px[0] + ',' + px[1] + ',' + px[2] + ')';
+}
+
+/* 建图统一走这里：画布不存在就跳过，同时留下实例供换主题时重绘 */
+function render(canvasId, config) {
+  var canvas = document.getElementById(canvasId);
+  if (canvas) charts.push(new Chart(canvas, config));
+}
+
+/* 换主题后就地更新图表文字色并重绘：图表画在 canvas 上，不会跟着 CSS 变量变 */
+function applyChartColors() {
+  var fg = themeColor('--color-base-content', '#555');
+  charts.forEach(function (chart) {
+    var scales = chart.options.scales || {};
+    Object.keys(scales).forEach(function (key) {
+      if (scales[key].ticks) scales[key].ticks.color = fg;
+    });
+    var legend = (chart.options.plugins || {}).legend;
+    if (legend && legend.labels) legend.labels.color = fg;
+    chart.update();
+  });
+}
+
 document.addEventListener('DOMContentLoaded', function () {
   'use strict';
   if (!window.Chart) return;
-
-  // 用主题变量取前景色，保证明/暗主题下坐标轴可读
-  function themeColor(name, fallback) {
-    var value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    return value || fallback;
-  }
 
   function readData(id) {
     var el = document.getElementById(id);
@@ -26,7 +63,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // ===== 每日趋势：成功 / 失败堆叠柱状 =====
   var trend = readData('stats-trend-data');
   if (trend && trend.length) {
-    new Chart(document.getElementById('stats-trend'), {
+    render('stats-trend', {
       type: 'bar',
       data: {
         labels: trend.map(function (d) { return d.date; }),
@@ -61,7 +98,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var profile = readData('stats-hours-data');
   if (profile && profile.length) {
     var maxCalls = Math.max.apply(null, profile.map(function (p) { return p.calls; }));
-    new Chart(document.getElementById('stats-hours'), {
+    render('stats-hours', {
       type: 'bar',
       data: {
         labels: profile.map(function (p) { return ('0' + p.hour).slice(-2); }),
@@ -87,7 +124,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // ===== 状态码分布：环形图 =====
   var rows = readData('stats-status-data');
   if (rows && rows.length) {
-    new Chart(document.getElementById('stats-status'), {
+    render('stats-status', {
       type: 'doughnut',
       data: {
         labels: rows.map(function (r) { return r.label + ' (' + r.key + ')'; }),
@@ -103,5 +140,67 @@ document.addEventListener('DOMContentLoaded', function () {
       },
     });
   }
+
+  // ===== 控制台首页：调用趋势（成功 / 失败堆叠柱） =====
+  var homeTrend = readData('home-trend-data');
+  if (homeTrend && homeTrend.length) {
+    render('home-trend', {
+      type: 'bar',
+      data: {
+        labels: homeTrend.map(function (d) { return d.date.slice(5); }),
+        datasets: [
+          {
+            label: gettext('成功'),
+            data: homeTrend.map(function (d) { return d.success; }),
+            backgroundColor: '#3b82f6', stack: 'calls', yAxisID: 'y',
+          },
+          {
+            label: gettext('失败'),
+            data: homeTrend.map(function (d) { return d.failed; }),
+            backgroundColor: '#ef4444', stack: 'calls', yAxisID: 'y',
+          },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { labels: { color: fg } } },
+        scales: {
+          x: { stacked: true, ticks: { color: fg }, grid: { display: false } },
+          y: { stacked: true, beginAtZero: true, position: 'left',
+               ticks: { color: fg, precision: 0 } },
+        },
+      },
+    });
+  }
+
+  // ===== 控制台首页：服务调用排行（横向条） =====
+  var homeServices = readData('home-services-data');
+  if (homeServices && homeServices.length) {
+    render('home-services', {
+      type: 'bar',
+      data: {
+        labels: homeServices.map(function (d) { return d.name; }),
+        datasets: [{
+          label: gettext('调用量'),
+          data: homeServices.map(function (d) { return d.calls; }),
+          backgroundColor: '#3b82f6',
+          borderRadius: 4,
+        }],
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { beginAtZero: true, ticks: { color: fg, precision: 0 } },
+          y: { ticks: { color: fg }, grid: { display: false } },
+        },
+      },
+    });
+  }
+
+  // 页头切主题是即时生效、不刷页面的，图表得跟着换色（由 theme.js 派发该事件）
+  document.addEventListener('xyapi:themechange', applyChartColors);
 });
 </script>

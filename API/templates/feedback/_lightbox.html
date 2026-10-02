@@ -1,0 +1,12 @@
+{% load i18n %}
+{% comment %}附件图片灯箱：每个页面只放一个（反馈详情页与控制台反馈详情各引一次），
+  供 feedback/_attachments.html 里的缩略图复用。
+  打开关闭由 static/js/site/feedback_media.js 驱动；Esc 与「关闭」按钮走原生 <dialog> 行为。{% endcomment %}
+<dialog id="fb-lightbox" class="modal">
+  <div class="modal-box max-w-5xl p-2">
+    <img id="fb-lightbox-img" alt="" class="mx-auto max-h-[78vh] w-auto rounded-box" />
+    <form method="dialog" class="mt-2 flex justify-end">
+      <button class="btn btn-sm">{% trans "关闭" %}</button>
+    </form>
+  </div>
+</dialog>

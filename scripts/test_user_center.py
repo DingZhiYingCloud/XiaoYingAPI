@@ -43,8 +43,6 @@ from django.db import IntegrityError
 from API.models import User, UserApp, UserToken, UserVerifyRecord
 from API.apis.user_center.sign import build_sign
 
-from _test_support import grant_credit
-
 # ───────────────────────── 测试基础设施 ─────────────────────────
 
 BASE = '/api/user_center'
@@ -101,7 +99,6 @@ def _create_app(name=None, status=True, expire_days=7):
         name=name or f'{_PREFIX}项目{len(_created_apps)}',
         token_expire_days=expire_days, status=status,
     )
-    grant_credit(obj)   # 新项目默认 0 点额度，签名调用会被 30012 拦掉，先补一笔
     entry = (obj.app_id, obj.app_secret, obj)
     _created_apps.append(entry)
     return entry

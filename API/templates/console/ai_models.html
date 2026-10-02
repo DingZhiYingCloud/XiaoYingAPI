@@ -182,7 +182,20 @@
                 <i data-lucide="image" class="h-3 w-3"></i>{% trans "视觉" %}
               </span>
               <div class="mt-1 text-xs text-base-content/50">{% blocktrans with v=m.max_images %}最多 {{ v }} 张{% endblocktrans %}</div>
-              {% else %}
+              {% endif %}
+              {% if m.supports_video %}
+              <span class="badge badge-soft badge-accent badge-sm gap-1 {% if m.supports_vision %}mt-1{% endif %}">
+                <i data-lucide="video" class="h-3 w-3"></i>{% trans "视频" %}
+              </span>
+              <div class="mt-1 text-xs text-base-content/50">{% blocktrans with v=m.max_videos %}最多 {{ v }} 个{% endblocktrans %}</div>
+              {% endif %}
+              {% if m.supports_audio %}
+              <span class="badge badge-soft badge-success badge-sm gap-1 {% if m.supports_vision or m.supports_video %}mt-1{% endif %}">
+                <i data-lucide="music" class="h-3 w-3"></i>{% trans "音频" %}
+              </span>
+              <div class="mt-1 text-xs text-base-content/50">{% blocktrans with v=m.max_audios %}最多 {{ v }} 个{% endblocktrans %}</div>
+              {% endif %}
+              {% if not m.supports_vision and not m.supports_video and not m.supports_audio %}
               <span class="text-xs text-base-content/50">{% trans "纯文本" %}</span>
               {% endif %}
             </td>
@@ -230,6 +243,10 @@
                         data-provider="{{ m.provider_id }}" data-upstream="{{ m.upstream_name }}"
                         data-vision="{% if m.supports_vision %}1{% else %}0{% endif %}"
                         data-maximg="{{ m.max_images }}"
+                        data-video="{% if m.supports_video %}1{% else %}0{% endif %}"
+                        data-maxvid="{{ m.max_videos }}"
+                        data-audio="{% if m.supports_audio %}1{% else %}0{% endif %}"
+                        data-maxaud="{{ m.max_audios }}"
                         data-window="{{ m.context_window|default_if_none:'' }}"
                         data-sort="{{ m.sort }}" data-remark="{{ m.remark }}"
                         data-enabled="{% if m.enabled %}1{% else %}0{% endif %}"
@@ -530,6 +547,10 @@
       setValue(modelForm, 'stop', d.stop);
       setChecked(modelForm, 'supports_vision', d.vision === '1');
       setValue(modelForm, 'max_images', d.maximg);
+      setChecked(modelForm, 'supports_video', d.video === '1');
+      setValue(modelForm, 'max_videos', d.maxvid);
+      setChecked(modelForm, 'supports_audio', d.audio === '1');
+      setValue(modelForm, 'max_audios', d.maxaud);
       setChecked(modelForm, 'enabled', d.enabled === '1');
       setChecked(modelForm, 'is_default', d.default === '1');
       // 提示词三态：值形如 inherit / none / prompt:<pk>；对不上（如指定的那条已被删）就回到「跟随全局」

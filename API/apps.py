@@ -40,16 +40,6 @@ class ApiConfig(AppConfig):
         post_save.connect(_invalidate_policy_cache, sender=ApiServicePolicy, weak=False)
         post_delete.connect(_invalidate_policy_cache, sender=ApiServicePolicy, weak=False)
 
-        # 调用单价缓存失效钩子：「线路价格」页保存 / 删除 ApiPricePolicy 后立即失效
-        from API.common.credit_guard import invalidate_api_price_cache
-        from API.models.Credit.price import ApiPricePolicy
-
-        def _invalidate_price_cache(sender, instance, **kwargs):
-            invalidate_api_price_cache()
-
-        post_save.connect(_invalidate_price_cache, sender=ApiPricePolicy, weak=False)
-        post_delete.connect(_invalidate_price_cache, sender=ApiPricePolicy, weak=False)
-
         # AI 模型清单缓存失效钩子：后台保存 / 删除厂商、模型或系统提示词后立即失效，
         # 文档页下拉与 /api/ai/BuiltInModel/models 立刻反映改动，无需等 TTL
         from API.apis.ai.BuiltInModel.utils import invalidate_models_cache
@@ -80,14 +70,6 @@ class ApiConfig(AppConfig):
 
         if is_serving_process():
             start_quota_worker()
-
-        # 上游故障告警巡检线程：按服务统计上游调用失败率（业务码 4xxxx），超阈值发邮件；
-        # 与余量线程分开跑（间隔不同：故障要更灵敏），多 worker 靠行级抢占保证只发一封
-        # （见 API/apis/monitor/utils.py）
-        from API.apis.monitor.utils import start_worker as start_monitor_worker
-
-        if is_serving_process():
-            start_monitor_worker()
 
         # collectstatic：把「前端编译源码与工具」排除在收集之外 —— 它们只服务编译期，不是运行时资源：
         #   - css/input.css 第 1 行的 @import "tailwindcss" 会被 Manifest 存储当成待解析的 URL，直接报错；

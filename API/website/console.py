@@ -3,29 +3,32 @@
 - home_view：控制台首页（关键指标概览 + 模块入口，入口取自 console_menu 声明）；
 - projects_view：接入项目（UserApp）增删改查；
 - services_view：API 服务策略（服务 / 线路 / 端点三级继承、状态、认证模式、文档可见性、使用范围）增删改查；
-- stats_view / stats_service_view / stats_app_view：API 调用统计看板（含消耗点数与额度口径）。
+- stats_view / stats_service_view / stats_app_view：API 调用统计看板。
 
 鉴权：仅 Django is_superuser 可访问（见 admin_auth.py），
 未登录/非超管会被自动重定向到统一登录；普通用户不可见/不可访问。
 说明：接入项目的 APPID/APPSECRET 由系统自动生成；创建后仅此页一次性展示新密钥。
-
-调用单价不在这里：由独立的「线路价格」页（console_prices.py，`ApiPricePolicy`）管理。
 """
 import uuid
+from datetime import timedelta
+from decimal import Decimal
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.translation import gettext as _
 
 from API.common import StatusCode
 from API.common import api_stats_query as stats_query
 from API.common.api_stats import UNMATCHED_PATH, purge_app, service_of
+from API.common.ip_guard import effective_ban_count
 from API.common.middleware import resolve_service_policy, requires_auth
-from API.models import Announcement, ApiServicePolicy, Feedback, User, UserApp
+from API.models import (Announcement, ApiServicePolicy, Feedback, PayOrder,
+                        PayRefundRequest, QuotaService, User, UserApp)
 from API.models.Statistics.api_call_stat import NO_APP
 
 from .admin_auth import notify_success, superadmin_required
@@ -34,26 +37,63 @@ from .service_status import status_def
 from .service_tree import service_tree
 from .services import SERVICES
 
-# 控制台首页「近 N 天」调用概览的时间窗口（与调用统计看板的默认口径一致）
+# 控制台首页的取数窗口：
+#   HOME_OVERVIEW_DAYS - KPI 概览（与调用统计看板的默认口径一致，另附环比）
+#   HOME_TREND_DAYS    - 趋势图（成功 / 失败调用）
+#   HOME_REVENUE_DAYS  - 收入与订单
 HOME_OVERVIEW_DAYS = 7
+HOME_TREND_DAYS = 14
+HOME_REVENUE_DAYS = 30
+#: 首页「服务调用排行」展示条数
+HOME_RANKING_LIMIT = 5
 
 
 @superadmin_required
 def home_view(request):
-    """控制台首页：关键指标概览 + 待关注事项 + 各模块入口
+    """控制台首页：KPI + 仪表盘（趋势 / 排行 / 收入 / 资源与告警）+ 各模块入口
 
-    待关注事项（待处理反馈 / 生效中的公告）只做计数，点进去由各自模块页处理 ——
-    首页只回答「有没有事情等着我」，不重复实现列表逻辑。
+    口径：
+    - 调用类指标一律复用调用统计读侧（`API/common/api_stats_query.py`），与看板同源；
+    - 收入按订单**支付时间**落在近 N 天内统计（已支付 / 部分退款 / 已全额退款都算成交），
+      退款金额取这些订单的累计 `refund_amount`；
+    - 「待关注」只做计数，点进去由各自模块页处理 —— 首页只回答「有没有事情等着我」。
     """
+    trend = stats_query.daily_trend(HOME_TREND_DAYS)
+    ranking = stats_query.service_ranking(HOME_OVERVIEW_DAYS, limit=HOME_RANKING_LIMIT)
+    names = _service_names()
+    for row in ranking:
+        row['name'] = _service_label(row['key'], names)
+
+    since = timezone.now() - timedelta(days=HOME_REVENUE_DAYS)
+    paid_orders = PayOrder.objects.filter(
+        paid_at__gte=since,
+        status__in=(PayOrder.STATUS_PAID, PayOrder.STATUS_PARTIAL_REFUNDED,
+                    PayOrder.STATUS_REFUNDED))
+    money = paid_orders.aggregate(amount=Sum('amount'), refund=Sum('refund_amount'))
+
     return render(request, 'console/home.html', {
         'overview_days': HOME_OVERVIEW_DAYS,
-        'stats': stats_query.overview(HOME_OVERVIEW_DAYS),
+        'trend_days': HOME_TREND_DAYS,
+        'revenue_days': HOME_REVENUE_DAYS,
+        'stats': stats_query.overview_compare(HOME_OVERVIEW_DAYS),
+        'trend': trend,
+        'ranking': ranking,
+        'revenue': {
+            'amount': money['amount'] or Decimal('0'),
+            'refund': money['refund'] or Decimal('0'),
+            'orders': paid_orders.count(),
+            'refund_pending': PayRefundRequest.objects.filter(
+                status=PayRefundRequest.STATUS_PENDING).count(),
+        },
         'counts': {
             'apps': UserApp.objects.count(),
             'users': User.objects.count(),
             'banned_users': User.objects.filter(status=False).count(),
+            'ip_bans': effective_ban_count(),
+            'pending_orders': PayOrder.objects.filter(status=PayOrder.STATUS_PENDING).count(),
             'feedback_open': Feedback.objects.filter(
                 status__in=(Feedback.Status.PENDING, Feedback.Status.PROCESSING)).count(),
+            'quota_alerts': QuotaService.objects.filter(alert_active=True).count(),
             'announcements': Announcement.visible_queryset().count(),
         },
     })
@@ -137,8 +177,7 @@ def _handle_project_action(request):
 
 def _render_projects(request):
     keyword = (request.GET.get('q') or '').strip()
-    # select_related('owner')：模板要显示归属用户的账号，避免每个项目多一次查询
-    apps = UserApp.objects.select_related('owner')
+    apps = UserApp.objects.all()
     if keyword:
         apps = apps.filter(Q(name__icontains=keyword) | Q(app_id__icontains=keyword))
     apps = apps.order_by('-create_time')
@@ -230,7 +269,6 @@ def _render_services(request):
 
     「生效结果」直接复用认证中间件的 resolve_service_policy() / requires_auth()，
     保证页面显示与接口实际鉴权一致。
-    调用单价不在这里（已与服务策略解耦），见「线路价格」页（console_prices.py）。
     """
     level_labels = _policy_level_labels()
     status_labels = _policy_status_labels()
@@ -772,7 +810,6 @@ def stats_app_view(request, app_id):
     context.update({
         'app_id': app_id,
         'app_name': _app_label(app_id, _app_names([app_id])),
-        'credit': stats_query.app_credit_summary(app_id),
         'services': _mark_rates(_service_rows(
             stats_query.service_ranking(days, app_id=app_id), names)),
         'endpoints': _mark_rates(_endpoint_rows(

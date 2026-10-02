@@ -31,7 +31,7 @@
         } catch (e) { /* 忽略隐私模式等异常 */ }
       })();
     </script>
-    <link href="{% static 'css/output.css' %}?v=20261002c" rel="stylesheet" type="text/css" />
+    <link href="{% static 'css/output.css' %}?v=20261002h" rel="stylesheet" type="text/css" />
     <!-- 结构化数据（schema.org）：声明站点信息与站内搜索，助力搜索引擎理解网站 -->
 
     {% block head %}{% endblock %}
@@ -40,6 +40,8 @@
 
 <body>
     {% include 'common_html/headers.html' %}
+    {# IP 封禁提示条：命中封禁时在全站页头下方显示原因与到期时间，并给出联系方式（见 API/common/ip_guard.py） #}
+    {% include 'common_html/ip_ban_notice.html' %}
     {# main 地标：屏幕阅读器 / SEO 用它定位「正文」区域（全站唯一，页面内部不再各自加 main） #}
     <main>
         {% block content %}{% endblock %}
@@ -50,7 +52,7 @@
     {# JS 多语言目录（window.gettext 等），必须早于所有站点脚本加载 #}
     <script src="{% url 'website:javascript-catalog' %}"></script>
     <script src="{% static 'js/site/ui.js' %}?v=20260930b"></script>
-    <script src="{% static 'js/site/theme.js' %}?v=20261002a"></script>
+    <script src="{% static 'js/site/theme.js' %}?v=20261002b"></script>
     {% comment %}图标库自托管并锁定版本，不再走 CDN：外网脚本会阻塞 HTML 解析（实测 113~371ms，国内可能更慢甚至超时），
     每次切换页面都要等它，是"闪屏"的主要来源之一。
     defer 让下载与解析并行、不阻塞首屏；onload 在脚本就绪的那一刻立刻渲染图标，

@@ -91,21 +91,15 @@ def my_projects(request):
     """/docs/_projects/ 当前访客可选用的接入项目（含密钥）
 
     文档页右侧「鉴权设置」卡的下拉数据源：选中即自动填入 APPID / APPSECRET，
-    省得去「我的项目」页手抄。**密钥只在这个响应里下发**，不写进文档页 HTML
+    省得手抄。**密钥只在这个响应里下发**，不写进文档页 HTML
     —— 文档页是公开且可被缓存的，把密钥渲染进去会被缓存 / 分享出去。
 
-    取谁的项目：
-    - 官网会话已登录（普通用户）→ 该用户名下的启用项目；
-    - Django 超管会话（控制台登录）→ 全部启用项目（超管本就能在控制台看到所有密钥）；
-    - 都没登录 → 空列表（不泄露任何信息，前端据此隐藏下拉）。
+    取谁的项目：项目一律由后台管理员创建、不再归属到具体用户，因此**只对 Django 超管会话
+    下发全部启用项目**（超管本就能在控制台看到所有密钥）；其余访客一律空列表，不泄露信息。
     """
     from API.models import UserApp
-    from .my_projects import _current_app_user
 
-    user = _current_app_user(request)
-    if user is not None:
-        apps = UserApp.objects.filter(owner=user, status=True)
-    elif getattr(request.user, 'is_superuser', False):
+    if getattr(request.user, 'is_superuser', False):
         apps = UserApp.objects.filter(status=True)
     else:
         apps = UserApp.objects.none()
@@ -174,7 +168,6 @@ def service(request, slug: str):
     服务策略里被设为「文档隐藏」的服务 / 端点不会出现在本页：服务级隐藏返回 404，
     端点级隐藏从列表中移除（某线路下端点全部隐藏时，该线路也不再展示）。
     """
-    from API.common.credit_guard import resolve_price_detail
     from API.common.middleware import is_docs_hidden
     from .service_status import annotate as _annotate_status, channel_status_fields
     doc = get_doc(slug)
@@ -193,8 +186,6 @@ def service(request, slug: str):
         for endpoint in channel.endpoints:
             endpoint.call_count = counts.get(endpoint.path, 0)
             endpoint.method_badge = METHOD_BADGES.get(endpoint.method, 'badge-ghost')
-            # 调用单价（点/次）：公开信息，来源可能是端点级 / 线路级 / 服务级 / 默认
-            endpoint.price_detail = resolve_price_detail(endpoint.path)
             # 库内账号选择器：本服务声明了账号查询接口、且该端点用 account_id 传登录凭据时渲染
             # （取库内账号 UUID 的端点都能靠它一键填入，省得手抄）
             if doc.account_search_path and any(p.name == 'account_id' for p in endpoint.params):

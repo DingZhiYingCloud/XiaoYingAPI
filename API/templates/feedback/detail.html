@@ -17,20 +17,8 @@
 
     <p class="text-sm leading-relaxed whitespace-pre-line">{{ fb.content }}</p>
 
-    {% if show_attachments and fb.attachments.exists %}
-    <div class="grid gap-2 sm:grid-cols-3">
-      {% for att in fb.attachments.all %}
-      {% if att.is_image %}
-      <a href="{{ att.url }}" target="_blank" rel="noopener noreferrer">
-        <img src="{{ att.url }}" alt="{{ att.original_name }}" loading="lazy"
-             class="h-32 w-full rounded-box border border-base-300 object-cover" />
-      </a>
-      {% else %}
-      <video src="{{ att.url }}" controls preload="metadata"
-             class="h-32 w-full rounded-box border border-base-300 bg-base-200"></video>
-      {% endif %}
-      {% endfor %}
-    </div>
+    {% if show_attachments %}
+    {% include 'feedback/_attachments.html' with attachments=fb.attachments.all cols='sm:grid-cols-3' %}
     {% endif %}
 
     <p class="text-xs text-base-content/50">
@@ -60,20 +48,8 @@
       </div>
       <p class="text-sm leading-relaxed whitespace-pre-line">{{ reply.content }}</p>
 
-      {% if show_attachments and reply.attachments.exists %}
-      <div class="grid gap-2 sm:grid-cols-3">
-        {% for att in reply.attachments.all %}
-        {% if att.is_image %}
-        <a href="{{ att.url }}" target="_blank" rel="noopener noreferrer">
-          <img src="{{ att.url }}" alt="{{ att.original_name }}" loading="lazy"
-               class="h-32 w-full rounded-box border border-base-300 object-cover" />
-        </a>
-        {% else %}
-        <video src="{{ att.url }}" controls preload="metadata"
-               class="h-32 w-full rounded-box border border-base-300 bg-base-200"></video>
-        {% endif %}
-        {% endfor %}
-      </div>
+      {% if show_attachments %}
+      {% include 'feedback/_attachments.html' with attachments=reply.attachments.all cols='sm:grid-cols-3' %}
       {% endif %}
     </div>
   </div>
@@ -111,4 +87,9 @@
   </a>
   {% endif %}
 </div>
+{% endblock %}
+
+{% block js %}
+{% include 'feedback/_lightbox.html' %}
+<script src="{% static 'js/site/feedback_media.js' %}?v=20261002a"></script>
 {% endblock %}

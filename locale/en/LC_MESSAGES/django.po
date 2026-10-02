@@ -6342,6 +6342,33 @@ msgstr "Max images"
 msgid "勾选后才允许请求携带 images；最多图片数仅对支持视觉的模型生效，超出会返回参数值非法。"
 msgstr "The images parameter is accepted only when ticked; Max images applies to vision models only, and going over it returns an invalid-value error."
 
+msgid "支持视频理解"
+msgstr "Video understanding"
+
+msgid "最多视频数"
+msgstr "Max videos"
+
+msgid "勾选后才允许请求携带 images / videos / audios；张数与个数上限仅对相应能力生效，超出会返回参数值非法。视频走 video_url 块、音频走 input_audio 块，需上游模型支持相应能力（如豆包 Seed 2.0 全模态）。"
+msgstr "The images / videos / audios parameters are accepted only when ticked; the count limits apply only to the corresponding capability, and going over them returns an invalid-value error. Videos use a video_url block and audio uses an input_audio block, both requiring upstream models that support the capability (e.g. Doubao Seed 2.0 omni-modal)."
+
+msgid "支持音频理解"
+msgstr "Audio understanding"
+
+msgid "最多音频数"
+msgstr "Max audio clips"
+
+msgid "音频"
+msgstr "Audio"
+
+msgid "最多音频数取值范围为 1 ~ %(limit)s"
+msgstr "Max audio clips must be between 1 and %(limit)s"
+
+msgid "最多 %(v)s 个"
+msgstr "Up to %(v)s"
+
+msgid "最多视频数取值范围为 1 ~ %(limit)s"
+msgstr "Max videos must be between 1 and %(limit)s"
+
 msgid "下架后不在模型清单与文档下拉中出现"
 msgstr "Unlisted models disappear from the model list and the docs dropdown"
 
@@ -6441,8 +6468,14 @@ msgstr "Omit (use the default model)"
 msgid "支持视觉"
 msgstr "Vision"
 
-msgid "多模型 AI 对话接口：用 model 参数在多家厂商的模型间切换，单轮 / 多轮、流式、图片理解（部分模型）一应俱全。"
-msgstr "Multi-model AI chat API: switch between models from several vendors with the model parameter — single-turn, multi-turn, streaming and image understanding (on supported models)."
+msgid "支持视频"
+msgstr "Video"
+
+msgid "支持音频"
+msgstr "Audio"
+
+msgid "多模型 AI 对话接口：用 model 参数在多家厂商的模型间切换，单轮 / 多轮、流式、图片 / 视频 / 音频理解（部分模型）一应俱全。"
+msgstr "Multi-model AI chat API: switch between models from several vendors with the model parameter — single-turn, multi-turn, streaming and image/video/audio understanding (on supported models)."
 
 msgid "AI API,免费AI接口,大模型API,AI对话接口,DeepSeek API,Kimi API,豆包API,千问API"
 msgstr "AI API,free AI API,LLM API,AI chat API,DeepSeek API,Kimi API,Doubao API,Qwen API"
@@ -6453,8 +6486,8 @@ msgstr "The AI service offers chat capabilities out of the box, with models from
 msgid "切换模型只需改 model 一个参数，接口地址、鉴权方式与响应结构完全不变：候选模型见下方「模型清单」接口，或直接看 chat 端点的 model 下拉。新增模型由超管在后台添加，对大模型厂商的差异（上游地址、密钥、能力）全部在服务端收口。"
 msgstr "Switching models takes only the model parameter: the endpoint, authentication and response shape stay identical. See the Model List endpoint below, or the model dropdown on the chat endpoint. New models are added by a super admin in the console; all vendor differences (upstream URL, key, capabilities) are absorbed server-side."
 
-msgid "标记了「支持视觉」的模型可以额外传 images（公网图片地址）让它看图回答；未标记的模型传图片会返回参数值非法，避免把参数静默丢掉。"
-msgstr "Models marked as vision-capable also accept images (public image URLs) so they can answer about a picture; models without it return an invalid-value error instead of silently dropping the parameter."
+msgid "标记了「支持视觉」的模型可以额外传 images（公网图片地址）让它看图回答；标记了「支持视频理解」的模型还能传 videos（公网视频地址，如豆包 Seed 2.0 全模态）让它看视频、连音轨一起理解；标记了「支持音频理解」的模型还可以传 audios（公网音频地址）做语音转写与音频内容理解；未标记的模型传图片、视频或音频会返回参数值非法，避免把参数静默丢掉。"
+msgstr "Models marked as vision-capable also accept images (public image URLs) so they can answer about a picture; models marked as video-capable additionally accept videos (public video URLs, e.g. Doubao Seed 2.0 omni-modal) so they can watch the video and understand its audio track too; models marked as audio-capable also accept audios (public audio URLs) for speech transcription and audio understanding; models without these flags return an invalid-value error instead of silently dropping the parameter."
 
 msgid "本服务需项目签名。开启流式（stream=true）后返回的是逐段推送的 SSE 内容，与普通 JSON 响应的呈现方式不同，在文档页在线调试时可直接看到。"
 msgstr "This service requires a project signature. With streaming enabled (stream=true) the response is a chunked SSE stream rather than plain JSON; you can watch it in the live debugger here."
@@ -6465,14 +6498,20 @@ msgstr "Platform-managed keys (DeepSeek / Moonshot / Volcengine Ark / Alibaba Ba
 msgid "images 仅对「支持视觉」的模型有效，其它模型传了返回参数值非法（20003）；张数上限由平台按模型配置（后台可调），超限同样返回参数值非法。"
 msgstr "The images parameter works only for vision-capable models; other models return an invalid-value error (20003). The number of images is capped per model on the platform (adjustable in the console); exceeding the cap returns the same invalid-value error."
 
+msgid "videos 仅对「支持视频理解」的模型有效（如豆包 Seed 2.0 全模态，可同时理解画面与音轨），其它模型传了返回参数值非法（20003）；数量上限同样由平台按模型配置，超限返回参数值非法。"
+msgstr "videos works only for video-capable models (e.g. Doubao Seed 2.0 omni-modal, which understands both the picture and the audio track); other models return an invalid-value error (20003). The video count limit is likewise configured per model by the platform, and going over it returns an invalid-value error."
+
+msgid "audios 仅对「支持音频理解」的模型有效（如豆包 Seed 2.0 全模态，可做语音转写与音频内容理解），其它模型传了返回参数值非法（20003）；个数上限同样由平台按模型配置，超限返回参数值非法。"
+msgstr "audios works only for audio-capable models (e.g. Doubao Seed 2.0 omni-modal, for speech transcription and audio understanding); other models return an invalid-value error (20003). The audio count limit is likewise configured per model by the platform, and going over it returns an invalid-value error."
+
 msgid "在线调用会真实消耗上游额度，请确认平台密钥可用后再调试。"
 msgstr "Live debugging really consumes upstream quota — make sure the platform key works first."
 
 msgid "原「前缀续写（prefix / prefix_content）」能力已下线，传入会返回参数值非法。"
 msgstr "The former prefix-completion capability (prefix / prefix_content) has been retired; passing it returns an invalid-value error."
 
-msgid "列出平台当前可用的模型（标识、展示名、是否支持视觉、是否为默认模型）。"
-msgstr "List the models currently available on the platform (key, display name, vision support, whether it is the default)."
+msgid "列出平台当前可用的模型（标识、展示名、是否支持视觉/视频/音频、是否为默认模型）。"
+msgstr "List the models currently available on the platform (key, display name, vision/video/audio support, whether it is the default)."
 
 msgid "用于让调用方动态发现可选模型，避免把模型名写死在客户端。"
 msgstr "Lets callers discover available models dynamically instead of hardcoding model names in the client."
@@ -6489,8 +6528,20 @@ msgstr "Optional: omit to use the platform default model. Candidates come from t
 msgid "[\"https://xxx.com/a.jpg\"]"
 msgstr "[\"https://xxx.com/a.jpg\"]"
 
+msgid "[\"https://xxx.com/a.mp4\"]"
+msgstr "[\"https://xxx.com/a.mp4\"]"
+
+msgid "[\"https://xxx.com/a.mp3\"]"
+msgstr "[\"https://xxx.com/a.mp3\"]"
+
 msgid "选填：仅「支持视觉」的模型可传；JSON 数组或纯文本（换行/逗号分隔）的公网图片地址，张数上限由平台按模型配置（后台可调）"
 msgstr "Optional: only for models marked as vision-capable. Public image URLs as a JSON array or plain text (newline/comma separated); the per-model image cap is configured on the platform (adjustable in the console)."
+
+msgid "选填：仅「支持视频理解」的模型可传（如豆包 Seed 2.0 全模态）；JSON 数组或纯文本（换行/逗号分隔）的公网视频地址，数量上限由平台按模型配置（后台可调）"
+msgstr "Optional: only for models marked as video-capable (e.g. Doubao Seed 2.0 omni-modal). Public video URLs as a JSON array or plain text (newline/comma separated); the per-model video cap is configured on the platform (adjustable in the console)."
+
+msgid "选填：仅「支持音频理解」的模型可传（如豆包 Seed 2.0 全模态）；JSON 数组或纯文本（换行/逗号分隔）的公网音频地址，个数上限由平台按模型配置（后台可调）。音频文件可先经「文件上传」服务上传，再把返回地址传到这里"
+msgstr "Optional: only for models marked as audio-capable (e.g. Doubao Seed 2.0 omni-modal). Public audio URLs as a JSON array or plain text (newline/comma separated); the per-model audio cap is configured on the platform (adjustable in the console). Upload the audio via the File Upload service first, then pass the returned URL here."
 
 msgid "选填：传了就用调用方自己的 Key（须与所选模型所属厂商一致），不传则用平台密钥"
 msgstr "Optional: pass your own key (it must belong to the vendor of the chosen model); otherwise the platform key is used."
@@ -6518,6 +6569,12 @@ msgstr "Model"
 
 msgid "图片地址"
 msgstr "Image URLs"
+
+msgid "视频地址"
+msgstr "Video URLs"
+
+msgid "音频地址"
+msgstr "Audio URLs"
 
 msgid "自定义模型 Key"
 msgstr "Your own model key"
@@ -6696,8 +6753,8 @@ msgstr "This service requires project signature authentication. With streaming e
 msgid "一个 chat 端点覆盖全部模型：换模型只改 model 参数；平台密钥、上游地址、系统提示词与采样参数由超管在后台维护。"
 msgstr "A single chat endpoint covers every model: switching models only changes the model parameter, while platform keys, upstream URLs, system prompts and sampling parameters are maintained by admins in the console."
 
-msgid "用 model 选择模型发起对话：支持单条消息、完整消息列表、系统提示词覆盖、图片理解与流式输出。"
-msgstr "Start a chat with the model of your choice: supports a single message, a full message list, a caller-supplied system prompt, image understanding and streaming output."
+msgid "用 model 选择模型发起对话：支持单条消息、完整消息列表、系统提示词覆盖、图片/视频/音频理解与流式输出。"
+msgstr "Start a chat with the model of your choice: supports a single message, a full message list, a caller-supplied system prompt, image/video/audio understanding and streaming output."
 
 msgid "采样温度 / 最大回复长度 / 停止词由平台按模型统一配置，不接受调用方传入，传了会返回参数值非法（20003）。"
 msgstr "Temperature, max reply length and stop words are configured per model by the platform and are not accepted from callers; passing one returns an invalid-value error (20003)."
@@ -6955,6 +7012,9 @@ msgstr "Official"
 
 msgid "审核专用模型（留空用平台默认模型）"
 msgstr "Dedicated review model (leave empty to use the platform default)"
+
+msgid "反馈带的图片 / 视频只有所选模型标了「支持视觉 / 支持视频」才会一起送审；纯文本模型只会审文字，附件相当于没审。"
+msgstr "Images / videos attached to feedback are sent for review only when the selected model is marked as supporting vision / video. A text-only model reviews the text alone, leaving attachments effectively unreviewed."
 
 msgid "审核时间："
 msgstr "Reviewed at: "
@@ -7374,6 +7434,9 @@ msgstr "Feedback - Super Admin - XiaoYingAPI"
 
 msgid "附件"
 msgstr "Attachments"
+
+msgid "点击查看大图"
+msgstr "Click to view full size"
 
 msgid "附件上限"
 msgstr "Attachment limits"
@@ -8287,11 +8350,11 @@ msgstr "Service Balances"
 msgid "服务余量 - 超级管理员 - 小影API"
 msgstr "Service Balances - Super Admin - XiaoYingAPI"
 
-msgid "超级管理员,服务余量,余额监控,低量告警,51代理,超级鹰"
-msgstr "Super Admin, service balances, balance monitoring, low-balance alerts, 51Proxy, Chaojiying"
+msgid "超级管理员,服务余量,余额监控,低量告警,51代理,超级鹰,DeepSeek"
+msgstr "Super Admin, service balances, balance monitoring, low-balance alerts, 51Proxy, Chaojiying, DeepSeek"
 
-msgid "小影API 超级管理员：监控各上游服务账号的余量（51代理余额、超级鹰题分），低于阈值时邮件提醒。"
-msgstr "XiaoYingAPI Super Admin: monitor the balance of each upstream service account (51Proxy balance, Chaojiying credits) and get an email alert when it drops below its threshold."
+msgid "小影API 超级管理员：监控各上游服务账号的余量（51代理余额、超级鹰题分、DeepSeek 余额），低于阈值时邮件提醒。"
+msgstr "XiaoYingAPI Super Admin: monitor the balance of each upstream service account (51Proxy balance, Chaojiying credits, DeepSeek balance) and get an email alert when it drops below its threshold."
 
 msgid "监控上游服务账号还剩多少，低于设定阈值时发邮件提醒。"
 msgstr "Monitor how much is left in each upstream service account, and get an email alert when a balance drops below its threshold."
@@ -10224,6 +10287,12 @@ msgstr "Display name"
 msgid "是否支持视觉（可传 images）"
 msgstr "Whether vision is supported (images allowed)"
 
+msgid "是否支持视频理解（可传 videos）"
+msgstr "Whether video understanding is supported (videos allowed)"
+
+msgid "是否支持音频理解（可传 audios）"
+msgstr "Whether audio understanding is supported (audios allowed)"
+
 msgid "上下文长度；未知为 null"
 msgstr "Context length; null when unknown"
 
@@ -10844,8 +10913,8 @@ msgstr "Manage the online-payment switch and exchange rate, each channel's merch
 msgid "在线支付的全局开关与汇率（1 元 = 多少点）、各支付渠道的商户配置（商户ID / 密钥加密落库 / 可用支付方式）、订单列表（可手动查单与退款）与最近用户余额流水。"
 msgstr "The global online-payment switch and exchange rate (points per yuan), each channel's merchant configuration (merchant ID / encrypted keys / available payment methods), the order list with manual query and refund, and the recent balance ledger."
 
-msgid "商户私钥与平台公钥<strong>加密落库、页面不回显</strong>：输入框留空表示不修改，填了就整体替换并即时校验能否解析。当前有 %(pending)s 笔待支付订单。"
-msgstr "The merchant private key and platform public key are <strong>stored encrypted and never shown</strong>: leaving the inputs blank keeps the current value, filling them replaces it entirely and validates it immediately. There are %(pending)s pending orders."
+msgid "商户私钥与平台公钥<strong>加密落库、页面不回显</strong>：输入框留空表示不修改，填了就整体替换并即时校验能否解析。当前有 %(pending)s 笔待支付订单、%(refunds)s 条待处理退款申请。"
+msgstr "The merchant private key and platform public key are <strong>stored encrypted and never shown</strong>: leaving the inputs blank keeps the current value, filling them replaces it entirely and validates it immediately. There are %(pending)s pending orders and %(refunds)s refund requests awaiting manual handling."
 
 msgid "支付成功只认「平台异步通知 + 主动查单」，页面跳转不算；回调会校验签名与订单金额，重复通知不会重复加钱。"
 msgstr "Payment success is only recognised from the platform's async notification plus active order queries — a browser redirect never counts; callbacks verify the signature and the order amount, and repeated notifications never credit twice."
@@ -10865,8 +10934,11 @@ msgstr "When disabled, the top-up page hides the order entry and API order creat
 msgid "兑换汇率（点/元）"
 msgstr "Exchange Rate (points per yuan)"
 
-msgid "1 元等于多少点数：用户余额（元）兑换成接入项目点数时按它换算；也用于对外下单支付成功后给调用项目加点。"
-msgstr "How many points one yuan buys: used when converting the account balance (yuan) into project points, and when crediting the calling project after an external order is paid."
+msgid "1 元等于多少点数（最多两位小数）：用户余额（元）兑换成接入项目点数时按它换算；也用于对外下单支付成功后给调用项目加点。"
+msgstr "How many points one yuan buys (at most two decimal places): used when converting the account balance (yuan) into project points, and when crediting the calling project after an external order is paid."
+
+msgid "汇率最多保留两位小数"
+msgstr "The exchange rate can have at most two decimal places."
 
 msgid "单笔最低金额（元）"
 msgstr "Minimum Amount (yuan)"
@@ -11432,3 +11504,555 @@ msgstr "⚠️ **Refunding an order whose amount has already been credited to th
 
 msgid "累计已退款金额（元）"
 msgstr "Cumulative refunded amount (yuan)"
+
+# ==================== 支付：退款申请（人工受理）与「方式」列的中文展示 ====================
+
+msgid "退款申请"
+msgstr "Refund requests"
+
+msgid "退款方式"
+msgstr "Refund mode"
+
+msgid "人工退款告知天数（工作日）"
+msgstr "Manual refund notice (business days)"
+
+msgid "渠道不支持自助退款时，回复申请人「人工审核后 N 个工作日内完成退款」；只影响文案。"
+msgstr "When a channel does not support self-service refunds, tell the requester that a manual review will complete the refund within N business days; this only affects the wording."
+
+msgid "「人工受理」用于平台未给商户开通自助退款的渠道（如当前的易支付）：退款不报错，改为登记待办，人工退完再标记。"
+msgstr "\"Manual review\" is for channels where the platform has not enabled merchant self-service refunds (such as EZFP today): a refund request does not fail — it is queued as a to-do, and you mark it once the money has been refunded in the channel's console."
+
+msgid "渠道未开通自助退款时，退款会在这里排队：先在渠道后台把钱退给用户，再回来点「标记已退款」——那一步会同步扣回用户余额并推进订单状态。"
+msgstr "Refunds from channels without self-service refunds queue up here: first refund the user in the channel's console, then come back and click \"Mark as refunded\" — that step also claws back the user's balance and advances the order status."
+
+msgid "申请时间"
+msgstr "Requested at"
+
+msgid "申请金额（元）"
+msgstr "Requested amount (yuan)"
+
+msgid "申请人"
+msgstr "Requester"
+
+msgid "待人工处理"
+msgstr "Awaiting manual handling"
+
+msgid "已退款"
+msgstr "Refunded"
+
+msgid "已驳回"
+msgstr "Rejected"
+
+msgid "确认已在渠道后台退款完成？将把订单标记为已退款并扣回用户余额。"
+msgstr "Confirm the refund is complete in the channel's console? The order will be marked refunded and the user's balance clawed back."
+
+msgid "平台退款单号"
+msgstr "Channel refund no."
+
+msgid "标记已退款"
+msgstr "Mark as refunded"
+
+msgid "确认驳回这条退款申请？订单将保持已支付。"
+msgstr "Reject this refund request? The order will stay paid."
+
+msgid "驳回原因"
+msgstr "Reason"
+
+msgid "驳回"
+msgstr "Reject"
+
+msgid "已处理"
+msgstr "Handled"
+
+msgid "还没有退款申请。渠道支持自助退款时，退款会直接当场完成，不会出现在这里。"
+msgstr "No refund requests yet. When a channel supports self-service refunds the refund completes on the spot and never shows up here."
+
+msgid "%(n)s 条待处理"
+msgstr "%(n)s awaiting handling"
+
+msgid "退款处理中"
+msgstr "Refund in progress"
+
+msgid "确认对这笔订单申请退款？"
+msgstr "Request a refund for this order?"
+
+msgid "申请退款"
+msgstr "Request refund"
+
+msgid "自助退款（调平台接口）"
+msgstr "Self-service refund (via the channel API)"
+
+msgid "人工受理（平台未开通自助退款）"
+msgstr "Manual review (self-service refund not enabled)"
+
+msgid "接入项目发起"
+msgstr "Raised by a connected project"
+
+msgid "用户申请"
+msgstr "Requested by the user"
+
+msgid "管理员登记"
+msgstr "Recorded by an admin"
+
+msgid "二维码"
+msgstr "QR code"
+
+msgid "跳转收银台"
+msgstr "Cashier redirect"
+
+msgid "网页表单"
+msgstr "Web form"
+
+msgid "人工退款告知天数必须是不小于 0 的整数"
+msgstr "The manual refund notice must be an integer of 0 or more"
+
+msgid "已登记退款申请：%(no)s %(money)s 元。该渠道未开通自助退款，请在渠道后台退款后回到本页「退款申请」点「标记已退款」"
+msgstr "Refund request recorded: %(no)s, %(money)s yuan. This channel has no self-service refund — refund it in the channel's console, then come back to \"Refund requests\" on this page and click \"Mark as refunded\"."
+
+msgid "退款申请不存在"
+msgstr "Refund request not found"
+
+msgid "标记退款失败：%(msg)s"
+msgstr "Failed to mark as refunded: %(msg)s"
+
+msgid "退款申请已标记退款：%(no)s %(money)s 元（订单累计已退 %(total)s 元）"
+msgstr "Refund request marked as refunded: %(no)s, %(money)s yuan (order total refunded %(total)s yuan)"
+
+msgid "驳回失败：%(msg)s"
+msgstr "Failed to reject: %(msg)s"
+
+msgid "已驳回退款申请：%(no)s %(money)s 元"
+msgstr "Refund request rejected: %(no)s, %(money)s yuan"
+
+msgid "申请退款失败：%(msg)s"
+msgstr "Failed to request a refund: %(msg)s"
+
+msgid "退款成功：%(money)s 元已原路退回，账户余额已同步扣减"
+msgstr "Refund completed: %(money)s yuan has been returned to the original payment method, and your balance has been reduced accordingly"
+
+msgid "退款通道出现问题，人工审核后会在 %(days)s 个工作日内完成退款"
+msgstr "There is a problem with the refund channel; the refund will be completed within %(days)s business days after a manual review"
+
+# ---------- IP 封禁（官网顶部提示条） ----------
+msgid "你的 IP 已被封禁"
+msgstr "Your IP has been banned"
+
+msgid "原因："
+msgstr "Reason: "
+
+msgid "解禁时间："
+msgstr "Unban time: "
+
+msgid "永久封禁"
+msgstr "Permanent ban"
+
+msgid "请根据联系方式联系管理员解禁："
+msgstr "Please contact the administrator through the details below to get unbanned:"
+
+msgid "管理员尚未配置联系方式，请通过官网「联系我们」查看"
+msgstr "The administrator has not configured any contact details yet; please check \"Contact us\" on the website"
+
+# ---------- IP 封禁（控制台页面） ----------
+msgid "IP 封禁 - 超级管理员 - 小影API"
+msgstr "IP Bans - Super Admin - XiaoYingAPI"
+
+msgid "超级管理员,IP 封禁,黑名单,解禁,安全"
+msgstr "Super Admin, IP bans, blacklist, unban, security"
+
+msgid "小影API 超级管理员：人工封禁 / 解禁来源 IP（默认 7 天、可自定义或永久），被封 IP 的接口调用会被拒绝，官网前台同步提示原因与解禁时间。"
+msgstr "XiaoYingAPI Super Admin: manually ban / unban source IPs (7 days by default, customizable or permanent). API calls from banned IPs are rejected, and the website shows the reason and unban time."
+
+msgid "人工封禁来源 IP；被封 IP 的 /api/ 请求一律返回「IP 已被封禁」，官网前台顶部同步提示原因与解禁时间。"
+msgstr "Manually ban source IPs; banned IPs always get \"IP banned\" for /api/ requests, and the website top bar shows the reason and unban time."
+
+msgid "封禁按来源 IP 生效，不需要重启或定时任务：到期后自动失效，也可以随时手动解禁。"
+msgstr "Bans apply per source IP and require no restart or scheduled job: they expire automatically and can be lifted manually at any time."
+
+msgid "封禁原因会同时展示给被封访客（官网顶部提示条）与管理员，请填得具体一些，方便申诉与复核。"
+msgstr "The ban reason is shown both to the banned visitor (website top bar) and to admins; please be specific so it can be appealed and reviewed."
+
+msgid "本机 / 内网地址不允许封禁；控制台与 Django 后台永不参与判定，管理员被封后仍可进来解禁。"
+msgstr "Loopback / private addresses cannot be banned; the console and Django admin never take part in the check, so an admin can still get in to unban."
+
+msgid "新增封禁"
+msgstr "New ban"
+
+msgid "如 203.0.113.7（支持 IPv6）"
+msgstr "e.g. 203.0.113.7 (IPv6 supported)"
+
+msgid "封禁原因"
+msgstr "Ban reason"
+
+msgid "必填，如：高频扫描接口 / 恶意刷单"
+msgstr "Required, e.g. high-frequency API scanning / fraudulent orders"
+
+msgid "会展示给被封访客与管理员，请写清具体依据。"
+msgstr "Shown to the banned visitor and admins; please state the specific grounds."
+
+msgid "封禁天数"
+msgstr "Ban duration (days)"
+
+msgid "勾选后忽略「封禁天数」，记录不会自动失效，只能手动解禁。"
+msgstr "When checked, \"ban duration\" is ignored: the record never expires and can only be lifted manually."
+
+msgid "封禁立即生效；同一 IP 可重复封禁，历史记录都会保留。"
+msgstr "The ban takes effect immediately; the same IP can be banned again, and all history is kept."
+
+msgid "立即封禁"
+msgstr "Ban now"
+
+msgid "封禁记录"
+msgstr "Ban records"
+
+msgid "原因"
+msgstr "Reason"
+
+msgid "封禁时间"
+msgstr "Banned at"
+
+msgid "解禁时间"
+msgstr "Unban time"
+
+msgid "封禁中"
+msgstr "Banned"
+
+msgid "已解禁"
+msgstr "Unbanned"
+
+msgid "永久"
+msgstr "Permanent"
+
+msgid "确认解禁该 IP？解禁后该来源的接口调用立即恢复。"
+msgstr "Unban this IP? API calls from this source resume immediately."
+
+msgid "解禁备注（可选）"
+msgstr "Unban note (optional)"
+
+msgid "解禁"
+msgstr "Unban"
+
+msgid "还没有封禁记录。"
+msgstr "No ban records yet."
+
+msgid "你当前的 IP 是 %(ip)s（封禁前请先确认不是它）。"
+msgstr "Your current IP is %(ip)s (make sure you are not banning it)."
+
+msgid "默认 %(n)s 天；点上面的快捷档位可直接填入。"
+msgstr "%(n)s days by default; click a preset above to fill it in."
+
+msgid "%(n)s 条生效中"
+msgstr "%(n)s active"
+
+msgid "共 %(n)s 条（生效中的全部列出，历史最多显示最近 50 条）"
+msgstr "%(n)s in total (all active records are listed; history shows the latest 50)"
+
+msgid "%(t)s 已解禁"
+msgstr "Unbanned at %(t)s"
+
+msgid "人工封禁 / 解禁来源 IP（默认 7 天，也能自定义天数或永久）。被封 IP 的 /api/ 请求一律返回「IP 已被封禁」，官网前台顶部同步提示原因与解禁时间。"
+msgstr "Manually ban / unban source IPs (7 days by default, or a custom duration / permanent). Banned IPs always get \"IP banned\" for /api/ requests, and the website top bar shows the reason and unban time."
+
+# ---------- IP 封禁（服务层文案） ----------
+msgid "封禁记录不存在"
+msgstr "Ban record not found"
+
+msgid "该记录已解禁，无需重复操作"
+msgstr "This record has already been unbanned"
+
+msgid "已封禁 %(ip)s（解禁时间：%(expire)s）：%(reason)s"
+msgstr "Banned %(ip)s (unban time: %(expire)s): %(reason)s"
+
+msgid "已解禁 %(ip)s"
+msgstr "Unbanned %(ip)s"
+
+msgid "IP 地址格式不正确"
+msgstr "Invalid IP address format"
+
+msgid "本机 / 内网地址不允许封禁"
+msgstr "Loopback / private addresses cannot be banned"
+
+msgid "请填写封禁原因"
+msgstr "Please provide a ban reason"
+
+msgid "封禁天数必须是正整数"
+msgstr "Ban duration must be a positive integer"
+
+# ---------- 控制台首页仪表盘 ----------
+msgid "超级管理员,控制台,仪表盘,调用统计,收入"
+msgstr "Super Admin, console, dashboard, call statistics, revenue"
+
+msgid "小影API 超级管理员控制台：调用趋势、收入与订单、服务排行、资源与告警的仪表盘，以及各模块入口。"
+msgstr "XiaoYingAPI Super Admin console: dashboards for call trends, revenue and orders, service rankings, resources and alerts, plus entries to every module."
+
+msgid "调用趋势、收入与订单、服务排行与告警一屏概览；模块入口取自左侧菜单声明，新模块上线后自动出现。"
+msgstr "Call trends, revenue and orders, service rankings and alerts on one screen; module entries come from the left menu declaration and appear automatically for new modules."
+
+msgid "上一周期无数据"
+msgstr "No data in the previous period"
+
+msgid "柱：成功 / 失败调用　线：消耗点数"
+msgstr "Bars: successful / failed calls　Line: points consumed"
+
+msgid "调用趋势"
+msgstr "Call trend"
+
+msgid "该区间还没有调用记录。"
+msgstr "No calls recorded in this period yet."
+
+msgid "充值金额"
+msgstr "Top-up amount"
+
+msgid "退款金额"
+msgstr "Refund amount"
+
+msgid "已支付订单"
+msgstr "Paid orders"
+
+msgid "待处理退款"
+msgstr "Pending refunds"
+
+msgid "人工受理队列"
+msgstr "Manual review queue"
+
+msgid "生效中的 IP 封禁"
+msgstr "Active IP bans"
+
+msgid "待支付订单"
+msgstr "Pending orders"
+
+msgid "余量告警中的服务"
+msgstr "Services in balance alert"
+
+msgid "上游告警中的服务"
+msgstr "Services in upstream alert"
+
+msgid "环比 %(d)s%"
+msgstr "%(d)s%% vs. previous period"
+
+msgid "（环比 %(d)spp）"
+msgstr " (%(d)spp vs. previous period)"
+
+msgid "有调用的接入项目 %(n)s 个"
+msgstr "%(n)s projects with calls"
+
+msgid "近 %(n)s 天调用趋势"
+msgstr "Call trend (last %(n)s days)"
+
+msgid "近 %(n)s 天服务排行"
+msgstr "Service ranking (last %(n)s days)"
+
+msgid "收入与订单（近 %(n)s 天）"
+msgstr "Revenue and orders (last %(n)s days)"
+
+msgid "生效中的公告 %(n)s 条"
+msgstr "%(n)s active announcements"
+
+# ===== 控制台操作日志：动作码的中文说法（见 API/website/console_audit.py）=====
+
+msgid "新建"
+msgstr "Create"
+
+msgid "更新"
+msgstr "Update"
+
+msgid "启用 / 停用"
+msgstr "Enable / disable"
+
+msgid "一键补齐建议策略"
+msgstr "Fill in all suggested policies"
+
+msgid "保存支付设置"
+msgstr "Save payment settings"
+
+msgid "保存支付渠道"
+msgstr "Save payment channel"
+
+msgid "手动查单"
+msgstr "Query order manually"
+
+msgid "发起退款"
+msgstr "Issue refund"
+
+msgid "驳回退款申请"
+msgstr "Reject refund request"
+
+msgid "重置登录密码"
+msgstr "Reset password"
+
+msgid "回复反馈"
+msgstr "Reply to feedback"
+
+msgid "审核并回复"
+msgstr "Review and reply"
+
+msgid "重新提交"
+msgstr "Resubmit"
+
+msgid "公开 / 取消公开"
+msgstr "Make public / private"
+
+msgid "关闭反馈"
+msgstr "Close feedback"
+
+msgid "新建反馈类型"
+msgstr "New feedback type"
+
+msgid "编辑反馈类型"
+msgstr "Edit feedback type"
+
+msgid "启用 / 停用反馈类型"
+msgstr "Enable / disable feedback type"
+
+msgid "删除反馈类型"
+msgstr "Delete feedback type"
+
+msgid "新增反馈平台"
+msgstr "New feedback platform"
+
+msgid "编辑反馈平台"
+msgstr "Edit feedback platform"
+
+msgid "启用 / 停用反馈平台"
+msgstr "Enable / disable feedback platform"
+
+msgid "删除反馈平台"
+msgstr "Delete feedback platform"
+
+msgid "新建 AI 供应商"
+msgstr "New AI provider"
+
+msgid "编辑 AI 供应商"
+msgstr "Edit AI provider"
+
+msgid "启用 / 停用 AI 供应商"
+msgstr "Enable / disable AI provider"
+
+msgid "删除 AI 供应商"
+msgstr "Delete AI provider"
+
+msgid "测试 AI 供应商"
+msgstr "Test AI provider"
+
+msgid "新建 AI 模型"
+msgstr "New AI model"
+
+msgid "编辑 AI 模型"
+msgstr "Edit AI model"
+
+msgid "启用 / 停用 AI 模型"
+msgstr "Enable / disable AI model"
+
+msgid "设为默认 AI 模型"
+msgstr "Set as default AI model"
+
+msgid "删除 AI 模型"
+msgstr "Delete AI model"
+
+msgid "编辑提示词"
+msgstr "Edit prompt"
+
+msgid "启用 / 停用提示词"
+msgstr "Enable / disable prompt"
+
+msgid "设为全局提示词"
+msgstr "Set as global prompt"
+
+# ===== 计费体系下线后的文案改动（首页 / 接入向导 / 控制台首页与支付设置）=====
+
+msgid "柱：成功 / 失败调用"
+msgstr "Bars: successful / failed calls"
+
+msgid "超级管理员,支付设置,在线支付,易支付,订单,退款"
+msgstr "Super admin, payment settings, online payment, EasyPay, orders, refunds"
+
+msgid "小影API 超级管理员：维护在线支付的全局开关、各支付渠道的商户配置，查看订单并手动查单 / 退款。"
+msgstr "XiaoYingAPI super admin: manage the global online-payment switch and each channel's merchant settings, then view orders to query or refund them manually."
+
+msgid "维护在线支付的开关、各渠道商户配置，处理订单（查单 / 退款）。"
+msgstr "Manage the online-payment switch and each channel's merchant settings, and handle orders (query / refund)."
+
+msgid "联系管理员开通接入项目，开通后拿到专属 APPID 与 APPSECRET（项目由管理员在后台创建）。"
+msgstr "Ask the administrator to enable an access project; you then get a dedicated APPID and APPSECRET (projects are created by the administrator in the console)."
+
+msgid "接入生产"
+msgstr "Go live"
+
+msgid "在上线前于服务端实现 HMAC-SHA256 签名，密钥放进环境变量，绝不进前端。"
+msgstr "Implement HMAC-SHA256 signing on your server before going live, and keep the secret in environment variables — never in the frontend."
+
+msgid "接入项目由管理员在后台创建；开通后会拿到"
+msgstr "Access projects are created by the administrator in the console; once enabled you get"
+
+msgid "的 APPID 与 APPSECRET，请立即妥善保存。"
+msgstr "the APPID and APPSECRET — save them immediately."
+
+msgid "APPID 是公开标识；APPSECRET 是签名密钥，只应保存在你的服务端。泄露请立即联系管理员重置。"
+msgstr "The APPID is a public identifier; the APPSECRET is the signing key and must be kept only on your server. If leaked, contact the administrator to reset it immediately."
+
+msgid "调用接口需要付费吗？"
+msgstr "Do API calls cost anything?"
+
+msgid "注册、登录与浏览文档均免费；接入项目开通后即可调用全部对外开放的接口，不按次计费、没有额度门槛（开放接口本就免签名）。"
+msgstr "Registration, login and browsing the docs are all free. Once an access project is enabled you can call every public endpoint — no per-call billing and no quota threshold (open endpoints need no signature at all)."
+
+msgid "请立即联系管理员重置密钥，旧密钥会立即失效；重置后所有已接入的调用需改用新密钥。"
+msgstr "Contact the administrator immediately to reset the key; the old key becomes invalid at once and all existing callers must switch to the new one."
+
+msgid "开通即无限调用"
+msgstr "Unlimited calls once enabled"
+
+msgid "接入项目开通后即可调用全部接口，不按次计费。"
+msgstr "Once your access project is enabled you can call every API, with no per-call billing."
+
+msgid "联系管理员在后台创建接入项目，开通后获得专属 APPID 与 APPSECRET。"
+msgstr "Ask the administrator to create an access project in the console; you then get a dedicated APPID and APPSECRET."
+
+msgid "开通后调用"
+msgstr "Enable, then call"
+
+msgid "调用接口要收费吗？"
+msgstr "Do API calls cost anything?"
+
+msgid "小影API 是一个通用 API 聚合服务平台，聚合音乐、视频解析、AI、代理IP、验证码、短信、邮箱、用户中心等 %(n)s 类服务能力，统一签名认证与标准 JSON 响应，注册免费、开通接入项目即可调用全部接口。"
+msgstr "XiaoYingAPI is a general-purpose API aggregation platform covering music, video parsing, AI, proxy IP, CAPTCHA, SMS, email, user center and other service categories (%(n)s in total), with unified signature authentication and standard JSON responses. Registration is free, and an enabled access project can call every API."
+
+msgid "接入项目开通后即可调用全部对外开放的接口，不按次计费，统一 <code class=\"font-mono text-xs\">{ code, msg, data }</code> 响应。"
+msgstr "Once your access project is enabled you can call every public API, with no per-call billing and a unified <code class=\"font-mono text-xs\">{ code, msg, data }</code> response."
+
+msgid "接入项目统一由管理员在后台创建，注册账号后请联系管理员开通。开通时会一次性展示 APPID / APPSECRET，请立即保存。APPSECRET 必须保存在你的服务端，严禁写入前端代码或提交到仓库。"
+msgstr "Access projects are created by the administrator in the console only — contact the administrator after registering. The APPID / APPSECRET are shown once when the project is enabled, so save them immediately. The APPSECRET must stay on your server and must never appear in frontend code or a repository."
+
+msgid "注册、登录与浏览文档均免费。接入项目开通后即可调用全部对外开放的接口，<strong>不按次计费、没有额度门槛</strong>（开放接口本就免签名）。"
+msgstr "Registration, login and browsing the docs are all free. Once your access project is enabled you can call every public API, <strong>with no per-call billing and no quota threshold</strong> (open endpoints need no signature at all)."
+
+msgid "充值中心,账户余额,在线支付"
+msgstr "Top-up center, account balance, online payment"
+
+msgid "小影API 充值中心：为账户余额充值（支付宝 / 微信扫码支付）。"
+msgstr "XiaoYingAPI top-up center: add funds to your account balance (Alipay / WeChat QR payment)."
+
+msgid "为账户余额充值（元），可随时查看充值与退款记录。"
+msgstr "Add funds to your account balance (CNY), and review top-up and refund records anytime."
+
+# ===== 支付文档：发货口径改为「给指定用户的账户余额加钱」后的新词条 =====
+
+msgid "**支付结果只认异步回调与主动查单，页面跳转不算**：用户付款完成后，平台会异步通知本站，本站校验签名与金额后推进订单（把本次金额加到下单时指定的 `user_id` 的账户余额上）；通知偶有丢失，因此调用方可在支付后轮询 `query` 接口兜底，两边都能触发且**只会发货一次**。"
+msgstr "**A payment result is only recognized from the async notification and active order queries — a page redirect does not count**: after the user pays, the platform notifies this site asynchronously; we verify the signature and amount before advancing the order (crediting the amount to the account balance of the `user_id` given at order creation). Notifications are occasionally lost, so callers may poll `query` as a fallback — either path triggers it, and **delivery happens only once**."
+
+msgid "创建一笔支付订单并指定收款用户（`user_id`），返回支付参数（二维码内容或收银台跳转地址）与商户订单号。"
+msgstr "Create a payment order with a designated payee (`user_id`), returning the payment parameters (QR-code content or cashier redirect URL) and the merchant order number."
+
+msgid "**只发货一次**：同一订单重复回调 / 回调与查单同时命中时，本站用行锁 + 状态判断保证发货只发生一次。"
+msgstr "**Delivered only once**: when the same order is notified repeatedly, or a notification and a query hit at the same time, this site uses row locks plus status checks to guarantee delivery happens exactly once."
+
+msgid "收款用户ID"
+msgstr "Payee user ID"
+
+msgid "必填。本站注册用户的 ID（UUID），支付成功后**按订单金额给他的账户余额加钱**（元）"
+msgstr "Required. The ID (UUID) of a registered user on this site; on successful payment the order amount is **added to that user's account balance** (CNY)."
+
+msgid "查到平台已支付且本站订单还没推进时，本接口会**当场补发货**（给下单时指定的 `user_id` 的账户余额加钱），因此「回调没收到」也能靠轮询查单兜底。"
+msgstr "When the platform shows the order as paid but the local order has not advanced yet, this endpoint **delivers immediately** (crediting the account balance of the `user_id` given at order creation), so a missed notification can still be recovered by polling."
+
+msgid "⚠️ **退款会从收款用户的账户余额里扣回**：若这笔钱已被花掉，余额会被扣成负数（记为欠款），需人工跟进。"
+msgstr "⚠️ **A refund debits the payee's account balance**: if the money has already been spent, the balance goes negative (recorded as a debt) and needs manual follow-up."

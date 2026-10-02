@@ -781,7 +781,7 @@
   }
 
   /* ---------- 一键复制（按钮 data-copy-target + 同父的 data-copy-source） ----------
-   * 与站点其它页面（my_projects.js）同一套约定，便于统一维护；这里用事件委托：
+   * 站点统一约定（控制台项目页的 data-copy-target 也是同一套）；这里用事件委托：
    * 响应面板里的「等价 curl」是调试返回后才动态插入的，静态绑定会漏掉。
    * 按钮文案由 data-copied 传入（文案不硬编码在 JS 里）。 */
   function copyText(text) {

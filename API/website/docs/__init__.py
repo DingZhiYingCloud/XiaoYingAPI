@@ -91,6 +91,10 @@ def _ai_model_options():
             label += f" · {_('默认')}"
         if item['supports_vision']:
             label += f" · {_('支持视觉')}"
+        if item['supports_video']:
+            label += f" · {_('支持视频')}"
+        if item['supports_audio']:
+            label += f" · {_('支持音频')}"
         options.append({'value': item['model'], 'label': label})
     return options
 

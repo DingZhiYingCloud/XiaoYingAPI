@@ -8,7 +8,8 @@
 - 登录/注册响应沿用项目统一格式 {"code", "msg", "data"}。
 """
 import logging
-from urllib.parse import parse_qsl, urlencode, urlsplit
+from functools import wraps
+from urllib.parse import parse_qsl, quote, urlencode, urlsplit
 from xml.sax.saxutils import escape
 
 from django.conf import settings
@@ -17,6 +18,7 @@ from django.contrib.auth import login as django_login
 from django.db import IntegrityError
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
@@ -24,7 +26,7 @@ from django.views.decorators.http import require_POST
 from API.apis.user_center.users import utils as uc_utils
 from API.common import StatusCode
 from API.common.security_guard import login_clear, login_fail, login_locked
-from API.models import UserApp
+from API.models import User, UserApp
 
 from . import captcha
 from .service_status import annotate as _annotate_service_status
@@ -172,6 +174,29 @@ def _establish_session(request, data):
 def _current_user(request):
     """读取会话中的登录态（未登录返回 None）"""
     return request.session.get(_SESSION_USER_KEY)
+
+
+def current_app_user(request):
+    """当前登录的业务用户对象（未登录返回 None；已封禁用户视为未登录）"""
+    session = _current_user(request)
+    user_id = (session or {}).get('user_id')
+    if not user_id:
+        return None
+    return User.objects.filter(pk=user_id, status=True).first()
+
+
+def login_required(view):
+    """要求官网登录：未登录跳登录页并带 next 回跳；已登录则把用户对象传给视图
+
+    充值中心等前台登录后页面共用这一层（会话口径与 `_current_user` 一致）。
+    """
+    @wraps(view)
+    def wrapper(request, *args, **kwargs):
+        user = current_app_user(request)
+        if user is None:
+            return redirect(f'{reverse("website:login")}?next={quote(request.get_full_path())}')
+        return view(request, user, *args, **kwargs)
+    return wrapper
 
 
 def _auth_page_context():

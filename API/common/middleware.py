@@ -66,9 +66,6 @@ def prefix_match(path, prefix):
     - path == prefix：精确命中；
     - prefix 以 '/' 结尾：目录式前缀，path 以其为前缀即命中；
     - 否则为叶子前缀：仅 path 等于它或以 ``prefix + '/'`` 开头才命中。
-
-    调用单价（`API/common/credit_guard.py`）复用同一套判定，保证「展示的价格」
-    与「真正扣费时用的价格」口径一致。
     """
     if path == prefix:
         return True
@@ -98,9 +95,6 @@ def resolve_service_policy(path):
     都没命中时用全局兜底：status=normal / auth_mode=auth（fail-closed）。
 
     返回：{'status', 'auth_mode', 'docs_visible', 'audience', 'chain'}
-
-    注意：**调用单价不在这里** —— 单价由独立的 `ApiPricePolicy` 管理，见
-    `API/common/credit_guard.py` 的 `resolve_price()`。
     """
     status = auth_mode = None
     docs_visible = audience = None
@@ -291,11 +285,9 @@ class ApiAuthMiddleware:
        · 需要签名：校验签名（app_id/timestamp/nonce/sign），通过后把项目对象挂到
          request.auth_app 供视图直接使用；失败返回统一 20011
        · 开放：仅显式 open 的策略节点，以及 PUBLIC_PATHS 列出的公开路径（GET / HEAD）
-    4. **额度判定（签名通过后）**：项目余额 < 本次调用的生效单价 → 返回 30012（额度不足）。
-       单价来自独立的「线路价格」表（`ApiPricePolicy`），按「服务 / 线路 / 端点」三级继承
-       （端点覆写服务级），兜底 1 点/次；实际扣减不在这里做，而是在调用统计批量落库时
-       按「成功调用」计费（见 API/common/credit_guard.py）。open 模式不校验签名、
-       拿不到调用项目，额度对其无意义。
+
+    **不按次计费**：只要签名通过就放行，项目可调用全部对外开放的接口（历史上有过
+    「点数余额 + 按次扣点」的额度门槛，已整体下线）。
 
     对外签名契约与原先视图内校验完全一致，对接方无感知。
     """
@@ -336,20 +328,43 @@ class ApiAuthMiddleware:
                         'data': None,
                     })
                 request.auth_app = result
-                # 3) 额度：余额 < 本次单价 → 30012（额度不足）。
-                #    单价来自独立的「线路价格」表（进程内缓存），开销极低；
-                #    open 模式无签名，拿不到调用项目，不判。
-                from API.common.credit_guard import insufficient, resolve_price
-                try:
-                    shortage = insufficient(result, resolve_price(request.path))
-                except Exception:
-                    _logger.exception('额度判定失败，本次放行: app=%s',
-                                      getattr(result, 'app_id', '-'))
-                    shortage = None
-                if shortage:
-                    return JsonResponse({
-                        'code': StatusCode.QUOTA_EXCEEDED,
-                        'msg': shortage,
-                        'data': None,
-                    })
         return self.get_response(request)
+
+
+class IPBanMiddleware:
+    """IP 封禁：/api/ 直接拒绝，网页侧只做标记（由母版顶部横幅提示）
+
+    - **注册顺序**：放在 `ApiRequestLogMiddleware` 之后、`ApiAuthMiddleware` 之前 ——
+      被封禁的请求仍会进请求日志与调用统计，同时**不做签名校验**就返回「IP 已被封禁」。
+    - `/api/**`：命中生效中的封禁一律返回统一 JSON（业务码 `IP_BANNED`）。
+    - **网页侧不拦截**（访客仍可浏览）：只把封禁记录挂到 `request.ip_ban`、
+      并把来源 IP 挂到 `request.client_ip`，由 `API/website/context.py` 渲染顶部提示条，
+      让访客看到封禁原因与到期时间，并知道要联系管理员解禁。
+    - `/console/**` 与静态资源**永不参与判定**：管理员自己被封后仍要能进后台解禁，
+      否则等于把自己锁在门外（静态资源由 WhiteNoise 在本中间件之前就返回了）。
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        from API.common.ip_guard import client_ip, find_effective_ban
+
+        ip = client_ip(request)
+        request.client_ip = ip
+        request.ip_ban = None
+        if _is_bannable_path(request.path) and ip:
+            ban = find_effective_ban(ip)
+            request.ip_ban = ban
+            if ban is not None and request.path.startswith('/api/'):
+                return JsonResponse({
+                    'code': StatusCode.IP_BANNED,
+                    'msg': f'IP 已被封禁：{ban.reason}',
+                    'data': None,
+                })
+        return self.get_response(request)
+
+
+def _is_bannable_path(path: str) -> bool:
+    """该路径是否参与 IP 封禁判定（控制台与后台入口永远放行）"""
+    return not (path.startswith('/console/') or path.startswith('/admin/'))

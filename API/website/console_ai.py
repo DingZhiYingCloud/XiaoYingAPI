@@ -33,6 +33,10 @@ _MAX_MODEL_KEY_LEN = 60
 _MAX_BASE_URL_LEN = 200
 _MAX_IMAGES_LIMIT = 20
 """「最多图片数」的上限（视觉模型单次请求最多可携带的图片张数）"""
+_MAX_VIDEOS_LIMIT = 5
+"""「最多视频数」的上限（支持视频理解的模型单次请求最多可携带的视频个数）"""
+_MAX_AUDIOS_LIMIT = 5
+"""「最多音频数」的上限（支持音频理解的模型单次请求最多可携带的音频个数）"""
 
 
 @superadmin_required
@@ -244,6 +248,16 @@ def _model_form_data(request, model=None):
         return None, _('最多图片数取值范围为 1 ~ %(limit)s') % {'limit': _MAX_IMAGES_LIMIT}
     max_images = int(raw_images)
 
+    raw_videos = (request.POST.get('max_videos') or '').strip()
+    if not raw_videos.isdigit() or not 1 <= int(raw_videos) <= _MAX_VIDEOS_LIMIT:
+        return None, _('最多视频数取值范围为 1 ~ %(limit)s') % {'limit': _MAX_VIDEOS_LIMIT}
+    max_videos = int(raw_videos)
+
+    raw_audios = (request.POST.get('max_audios') or '').strip()
+    if not raw_audios.isdigit() or not 1 <= int(raw_audios) <= _MAX_AUDIOS_LIMIT:
+        return None, _('最多音频数取值范围为 1 ~ %(limit)s') % {'limit': _MAX_AUDIOS_LIMIT}
+    max_audios = int(raw_audios)
+
     stop = (request.POST.get('stop') or '').strip()
     if len(stop) > 255:
         return None, _('停止词过长，请控制在 255 个字符以内')
@@ -255,6 +269,10 @@ def _model_form_data(request, model=None):
         'upstream_name': upstream_name,
         'supports_vision': request.POST.get('supports_vision') == '1',
         'max_images': max_images,
+        'supports_video': request.POST.get('supports_video') == '1',
+        'max_videos': max_videos,
+        'supports_audio': request.POST.get('supports_audio') == '1',
+        'max_audios': max_audios,
         'context_window': context_window,
         'prompt_mode': prompt_mode,
         'system_prompt': prompt,
@@ -297,6 +315,10 @@ def _apply_model(data, model):
     model.upstream_name = data['upstream_name']
     model.supports_vision = data['supports_vision']
     model.max_images = data['max_images']
+    model.supports_video = data['supports_video']
+    model.max_videos = data['max_videos']
+    model.supports_audio = data['supports_audio']
+    model.max_audios = data['max_audios']
     model.context_window = data['context_window']
     model.prompt_mode = data['prompt_mode']
     model.system_prompt = data['system_prompt']

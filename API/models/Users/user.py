@@ -23,7 +23,7 @@
         phone          - 手机号（可选，全局唯一，作为手机号登录凭证；绑定后需短信验证）
         phone_verified - 手机号是否已验证（False 时不可用手机号登录）
         status         - 启用状态（True=正常，False=封禁）
-        balance        - 账户余额（元，两小数；支付充值 / 管理员调整会变动，可兑换为接入项目点数）
+        balance        - 账户余额（元，两小数；支付充值 / 管理员调整 / 退款扣回会变动）
         create_time / updated_time - 继承 BaseModel
 
     说明：邮箱/手机号等验证方式的启用与否由 AuthMethod 配置表控制（后台可开关）。
@@ -99,8 +99,7 @@ class User(BaseModel):
     status = models.BooleanField('启用状态', default=True, db_index=True,
                                  help_text='True=正常，False=封禁')
     balance = models.DecimalField('账户余额', max_digits=14, decimal_places=2, default=0,
-                                  help_text='账户余额（元，两位小数）；由支付充值 / 管理员调整变动，'
-                                            '可按汇率兑换成接入项目点数（见 API/models/Payment/）')
+                                  help_text='账户余额（元，两位小数）；由支付充值 / 管理员调整 / 退款扣回变动')
 
     class Meta:
         db_table = 'user'

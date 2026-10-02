@@ -1,4 +1,4 @@
-"""第三方支付回归测试（签名 / 渠道框架 / 下单 / 回调 / 查单 / 退款 / 兑换）
+"""第三方支付回归测试（签名 / 渠道框架 / 下单 / 回调 / 查单 / 退款）
 
 覆盖范围：
     第 1 轮 签名规则（纯逻辑）：待签名串排序与空值口径、'0' 不丢、自签自验、篡改必失败、PEM/裸 Base64 兼容
@@ -6,11 +6,15 @@
     第 3 轮 下单（网关打桩）：订单落库、二维码、参数校验（金额 / 最低额 / 渠道未启用 / 支付未开启）
     第 4 轮 异步通知（真 RSA 验签）：发货一次、重复通知幂等、金额不符拒绝、验签失败拒绝、未知订单拒绝、留痕
     第 5 轮 主动查单（网关打桩）：平台已支付 → 补发货；未支付 → 保持待支付
-    第 6 轮 对外视图（直接调视图，绕过签名中间件）：未登录归属隔离、参数校验、退款端点
-    第 7 轮 退款（网关打桩）：全额退款状态与余额扣回、超额退款被拒
-    第 8 轮 用户余额 → 项目点数：汇率换算、余额扣减与加点、余额不足拒绝
+    第 6 轮 对外视图（直接调视图，绕过签名中间件）：下单必须传 user_id、未登录归属隔离、退款端点
+    第 7 轮 退款（渠道支持自助退款，网关打桩）：全额退款状态与余额扣回、超额退款被拒
+    第 8 轮 （原「用户余额 → 项目点数」）**已随额度 / 点数体系整体下线移除**，编号保留空缺。
     第 9 轮 回调入口（HTTP，免签名）：验签通过回 success，失败回 fail
-    第 10 轮 后台/配置健壮性：未配置密钥时的报错语义
+    第 10 轮 控制台「支付设置」页：鉴权、保存设置 / 渠道、订单查单 / 退款、三语
+    第 11 轮 前台充值中心：下单跳收银台、查单、归属隔离、三语
+    第 12 轮 退款申请（人工受理，渠道未开通自助退款）：登记待处理申请、待处理金额占用可退额度、
+            标记已退款（回写订单 + 扣回余额）、驳回、对外接口 manual_pending、前台「退款处理中」
+    第 13 轮 配置健壮性：未配置密钥时的报错语义
 
 隔离策略：全程**不联网**（网关调用打桩）；RSA 密钥对在测试内现生成，不依赖本地密钥文件；
 测试数据（订单 / 流水 / 留痕 / 用户 / 项目 / 渠道配置）跑完全部删除，PaySetting 原样还原。
@@ -36,11 +40,13 @@ from Crypto.PublicKey import RSA
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import Client, RequestFactory
+from django.utils import translation
 
 from API.apis.pay import service
 from API.apis.pay.providers import build_provider, get_provider_class, provider_codes
 from API.apis.pay.providers.base import PayError
 from API.apis.pay.providers.ezfp import EzfpProvider
+from API.apis.pay.providers.registry import pay_type_icon
 from API.apis.pay.providers.sign import (
     build_sign_content,
     normalize_key,
@@ -51,10 +57,10 @@ from API.apis.pay.request import create_view, query_view, refund_view
 from API.apis.pay.utils import format_money
 from API.common import StatusCode
 from API.models import (
-    AppCreditLedger,
     PayNotifyLog,
     PayOrder,
     PayProvider,
+    PayRefundRequest,
     PaySetting,
     User,
     UserApp,
@@ -64,8 +70,7 @@ from API.models import (
 RUN = str(int(time.time()))
 MARK = f'xypay{RUN}'
 
-# 测试汇率与最低金额
-RATE = Decimal('2.0000')       # 1 元 = 2 点，便于验证换算
+# 测试用最低金额
 MIN_AMOUNT = Decimal('1.00')
 
 _PASSED = 0
@@ -148,21 +153,24 @@ def snapshot():
     setting = PaySetting.get_solo()
     _snapshot['setting'] = {
         'enabled': setting.enabled,
-        'points_per_yuan': setting.points_per_yuan,
         'min_amount': setting.min_amount,
+        'refund_notice_days': setting.refund_notice_days,
     }
     _snapshot['providers'] = list(PayProvider.objects.values())
 
 
 def make_provider():
-    """建立测试渠道配置（启用 + 生成密钥）
+    """建立测试渠道配置（启用 + 生成密钥 + 自助退款）
 
     用 `update_or_create`：本地可能已存在一条真实配置（联调用），不能直接 create 撞唯一约束。
+    refund_mode 显式给 auto：第 7 轮要验证「调平台退款接口」这条路径；
+    第 12 轮再临时改成 manual 验证人工受理队列。
     """
     config, _created = PayProvider.objects.update_or_create(
         code=EzfpProvider.code,
         defaults={'name': '易支付（测试）', 'enabled': True, 'merchant_id': '1001',
                   'gateway': 'https://example.invalid', 'enabled_methods': '',
+                  'refund_mode': PayProvider.REFUND_AUTO,
                   'private_key_enc': '', 'platform_public_key_enc': ''})
     config.set_private_key(MERCHANT_PRIV)
     config.set_platform_public_key(PLATFORM_PUB)
@@ -172,12 +180,12 @@ def make_provider():
 
 def cleanup():
     EzfpProvider._post = _saved_post
+    PayRefundRequest.objects.filter(provider_code=EzfpProvider.code).delete()
     PayOrder.objects.filter(provider_code=EzfpProvider.code).delete()
     PayNotifyLog.objects.filter(provider_code=EzfpProvider.code).delete()
     UserBalanceLedger.objects.filter(user__account__startswith='9' + RUN[:6]).delete()
     User.objects.filter(account__startswith='9' + RUN[:6]).delete()
     UserApp.objects.filter(name__contains=MARK).delete()
-    AppCreditLedger.objects.filter(app__name__contains=MARK).delete()
     # 控制台写操作会留审计日志，测试产生的要清掉（口径与 test_console_audit 一致）
     from API.models import ConsoleAuditLog
     ConsoleAuditLog.objects.filter(path='/console/pay/').delete()
@@ -248,12 +256,16 @@ def round2_registry():
           config.private_key_enc.startswith('enc:v1:'))
     check('密钥可解密还原', config.private_key == MERCHANT_PRIV)
 
+    check('已登记的支付方式有品牌图标',
+          pay_type_icon('alipay').endswith('/img/pay/alipay.svg'), pay_type_icon('alipay'))
+    check('未登记的支付方式无图标（模板回退为纯文字）', pay_type_icon('unknown-pay') == '')
+
 
 def round3_create(user):
     section('第 3 轮 下单（网关打桩）')
 
     PaySetting.objects.filter(pk=PaySetting.SINGLETON_PK).update(
-        enabled=True, points_per_yuan=RATE, min_amount=MIN_AMOUNT)
+        enabled=True, min_amount=MIN_AMOUNT)
 
     order = service.create_order(provider_code='ezfp', amount='10', pay_type='alipay',
                                  subject='账户充值', user=user, client_ip='1.2.3.4')
@@ -261,9 +273,13 @@ def round3_create(user):
     check('订单号唯一且带前缀', order.out_trade_no.startswith('XY') and len(order.out_trade_no) > 14)
     check('金额按两位小数落库', str(order.amount) == '10.00')
     check('平台订单号已回填', order.trade_no == 'PLAT' + RUN)
-    check('拿到平台支付参数（pay_type=jump + 收银台地址）',
-          order.pay_type == 'jump' and order.pay_info.startswith('https://'),
-          f'{order.pay_type} {order.pay_info}')
+    check('支付方式与支付形态分开落库（pay_type=alipay / pay_form=jump）',
+          order.pay_type == 'alipay' and order.pay_form == 'jump' and order.pay_info.startswith('https://'),
+          f'pay_type={order.pay_type} pay_form={order.pay_form} pay_info={order.pay_info}')
+    check('展示标签把技术值翻成人话',
+          order.provider_name == '易支付' and order.pay_type_label == '支付宝'
+          and order.pay_form_label == '跳转收银台',
+          f'{order.provider_name} {order.pay_type_label} {order.pay_form_label}')
     path, sent = _GATEWAY_CALLS[-1]
     check('下单请求走 /api/pay/create', path == '/api/pay/create')
     check('传给平台的金额是两位小数字符串', sent['money'] == '10.00', str(sent.get('money')))
@@ -382,13 +398,36 @@ def round6_views(app, user):
 
     rf = RequestFactory()
     order = service.create_order(provider_code='ezfp', amount='8', pay_type='alipay',
-                                 subject='对外订单', app=app, client_ip='9.9.9.9', param='ref-1')
+                                 subject='对外订单', user=user, app=app,
+                                 client_ip='9.9.9.9', param='ref-1')
 
     req = rf.post('/api/pay/create', {'pay_type': 'alipay', 'amount': ''})
     req.auth_app = app
     payload = _payload(create_view(req))
     check('缺少金额 → 返回参数缺失码',
           payload['code'] == StatusCode.PARAM_MISSING and '必填' in payload['msg'], str(payload))
+
+    # 发货口径：下单必须传 user_id（钱最终加到该用户的账户余额上）
+    req = rf.post('/api/pay/create', {'pay_type': 'alipay', 'amount': '5'})
+    req.auth_app = app
+    payload = _payload(create_view(req))
+    check('缺少 user_id → 返回参数缺失码',
+          payload['code'] == StatusCode.PARAM_MISSING and 'user_id' in payload['msg'], str(payload))
+
+    req = rf.post('/api/pay/create', {'pay_type': 'alipay', 'amount': '5', 'user_id': '99999999'})
+    req.auth_app = app
+    payload = _payload(create_view(req))
+    check('user_id 不存在 → 返回参数非法',
+          payload['code'] == StatusCode.PARAM_VALUE_INVALID, str(payload))
+
+    req = rf.post('/api/pay/create', {'pay_type': 'alipay', 'amount': '5',
+                                      'user_id': str(user.pk)})
+    req.auth_app = app
+    payload = _payload(create_view(req))
+    check('传对 user_id → 下单成功且订单金额落到该用户',
+          payload['code'] == StatusCode.SUCCESS
+          and PayOrder.objects.get(out_trade_no=payload['data']['out_trade_no']).user_id == user.pk,
+          str(payload))
 
     req = rf.post('/api/pay/query', {'out_trade_no': order.out_trade_no})
     req.auth_app = app
@@ -446,33 +485,6 @@ def round7_refund(app):
           UserBalanceLedger.objects.filter(user=payer, type=UserBalanceLedger.TYPE_REFUND).count() == 2)
 
 
-def round8_transfer(app):
-    section('第 8 轮 用户余额 → 项目点数')
-
-    payer = make_user('t')
-    User.objects.filter(pk=payer.pk).update(balance=Decimal('100.00'))
-    app.refresh_from_db()
-    app_before = app.balance
-
-    ok, message, data = service.transfer_to_app_points(payer, app, '30')
-    check('兑换成功', ok is True, message)
-    check('汇率换算正确（30 元 × 2 = 60 点）', data and data['points'] == Decimal('60.0000'),
-          str(data))
-    after = User.objects.values_list('balance', flat=True).get(pk=payer.pk)
-    check('用户余额扣减', after == Decimal('70.00'), str(after))
-    app.refresh_from_db()
-    check('项目点数增加', app.balance - app_before == Decimal('60.0000'),
-          f'{app_before} → {app.balance}')
-    check('写入兑换流水（含点数快照）',
-          UserBalanceLedger.objects.filter(user=payer, type=UserBalanceLedger.TYPE_TRANSFER,
-                                           points=Decimal('60.0000')).count() == 1)
-    check('项目额度流水也记一笔',
-          AppCreditLedger.objects.filter(app=app, amount=Decimal('60.0000')).count() >= 1)
-
-    ok2, message2, _ = service.transfer_to_app_points(payer, app, '1000')
-    check('余额不足时拒绝兑换', ok2 is False and '余额不足' in message2, message2)
-
-
 def round9_http_notify(app):
     section('第 9 轮 回调入口（HTTP，免签名）')
 
@@ -517,19 +529,27 @@ def round10_console(app):
     check('页面含标题与渠道配置',
           '支付设置' in body and '易支付' in body and '商户私钥' in body)
     check('页面标注密钥已配置', '已配置' in body)
+    check('渠道的支付方式带品牌图标', '/img/pay/alipay.svg' in body)
 
     # 保存全局设置
     resp = client.post('/console/pay/', {'action': 'save_setting', 'enabled': 'on',
-                                        'points_per_yuan': '3.5', 'min_amount': '2'})
+                                        'min_amount': '2', 'refund_notice_days': '5'})
     setting = PaySetting.get_solo()
-    check('保存全局设置生效（汇率 / 最低金额 / 开关）',
+    check('保存全局设置生效（最低金额 / 开关 / 人工退款告知天数）',
           resp.status_code == 302 and setting.enabled is True
-          and str(setting.points_per_yuan) == '3.5000' and str(setting.min_amount) == '2.00',
-          f'{setting.enabled} {setting.points_per_yuan} {setting.min_amount}')
+          and str(setting.min_amount) == '2.00' and setting.refund_notice_days == 5,
+          f'{setting.enabled} {setting.min_amount} {setting.refund_notice_days}')
 
     resp = client.post('/console/pay/', {'action': 'save_setting', 'enabled': 'on',
-                                        'points_per_yuan': '0', 'min_amount': '1'})
-    check('汇率为 0 时拒绝保存', str(PaySetting.get_solo().points_per_yuan) == '3.5000')
+                                        'min_amount': 'abc', 'refund_notice_days': '7'})
+    check('最低金额非法 → 拒绝保存（原值不变）',
+          str(PaySetting.get_solo().min_amount) == '2.00', str(PaySetting.get_solo().min_amount))
+
+    resp = client.post('/console/pay/', {'action': 'save_setting', 'enabled': 'on',
+                                        'min_amount': '1', 'refund_notice_days': '-1'})
+    check('人工退款告知天数为负 → 拒绝保存',
+          PaySetting.get_solo().refund_notice_days == 5,
+          str(PaySetting.get_solo().refund_notice_days))
 
     # 非法密钥：拒绝保存（原密钥保持不变）
     before_key = PayProvider.objects.get(code='ezfp').private_key
@@ -609,9 +629,9 @@ def _login_session(client, user):
 def round11_wallet(user):
     section('第 11 轮 前台充值中心（/my/wallet/）')
 
-    # 前面的控制台用例改过汇率，这里显式设回测试汇率，保证换算断言稳定
+    # 前面的控制台用例改过设置，这里显式设回测试值，保证断言稳定
     PaySetting.objects.filter(pk=PaySetting.SINGLETON_PK).update(
-        enabled=True, points_per_yuan=RATE, min_amount=MIN_AMOUNT)
+        enabled=True, min_amount=MIN_AMOUNT)
 
     # 前台登录走站点会话（session['website_user']），不是 Django auth
     client = Client()
@@ -638,6 +658,7 @@ def round11_wallet(user):
     check('登录后可访问（200）', resp.status_code == 200, str(resp.status_code))
     check('页面含余额与充值入口',
           '充值中心' in body and '账户余额' in body and '去支付' in body)
+    check('充值页支付方式带品牌图标（alipay）', '/img/pay/alipay.svg' in body)
 
     before = PayOrder.objects.filter(user=user).count()
     resp = client.post('/my/wallet/', {'action': 'create_order', 'amount': '20', 'pay_type': 'alipay'})
@@ -682,21 +703,14 @@ def round11_wallet(user):
     check('别人的订单查不到（归属隔离）', payload['code'] == 404, str(payload))
 
     app = make_app('w')
-    UserApp.objects.filter(pk=app.pk).update(owner=user)
-    app.refresh_from_db()
-    resp = client.post('/my/wallet/', {'action': 'transfer', 'app_id': str(app.pk), 'amount': '5'})
-    app.refresh_from_db()
-    check('兑换成功：项目点数增加（5 元 × 2 点）',
-          resp.status_code == 302 and app.balance == Decimal('10.0000'), str(app.balance))
-    client.post('/my/wallet/', {'action': 'transfer', 'app_id': str(app.pk), 'amount': '99999'})
-    app.refresh_from_db()
-    check('余额不足时兑换被拒', app.balance == Decimal('10.0000'), str(app.balance))
-    check('兑换非本人项目被拒',
-          client.post('/my/wallet/', {'action': 'transfer', 'app_id': str(make_app('x').pk),
-                                     'amount': '1'}).status_code == 302)
+    check('充值页不再提供「兑换成项目点数」入口（计费体系已下线）',
+          '兑换' not in client.get('/my/wallet/').content.decode('utf-8'))
 
     check('未知动作被拒绝（302）',
           client.post('/my/wallet/', {'action': 'unknown'}).status_code == 302)
+    check('已下线的兑换动作也被拒绝（302）',
+          client.post('/my/wallet/', {'action': 'transfer', 'app_id': str(app.pk),
+                                     'amount': '1'}).status_code == 302)
 
     for lang, expect in (('en', 'Top Up'), ('zh-hant', '充值中心')):
         lang_client = Client()
@@ -706,8 +720,136 @@ def round11_wallet(user):
         check(f'{lang} 充值页已翻译（{expect}）', expect in page, expect)
 
 
-def round12_config_guard():
-    section('第 12 轮 配置健壮性')
+def round12_refund_request(app):
+    section('第 12 轮 退款申请（人工受理，渠道未开通自助退款）')
+
+    # 渠道切成「人工受理」：退款不再调平台，而是登记待处理申请（易支付当前的真实口径）
+    PayProvider.objects.filter(code='ezfp').update(refund_mode=PayProvider.REFUND_MANUAL)
+    PaySetting.objects.filter(pk=PaySetting.SINGLETON_PK).update(
+        enabled=True, min_amount=MIN_AMOUNT, refund_notice_days=7)
+    EzfpProvider._post = _fake_post
+
+    check('人工受理渠道：supports_auto_refund 为 False',
+          PayProvider.objects.get(code='ezfp').supports_auto_refund is False)
+
+    # ---------- 订单 A：登记 → 待处理金额占用可退额度 → 标记已退款 ----------
+    payer = make_user('m')
+    order = _paid_order(payer, '20', '人工退款用例')
+    balance_paid = User.objects.values_list('balance', flat=True).get(pk=payer.pk)
+
+    mode, request_obj = service.refund_order(order, '20', source=PayRefundRequest.SOURCE_USER,
+                                             user=payer, contact='13800000000')
+    check('人工受理：退款不调平台，登记一条待处理申请',
+          mode == 'manual' and isinstance(request_obj, PayRefundRequest)
+          and request_obj.status == PayRefundRequest.STATUS_PENDING, str(mode))
+    check('申请单记录金额 / 订单号 / 来源 / 联系方式',
+          str(request_obj.amount) == '20.00' and request_obj.out_trade_no == order.out_trade_no
+          and request_obj.source == PayRefundRequest.SOURCE_USER
+          and request_obj.contact == '13800000000')
+    order.refresh_from_db()
+    check('受理阶段不动订单状态与已退金额',
+          order.status == PayOrder.STATUS_PAID and str(order.refund_amount) == '0.00', order.status)
+    check('受理阶段不扣回用户余额',
+          User.objects.values_list('balance', flat=True).get(pk=payer.pk) == balance_paid)
+
+    check('待处理申请占用可退金额（可退归零）',
+          service.refundable_amount(order) == Decimal('0.00'), str(service.refundable_amount(order)))
+    try:
+        service.refund_order(order, '20', source=PayRefundRequest.SOURCE_USER, user=payer)
+        check('重复申请被拒（可退金额已被待处理申请占用）', False, '未抛出 PayError')
+    except PayError as exc:
+        check('重复申请被拒（可退金额已被待处理申请占用）', '超过可退金额' in str(exc), str(exc))
+    check('重复申请未新增受理单', PayRefundRequest.objects.filter(order=order).count() == 1)
+
+    # 人工在渠道后台退完钱 → 回本站标记「已退款」（回写订单 + 扣回余额，与自助退款口径一致）
+    service.settle_refund_request(request_obj, operator='admin', note='REF' + RUN)
+    order.refresh_from_db()
+    request_obj.refresh_from_db()
+    check('标记已退款 → 订单为已全额退款且累计退款金额正确',
+          order.status == PayOrder.STATUS_REFUNDED and str(order.refund_amount) == '20.00', order.status)
+    check('标记已退款 → 同步扣回用户余额',
+          balance_paid - User.objects.values_list('balance', flat=True).get(pk=payer.pk)
+          == Decimal('20.00'))
+    check('标记已退款 → 写入退款扣回流水',
+          UserBalanceLedger.objects.filter(user=payer, type=UserBalanceLedger.TYPE_REFUND).count() == 1)
+    check('申请单推进为已退款并留痕处理人与时间',
+          request_obj.status == PayRefundRequest.STATUS_REFUNDED
+          and request_obj.handled_at is not None and request_obj.operator == 'admin')
+    try:
+        service.settle_refund_request(request_obj, operator='admin')
+        check('已处理的申请不能重复标记（防重复退款）', False, '未抛出 PayError')
+    except PayError as exc:
+        check('已处理的申请不能重复标记（防重复退款）', '已处理' in str(exc), str(exc))
+    check('重复标记未二次改动订单退款金额',
+          str(PayOrder.objects.get(pk=order.pk).refund_amount) == '20.00')
+
+    # ---------- 订单 B：驳回（订单保持已支付、不动余额、可退金额恢复） ----------
+    order_b = _paid_order(payer, '8', '驳回用例')
+    balance_b = User.objects.values_list('balance', flat=True).get(pk=payer.pk)
+    _mode, request_b = service.refund_order(order_b, '8', source=PayRefundRequest.SOURCE_USER,
+                                            user=payer)
+    service.reject_refund_request(request_b, operator='admin', note='不符合退款条件')
+    request_b.refresh_from_db()
+    order_b.refresh_from_db()
+    check('驳回后申请单状态为已驳回并留原因',
+          request_b.status == PayRefundRequest.STATUS_REJECTED
+          and request_b.handle_note == '不符合退款条件')
+    check('驳回不动订单状态 / 已退金额 / 用户余额',
+          order_b.status == PayOrder.STATUS_PAID and str(order_b.refund_amount) == '0.00'
+          and User.objects.values_list('balance', flat=True).get(pk=payer.pk) == balance_b,
+          order_b.status)
+    check('驳回后可退金额恢复（允许重新申请）',
+          service.refundable_amount(order_b) == Decimal('8.00'),
+          str(service.refundable_amount(order_b)))
+
+    # ---------- 对外接口：人工受理属「成功受理」，不是失败 ----------
+    api_order = _paid_order(app, '9', '对外人工退款')
+    rf = RequestFactory()
+    req = rf.post('/api/pay/refund', {'out_trade_no': api_order.out_trade_no, 'remark': '申请退款'})
+    req.auth_app = app
+    # 视图直调不走 LocaleMiddleware，语言会沿用上一个请求的激活值；这里显式锁简体再断言文案
+    with translation.override('zh-hans'):
+        payload = _payload(refund_view(req))
+    check('对外退款接口：人工受理按成功返回（code 10000）',
+          payload['code'] == StatusCode.SUCCESS, str(payload))
+    check('对外退款接口：refund_status=manual_pending 且返回受理单号',
+          payload['data']['refund_status'] == 'manual_pending'
+          and bool(payload['data'].get('refund_request_id')), str(payload))
+    check('对外退款接口：msg 告知人工审核与工作日',
+          '人工审核' in payload['msg'] and '7 个工作日' in payload['msg'], payload['msg'])
+
+    # ---------- 前台：用户自助申请 → 页面显示「退款处理中」 ----------
+    client = Client()
+    _login_session(client, payer)
+    service.refund_order(order_b, '8', source=PayRefundRequest.SOURCE_USER, user=payer)
+    body = client.get('/my/wallet/').content.decode('utf-8')
+    check('前台订单列表展示「退款处理中」',
+          order_b.out_trade_no in body and '退款处理中' in body)
+    # 已有待处理申请时，前台再点一次「申请退款」不会新增受理单
+    before_count = PayRefundRequest.objects.filter(order=order_b).count()
+    resp = client.post('/my/wallet/', {'action': 'refund_order', 'order_id': str(order_b.pk),
+                                      'amount': '8'})
+    check('前台重复申请被拒且不新增受理单',
+          resp.status_code == 302
+          and PayRefundRequest.objects.filter(order=order_b).count() == before_count,
+          str(PayRefundRequest.objects.filter(order=order_b).count()))
+
+
+def _paid_order(owner, amount, subject):
+    """造一笔「已支付」订单：owner 给 User 则走本站充值，给 UserApp 则走对外调用"""
+    kwargs = {'app': owner} if isinstance(owner, UserApp) else {'user': owner}
+    order = service.create_order(provider_code='ezfp', amount=amount, pay_type='alipay',
+                                 subject=subject, **kwargs)
+    ok, message = service.handle_notify(
+        'ezfp', _sign_notify(out_trade_no=order.out_trade_no, money=f'{Decimal(amount):.2f}'))
+    if not ok:
+        raise AssertionError(f'退款用例造单失败：{message}')
+    order.refresh_from_db()
+    return order
+
+
+def round13_config_guard():
+    section('第 13 轮 配置健壮性')
 
     PayProvider.objects.filter(code='ezfp').update(merchant_id='', private_key_enc='',
                                                    platform_public_key_enc='')
@@ -749,11 +891,11 @@ def main():
         app = make_app()
         round6_views(app, user)
         round7_refund(app)
-        round8_transfer(app)
         round9_http_notify(app)
         round10_console(app)
         round11_wallet(user)
-        round12_config_guard()
+        round12_refund_request(app)
+        round13_config_guard()
     finally:
         cleanup()
 

@@ -1,9 +1,9 @@
 """支付设置（单例）
 
-全库只有一行，存「在线支付」的全局开关与换算口径：
-    enabled          - 是否开启在线支付（关闭后前台充值页不再下单、/api/pay/create 直接拒绝）
-    points_per_yuan  - 兑换汇率：1 元 = 多少点（用户余额 → 接入项目点数时使用）
-    min_amount       - 单笔最低充值金额（元）
+全库只有一行，存「在线支付」的全局开关与门槛：
+    enabled            - 是否开启在线支付（关闭后前台充值页不再下单、/api/pay/create 直接拒绝）
+    min_amount         - 单笔最低充值金额（元）
+    refund_notice_days - 人工受理退款的告知天数（回复「N 个工作日内退款」，见 provider.refund_mode）
 
 为什么是单例：与 `SecuritySetting` / `QuotaSetting` / `SiteAppearance` 同一理由 ——
 项目惯例是「每个功能单独建表、字段即配置项」，这些项彼此相关、一起读写，单行表比零散键值更直观。
@@ -24,13 +24,14 @@ class PaySetting(BaseModel):
         '开启在线支付', default=True,
         help_text='关闭后前台充值页不再展示下单入口，/api/pay/create 直接返回「支付未开启」',
     )
-    points_per_yuan = models.DecimalField(
-        '兑换汇率（点/元）', max_digits=12, decimal_places=4, default=1,
-        help_text='1 元等于多少点数，用于「用户余额（元）→ 接入项目点数」的兑换；默认 1',
-    )
     min_amount = models.DecimalField(
         '单笔最低金额（元）', max_digits=14, decimal_places=2, default=1,
         help_text='单笔充值 / 下单的最低金额，低于该值直接拒绝',
+    )
+    refund_notice_days = models.PositiveIntegerField(
+        '人工退款告知天数（工作日）', default=7,
+        help_text='渠道不支持自助退款时，回复申请人「人工审核后 N 个工作日内退款」；'
+                  '只影响文案，不参与任何计算',
     )
 
     class Meta:
@@ -39,7 +40,7 @@ class PaySetting(BaseModel):
         verbose_name_plural = '支付设置'
 
     def __str__(self):
-        return f'支付设置（{"开启" if self.enabled else "关闭"}，1 元 = {self.points_per_yuan} 点）'
+        return f'支付设置（{"开启" if self.enabled else "关闭"}）'
 
     def save(self, *args, **kwargs):
         """强制单例：无论从哪里保存，pk 都固定为 SINGLETON_PK"""

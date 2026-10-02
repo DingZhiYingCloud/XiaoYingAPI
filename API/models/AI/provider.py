@@ -146,6 +146,16 @@ class AiModel(BaseModel):
                                           help_text='勾选后才允许请求携带 images；未勾选传图片会返回参数值非法')
     max_images = models.PositiveSmallIntegerField('最多图片数', default=2,
                                                   help_text='仅对支持视觉的模型生效；请求携带的 images 超过此数会返回参数值非法')
+    supports_video = models.BooleanField('支持视频理解', default=False,
+                                         help_text='勾选后才允许请求携带 videos（如豆包 Seed 2.0 全模态模型）；'
+                                                   '未勾选传视频会返回参数值非法')
+    max_videos = models.PositiveSmallIntegerField('最多视频数', default=1,
+                                                  help_text='仅对支持视频的模型生效；请求携带的 videos 超过此数会返回参数值非法')
+    supports_audio = models.BooleanField('支持音频理解', default=False,
+                                         help_text='勾选后才允许请求携带 audios（如豆包 Seed 2.0 全模态模型）；'
+                                                   '未勾选传音频会返回参数值非法')
+    max_audios = models.PositiveSmallIntegerField('最多音频数', default=1,
+                                                  help_text='仅对支持音频的模型生效；请求携带的 audios 超过此数会返回参数值非法')
     context_window = models.IntegerField('上下文长度', null=True, blank=True,
                                          help_text='仅用于展示，可留空')
     prompt_mode = models.CharField('系统提示词', max_length=10,

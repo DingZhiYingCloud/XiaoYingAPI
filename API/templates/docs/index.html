@@ -30,9 +30,6 @@
       <span class="feel-chip gap-1.5">
         <i data-lucide="list-tree" class="h-3.5 w-3.5 text-secondary" aria-hidden="true"></i>{% trans "服务 / 线路展开" %}
       </span>
-      <span class="feel-chip gap-1.5">
-        <i data-lucide="coins" class="h-3.5 w-3.5 text-warning" aria-hidden="true"></i>{% trans "每个端点标注单价" %}
-      </span>
       {# 服务状态图例：图标与文案均取自 service_status（单一数据源），与左侧导航/服务卡片一致 #}
       {% for st in status_legend %}
       <span class="badge {{ st.badge }} gap-1">

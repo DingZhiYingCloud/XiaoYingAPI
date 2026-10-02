@@ -36,7 +36,6 @@ from API.common import StatusCode
 from API.models import UserApp
 from API.website.docs.drama import SERVICE
 
-from _test_support import grant_credit
 from SpiderServices.dramas.hongguo import utils as U
 from SpiderServices.dramas.hongguo.main import HongguoDramaSpider
 
@@ -192,7 +191,6 @@ def round5_http_contract():
     section('第 5 轮 对外接口契约（联网 + 签名）')
     client = Client()
     app = UserApp.objects.create(name=f'DramaCat{MARK}')
-    grant_credit(app)   # 新项目默认 0 点额度，签名调用会被 30012 拦掉，先补一笔
     try:
         resp = client.get('/api/dramas/hongguo/categories', _signed(app))
         body = resp.json()

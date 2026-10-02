@@ -13,8 +13,9 @@ import logging
 from decimal import Decimal
 
 from django.db import transaction
-from django.db.models import F
+from django.db.models import F, Sum
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 from API.apis.pay.providers import build_provider
 from API.apis.pay.providers.base import PayError
@@ -23,9 +24,9 @@ from API.models import (
     PayNotifyLog,
     PayOrder,
     PayProvider,
+    PayRefundRequest,
     PaySetting,
     User,
-    UserApp,
     UserBalanceLedger,
 )
 
@@ -73,8 +74,9 @@ def create_order(*, provider_code, amount, pay_type, subject,
                  return_url='', param='', method='web', device='pc') -> PayOrder:
     """统一下单并落库
 
-    :param user: 本站充值时的下单用户（有值 → 支付成功自动给用户余额加钱）
-    :param app:  对外调用时签名认证出的接入项目（有值 → 不改任何余额，仅作归属留痕）
+    :param user: 钱加到哪个用户账上（支付成功自动给其账户余额加本次金额）；
+        本站充值传下单用户，对外调用传调用方指定的 user_id
+    :param app:  对外调用时签名认证出的接入项目（仅作归属隔离与留痕，不影响发货）
     :param return_url: 支付完成后浏览器跳回地址；留空用站点根地址
     :param method: 调用方式（网页端 web；**移动端 App 建议 jump**）
     :param device: 设备类型（网页端 pc；**移动端 mobile / wechat / alipay**）
@@ -124,9 +126,11 @@ def create_order(*, provider_code, amount, pay_type, subject,
         raise
 
     order.trade_no = (result.get('trade_no') or '')[:_TRADE_NO_MAX]
-    order.pay_type = result.get('pay_type') or pay_type
+    # 平台返回的 pay_type 是**支付形态**（qrcode / jump / html），不是调用方选的支付方式；
+    # 两者分开存：pay_type 保留调用方的选择（alipay / wxpay …），pay_form 存形态供前端渲染。
+    order.pay_form = result.get('pay_type') or ''
     order.pay_info = result.get('pay_info') or ''
-    order.save(update_fields=['trade_no', 'pay_type', 'pay_info'])
+    order.save(update_fields=['trade_no', 'pay_form', 'pay_info'])
     return order
 
 
@@ -229,11 +233,9 @@ def _mark_paid(order: PayOrder, *, trade_no: str, money, buyer: str, source: str
             locked.buyer = buyer[:128]
         locked.paid_at = timezone.now()
         locked.save(update_fields=['status', 'trade_no', 'buyer', 'paid_at', 'updated_time'])
-        # 发货：本站充值给「用户账户余额」加钱；对外调用给「调用项目的点数额度」加点
+        # 发货：两种来源口径一致 —— 都把订单金额加到「下单用户」的账户余额上
         if locked.user_id:
             _credit_user_balance(locked)
-        elif locked.app_id:
-            _credit_app_points(locked)
     logger.info('支付成功 order=%s user=%s app=%s amount=%s source=%s',
                 locked.out_trade_no, locked.user_id, locked.app_id, locked.amount, source)
     return True
@@ -250,44 +252,88 @@ def _credit_user_balance(order: PayOrder) -> None:
     )
 
 
-def _credit_app_points(order: PayOrder) -> None:
-    """给「调用项目的点数额度」充值（对外下单，支付成功后按汇率换算成点数）
-
-    金额是钱、点数是额度，两者按 PaySetting.points_per_yuan 换算；
-    流水走项目额度流水（AppCreditLedger），备注标注来源订单，便于对账。
-    """
-    from API.common.credit_guard import recharge as recharge_app
-    from API.models import UserApp
-
-    setting = PaySetting.get_solo()
-    points = (order.amount * Decimal(str(setting.points_per_yuan))).quantize(Decimal('0.0001'))
-    if points <= 0:
-        return
-    app = UserApp.objects.filter(pk=order.app_id).first()
-    if app is None:
-        return
-    recharge_app(app, points, operator='pay',
-                 remark=f'在线支付充值（{order.provider_code} {order.out_trade_no}）')
-
-
 # ==================== 退款 ====================
+#
+# 两条路径，按**渠道能力**分流（`PayProvider.refund_mode`）：
+#   auto   自助退款 —— 调平台退款接口，成功即回写
+#   manual 人工受理 —— 平台没给商户开自助退款（易支付当前就是），落一条待办申请，
+#                      回复「人工审核后 N 个工作日内退款」，管理员在平台后台退完再回本站标记
+# 两个路径**共用同一段回写**（`_apply_refund`），避免订单状态与余额扣回的口径漂移。
 
-def refund_order(order: PayOrder, amount, *, operator: str = '') -> PayOrder:
-    """发起退款并回写订单（金额单位为元；不支持部分金额退款的渠道由平台报错）"""
+def resolve_refund_mode(provider_code: str) -> str:
+    """渠道的退款方式（auto 自助 / manual 人工受理）
+
+    渠道配置行缺失时按「人工受理」处理：宁可多走一次人工审核，也不要直接调平台
+    换来一句「未开通自助退款」—— 那会让申请人以为这笔钱退不了。
+    """
+    config = PayProvider.objects.filter(code=(provider_code or '').strip()).first()
+    return config.refund_mode if config is not None else PayProvider.REFUND_MANUAL
+
+
+def refund_notice(days=None) -> str:
+    """人工受理的统一告知文案（天数取「支付设置」的配置，随时可在后台调整）"""
+    if days is None:
+        days = PaySetting.get_solo().refund_notice_days
+    return _('退款通道出现问题，人工审核后会在 %(days)s 个工作日内完成退款') % {'days': days}
+
+
+def refundable_amount(order: PayOrder):
+    """订单当前可退金额 = 订单金额 − 已退金额 − 其它**待人工处理**的申请金额
+
+    最后一项不可少：人工受理的申请在被处理前不会动 `refund_amount`，
+    若不算进来，同一笔订单能被反复申请、退超。
+    """
+    pending = (order.refund_requests.filter(status=PayRefundRequest.STATUS_PENDING)
+               .aggregate(total=Sum('amount'))['total']) or Decimal('0')
+    return order.amount - order.refund_amount - pending
+
+
+def refund_order(order: PayOrder, amount, *, operator: str = '', source: str = '',
+                 user=None, app=None, contact: str = '', remark: str = '') -> tuple:
+    """退款统一入口（对外接口 / 前台 / 控制台都走这里）
+
+    :param source: 申请来源（PayRefundRequest.SOURCE_*），人工受理时留痕用
+    :return: (mode, obj)
+        mode='auto'   → obj 是已回写退款结果的 `PayOrder`
+        mode='manual' → obj 是新建的 `PayRefundRequest`（待人工处理）
+    """
     if not order.is_paid:
         raise PayError('只有已支付的订单才能退款')
 
     money = parse_money(amount)
     if money is None or money <= 0:
         raise PayError('退款金额非法')
-    refundable = order.amount - order.refund_amount
+    refundable = refundable_amount(order)
     if money > refundable:
         raise PayError(f'退款金额超过可退金额（可退 {format_money(refundable)} 元）')
+
+    if resolve_refund_mode(order.provider_code) == PayProvider.REFUND_MANUAL:
+        return 'manual', _create_refund_request(
+            order, money, source=source, user=user, app=app, contact=contact, remark=remark)
 
     provider = build_provider_for(order.provider_code)
     result = provider.refund(amount=money, out_trade_no=order.out_trade_no,
                              trade_no=order.trade_no or None)
+    return 'auto', _apply_refund(order, money, refund_no=result.get('refund_no', ''),
+                                 operator=operator)
 
+
+def _create_refund_request(order: PayOrder, money, *, source, user, app,
+                           contact, remark) -> PayRefundRequest:
+    """落一条「待人工处理」的退款申请（不调平台、不动订单与余额）"""
+    return PayRefundRequest.objects.create(
+        order=order, out_trade_no=order.out_trade_no, provider_code=order.provider_code,
+        amount=money, source=source or PayRefundRequest.SOURCE_USER,
+        applicant_user=user, applicant_app=app,
+        contact=(contact or '')[:128], remark=(remark or '')[:255],
+    )
+
+
+def _apply_refund(order: PayOrder, money, *, refund_no: str, operator: str) -> PayOrder:
+    """回写退款结果（自助退款 / 人工标记已退款 共用）
+
+    :param refund_no: 平台退款单号（人工处理时可不填，或填平台后台的退款单号作留痕）
+    """
     with transaction.atomic():
         locked = PayOrder.objects.select_for_update().get(pk=order.pk)
         locked.refund_amount = locked.refund_amount + money
@@ -296,12 +342,51 @@ def refund_order(order: PayOrder, amount, *, operator: str = '') -> PayOrder:
                          else PayOrder.STATUS_PARTIAL_REFUNDED)
         locked.save(update_fields=['refund_amount', 'status', 'updated_time'])
         if locked.user_id:
-            _debit_user_balance_on_refund(locked, money, result.get('refund_no', ''), operator)
+            _debit_user_balance_on_refund(locked, money, refund_no, operator)
+    return locked
+
+
+def settle_refund_request(refund_request: PayRefundRequest, *, operator: str = '',
+                          note: str = '') -> PayOrder:
+    """把一条待处理的退款申请标记为「已退款」（管理员已在渠道后台退完钱）
+
+    本站只做记账：推进订单状态、扣回用户余额、写流水 —— 与自助退款走同一段回写。
+    """
+    with transaction.atomic():
+        locked = PayRefundRequest.objects.select_for_update().get(pk=refund_request.pk)
+        if not locked.is_pending:
+            raise PayError('该退款申请已处理过，不能重复操作')
+        order = _apply_refund(PayOrder.objects.get(pk=locked.order_id), locked.amount,
+                              refund_no=note, operator=operator)
+        locked.status = PayRefundRequest.STATUS_REFUNDED
+        locked.operator = operator or ''
+        locked.handled_at = timezone.now()
+        locked.handle_note = (note or '')[:255]
+        locked.save(update_fields=['status', 'operator', 'handled_at', 'handle_note',
+                                   'updated_time'])
+    logger.info('退款申请已标记退款 request=%s order=%s amount=%s operator=%s',
+                locked.pk, locked.out_trade_no, locked.amount, operator)
+    return order
+
+
+def reject_refund_request(refund_request: PayRefundRequest, *, operator: str = '',
+                          note: str = '') -> PayRefundRequest:
+    """驳回一条待处理的退款申请（订单保持已支付，不动余额）"""
+    with transaction.atomic():
+        locked = PayRefundRequest.objects.select_for_update().get(pk=refund_request.pk)
+        if not locked.is_pending:
+            raise PayError('该退款申请已处理过，不能重复操作')
+        locked.status = PayRefundRequest.STATUS_REJECTED
+        locked.operator = operator or ''
+        locked.handled_at = timezone.now()
+        locked.handle_note = (note or '')[:255]
+        locked.save(update_fields=['status', 'operator', 'handled_at', 'handle_note',
+                                   'updated_time'])
     return locked
 
 
 def _debit_user_balance_on_refund(order: PayOrder, money, refund_no: str, operator: str) -> None:
-    """退款扣回用户余额（允许扣成负数：钱可能已被兑换成项目点数，扣不回来就记欠款）"""
+    """退款扣回用户余额（允许扣成负数：钱可能已被用户花掉，扣不回来就记欠款）"""
     User.objects.filter(pk=order.user_id).update(balance=F('balance') - money)
     balance_after = User.objects.values_list('balance', flat=True).get(pk=order.user_id)
     UserBalanceLedger.objects.create(
@@ -309,41 +394,3 @@ def _debit_user_balance_on_refund(order: PayOrder, money, refund_no: str, operat
         amount=-money, balance_after=balance_after, order=order, operator=operator or '',
         remark=f'订单退款扣回（{refund_no or order.out_trade_no}）',
     )
-
-
-# ==================== 用户余额 → 项目点数 ====================
-
-def transfer_to_app_points(user: User, app: UserApp, amount, *, operator: str = '') -> tuple:
-    """把用户账户余额（元）按汇率兑换成某个接入项目的点数（额度）
-
-    :return: (ok, message, data) —— 成功时 data 含 points / user_balance / app_balance
-    """
-    setting = PaySetting.get_solo()
-    money = parse_money(amount)
-    if money is None or money <= 0:
-        return False, '兑换金额非法', None
-
-    points = (money * Decimal(str(setting.points_per_yuan))).quantize(Decimal('0.0001'))
-    if points <= 0:
-        return False, '兑换点数不足，请提高金额', None
-
-    from API.common.credit_guard import recharge as recharge_app
-
-    with transaction.atomic():
-        locked_user = User.objects.select_for_update().get(pk=user.pk)
-        if locked_user.balance < money:
-            return False, f'账户余额不足（当前 {format_money(locked_user.balance)} 元）', None
-        User.objects.filter(pk=user.pk).update(balance=F('balance') - money)
-        balance_after = User.objects.values_list('balance', flat=True).get(pk=user.pk)
-        UserBalanceLedger.objects.create(
-            user_id=user.pk, type=UserBalanceLedger.TYPE_TRANSFER,
-            amount=-money, balance_after=balance_after, app=app, points=points,
-            operator=operator or '',
-            remark=f'兑换项目点数 {points} 点 → {app.name}',
-        )
-        recharge_app(app, points, operator=operator or 'user',
-                     remark=f'账户余额兑换（{money} 元 × {setting.points_per_yuan}）')
-
-    return True, '兑换成功', {
-        'points': points, 'user_balance': balance_after, 'app_balance': app.balance,
-    }

@@ -22,43 +22,7 @@
   <a href="{% url 'website:console_stats' %}" class="link link-hover">← {% trans "返回调用统计总览" %}</a>
 </p>
 
-{# ===== 额度（全历史口径，不受下方时间范围影响） ===== #}
-<div class="con-panel mt-4">
-  <div class="con-panel-body gap-3">
-    <h2 class="card-title text-base">
-      {% trans "额度与消耗" %}
-      <span class="badge badge-ghost badge-sm">{% trans "全历史" %}</span>
-    </h2>
-    <div class="stats stats-vertical w-full border border-base-300 sm:stats-horizontal">
-      <div class="stat">
-        <div class="stat-title">{% trans "当前余额" %}</div>
-        <div class="stat-value font-mono text-2xl {% if credit.balance <= 0 %}text-error{% endif %}">{{ credit.balance|floatformat:"-2" }}</div>
-        <div class="stat-desc">
-          <a href="{% url 'website:console_credits' %}?q={{ app_name|urlencode }}" class="link">{% trans "去充值" %}</a>
-        </div>
-      </div>
-      <div class="stat">
-        <div class="stat-title">{% trans "累计充值" %}</div>
-        <div class="stat-value font-mono text-2xl">{{ credit.total_recharged|floatformat:"-2" }}</div>
-        <div class="stat-desc">{% trans "流水净值" %} {{ credit.total_ledger|floatformat:"-2" }} {% trans "点" %}</div>
-      </div>
-      <div class="stat">
-        <div class="stat-title">{% trans "累计消耗点数" %}</div>
-        <div class="stat-value font-mono text-2xl">{{ credit.total_points|floatformat:"-4" }}</div>
-        <div class="stat-desc">{% blocktrans with n=credit.calls %}累计调用 {{ n }} 次{% endblocktrans %}</div>
-      </div>
-      <div class="stat">
-        <div class="stat-title">{% trans "平均每次消耗" %}</div>
-        <div class="stat-value font-mono text-2xl">{{ credit.avg_points|floatformat:"-4" }}</div>
-        <div class="stat-desc">{% trans "点/次（按当时单价结算）" %}</div>
-      </div>
-    </div>
-    <p class="text-xs text-base-content/60">
-      {% trans "累计消耗按调用统计里的 cost_points 汇总（落库时按当时生效单价结算，改价不回填历史）；余额 = Σ充值 − 累计消耗，允许为负（欠费）。" %}
-    </p>
-  </div>
-</div>
-
+{# ===== 该项目的调用统计（时间范围由下方筛选器控制） ===== #}
 {% include 'console/_stats_range_tabs.html' %}
 {% include 'console/_stats_metrics.html' %}
 {% include 'console/_stats_trend.html' %}

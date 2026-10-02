@@ -2,11 +2,11 @@
 {% load i18n %}
 
 {% block title %}{% trans "支付设置 - 超级管理员 - 小影API" %}{% endblock %}
-{% block keywords %}{% trans "超级管理员,支付设置,在线支付,易支付,订单,退款,汇率" %}{% endblock %}
-{% block description %}{% trans "小影API 超级管理员：维护在线支付的全局开关与汇率、各支付渠道的商户配置，查看订单并手动查单 / 退款。" %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,支付设置,在线支付,易支付,订单,退款" %}{% endblock %}
+{% block description %}{% trans "小影API 超级管理员：维护在线支付的全局开关、各支付渠道的商户配置，查看订单并手动查单 / 退款。" %}{% endblock %}
 
 {% block console_content %}
-{% trans "维护在线支付的开关与汇率、各渠道商户配置，处理订单（查单 / 退款）。" as ph_desc %}
+{% trans "维护在线支付的开关、各渠道商户配置，处理订单（查单 / 退款）。" as ph_desc %}
 {% include 'console/_page_header.html' with icon='credit-card' title='支付设置' desc=ph_desc %}
 
 {% include 'console/_messages.html' %}
@@ -15,7 +15,7 @@
 <div role="alert" class="alert alert-soft bg-base-200 mt-4 items-start py-3 text-sm">
   <div class="space-y-1">
     <p>
-      {% blocktrans with pending=pending_total %}商户私钥与平台公钥<strong>加密落库、页面不回显</strong>：输入框留空表示不修改，填了就整体替换并即时校验能否解析。当前有 {{ pending }} 笔待支付订单。{% endblocktrans %}
+      {% blocktrans with pending=pending_total refunds=refund_pending_total %}商户私钥与平台公钥<strong>加密落库、页面不回显</strong>：输入框留空表示不修改，填了就整体替换并即时校验能否解析。当前有 {{ pending }} 笔待支付订单、{{ refunds }} 条待处理退款申请。{% endblocktrans %}
     </p>
     <p class="text-xs opacity-80">
       {% trans "支付成功只认「平台异步通知 + 主动查单」，页面跳转不算；回调会校验签名与订单金额，重复通知不会重复加钱。" %}
@@ -32,7 +32,7 @@
   <input type="hidden" name="action" value="save_setting" />
   <fieldset class="con-panel p-4">
     <legend class="px-1 text-base font-bold">{% trans "全局设置" %}</legend>
-    <div class="mt-2 grid gap-4 sm:grid-cols-3">
+    <div class="mt-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <label class="grid gap-1">
         <span class="font-semibold">{% trans "开启在线支付" %}</span>
         <input type="checkbox" name="enabled" class="toggle toggle-primary"
@@ -42,21 +42,21 @@
         </span>
       </label>
       <label class="grid gap-1">
-        <span class="font-semibold">{% trans "兑换汇率（点/元）" %}</span>
-        <input type="number" step="any" min="0.0001" name="points_per_yuan"
-               value="{{ setting.points_per_yuan }}"
-               class="input input-bordered input-sm w-full max-w-xs" />
-        <span class="text-xs text-base-content/70">
-          {% trans "1 元等于多少点数：用户余额（元）兑换成接入项目点数时按它换算；也用于对外下单支付成功后给调用项目加点。" %}
-        </span>
-      </label>
-      <label class="grid gap-1">
         <span class="font-semibold">{% trans "单笔最低金额（元）" %}</span>
         <input type="number" step="0.01" min="0" name="min_amount"
                value="{{ setting.min_amount }}"
                class="input input-bordered input-sm w-full max-w-xs" />
         <span class="text-xs text-base-content/70">
           {% trans "低于该金额的下单请求会被直接拒绝。" %}
+        </span>
+      </label>
+      <label class="grid gap-1">
+        <span class="font-semibold">{% trans "人工退款告知天数（工作日）" %}</span>
+        <input type="number" step="1" min="0" name="refund_notice_days"
+               value="{{ setting.refund_notice_days }}"
+               class="input input-bordered input-sm w-full max-w-xs" />
+        <span class="text-xs text-base-content/70">
+          {% trans "渠道不支持自助退款时，回复申请人「人工审核后 N 个工作日内完成退款」；只影响文案。" %}
         </span>
       </label>
     </div>
@@ -130,23 +130,45 @@
         </label>
       </div>
 
-      <div class="mt-3">
-        <span class="font-semibold">{% trans "可用支付方式" %}</span>
-        <span class="text-xs text-base-content/70">{% trans "一个都不勾 = 不限制（该渠道全部支付方式可用）。" %}</span>
-        <div class="mt-1.5 flex flex-wrap gap-3">
-          {% for value, label in row.pay_types %}
-          <label class="flex cursor-pointer items-center gap-1.5 text-sm">
+      <div class="mt-4">
+        <div class="flex flex-wrap items-baseline gap-x-2">
+          <span class="font-semibold">{% trans "可用支付方式" %}</span>
+          <span class="text-xs text-base-content/70">{% trans "一个都不勾 = 不限制（该渠道全部支付方式可用）。" %}</span>
+        </div>
+        {# 品牌图标 + 卡片式多选：整卡可点，选中态用 has-[:checked] 高亮（配色走主题变量） #}
+        <div class="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {% for value, label, icon in row.pay_types %}
+          <label class="flex cursor-pointer items-center gap-2.5 rounded-box border border-base-300 bg-base-100 px-3 py-2 text-sm transition
+                        hover:border-primary/40 hover:bg-base-200/60
+                        has-[:checked]:border-primary has-[:checked]:bg-primary/10 has-[:checked]:shadow-sm
+                        focus-within:ring-2 focus-within:ring-primary/30">
             <input type="checkbox" name="method_{{ row.code }}_{{ value }}"
-                   class="checkbox checkbox-sm"
+                   class="checkbox checkbox-sm checkbox-primary"
                    {% if value in row.selected_methods %}checked{% endif %} />
-            {% trans label %}
-            <code class="font-mono text-xs text-base-content/50">{{ value }}</code>
+            {% if icon %}
+            <img src="{{ icon }}" alt="" loading="lazy" class="h-5 w-6 shrink-0 object-contain" />
+            {% endif %}
+            <span class="min-w-0 truncate font-medium">{% trans label %}</span>
+            <code class="ml-auto font-mono text-xs text-base-content/40">{{ value }}</code>
           </label>
           {% endfor %}
         </div>
       </div>
 
-      <div class="mt-3 grid gap-3 sm:grid-cols-2">
+      <div class="mt-3 grid gap-3 sm:grid-cols-3">
+        <label class="grid gap-1">
+          <span class="font-semibold">{% trans "退款方式" %}</span>
+          <select name="refund_mode" class="select select-bordered select-sm w-full max-w-xs">
+            {% for value, label in row.config.REFUND_MODE_CHOICES %}
+            <option value="{{ value }}" {% if row.config.refund_mode == value %}selected{% endif %}>
+              {% trans label %}
+            </option>
+            {% endfor %}
+          </select>
+          <span class="text-xs text-base-content/70">
+            {% trans "「人工受理」用于平台未给商户开通自助退款的渠道（如当前的易支付）：退款不报错，改为登记待办，人工退完再标记。" %}
+          </span>
+        </label>
         <label class="grid gap-1">
           <span class="font-semibold">{% trans "备注" %}</span>
           <input type="text" name="remark" value="{{ row.config.remark }}" maxlength="200"
@@ -232,9 +254,14 @@
           </td>
           <td class="max-w-xs truncate">{{ order.subject }}</td>
           <td class="whitespace-nowrap font-mono">{{ order.amount }}</td>
+          {# 方式：渠道名 · 支付方式 · 支付形态（把 ezfp / jump 这类技术值翻成人话） #}
           <td class="whitespace-nowrap">
-            <div class="text-xs">{{ order.provider_code }}</div>
-            <div class="text-xs text-base-content/60">{{ order.pay_type }}</div>
+            <div class="text-xs">
+              {{ order.provider_name }}{% if order.pay_type_label %} · {{ order.pay_type_label }}{% endif %}
+            </div>
+            <div class="text-xs text-base-content/60">
+              {% if order.pay_form_label %}{{ order.pay_form_label }}{% else %}—{% endif %}
+            </div>
           </td>
           <td class="whitespace-nowrap text-xs">
             {% if order.user %}{% trans "用户" %}：{{ order.user.account }}{% endif %}
@@ -296,6 +323,106 @@
   {% include 'console/_pagination.html' %}
 </div>
 
+{# ==================== 退款申请（人工受理队列） ==================== #}
+<div class="con-panel mt-5 p-4">
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <h2 class="flex items-center gap-2 text-base font-bold">
+      {% trans "退款申请" %}
+      {% if refund_pending_total %}
+      <span class="badge badge-soft badge-warning badge-sm">
+        {% blocktrans with n=refund_pending_total %}{{ n }} 条待处理{% endblocktrans %}
+      </span>
+      {% endif %}
+    </h2>
+    <span class="text-xs text-base-content/60">
+      {% trans "渠道未开通自助退款时，退款会在这里排队：先在渠道后台把钱退给用户，再回来点「标记已退款」——那一步会同步扣回用户余额并推进订单状态。" %}
+    </span>
+  </div>
+  <div class="con-table-wrap mt-3">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th class="whitespace-nowrap">{% trans "申请时间" %}</th>
+          <th class="whitespace-nowrap">{% trans "商户订单号" %}</th>
+          <th class="whitespace-nowrap">{% trans "渠道" %}</th>
+          <th class="whitespace-nowrap">{% trans "申请金额（元）" %}</th>
+          <th class="whitespace-nowrap">{% trans "来源" %}</th>
+          <th class="whitespace-nowrap">{% trans "申请人" %}</th>
+          <th class="whitespace-nowrap">{% trans "状态" %}</th>
+          <th class="whitespace-nowrap">{% trans "操作" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for req in refunds %}
+        <tr>
+          <td class="whitespace-nowrap text-xs text-base-content/70">{{ req.create_time|date:"Y-m-d H:i" }}</td>
+          <td class="whitespace-nowrap"><code class="font-mono text-xs">{{ req.out_trade_no }}</code></td>
+          <td class="whitespace-nowrap text-xs">{{ req.provider_name }}</td>
+          <td class="whitespace-nowrap font-mono">{{ req.amount }}</td>
+          <td class="whitespace-nowrap text-xs">{% trans req.get_source_display %}</td>
+          <td class="whitespace-nowrap text-xs">
+            {% if req.applicant_user %}{% trans "用户" %}：{{ req.applicant_user.account }}{% endif %}
+            {% if req.applicant_app %}{% trans "项目" %}：{{ req.applicant_app.name }}{% endif %}
+            {% if not req.applicant_user and not req.applicant_app %}—{% endif %}
+            {% if req.contact %}<div class="text-base-content/60">{{ req.contact }}</div>{% endif %}
+          </td>
+          <td class="whitespace-nowrap">
+            {% if req.status == 'pending' %}
+            <span class="badge badge-soft badge-warning badge-sm">{% trans "待人工处理" %}</span>
+            {% elif req.status == 'refunded' %}
+            <span class="badge badge-soft badge-success badge-sm">{% trans "已退款" %}</span>
+            {% else %}
+            <span class="badge badge-soft badge-ghost badge-sm">{% trans "已驳回" %}</span>
+            {% endif %}
+            {% if not req.is_pending and req.operator %}
+            <div class="text-xs text-base-content/60">
+              {% blocktrans with who=req.operator when=req.handled_at|date:"Y-m-d H:i" %}{{ who }} · {{ when }}{% endblocktrans %}
+            </div>
+            {% endif %}
+            {% if req.handle_note %}<div class="text-xs text-base-content/60">{{ req.handle_note }}</div>{% endif %}
+          </td>
+          <td class="whitespace-nowrap">
+            {% if req.is_pending %}
+            {# 钱已在渠道后台退完 → 标记已退款（同步扣回余额、推进订单）；否则驳回 #}
+            <div class="flex flex-wrap items-center gap-1">
+              <form method="post" action="{% url 'website:console_pay' %}"
+                    data-confirm="{% trans '确认已在渠道后台退款完成？将把订单标记为已退款并扣回用户余额。' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="settle_refund" />
+                <input type="hidden" name="refund_id" value="{{ req.pk }}" />
+                <input type="text" name="note" maxlength="255"
+                       class="input input-bordered input-xs w-32"
+                       placeholder="{% trans '平台退款单号' %}" />
+                <button type="submit" class="btn btn-ghost btn-xs text-success">{% trans "标记已退款" %}</button>
+              </form>
+              <form method="post" action="{% url 'website:console_pay' %}"
+                    data-confirm="{% trans '确认驳回这条退款申请？订单将保持已支付。' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="reject_refund" />
+                <input type="hidden" name="refund_id" value="{{ req.pk }}" />
+                <input type="text" name="note" maxlength="255"
+                       class="input input-bordered input-xs w-32"
+                       placeholder="{% trans '驳回原因' %}" />
+                <button type="submit" class="btn btn-ghost btn-xs">{% trans "驳回" %}</button>
+              </form>
+            </div>
+            {% else %}
+            <span class="text-xs text-base-content/50">{% trans "已处理" %}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8" class="py-6 text-center text-sm text-base-content/60">
+            {% trans "还没有退款申请。渠道支持自助退款时，退款会直接当场完成，不会出现在这里。" %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
 {# ==================== 最近余额流水 ==================== #}
 <div class="con-panel mt-5 p-4">
   <div class="flex flex-wrap items-end justify-between gap-3">
@@ -313,7 +440,6 @@
           <th class="whitespace-nowrap">{% trans "类型" %}</th>
           <th class="whitespace-nowrap">{% trans "变动（元）" %}</th>
           <th class="whitespace-nowrap">{% trans "变动后余额" %}</th>
-          <th class="whitespace-nowrap">{% trans "兑换点数" %}</th>
           <th>{% trans "说明" %}</th>
         </tr>
       </thead>
@@ -327,12 +453,11 @@
             {{ item.amount }}
           </td>
           <td class="whitespace-nowrap font-mono text-xs">{{ item.balance_after }}</td>
-          <td class="whitespace-nowrap font-mono text-xs">{% if item.points %}{{ item.points }}{% else %}—{% endif %}</td>
           <td class="text-xs text-base-content/70">{{ item.remark }}</td>
         </tr>
         {% empty %}
         <tr>
-          <td colspan="7" class="py-6 text-center text-sm text-base-content/60">{% trans "还没有余额变动。" %}</td>
+          <td colspan="6" class="py-6 text-center text-sm text-base-content/60">{% trans "还没有余额变动。" %}</td>
         </tr>
         {% endfor %}
       </tbody>

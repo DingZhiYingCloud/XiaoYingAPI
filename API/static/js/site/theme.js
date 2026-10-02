@@ -62,6 +62,9 @@
     markActive();
     updateCurrentText();
     syncBaseColor();
+    /* 通知靠 CSS 变量取色的组件：控制台的图表是画在 canvas 上的，不刷页面就不会自己变色
+       （见 API/templates/console/_stats_charts_js.html 里对 xyapi:themechange 的监听）。 */
+    document.dispatchEvent(new CustomEvent('xyapi:themechange', { detail: { theme: name } }));
   }
 
   /* 当前主题名（供高亮与标题） */

@@ -1757,7 +1757,7 @@ SERVICE = ServiceSpec(
                                  '「用户名已存在 / 邮箱已被注册」等返回 RESOURCE_ALREADY_EXISTS（20031）。',
                                  '验证码一次性：无论成功与否，该 captcha_token 都会立即作废。',
                                  '本接口会在对方站点真实创建账号，请合规使用；'
-                                 '如需限制调用方，可在超管控制台「服务策略」调整本服务的调用单价或状态。',
+                                 '如需限制调用方，可在超管控制台「服务策略」调整本服务的状态。',
                              ],
                              response_fields=[
                                  ResponseFieldSpec('user_id', 'int', '源站用户 ID'),

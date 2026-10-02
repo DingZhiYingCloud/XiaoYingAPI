@@ -82,9 +82,6 @@
             <p class="truncate text-xs opacity-60">{% trans "账号：" %}{{ website_user.account }}</p>
           </div>
           <div class="divider my-1"></div>
-          <a href="{% url 'website:my_projects' %}" class="btn btn-ghost btn-sm w-full justify-start">
-            <i data-lucide="folder" class="h-4 w-4"></i>{% trans "我的项目" %}
-          </a>
           <a href="{% url 'website:my_wallet' %}" class="btn btn-ghost btn-sm w-full justify-start">
             <i data-lucide="wallet" class="h-4 w-4"></i>{% trans "充值中心" %}
           </a>
@@ -121,7 +118,6 @@
           <li><div class="divider my-1"></div></li>
           {% if website_user %}
           <li class="menu-title"><span>{{ website_user.username|default:website_user.account }}（{{ website_user.account }}）</span></li>
-          <li><a href="{% url 'website:my_projects' %}">{% trans "我的项目" %}</a></li>
           <li><a href="{% url 'website:my_wallet' %}">{% trans "充值中心" %}</a></li>
           <li>
             <form method="post" action="{% url 'website:logout' %}">

@@ -78,6 +78,16 @@ def chat_view(request):
                                仅支持视觉的模型可传，其余模型传了返回参数值非法
                                张数上限由平台按模型配置（后台可调），超限返回参数值非法
                                例: ["https://xxx.com/a.jpg"]
+        videos        (选填): 视频地址，JSON 数组字符串或纯文本（按换行 / 逗号拆分）
+                               仅支持视频理解的模型可传（如豆包 Seed 2.0 全模态），
+                               其余模型传了返回参数值非法；数量上限同样由后台按模型配置
+                               例: ["https://xxx.com/a.mp4"]
+        audios        (选填): 音频地址，JSON 数组字符串或纯文本（按换行 / 逗号拆分）
+                               仅支持音频理解的模型可传（如豆包 Seed 2.0 全模态），
+                               其余模型传了返回参数值非法；个数上限同样由后台按模型配置
+                               例: ["https://xxx.com/a.mp3"]
+                               注：只接受可公网访问的 http/https 地址；音频文件可先经
+                               平台的「文件上传」服务上传，再把返回的地址传到这里
         api_key       (选填): 调用方自带的 API Key（须与所选模型所属厂商一致）
                                不传则使用平台在后台配置的该厂商密钥
         stream        (选填): 是否开启流式对话，接受 "true" / "false"，默认 "false"
@@ -100,6 +110,8 @@ def models_view(request):
         model            模型标识（即请求参数 model 的取值）
         name             展示名
         supports_vision  是否支持视觉（为 true 时才能传 images）
+        supports_video   是否支持视频理解（为 true 时才能传 videos）
+        supports_audio   是否支持音频理解（为 true 时才能传 audios）
         context_window   上下文长度（可为 null）
         is_default       是否为默认模型（请求不传 model 时使用）
     """
@@ -143,6 +155,14 @@ def _handle_chat(request):
     if error:
         return _json_response(_error_code(error), msg=error)
 
+    videos, error = utils.parse_videos(request.POST.get('videos'))
+    if error:
+        return _json_response(_error_code(error), msg=error)
+
+    audios, error = utils.parse_audios(request.POST.get('audios'))
+    if error:
+        return _json_response(_error_code(error), msg=error)
+
     # ---------- 3. 解析调用目标（模型 → 厂商 → 地址与 Key / 提示词 / 采样参数） ----------
     target, error = utils.resolve_target(model_key=model, user_key=api_key)
     if error:
@@ -160,10 +180,37 @@ def _handle_chat(request):
                 msg=f'参数值非法: 模型「{target["key"]}」最多支持 {target["max_images"]} 张图片',
             )
 
+    if videos:
+        if not target['supports_video']:
+            return _json_response(
+                StatusCode.PARAM_VALUE_INVALID,
+                msg=f'参数值非法: 模型「{target["key"]}」不支持视频理解（videos），'
+                    '请改用支持视频的模型',
+            )
+        if len(videos) > target['max_videos']:
+            return _json_response(
+                StatusCode.PARAM_VALUE_INVALID,
+                msg=f'参数值非法: 模型「{target["key"]}」最多支持 {target["max_videos"]} 个视频',
+            )
+
+    if audios:
+        if not target['supports_audio']:
+            return _json_response(
+                StatusCode.PARAM_VALUE_INVALID,
+                msg=f'参数值非法: 模型「{target["key"]}」不支持音频理解（audios），'
+                    '请改用支持音频的模型',
+            )
+        if len(audios) > target['max_audios']:
+            return _json_response(
+                StatusCode.PARAM_VALUE_INVALID,
+                msg=f'参数值非法: 模型「{target["key"]}」最多支持 {target["max_audios"]} 个音频',
+            )
+
     # ---------- 4. 构建 messages ----------
     try:
         messages = utils.build_messages(content, messages_json,
                                         system_prompt=system_prompt, images=images,
+                                        videos=videos, audios=audios,
                                         platform_prompt=target['platform_prompt'])
     except json.JSONDecodeError:
         return _json_response(

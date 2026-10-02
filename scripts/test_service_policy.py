@@ -6,10 +6,10 @@
     第 3 轮 三级继承（认证）：服务级 open 向上继承；端点级 auth 覆盖服务级
     第 4 轮 状态继承 + 「只有正常可调用」：maintenance→30004 / offline→30005 / dev→30006
              一律硬拦截（含合法签名），端点级 normal 可覆盖上层状态恢复可调用
-    第 5 轮 额度与单价继承：服务级单价 → 端点级覆写（0=免费 / 抬高）；余额不足返 30012；
-             未配置单价时兜底 DEFAULT_PRICE
+    第 5 轮 （原「额度与单价继承」）**已随额度 / 点数体系整体下线移除** —— 现在只要签名
+             通过就能调用，编号保留空缺以对齐历史。
     第 6 轮 前缀边界：/api/foo 的策略不得命中 /api/foobar/...
-    第 7 轮 缓存失效：改 status / auth_mode / price 后立即生效，不必等 TTL
+    第 7 轮 缓存失效：改 status / auth_mode 后立即生效，不必等 TTL
     第 8 轮 控制台页面：未登录跳转、超管可访问、含三级联动数据、增删改各自生效
     第 9 轮 三语（zh-hans / zh-hant / en）页面正常渲染且关键词已翻译
     第 10 轮 服务树枚举自证（真实路由 vs 文档注册表）
@@ -56,10 +56,6 @@ from django.urls import resolve, reverse
 
 from API.apis.user_center.sign import build_sign
 from API.common import StatusCode
-from API.common.credit_guard import (
-    invalidate_api_price_cache,
-    resolve_price,
-)
 from API.common.middleware import (
     invalidate_api_service_policy_cache,
     is_admin_only,
@@ -67,8 +63,7 @@ from API.common.middleware import (
     requires_auth,
     resolve_service_policy,
 )
-from API.models import ApiPricePolicy, ApiServicePolicy, SecuritySetting, UserApp
-from API.models.Credit.price import DEFAULT_PRICE
+from API.models import ApiServicePolicy, SecuritySetting, UserApp
 from API.website.docs.menu import build_docs_menu
 from API.website.service_presets import apply_presets, preset_rows
 from API.website.service_status import (
@@ -78,8 +73,6 @@ from API.website.service_status import (
     worst_status,
 )
 from API.website.service_tree import service_tree
-
-from _test_support import grant_credit
 
 # 建议策略清单里挑一条真实前缀做「新建 / 不覆盖 / 免签兜底」的验证对象。
 # 这些操作都在事务里做、结束整体回滚（见 round15），不改动库里的真实配置。
@@ -141,20 +134,12 @@ def _signed(app, extra=None):
 
 
 def _mk_app(tag):
-    app = UserApp.objects.create(name=f'SvcApp{MARK}{tag}')
-    # 授权模型是「额度」：新项目默认 0 点，签名通过后会被 30012 拦掉、到不了业务层，
-    # 而本脚本多处要验证「签名通过后落到路由/状态判定」，故先补一笔额度
-    return grant_credit(app)
+    return UserApp.objects.create(name=f'SvcApp{MARK}{tag}')
 
 
 def _mk_policy(**kwargs):
     """建策略（不触发模型 clean，等价于 DDL 直建；用于构造各种继承场景）"""
     return ApiServicePolicy.objects.create(**kwargs)
-
-
-def _mk_price(path_prefix, level, price):
-    """建一条调用单价（独立于服务策略的 ApiPricePolicy，行存在 = 显式设价）"""
-    return ApiPricePolicy.objects.create(path_prefix=path_prefix, level=level, price=price)
 
 
 def superadmin_client():
@@ -173,14 +158,12 @@ def superadmin_client():
 
 
 def cleanup():
-    """删除全部测试数据（策略 / 单价 的路径前缀包含 MARK 即删，含 extra_prefixes）"""
+    """删除全部测试数据（策略的路径前缀包含 MARK 即删，含 extra_prefixes）"""
     ids = [p.pk for p in ApiServicePolicy.objects.all()
            if any(MARK in prefix for prefix in p.all_prefixes)]
     ApiServicePolicy.objects.filter(pk__in=ids).delete()
-    ApiPricePolicy.objects.filter(path_prefix__contains=MARK).delete()
     UserApp.objects.filter(name__contains=MARK).delete()
     invalidate_api_service_policy_cache()
-    invalidate_api_price_cache()
 
 
 # ───────────────────────── 第 1 轮：fail-closed ─────────────────────────
@@ -303,63 +286,6 @@ def round4_status_inherit():
           _code(resp) == StatusCode.AUTH_FAILED, f'code={_code(resp)}')
 
 
-# ───────────────────────── 第 5 轮：额度与单价继承 ─────────────────────────
-
-def round5_credit_inherit(app_a, app_b):
-    section('第 5 轮 额度与单价继承（独立价格表：服务级 → 端点级覆写；余额不足 30012）')
-    # 服务级单价 5 点（写在独立的 ApiPricePolicy 上，与服务策略解耦）
-    _mk_price(f'{BASE}wl/', 'service', 5)
-    UserApp.objects.filter(pk=app_b.pk).update(balance=0)
-
-    check('服务级单价生效（端点未设时继承）',
-          resolve_price(f'{BASE}wl/probe') == 5)
-    check('同服务其它路径单价一致',
-          resolve_price(f'{BASE}wl/other') == 5)
-
-    anon = Client()
-    resp = anon.get(f'{BASE}wl/probe')
-    check('未签名被拒（20011）', _code(resp) == StatusCode.AUTH_FAILED, f'code={_code(resp)}')
-    resp = anon.get(f'{BASE}wl/probe', _signed(app_a))
-    check('余额充足的项目通过（落到 20030）',
-          _code(resp) == StatusCode.NOT_FOUND, f'code={_code(resp)}')
-    resp = anon.get(f'{BASE}wl/probe', _signed(app_b))
-    check('余额为 0 的项目返回 30012',
-          _code(resp) == StatusCode.QUOTA_EXCEEDED, f'code={_code(resp)}')
-
-    # 端点级单价覆写：把该端点单价设为 0（免费）→ 零余额项目也能过
-    _mk_price(f'{BASE}wl/free', 'endpoint', 0)
-    check('端点级单价覆盖服务级（0 = 免费）',
-          resolve_price(f'{BASE}wl/free') == 0)
-    check('服务级其余路径仍按 5 点',
-          resolve_price(f'{BASE}wl/other') == 5)
-    resp = anon.get(f'{BASE}wl/free', _signed(app_b))
-    check('免费端点：零余额项目也能通过（落到 20030）',
-          _code(resp) == StatusCode.NOT_FOUND, f'code={_code(resp)}')
-
-    # 端点级抬高单价：余额 10 点的项目在 50 点的端点上被拒、在 5 点的路径上放行
-    _mk_price(f'{BASE}wl/pricey', 'endpoint', 50)
-    UserApp.objects.filter(pk=app_b.pk).update(balance=10)
-    check('端点级单价 50 覆盖服务级 5',
-          resolve_price(f'{BASE}wl/pricey') == 50)
-    resp = anon.get(f'{BASE}wl/pricey', _signed(app_b))
-    check('余额不足本次单价 → 30012',
-          _code(resp) == StatusCode.QUOTA_EXCEEDED, f'code={_code(resp)}')
-    resp = anon.get(f'{BASE}wl/other', _signed(app_b))
-    check('同一项目在低单价路径上放行（余额够付）',
-          _code(resp) == StatusCode.NOT_FOUND, f'code={_code(resp)}')
-
-    # 线路级单价：服务级 5 → 线路级 8（端点未设时取线路级）
-    _mk_price(f'{BASE}wl/ch/', 'channel', 8)
-    check('线路级单价覆盖服务级',
-          resolve_price(f'{BASE}wl/ch/probe') == 8)
-    check('线路级不影响同服务其它线路',
-          resolve_price(f'{BASE}wl/other') == 5)
-
-    # 未配置任何单价 → 兜底 DEFAULT_PRICE（保证「零额度什么都调不了」没有缺口）
-    check('未配置单价时兜底为 DEFAULT_PRICE',
-          resolve_price(f'{BASE}unpriced/x') == DEFAULT_PRICE)
-
-
 # ───────────────────────── 第 6 轮：前缀边界 ─────────────────────────
 
 def round6_prefix_boundary():
@@ -382,7 +308,7 @@ def round6_prefix_boundary():
 
 # ───────────────────────── 第 7 轮：缓存失效 ─────────────────────────
 
-def round7_cache_invalidation(app_c):
+def round7_cache_invalidation():
     section('第 7 轮 缓存失效（改动立即生效，无需等 TTL）')
     policy = _mk_policy(name=f'Cache {MARK}', level='service', path_prefix=f'{BASE}cache/',
                         auth_mode='open', status='normal')
@@ -397,29 +323,8 @@ def round7_cache_invalidation(app_c):
     check('改 status 后立即生效',
           resolve_service_policy(f'{BASE}cache/probe')['status'] == 'maintenance')
 
-    # 单价改动同样即时生效（额度判定读的是独立价格表 + 它的进程内缓存）
-    # 先把状态恢复「正常」，否则请求会先被维护态 30004 拦下、测不到额度拦截
-    policy.status = 'normal'
-    policy.save(update_fields=['status', 'updated_time'])
-    UserApp.objects.filter(pk=app_c.pk).update(balance=1)
-    price_row = _mk_price(f'{BASE}cache/', 'service', 100)
-    check('新增单价后立即生效（缓存已失效）',
-          resolve_price(f'{BASE}cache/probe') == 100)
-    check('余额 1 点付不起 100 点 → 被额度拦下', not _allowed(f'{BASE}cache/probe', app_c))
-    price_row.price = 1
-    price_row.save(update_fields=['price', 'updated_time'])
-    check('单价降到 1 点后立即放行', _allowed(f'{BASE}cache/probe', app_c))
-
     invalidate_api_service_policy_cache()
-    invalidate_api_price_cache()
     check('显式失效函数可用', isinstance(requires_auth(f'{BASE}cache/probe'), bool))
-
-
-def _allowed(path, app):
-    """签名后是否放行（未被额度拒绝）"""
-    anon = Client()
-    resp = anon.get(path, _signed(app))
-    return _code(resp) != StatusCode.QUOTA_EXCEEDED
 
 
 # ───────────────────────── 第 8 轮：控制台页面 ─────────────────────────
@@ -459,7 +364,7 @@ def round8_console(client, app_a):
           policy is not None and policy.docs_visible == 'hidden'
           and policy.audience == 'admin_only')
     check('新建后立即生效（需要认证）', requires_auth(f'{prefix}probe') is True)
-    check('服务策略表单已无单价输入（单价已迁到「线路价格」页）',
+    check('服务策略表单不含单价输入（计费体系已整体下线）',
           'name="price"' not in body)
 
     # 编辑（改为线路级 open）
@@ -831,7 +736,7 @@ def round14_bulk_delete(client):
     check('列表页含批量删除表单与勾选框',
           'name="action" value="delete_bulk"' in body and 'service_batch_form' in body
           and 'data-row-check' in body and 'data-select-all' in body and 'data-batch-delete' in body)
-    check('弹窗为两块分区且无单价输入',
+    check('弹窗为两块分区且无计费相关字段',
           'name="price"' not in body and '作用范围' in body and '对外表现' in body)
     check('白名单相关 UI 已彻底移除',
           'data-apps-panel' not in body and 'data-app-scope' not in body
@@ -983,11 +888,8 @@ def main():
         round2_captcha_open()
         round3_auth_inherit()
         round4_status_inherit()
-        app_b = _mk_app('B')
-        round5_credit_inherit(app_a, app_b)
         round6_prefix_boundary()
-        app_c = _mk_app('C')
-        round7_cache_invalidation(app_c)
+        round7_cache_invalidation()
         round8_console(client, app_a)
         round9_i18n(client, admin)
         round10_service_tree()

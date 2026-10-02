@@ -2,16 +2,16 @@
 {% load i18n %}
 
 {% block title %}{% trans "控制台首页 - 超级管理员 - 小影API" %}{% endblock %}
-{% block keywords %}{% trans "超级管理员,控制台" %}{% endblock %}
-{% block description %}{% trans "小影API 超级管理员控制台：关键指标概览、待关注事项与各模块入口。" %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,控制台,仪表盘,调用统计,收入" %}{% endblock %}
+{% block description %}{% trans "小影API 超级管理员控制台：调用趋势、收入与订单、服务排行、资源与告警的仪表盘，以及各模块入口。" %}{% endblock %}
 
 {% block console_content %}
-{% trans "关键指标概览、待关注事项与各模块入口；入口取自左侧菜单声明，新模块上线后自动出现。" as ph_desc %}
+{% trans "调用趋势、收入与订单、服务排行与告警一屏概览；模块入口取自左侧菜单声明，新模块上线后自动出现。" as ph_desc %}
 {% include 'console/_page_header.html' with icon='layout-dashboard' title='控制台首页' desc=ph_desc %}
 
 {% include 'console/_messages.html' %}
 
-{# ==================== 近 N 天调用概览（复用调用统计口径） ==================== #}
+{# ==================== KPI：近 N 天调用概览（带环比） ==================== #}
 <div class="mt-5 flex flex-wrap items-center justify-between gap-2">
   <h2 class="flex items-center gap-2 text-sm font-bold text-base-content/70">
     <i data-lucide="activity" class="h-4 w-4 text-primary" aria-hidden="true"></i>
@@ -22,7 +22,7 @@
   </a>
 </div>
 
-<div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+<div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
   <div class="con-metric">
     <span class="con-metric-icon bg-primary/10 text-primary">
       <i data-lucide="activity" class="h-5 w-5" aria-hidden="true"></i>
@@ -30,6 +30,14 @@
     <div class="min-w-0">
       <div class="con-metric-value">{{ stats.calls }}</div>
       <div class="con-metric-label">{% trans "调用总量" %}</div>
+      {% if stats.calls_delta is not None %}
+      <div class="flex items-center gap-1 text-xs {% if stats.calls_delta > 0 %}text-success{% elif stats.calls_delta < 0 %}text-error{% else %}text-base-content/50{% endif %}">
+        <i data-lucide="{% if stats.calls_delta > 0 %}trending-up{% elif stats.calls_delta < 0 %}trending-down{% else %}minus{% endif %}" class="h-3.5 w-3.5" aria-hidden="true"></i>
+        {% blocktrans with d=stats.calls_delta %}环比 {{ d }}%{% endblocktrans %}
+      </div>
+      {% else %}
+      <div class="text-xs text-base-content/50">{% trans "上一周期无数据" %}</div>
+      {% endif %}
     </div>
   </div>
 
@@ -42,6 +50,11 @@
       <div class="con-metric-label">{% trans "成功率" %}</div>
       <div class="text-xs text-base-content/50">
         {% blocktrans with ok=stats.success bad=stats.failed %}成功 {{ ok }} · 失败 {{ bad }}{% endblocktrans %}
+        {% if stats.success_rate_delta %}
+        <span class="{% if stats.success_rate_delta > 0 %}text-success{% else %}text-error{% endif %}">
+          {% blocktrans with d=stats.success_rate_delta %}（环比 {{ d }}pp）{% endblocktrans %}
+        </span>
+        {% endif %}
       </div>
     </div>
   </div>
@@ -58,16 +71,89 @@
       </div>
     </div>
   </div>
+</div>
 
-  <div class="con-metric">
-    <span class="con-metric-icon bg-secondary/10 text-secondary">
-      <i data-lucide="plug-zap" class="h-5 w-5" aria-hidden="true"></i>
-    </span>
-    <div class="min-w-0">
-      <div class="con-metric-value">{{ stats.active_apps }}</div>
-      <div class="con-metric-label">{% trans "有调用的接入项目" %}</div>
+{# ==================== 仪表盘：调用趋势 + 服务排行 ==================== #}
+<div class="mt-4 grid gap-3 xl:grid-cols-3">
+  <div class="con-panel p-4 xl:col-span-2">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <h2 class="flex items-center gap-2 text-sm font-bold text-base-content/70">
+        <i data-lucide="chart-no-axes-combined" class="h-4 w-4 text-primary" aria-hidden="true"></i>
+        {% blocktrans with n=trend_days %}近 {{ n }} 天调用趋势{% endblocktrans %}
+      </h2>
+      <span class="text-xs text-base-content/50">{% trans "柱：成功 / 失败调用" %}</span>
+    </div>
+    <div class="mt-3 h-64">
+      <canvas id="home-trend" aria-label="{% trans '调用趋势' %}" role="img"></canvas>
     </div>
   </div>
+
+  <div class="con-panel p-4">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <h2 class="flex items-center gap-2 text-sm font-bold text-base-content/70">
+        <i data-lucide="trophy" class="h-4 w-4 text-primary" aria-hidden="true"></i>
+        {% blocktrans with n=overview_days %}近 {{ n }} 天服务排行{% endblocktrans %}
+      </h2>
+      <a href="{% url 'website:console_stats' %}" class="link link-hover text-xs text-primary">
+        {% trans "全部" %}
+      </a>
+    </div>
+    <div class="mt-3 h-64">
+      <canvas id="home-services" aria-label="{% trans '服务调用排行' %}" role="img"></canvas>
+    </div>
+    {% if not ranking %}
+    <p class="mt-2 text-xs text-base-content/50">{% trans "该区间还没有调用记录。" %}</p>
+    {% endif %}
+  </div>
+</div>
+
+{# ==================== 收入与订单（近 N 天） ==================== #}
+<h2 class="mt-6 flex items-center gap-2 text-sm font-bold text-base-content/70">
+  <i data-lucide="wallet" class="h-4 w-4 text-primary" aria-hidden="true"></i>
+  {% blocktrans with n=revenue_days %}收入与订单（近 {{ n }} 天）{% endblocktrans %}
+</h2>
+
+<div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+  <a href="{% url 'website:console_pay' %}" class="con-metric">
+    <span class="con-metric-icon bg-success/10 text-success">
+      <i data-lucide="banknote" class="h-5 w-5" aria-hidden="true"></i>
+    </span>
+    <div class="min-w-0">
+      <div class="con-metric-value">{{ revenue.amount }}<span class="text-sm font-normal"> {% trans "元" %}</span></div>
+      <div class="con-metric-label">{% trans "充值金额" %}</div>
+    </div>
+  </a>
+
+  <a href="{% url 'website:console_pay' %}" class="con-metric">
+    <span class="con-metric-icon {% if revenue.refund %}bg-warning/10 text-warning{% else %}bg-base-200 text-base-content/60{% endif %}">
+      <i data-lucide="undo-2" class="h-5 w-5" aria-hidden="true"></i>
+    </span>
+    <div class="min-w-0">
+      <div class="con-metric-value">{{ revenue.refund }}<span class="text-sm font-normal"> {% trans "元" %}</span></div>
+      <div class="con-metric-label">{% trans "退款金额" %}</div>
+    </div>
+  </a>
+
+  <a href="{% url 'website:console_pay' %}" class="con-metric">
+    <span class="con-metric-icon bg-primary/10 text-primary">
+      <i data-lucide="receipt-text" class="h-5 w-5" aria-hidden="true"></i>
+    </span>
+    <div class="min-w-0">
+      <div class="con-metric-value">{{ revenue.orders }}</div>
+      <div class="con-metric-label">{% trans "已支付订单" %}</div>
+    </div>
+  </a>
+
+  <a href="{% url 'website:console_pay' %}" class="con-metric">
+    <span class="con-metric-icon {% if revenue.refund_pending %}bg-warning/10 text-warning{% else %}bg-base-200 text-base-content/60{% endif %}">
+      <i data-lucide="hourglass" class="h-5 w-5" aria-hidden="true"></i>
+    </span>
+    <div class="min-w-0">
+      <div class="con-metric-value">{{ revenue.refund_pending }}</div>
+      <div class="con-metric-label">{% trans "待处理退款" %}</div>
+      <div class="text-xs text-base-content/50">{% trans "人工受理队列" %}</div>
+    </div>
+  </a>
 </div>
 
 {# ==================== 资源与待关注 ==================== #}
@@ -76,7 +162,7 @@
   {% trans "资源与待关注" %}
 </h2>
 
-<div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+<div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
   <a href="{% url 'website:console_projects' %}" class="con-metric">
     <span class="con-metric-icon bg-info/10 text-info">
       <i data-lucide="boxes" class="h-5 w-5" aria-hidden="true"></i>
@@ -107,6 +193,26 @@
     </div>
   </a>
 
+  <a href="{% url 'website:console_ip_bans' %}" class="con-metric">
+    <span class="con-metric-icon {% if counts.ip_bans %}bg-error/10 text-error{% else %}bg-base-200 text-base-content/60{% endif %}">
+      <i data-lucide="shield-ban" class="h-5 w-5" aria-hidden="true"></i>
+    </span>
+    <div class="min-w-0">
+      <div class="con-metric-value">{{ counts.ip_bans }}</div>
+      <div class="con-metric-label">{% trans "生效中的 IP 封禁" %}</div>
+    </div>
+  </a>
+
+  <a href="{% url 'website:console_pay' %}?status=pending" class="con-metric">
+    <span class="con-metric-icon {% if counts.pending_orders %}bg-warning/10 text-warning{% else %}bg-base-200 text-base-content/60{% endif %}">
+      <i data-lucide="clock" class="h-5 w-5" aria-hidden="true"></i>
+    </span>
+    <div class="min-w-0">
+      <div class="con-metric-value">{{ counts.pending_orders }}</div>
+      <div class="con-metric-label">{% trans "待支付订单" %}</div>
+    </div>
+  </a>
+
   <a href="{% url 'website:console_feedback' %}" class="con-metric">
     <span class="con-metric-icon {% if counts.feedback_open %}bg-warning/10 text-warning{% else %}bg-base-200 text-base-content/60{% endif %}">
       <i data-lucide="messages-square" class="h-5 w-5" aria-hidden="true"></i>
@@ -118,13 +224,24 @@
     </div>
   </a>
 
+  <a href="{% url 'website:console_quotas' %}" class="con-metric">
+    <span class="con-metric-icon {% if counts.quota_alerts %}bg-error/10 text-error{% else %}bg-base-200 text-base-content/60{% endif %}">
+      <i data-lucide="gauge" class="h-5 w-5" aria-hidden="true"></i>
+    </span>
+    <div class="min-w-0">
+      <div class="con-metric-value">{{ counts.quota_alerts }}</div>
+      <div class="con-metric-label">{% trans "余量告警中的服务" %}</div>
+    </div>
+  </a>
+
   <a href="{% url 'website:console_announcements' %}" class="con-metric">
-    <span class="con-metric-icon bg-accent/10 text-accent">
+    <span class="con-metric-icon {% if counts.announcements %}bg-info/10 text-info{% else %}bg-base-200 text-base-content/60{% endif %}">
       <i data-lucide="megaphone" class="h-5 w-5" aria-hidden="true"></i>
     </span>
     <div class="min-w-0">
       <div class="con-metric-value">{{ counts.announcements }}</div>
-      <div class="con-metric-label">{% trans "生效中的公告" %}</div>
+      <div class="con-metric-label">{% trans "接口公告" %}</div>
+      <div class="text-xs text-base-content/50">{% trans "生效中的公告" %}</div>
     </div>
   </a>
 </div>
@@ -154,4 +271,11 @@
 </div>
 {% endif %}
 {% endfor %}
+
+{{ trend|json_script:"home-trend-data" }}
+{{ ranking|json_script:"home-services-data" }}
+{% endblock %}
+
+{% block js %}
+{% include 'console/_stats_charts_js.html' %}
 {% endblock %}

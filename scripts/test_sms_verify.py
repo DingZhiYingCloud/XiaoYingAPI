@@ -32,8 +32,6 @@ from API.models import UserApp
 from API.apis.sms_verify.aliyun import utils
 from API.apis.user_center.sign import build_sign
 
-from _test_support import grant_credit
-
 # ───────────────────────── 测试基础设施 ─────────────────────────
 
 BASE = '/api/sms_verify/aliyun'
@@ -88,9 +86,6 @@ def _create_app(name=None, status=True):
         name=name or f'{_PREFIX}项目{len(_created_apps)}',
         status=status,
     )
-    # 授权模型是「额度」：新项目默认 0 点，签名调用会先被 30012 拦掉、测不到签名与参数校验本身，
-    # 故按「已充值」的口径先补一笔额度。
-    grant_credit(obj)
     entry = (obj.app_id, obj.app_secret, obj)
     _created_apps.append(entry)
     return entry

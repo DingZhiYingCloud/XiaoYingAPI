@@ -11,6 +11,9 @@
 **规则就是提示词**：判定完全交给 AI（需求确认：后台写的规则以提示词形式一起发给 AI，
 即便触发了规则表述，最终也以 AI 的处理结果为准）。因此这里**不做任何关键词 / 正则硬规则**，
 只把「提示词 + 反馈正文 + 用户信息」一起发过去，要求 AI 返回结构化结论。
+提交审核时若该反馈带了图片 / 视频，且**审核模型勾了对应的多模态能力**，还会一并把附件内容
+发给模型 —— 让 AI 能连附件一起判断，而不仅看文字（见 `_review_media`；附件从本地读出后内联，
+不依赖站点公网地址）。
 
 AI 不可用的情形一律「跳过审核」而不是「卡住」：
 
@@ -19,6 +22,8 @@ AI 不可用的情形一律「跳过审核」而不是「卡住」：
     - 模型调用失败（网络 / 额度 / 返回不是 JSON）   → 记为「审核失败」，条目留在「待审核」，
                                                     管理员可手动重审
 """
+import base64
+import io
 import json
 import logging
 import os
@@ -28,6 +33,7 @@ import time
 
 from datetime import timedelta
 
+from django.conf import settings
 from django.db import close_old_connections
 from django.db.models import Q
 from django.utils import timezone
@@ -65,6 +71,18 @@ DEFAULT_SUBMIT_PROMPT = """你是「问题反馈中心」的内容审核员，�
 3. 广告或引流：推广、拉群、二维码、与产品无关的营销内容；
 4. 违法违规：色情、暴力、赌博、政治敏感等；
 5. 无意义内容：纯符号、刷屏、与产品或技术完全无关。
+
+如果本次一并提供了用户上传的图片或视频，必须**逐张看完再下结论**（看过才判，不许只看文字就放过）。
+画面或声音里出现下面任何一类，一律判定为「驳回」，并在 reason 与 points 里点明是附件的问题：
+
+1. 色情低俗：裸露、性暗示，泳装 / 内衣 / 情趣服饰的贴身特写，私密部位，床上场景，色情文字或水印；
+2. 暴力血腥：打斗、伤口、血迹、尸体、虐待动物、自残，以及刀枪棍棒等器械的威胁性展示；
+3. 恐怖惊悚：鬼怪、惊悚妆容、恐怖画面、灵异或尸骸场景；
+4. 违法违规：毒品、赌博、诈骗二维码、他人隐私信息（身份证、手机号、聊天记录等截图）；
+5. 与反馈无关：附件与本次反馈的问题看不出任何关系（纯自拍、风景、表情包、无关截图等）。
+
+附件判定从严：只要**有合理理由怀疑**属于上述任一类就判驳回，宁可驳回也不要放过。
+反过来，与问题相关的正常素材应当通过，例如报错截图、界面截图、作品效果图、证件之外的商品图。
 
 以下情形应当「通过」，不要因为这些驳回：
 - 描述不清、信息不全、情绪激动但仍在讨论问题；
@@ -162,8 +180,115 @@ def _normalize_verdict(data, reject_words, warn_words=()):
     return ''
 
 
-def _call_ai(target, system_prompt, user_content, background=False):
-    """把「提示词 + 正文」发给 AI 并解析出结构化结论
+# ==================== 送审媒体（图片 / 视频） ====================
+MAX_INLINE_MEDIA_BYTES = 8 * 1024 * 1024
+"""单个附件内联进请求体的体积上限（字节）
+
+附件一律**从本地读出内容内联**（图片压成 JPEG、视频原样 base64），不依赖上游能否回访我们的
+站点 —— 本地开发没有公网地址、线上媒体目录若未直服，走公网地址都会变成「审了个寂寞」。
+超过这个体积的（大多是手机拍的视频，反馈页上限 50MB）不再内联：base64 会让请求体膨胀约 1/3，
+上游会直接拒绝，此时回落到公网地址（见 `_media_absolute_url`）。
+"""
+
+REVIEW_IMAGE_MAX_EDGE = 1280
+"""送审图片的长边上限（像素）：审核只需看清画面，不需要原图，压小能省流量与上游开销"""
+
+REVIEW_IMAGE_QUALITY = 85
+"""送审图片转 JPEG 的质量"""
+
+_VIDEO_MIME = {
+    'mp4': 'video/mp4', 'm4v': 'video/x-m4v', 'mov': 'video/quicktime',
+    'webm': 'video/webm', 'avi': 'video/x-msvideo', 'mkv': 'video/x-matroska',
+    'flv': 'video/x-flv', 'wmv': 'video/x-ms-wmv', '3gp': 'video/3gpp',
+}
+"""视频扩展名 → data URI 的 MIME（反馈页允许的上传格式，见 FileUploader.TYPE_CONFIG）"""
+
+
+def _media_absolute_url(path) -> str:
+    """把附件的相对路径拼成公网可访问的绝对地址（供上游模型抓取）
+
+    站点地址来自 .env 的 `XYAPI_SITE_URL`（见 settings.SITE_URL）。未配置时返回空串 ——
+    宁可少审一个超大的视频，也不要拼出一个上游抓不到的地址白等一轮超时。
+    """
+    base = (getattr(settings, 'SITE_URL', '') or '').strip().rstrip('/')
+    if not base or not path:
+        return ''
+    return f'{base}{settings.MEDIA_URL}{path}'
+
+
+def _read_attachment(att) -> str:
+    """读一条附件并转成可内联的 data URI；读不出来或体积过大返回空串
+
+    - 图片：先等比压到长边 `REVIEW_IMAGE_MAX_EDGE`、转 JPEG 再 base64
+      （用户上传的图片上限 10MB，手机直出照片动辄数 MB，不压缩很可能超出上游对 base64 的限制；
+      动态 GIF 只送出第一帧）；
+    - 视频：不压缩，原样 base64（仅在不超过 `MAX_INLINE_MEDIA_BYTES` 时内联）。
+    """
+    abs_path = os.path.join(settings.MEDIA_ROOT, att.path)
+    try:
+        if att.is_image:
+            from PIL import Image
+            with Image.open(abs_path) as img:
+                # 统一转 RGB：PNG / GIF 的调色板或透明通道无法直接存 JPEG
+                img = img.convert('RGB')
+                img.thumbnail((REVIEW_IMAGE_MAX_EDGE, REVIEW_IMAGE_MAX_EDGE))
+                buf = io.BytesIO()
+                img.save(buf, format='JPEG', quality=REVIEW_IMAGE_QUALITY)
+            payload = buf.getvalue()
+            return 'data:image/jpeg;base64,' + base64.b64encode(payload).decode('ascii')
+
+        if os.path.getsize(abs_path) > MAX_INLINE_MEDIA_BYTES:
+            return ''
+        mime = _VIDEO_MIME.get((att.ext or '').lower(), 'video/mp4')
+        with open(abs_path, 'rb') as f:
+            payload = f.read()
+        return f'data:{mime};base64,' + base64.b64encode(payload).decode('ascii')
+    except Exception:
+        logger.warning('反馈附件 %s 读取失败，本次送审跳过该附件', att.pk, exc_info=True)
+        return ''
+
+
+def _review_media(feedback, target):
+    """挑出这次送审要一并带给模型的附件
+
+    只带图片与视频（反馈中心不支持音频上传），且**按审核模型的能力与上限**过滤：
+    模型没勾「支持视觉 / 支持视频理解」时就别带，否则上游会直接报参数非法。
+
+    附件优先内联（见 `_read_attachment`）；过大 / 读不出来时才回落到公网地址。
+
+    :return: (images, videos) —— 两个可直接放进 content 块的地址列表，可能为空
+    """
+    attachments = list(feedback.attachments.all())
+    if not (target['supports_vision'] or target['supports_video']):
+        if attachments:
+            # 静默丢掉附件等于「带图 / 视频的反馈只审了文字」，色情图照样能过 —— 必须留痕
+            logger.warning('反馈 %s 带 %d 个附件，但审核模型 %s 未勾选视觉 / 视频理解能力，'
+                           '附件将不会被审核', feedback.pk, len(attachments), target['key'])
+        return [], []
+
+    images, videos = [], []
+    for att in attachments:
+        if att.is_image:
+            if not target['supports_vision'] or len(images) >= target['max_images']:
+                continue
+        elif not target['supports_video'] or len(videos) >= target['max_videos']:
+            continue
+
+        url = _read_attachment(att)
+        if not url:
+            url = _media_absolute_url(att.path)
+            if url:
+                logger.info('反馈附件 %s 体积过大，回落公网地址送审', att.pk)
+        if not url:
+            logger.warning('反馈附件 %s 无法送审（未配置 XYAPI_SITE_URL 且体积超限），本次跳过', att.pk)
+            continue
+
+        (images if att.is_image else videos).append(url)
+    return images, videos
+
+
+def _call_ai(target, system_prompt, user_content, background=False, images=None, videos=None):
+    """把「提示词 + 正文（+ 图片 / 视频附件）」发给 AI 并解析出结构化结论
 
     :param background: True=后台审核线程在调（保留重试与长假）；
         False=控制台在请求线程里同步调（只发一次、超时更短，避免占住 worker）。
@@ -175,6 +300,7 @@ def _call_ai(target, system_prompt, user_content, background=False):
             user_content,
             system_prompt=json.dumps([{'role': 'system', 'content': system_prompt}],
                                      ensure_ascii=False),
+            images=images, videos=videos,
         )
     except ValueError as exc:
         return False, f'构建审核请求失败: {exc}'
@@ -281,8 +407,10 @@ def review_submission(feedback, background=False):
     if target is None:
         return _skip(feedback, reason)
 
+    images, videos = _review_media(feedback, target)
     ok, data = _call_ai(target, review_prompt(setting, 'submit'),
-                        _render_submit_input(feedback), background=background)
+                        _render_submit_input(feedback), background=background,
+                        images=images, videos=videos)
     if not ok:
         return _fail(feedback, data, target)
 

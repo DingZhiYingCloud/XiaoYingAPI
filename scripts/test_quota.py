@@ -8,6 +8,9 @@
     第 5 轮 不通知的情形：阈值留空 / 未启用通知
     第 6 轮 取数失败：只记错误，不覆盖上一次成功取回的余量
     第 7 轮 控制台页面：展示 / 保存配置 / 立即检查 / 非法入参 / 匿名拦截
+    第 8 轮 多语言：en / zh-hant 不回退中文
+    第 9 轮 DeepSeek 余额取数（打桩）：注册表口径、正常解析、缺凭据 / 非 JSON / Key 失效(401) /
+            其它 HTTP 错误 / 网络错误 / 缺字段，以及「首次建行写入默认阈值 10」
 
 隔离策略：QuotaService 是「一个服务一行」、QuotaSetting 是「全库一行」的固定表，没有
 可供标记的隔离维度，故**测试前快照、结束时原样还原**（含删除测试期间新建的行）。
@@ -35,6 +38,7 @@ from django.db.models import Max
 from django.test import Client
 from django.urls import reverse
 
+from API.apis.quota import services as quota_services
 from API.apis.quota import utils as quota_utils
 from API.apis.quota.services import (SERVICES, fetch_51daili_balance,
                                      fetch_chaojiying_score)
@@ -360,6 +364,95 @@ def round8_i18n(client):
           '通知設置' in html and '最低數量閾值' in html)
 
 
+# ───────────────────────── 第 9 轮：DeepSeek 取数 ─────────────────────────
+
+class _FakeResponse:
+    """HTTP 应答替身：只实现 fetch_deepseek_balance 用到的 raise_for_status / json"""
+
+    def __init__(self, payload=None, json_error=False, http_status=None, network_error=False):
+        self._payload = payload
+        self._json_error = json_error
+        self._http_status = http_status
+        self._network_error = network_error
+
+    def raise_for_status(self):
+        if self._http_status:
+            resp = quota_services.requests.Response()
+            resp.status_code = self._http_status
+            raise quota_services.requests.HTTPError(
+                f'模拟 HTTP {self._http_status}', response=resp)
+        if self._network_error:
+            raise quota_services.requests.RequestException('模拟网络错误')
+
+    def json(self):
+        if self._json_error:
+            raise ValueError('不是 JSON')
+        return self._payload
+
+
+def round9_deepseek(stub):
+    section('第 9 轮 DeepSeek 余额取数（打桩）')
+
+    meta = SERVICES.get('deepseek')
+    check('DeepSeek 已登记进余量注册表', meta is not None)
+    check('DeepSeek 单位为「元」', bool(meta) and meta['unit'] == '元',
+          str(meta and meta.get('unit')))
+    check('DeepSeek 默认阈值 10 元',
+          bool(meta) and meta.get('default_threshold') == Decimal('10'),
+          str(meta and meta.get('default_threshold')))
+
+    original_creds = quota_services._deepseek_credentials
+    original_get = quota_services.requests.get
+
+    def _fetch(response, creds=(('https://api.deepseek.com', 'sk-xytest'), '')):
+        quota_services._deepseek_credentials = lambda: creds
+        quota_services.requests.get = lambda *a, **kw: response
+        try:
+            return quota_services.fetch_deepseek_balance()
+        finally:
+            quota_services.requests.get = original_get
+
+    try:
+        ok, value = _fetch(_FakeResponse({'is_available': True, 'balance_infos': [
+            {'currency': 'CNY', 'total_balance': '12.34'}]}))
+        check('正常应答解析出余额', ok and value == Decimal('12.34'), f'{ok} {value}')
+
+        ok, msg = _fetch(_FakeResponse({}), creds=(None, '未配置 DeepSeek 厂商'))
+        check('缺凭据时如实报错', ok is False and '未配置' in str(msg), str(msg))
+
+        ok, msg = _fetch(_FakeResponse(json_error=True))
+        check('应答不是 JSON 时报错', ok is False and '不是合法 JSON' in str(msg), str(msg))
+
+        ok, msg = _fetch(_FakeResponse(http_status=401))
+        check('Key 失效（401）时给出可操作提示',
+              ok is False and 'API Key 无效或已失效' in str(msg), str(msg))
+
+        ok, msg = _fetch(_FakeResponse(http_status=500))
+        check('其它 HTTP 错误如实报错', ok is False and '请求 DeepSeek 余额接口失败' in str(msg),
+              str(msg))
+
+        ok, msg = _fetch(_FakeResponse(network_error=True))
+        check('网络错误如实报错', ok is False and '请求 DeepSeek 余额接口失败' in str(msg), str(msg))
+
+        ok, msg = _fetch(_FakeResponse({'is_available': True, 'balance_infos': []}))
+        check('缺少余额字段时报错', ok is False and '未返回余额信息' in str(msg), str(msg))
+
+        ok, msg = _fetch(_FakeResponse({'balance_infos': [{'total_balance': 'abc'}]}))
+        check('余额不是数值时报错', ok is False and '不是合法数值' in str(msg), str(msg))
+    finally:
+        quota_services._deepseek_credentials = original_creds
+
+    # 首次建行：巡检线程走的 get_or_create 要带上注册表里的默认阈值（10 元）
+    QuotaService.objects.filter(code='deepseek').delete()
+    stub.set(True, Decimal('88'))
+    quota_utils.check_all()
+    row = QuotaService.objects.get(code='deepseek')
+    check('首次建行写入默认阈值 10', row.threshold == Decimal('10'), str(row.threshold))
+    check('默认开启通知（邮件）',
+          row.notify_enabled and row.notify_method == QuotaService.NOTIFY_METHOD_EMAIL,
+          f'{row.notify_enabled} {row.notify_method}')
+
+
 def main():
     state = snapshot()
     mail = _MailRecorder()
@@ -385,6 +478,7 @@ def main():
         client, _admin, created_admin = superadmin_client()
         round7_console(client, stub)
         round8_i18n(client)
+        round9_deepseek(stub)
     finally:
         quota_utils.send_email = original_send
         for code, fetch in original_fetch.items():

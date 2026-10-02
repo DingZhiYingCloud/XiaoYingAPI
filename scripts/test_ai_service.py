@@ -1,7 +1,7 @@
 """AI 服务回归脚本（模型注册表 / 统一对话 / 后台管理页）
 
 覆盖范围：
-    A. 业务层 utils：模型清单、目标解析、images 校验与多模态消息、能力拦截
+    A. 业务层 utils：模型清单、目标解析、images / videos / audios 校验与多模态消息、能力拦截
     B. 视图层：参数校验与状态码约定（直接调视图，绕过中间件）
     C. 后台页 /console/ai/models/：厂商与模型的增删改查、Key 加密与掩码、缓存即时失效
     D. 真实上游调用：仅当库里的平台 Key 被上游接受时才执行（Key 由后台维护，不再读 .env）
@@ -41,6 +41,8 @@ PROMPT_MODEL = 'ai-regress-prompt-model'
 # 本脚本创建的临时系统提示词一律用这个前缀命名，便于异常中断后自愈清理
 PROMPT_PREFIX = '回归'
 IMG = 'https://www.baidu.com/img/PCtm_d9c8750bed0b3c7d089fa7d55720d6cf.png'
+VID = 'https://www.baidu.com/video/demo.mp4'
+AUD = 'https://www.baidu.com/audio/demo.mp3'
 
 
 def check(name, ok, extra=''):
@@ -89,7 +91,8 @@ cleanup()
 models = utils.public_models()
 check('模型清单来自数据库', len(models) >= 2, len(models))
 check('清单字段为白名单（不含 url/vendor/api_key/provider_id）',
-      all(set(m) == {'model', 'name', 'supports_vision', 'context_window', 'is_default'}
+      all(set(m) == {'model', 'name', 'supports_vision', 'supports_video', 'supports_audio',
+                     'context_window', 'is_default'}
           for m in models))
 check('默认模型为 deepseek-v4-flash',
       next((m['model'] for m in models if m['is_default']), None) == 'deepseek-v4-flash')
@@ -116,6 +119,24 @@ check('images 拒绝内网地址', e is not None, e)
 _, e = utils.parse_images('["file:///etc/passwd"]')
 check('images 拒绝非 http(s) 协议', e is not None, e)
 
+urls, e = utils.parse_videos(json.dumps([VID, VID]))
+check('videos JSON 数组解析', e is None and len(urls) == 2, e)
+urls, e = utils.parse_videos(f'{VID}\n{VID}')
+check('videos 纯文本按换行拆分', e is None and len(urls) == 2, e)
+_, e = utils.parse_videos('["http://127.0.0.1/a.mp4"]')
+check('videos 拒绝回环地址', e is not None and '视频地址不可用' in e, e)
+_, e = utils.parse_videos('[]')
+check('videos 传空数组报格式错误', e is not None and '不能为空' in e, e)
+
+urls, e = utils.parse_audios(json.dumps([AUD, AUD]))
+check('audios JSON 数组解析', e is None and len(urls) == 2, e)
+urls, e = utils.parse_audios(f'{AUD}\n{AUD}')
+check('audios 纯文本按换行拆分', e is None and len(urls) == 2, e)
+_, e = utils.parse_audios('["http://127.0.0.1/a.mp3"]')
+check('audios 拒绝回环地址', e is not None and '音频地址不可用' in e, e)
+_, e = utils.parse_audios('[]')
+check('audios 传空数组报格式错误', e is not None and '不能为空' in e, e)
+
 msgs = utils.build_messages('看看这张图', images=[IMG], platform_prompt='平台提示词')
 check('后台配置的系统提示词自动插入为 system 消息',
       msgs[0] == {'role': 'system', 'content': '平台提示词'}, msgs[0])
@@ -131,6 +152,26 @@ check('图片挂到最后一条 user 消息（OpenAI 多模态格式）',
       and last['content'][1]['type'] == 'image_url', last)
 check('system_prompt 传空字符串则不插入系统消息',
       utils.build_messages('hi', system_prompt='', platform_prompt='平台提示词')[0]['role'] == 'user')
+
+video_msgs = utils.build_messages('看看这个视频', videos=[VID])
+video_last = video_msgs[-1]
+check('视频挂到最后一条 user 消息（video_url 块）',
+      video_last['role'] == 'user' and isinstance(video_last['content'], list)
+      and video_last['content'][-1] == {'type': 'video_url', 'video_url': {'url': VID}},
+      video_last)
+mixed = utils.build_messages('图文视频音频一起', images=[IMG], videos=[VID], audios=[AUD])
+check('图片 / 视频 / 音频可同时挂载（image_url → video_url → input_audio）',
+      [p['type'] for p in mixed[-1]['content']]
+      == ['text', 'image_url', 'video_url', 'input_audio'],
+      mixed[-1])
+
+audio_msgs = utils.build_messages('听听这段音频', audios=[AUD])
+audio_last = audio_msgs[-1]
+check('音频挂到最后一条 user 消息（input_audio 块，公网 URL）',
+      audio_last['role'] == 'user' and audio_last['content'][-1]
+      == {'type': 'input_audio', 'input_audio': {'url': AUD}},
+      audio_last)
+
 try:
     utils.build_messages('', '[{"role": "assistant", "content": "x"}]', images=[IMG])
     check('messages 无 user 消息时抛 ValueError', False, '未抛错')
@@ -156,6 +197,16 @@ r = post_chat({'content': 'hi', 'images': json.dumps([IMG])})
 check('不支持视觉的模型传 images 报 20003', r['code'] == 20003 and '不支持视觉' in r['msg'], r)
 r = post_chat({'content': 'hi', 'images': '["http://127.0.0.1/a.jpg"]'})
 check('images 内网地址报 20003', r['code'] == 20003, r)
+r = post_chat({'content': 'hi', 'videos': json.dumps([VID])})
+check('不支持视频理解的模型传 videos 报 20003',
+      r['code'] == 20003 and '不支持视频理解' in r['msg'], r)
+r = post_chat({'content': 'hi', 'videos': '["http://127.0.0.1/a.mp4"]'})
+check('videos 内网地址报 20003', r['code'] == 20003, r)
+r = post_chat({'content': 'hi', 'audios': json.dumps([AUD])})
+check('不支持音频理解的模型传 audios 报 20003',
+      r['code'] == 20003 and '不支持音频理解' in r['msg'], r)
+r = post_chat({'content': 'hi', 'audios': '["http://127.0.0.1/a.mp3"]'})
+check('audios 内网地址报 20003', r['code'] == 20003, r)
 
 r = body(ai_request.models_view(RequestFactory().get('/api/ai/BuiltInModel/models')))
 check('GET /models 返回模型清单', r['code'] == 10000 and len(r['data']['models']) >= 2, r)
@@ -188,6 +239,12 @@ check('后台页 action 取值全部被后端接受',
 check('模型弹窗含「最多图片数」输入框、行内 data-maximg 与回填脚本齐全',
       'name="max_images"' in html and 'data-maximg=' in html
       and "'max_images', d.maximg" in html)
+check('模型弹窗含「支持视频理解 / 最多视频数」与回填脚本齐全',
+      'name="supports_video"' in html and 'name="max_videos"' in html
+      and 'data-maxvid=' in html and "'max_videos', d.maxvid" in html)
+check('模型弹窗含「支持音频理解 / 最多音频数」与回填脚本齐全',
+      'name="supports_audio"' in html and 'name="max_audios"' in html
+      and 'data-maxaud=' in html and "'max_audios', d.maxaud" in html)
 
 client.post(CONSOLE, {'action': 'provider_create', 'code': TEST_VENDOR,
                       'name': '回归测试厂商', 'base_url': 'https://api.deepseek.com/',
@@ -215,7 +272,9 @@ client.post(CONSOLE, {'action': 'provider_create', 'code': 'Bad Code!',
 check('非法厂商标识被拒', not AiProvider.objects.filter(name='非法').exists())
 
 client.post(CONSOLE, {'action': 'model_create', 'key': TEST_MODEL, 'name': '回归测试模型',
-                      'provider': str(vendor.pk), 'max_images': '2', 'sort': '9', 'enabled': '1'})
+                      'provider': str(vendor.pk), 'max_images': '2', 'max_videos': '1',
+                      'max_audios': '1',
+                      'sort': '9', 'enabled': '1'})
 model = AiModel.objects.filter(key=TEST_MODEL).first()
 check('后台新建模型', model is not None and model.provider_id == vendor.pk, model)
 check('新模型即时出现在对外清单（缓存已失效）',
@@ -230,7 +289,9 @@ check('能力拦截按模型生效（新模型未勾视觉 → 20003）', r['cod
 
 client.post(CONSOLE, {'action': 'model_edit', 'id': str(model.pk), 'key': TEST_MODEL,
                       'name': '回归测试模型', 'provider': str(vendor.pk),
-                      'supports_vision': '1', 'max_images': '2', 'sort': '9', 'enabled': '1'})
+                      'supports_vision': '1', 'max_images': '2', 'max_videos': '1',
+                      'max_audios': '1',
+                      'sort': '9', 'enabled': '1'})
 model.refresh_from_db()
 check('后台勾选「支持视觉」后落库', model.supports_vision is True)
 r = post_chat({'content': 'hi', 'model': TEST_MODEL, 'images': json.dumps([IMG])})
@@ -242,16 +303,55 @@ check('超过模型配置的图片张数上限报 20003',
       r['code'] == 20003 and '最多' in r['msg'], r)
 client.post(CONSOLE, {'action': 'model_edit', 'id': str(model.pk), 'key': TEST_MODEL,
                       'name': '回归测试模型', 'provider': str(vendor.pk),
-                      'supports_vision': '1', 'max_images': '5', 'sort': '9', 'enabled': '1'})
+                      'supports_vision': '1', 'max_images': '5', 'max_videos': '1',
+                      'max_audios': '1',
+                      'sort': '9', 'enabled': '1'})
 model.refresh_from_db()
 check('后台可改图片张数上限并即时生效',
       model.max_images == 5 and utils.resolve_target(model_key=TEST_MODEL)[0]['max_images'] == 5,
       model.max_images)
 client.post(CONSOLE, {'action': 'model_edit', 'id': str(model.pk), 'key': TEST_MODEL,
                       'name': '回归测试模型', 'provider': str(vendor.pk),
-                      'supports_vision': '1', 'max_images': '0', 'sort': '9', 'enabled': '1'})
+                      'supports_vision': '1', 'max_images': '0', 'max_videos': '1',
+                      'max_audios': '1',
+                      'sort': '9', 'enabled': '1'})
 model.refresh_from_db()
 check('后台拒绝越界的图片张数上限（原值不被覆盖）', model.max_images == 5, model.max_images)
+
+# 视频：能力开关与数量上限同样由后台按模型配置
+r = post_chat({'content': 'hi', 'model': TEST_MODEL, 'videos': json.dumps([VID])})
+check('未勾视频的模型传 videos 报 20003',
+      r['code'] == 20003 and '不支持视频理解' in r['msg'], r)
+client.post(CONSOLE, {'action': 'model_edit', 'id': str(model.pk), 'key': TEST_MODEL,
+                      'name': '回归测试模型', 'provider': str(vendor.pk),
+                      'supports_vision': '1', 'max_images': '5',
+                      'supports_video': '1', 'max_videos': '1', 'max_audios': '1',
+                      'sort': '9', 'enabled': '1'})
+model.refresh_from_db()
+check('后台勾选「支持视频理解」后落库（含数量上限）',
+      model.supports_video is True and model.max_videos == 1, model.max_videos)
+r = post_chat({'content': 'hi', 'model': TEST_MODEL, 'videos': json.dumps([VID])})
+check('勾选视频后能力拦截不再触发（不再返回 20003）', r['code'] != 20003, r)
+r = post_chat({'content': 'hi', 'model': TEST_MODEL, 'videos': json.dumps([VID, VID])})
+check('超过模型配置的视频数量上限报 20003', r['code'] == 20003 and '最多' in r['msg'], r)
+
+# 音频：能力开关与个数上限同样由后台按模型配置
+r = post_chat({'content': 'hi', 'model': TEST_MODEL, 'audios': json.dumps([AUD])})
+check('未勾音频的模型传 audios 报 20003',
+      r['code'] == 20003 and '不支持音频理解' in r['msg'], r)
+client.post(CONSOLE, {'action': 'model_edit', 'id': str(model.pk), 'key': TEST_MODEL,
+                      'name': '回归测试模型', 'provider': str(vendor.pk),
+                      'supports_vision': '1', 'max_images': '5',
+                      'supports_video': '1', 'max_videos': '1',
+                      'supports_audio': '1', 'max_audios': '1',
+                      'sort': '9', 'enabled': '1'})
+model.refresh_from_db()
+check('后台勾选「支持音频理解」后落库（含个数上限）',
+      model.supports_audio is True and model.max_audios == 1, model.max_audios)
+r = post_chat({'content': 'hi', 'model': TEST_MODEL, 'audios': json.dumps([AUD])})
+check('勾选音频后能力拦截不再触发（不再返回 20003）', r['code'] != 20003, r)
+r = post_chat({'content': 'hi', 'model': TEST_MODEL, 'audios': json.dumps([AUD, AUD])})
+check('超过模型配置的音频个数上限报 20003', r['code'] == 20003 and '最多' in r['msg'], r)
 
 client.post(CONSOLE, {'action': 'model_default', 'id': str(model.pk)})
 model.refresh_from_db()
@@ -309,7 +409,8 @@ check('「跟随全局」的模型取到全局共享提示词',
 client.post(CONSOLE, {'action': 'model_edit', 'id': str(pm.pk), 'key': PM, 'name': '回归提示词模型',
                       'provider': str(pv.pk), 'prompt_choice': f'prompt:{p_custom.pk}',
                       'temperature': '0.3', 'max_tokens': '128', 'stop': 'END,STOP',
-                      'max_images': '2', 'sort': '99', 'enabled': '1'})
+                      'max_images': '2', 'max_videos': '1', 'max_audios': '1',
+                      'sort': '99', 'enabled': '1'})
 pm.refresh_from_db()
 check('后台可把模型指定到某一条提示词',
       pm.prompt_mode == 'custom' and pm.system_prompt_id == p_custom.pk)
@@ -322,7 +423,8 @@ check('采样参数随模型下发（温度 / 上限 / 停止词）',
 # 越界温度必须被后台拒掉（表单整体提交，被拒时原值不应被覆盖）
 client.post(CONSOLE, {'action': 'model_edit', 'id': str(pm.pk), 'key': PM, 'name': '回归提示词模型',
                       'provider': str(pv.pk), 'temperature': '9',
-                      'max_images': '2', 'sort': '99', 'enabled': '1'})
+                      'max_images': '2', 'max_videos': '1', 'max_audios': '1',
+                      'sort': '99', 'enabled': '1'})
 pm.refresh_from_db()
 check('后台拒绝越界采样温度（原值不被覆盖）', abs(pm.temperature - 0.3) < 1e-9, pm.temperature)
 
@@ -335,12 +437,14 @@ p_custom.save(update_fields=['enabled', 'updated_time'])
 
 client.post(CONSOLE, {'action': 'model_edit', 'id': str(pm.pk), 'key': PM, 'name': '回归提示词模型',
                       'provider': str(pv.pk), 'prompt_choice': 'none',
-                      'max_images': '2', 'sort': '99', 'enabled': '1'})
+                      'max_images': '2', 'max_videos': '1', 'max_audios': '1',
+                      'sort': '99', 'enabled': '1'})
 check('选「不使用系统提示词」→ 平台提示词为空',
       utils.resolve_target(PM)[0]['platform_prompt'] == '')
 client.post(CONSOLE, {'action': 'model_edit', 'id': str(pm.pk), 'key': PM, 'name': '回归提示词模型',
                       'provider': str(pv.pk), 'prompt_choice': 'inherit',
-                      'max_images': '2', 'sort': '99', 'enabled': '1'})
+                      'max_images': '2', 'max_videos': '1', 'max_audios': '1',
+                      'sort': '99', 'enabled': '1'})
 pm.refresh_from_db()
 check('选「跟随全局共享」→ 回到 inherit 且解除指定',
       pm.prompt_mode == 'inherit' and pm.system_prompt is None)

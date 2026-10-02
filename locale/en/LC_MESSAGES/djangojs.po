@@ -980,3 +980,7 @@ msgstr "This command already contains the signature generated for this call: it 
 msgid "该接口需要签名，而本次未填写 APPID / APPSECRET，命令里没有签名参数；在右侧栏填写后重新发送，即可得到可直接执行的命令。"
 msgstr "This endpoint requires a signature, but no APPID / APPSECRET was provided, so the command has no signature parameters. Fill them in the sidebar and send again to get a ready-to-run command."
 
+# 控制台首页图表图例（Chart.js 侧用 window.gettext 取词，必须落在 JS 目录里）
+msgid "消耗点数"
+msgstr "Points consumed"
+

@@ -119,19 +119,6 @@
             <span class="badge badge-soft badge-ghost badge-sm" title="{% trans '该接口历史累计调用次数（未登录也可见）' %}">
               {% blocktrans with n=ep.call_count %}累计调用 {{ n }} 次{% endblocktrans %}
             </span>
-            {% if ep.price_detail.price == 0 %}
-            <span class="badge badge-soft badge-success badge-sm" title="{% trans '调用成功一次扣的点数（失败不扣）' %}">{% trans "免费" %}</span>
-            {% else %}
-            <span class="badge badge-soft badge-info badge-sm" title="{% trans '调用成功一次扣的点数（失败不扣）' %}">
-              {{ ep.price_detail.price|floatformat:"-4" }} {% trans "点/次" %}
-            </span>
-            {% endif %}
-            <span class="text-xs text-base-content/50" title="{% trans '单价按「服务 → 线路 → 端点」逐级继承' %}">
-              {% if ep.price_detail.source == 'endpoint' %}{% trans "端点价" %}
-              {% elif ep.price_detail.source == 'channel' %}{% trans "线路价" %}
-              {% elif ep.price_detail.source == 'service' %}{% trans "服务价" %}
-              {% else %}{% trans "默认价" %}{% endif %}
-            </span>
           </header>
           <div>
             <h3 class="text-base font-semibold">{{ ep.name }}</h3>

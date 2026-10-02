@@ -118,7 +118,7 @@ SERVICE = ServiceSpec(
         '`/api/pay/create` 下单拿到支付参数，`/api/pay/query` 查询并同步订单状态，'
         '`/api/pay/refund` 退款。调用方不需要对接各支付平台的协议与签名。',
         '**支付结果只认异步回调与主动查单，页面跳转不算**：用户付款完成后，平台会异步通知本站，'
-        '本站校验签名与金额后推进订单（给调用项目的点数余额充值）；通知偶有丢失，'
+        '本站校验签名与金额后推进订单（把本次金额加到下单时指定的 `user_id` 的账户余额上）；通知偶有丢失，'
         '因此调用方可在支付后轮询 `query` 接口兜底，两边都能触发且**只会发货一次**。',
         '**PC 与移动端同一条路**：支付形态由平台按 `method` / `device` 返回 ——'
         '`pay_info` 直接在页面渲染即可（`qrcode` 出二维码，`jump` 打开收银台地址）。'
@@ -138,7 +138,7 @@ SERVICE = ServiceSpec(
             endpoints=[
                 EndpointSpec(
                     'create', '统一下单', 'POST', '/api/pay/create',
-                    summary='创建一笔支付订单，返回支付参数（二维码内容或收银台跳转地址）与商户订单号。',
+                    summary='创建一笔支付订单并指定收款用户（`user_id`），返回支付参数（二维码内容或收银台跳转地址）与商户订单号。',
                     params=[
                         ParamSpec('pay_type', '支付方式', kind='select', required=True,
                                   options=_PAY_TYPES,
@@ -146,6 +146,9 @@ SERVICE = ServiceSpec(
                         ParamSpec('amount', '金额（元）', kind='text', required=True,
                                   placeholder='如 1.00',
                                   desc='必填。大于 0 的数字，两位小数；不得低于后台设置的单笔最低金额'),
+                        ParamSpec('user_id', '收款用户ID', kind='text', required=True,
+                                  placeholder='如 550e8400-e29b-41d4-a716-446655440000',
+                                  desc='必填。本站注册用户的 ID（UUID），支付成功后**按订单金额给他的账户余额加钱**（元）'),
                         ParamSpec('provider', '支付渠道', kind='text',
                                   desc='选填。不传则用第一个启用的渠道（当前仅 ezfp）'),
                         ParamSpec('subject', '商品名称', kind='text', placeholder='如 会员充值',
@@ -167,12 +170,10 @@ SERVICE = ServiceSpec(
                         '在 `method=jump` 下返回 https 收银台地址，故**不要硬编码某一种形态**。',
                         '**到账只认异步回调与主动查单**：`return_url` 的页面跳转只代表用户看到了结果页，'
                         '不能作为发货依据；请以 `query` 接口的 `paid` 或本站异步通知后的余额变化为准。',
-                        '**只扣一次**：同一订单重复回调 / 回调与查单同时命中时，'
+                        '**只发货一次**：同一订单重复回调 / 回调与查单同时命中时，'
                         '本站用行锁 + 状态判断保证发货只发生一次。',
                         '**移动端无需自备二维码库**：用 `method=jump` 时返回的是普通网页地址，'
                         'PC 浏览器、手机浏览器、WebView 都能直接打开。',
-                        '**下单本身不消耗项目点数**（本服务单价为 0 点/次），'
-                        '因此余额为 0 的项目也能调用本接口给自己的项目充值。',
                     ],
                     response_fields=_ORDER_FIELDS,
                     response_example=_ORDER_EXAMPLE,
@@ -187,7 +188,7 @@ SERVICE = ServiceSpec(
                     notes=[
                         '只能查**本调用方自己**下的单：订单按 APPID 归属隔离，别人的单一律返回「订单不存在」。',
                         '查到平台已支付且本站订单还没推进时，本接口会**当场补发货**'
-                        '（按后台汇率给调用项目加点数），因此「回调没收到」也能靠轮询查单兜底。',
+                        '（给下单时指定的 `user_id` 的账户余额加钱），因此「回调没收到」也能靠轮询查单兜底。',
                         '已下单后建议每 3～5 秒查一次，直到 `paid=true` 或超时；'
                         '不必高频轮询，平台侧订单状态不会瞬间多次跳变。',
                     ],
@@ -211,8 +212,8 @@ SERVICE = ServiceSpec(
                         '本接口只负责提交并把结果回写订单。',
                         '退款成功后本站订单状态变为 `refunded`（部分退款为 `partial_refunded`），'
                         '累计退款额记在 `refund_amount`。',
-                        '⚠️ **已充进调用项目点数的订单退款，点数不会自动扣回** ——'
-                        '需要人工核账时请联系本站管理员。',
+                        '⚠️ **退款会从收款用户的账户余额里扣回**：'
+                        '若这笔钱已被花掉，余额会被扣成负数（记为欠款），需人工跟进。',
                     ],
                     response_fields=_ORDER_FIELDS + [
                         ResponseFieldSpec('refund_amount', 'string', '累计已退款金额（元）'),

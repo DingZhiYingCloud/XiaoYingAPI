@@ -44,8 +44,6 @@ from API.apis.user_center.sign import build_sign
 from API.common.credential_crypto import hash_token
 from API.models import AuthMethod, User, UserApp, UserVerifyRecord
 
-from _test_support import grant_credit
-
 # ───────────────────────── 发信层 mock ─────────────────────────
 
 def _mock_send_email(subject, text, to_list, html_body=None):
@@ -116,7 +114,6 @@ def _create_app(name=None, status=True):
         name=name or f'{_PREFIX}项目{len(_created_apps)}',
         token_expire_days=7, status=status,
     )
-    grant_credit(obj)   # 新项目默认 0 点额度，签名调用会被 30012 拦掉，先补一笔
     entry = (obj.app_id, obj.app_secret, obj)
     _created_apps.append(entry)
     return entry

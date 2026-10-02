@@ -8,16 +8,13 @@
 - days=None 表示不限时间（全部历史）；days=N 表示最近 N 天（含今天）。
 - 时间按 stat_date（本地日期）过滤，与写入侧一致。
 - 排行类函数统一返回 calls / success / failed / success_rate / failed_rate /
-  avg_ms / max_ms / points / avg_points，调用方无需自己算比率。
-- `points` 是写入侧按**当时生效单价**结算好的消耗点数（`cost_points` 列），
-  改价不回填历史，因此「累计消耗」永远可对账；平均每次消耗 = points / calls。
+  avg_ms / max_ms，调用方无需自己算比率。
 - 小时维度（hour_analysis / service_hour_matrix）读 ApiCallStatHour，数据只覆盖最近
   HOUR_RETENTION_DAYS 天，超出部分自动截断；按天表是全历史真值，不受影响。
 - 筛选（service / app_id）只影响读，不影响写入口径。
 """
 from collections import defaultdict
 from datetime import timedelta
-from decimal import Decimal
 
 from django.db.models import Count, Max, Q, Sum
 from django.utils import timezone
@@ -38,7 +35,6 @@ _ORDER_KEYS = {
     'failed_rate': 'failed_rate',
     'avg_ms': 'avg_ms',
     'max_ms': 'max_ms',
-    'points': 'points',
 }
 
 
@@ -85,7 +81,6 @@ def _shape(field, row):
     calls = row['calls'] or 0
     success = row['success'] or 0
     failed = calls - success
-    points = row['points'] or Decimal('0')
     return {
         'key': row[field],
         'calls': calls,
@@ -95,8 +90,6 @@ def _shape(field, row):
         'failed_rate': _rate(failed, calls),
         'avg_ms': round((row['cost'] or 0) / calls, 1) if calls else 0,
         'max_ms': row['max_ms'] or 0,
-        'points': points,
-        'avg_points': (points / calls).quantize(Decimal('0.0001')) if calls else Decimal('0'),
     }
 
 
@@ -104,15 +97,14 @@ def _group(field, days=None, limit=None, service=None, app_id=None,
            order='calls', min_calls=0, start=None, end=None):
     """按某维度分组汇总并排序
 
-    :param order: 排序依据（calls / failed / failed_rate / avg_ms / max_ms / points），降序
+    :param order: 排序依据（calls / failed / failed_rate / avg_ms / max_ms），降序
     :param min_calls: 只保留调用量不低于该值的分组（用于失败率榜剔除小样本噪声）
     """
     rows = (_day_qs(days, service, app_id, start, end).values(field)
             .annotate(calls=Sum('call_count'),
                       success=Sum('call_count', filter=_SUCCESS),
                       cost=Sum('cost_sum_ms'),
-                      max_ms=Max('cost_max_ms'),
-                      points=Sum('cost_points')))
+                      max_ms=Max('cost_max_ms')))
     items = [_shape(field, row) for row in rows]
     if min_calls:
         items = [item for item in items if item['calls'] >= min_calls]
@@ -129,12 +121,10 @@ def _overview_of(qs):
         success=Sum('call_count', filter=_SUCCESS),
         cost=Sum('cost_sum_ms'),
         max_ms=Max('cost_max_ms'),
-        points=Sum('cost_points'),
         apps=Count('app_id', distinct=True, filter=~Q(app_id=NO_APP)),
     )
     calls = agg['calls'] or 0
     success = agg['success'] or 0
-    points = agg['points'] or Decimal('0')
     return {
         'calls': calls,
         'success': success,
@@ -143,14 +133,12 @@ def _overview_of(qs):
         'failed_rate': _rate(calls - success, calls),
         'avg_ms': round((agg['cost'] or 0) / calls, 1) if calls else 0,
         'max_ms': agg['max_ms'] or 0,
-        'points': points,
-        'avg_points': (points / calls).quantize(Decimal('0.0001')) if calls else Decimal('0'),
         'active_apps': agg['apps'] or 0,
     }
 
 
 def overview(days, service=None, app_id=None):
-    """概览：总调用、成功、失败、成功率、平均耗时、最大耗时、消耗点数、活跃项目数"""
+    """概览：总调用、成功、失败、成功率、平均耗时、最大耗时、活跃项目数"""
     return _overview_of(_day_qs(days, service, app_id))
 
 
@@ -177,7 +165,10 @@ def overview_compare(days, service=None, app_id=None):
 
 
 def daily_trend(days, service=None, app_id=None):
-    """按天趋势（补齐没有数据的日期，便于前端画连续曲线）"""
+    """按天趋势（补齐没有数据的日期，便于前端画连续曲线）
+
+    每行含 `calls / success / failed`。
+    """
     rows = (_day_qs(days, service, app_id).values('stat_date')
             .annotate(calls=Sum('call_count'),
                       success=Sum('call_count', filter=_SUCCESS)))
@@ -379,51 +370,3 @@ def public_service_calls():
     today_map = {row['service']: row['total'] or 0 for row in today_rows}
     return [{'service': row['service'], 'total_calls': row['total'] or 0,
              'today_calls': today_map.get(row['service'], 0)} for row in rows]
-
-
-# ==================== 接入项目用量 ====================
-
-def app_total_calls(app_id):
-    """某接入项目的累计调用次数（全部历史）
-
-    给前台「我的项目」详情页展示用。
-    """
-    agg = ApiCallStat.objects.filter(app_id=app_id).aggregate(total=Sum('call_count'))
-    return int(agg['total'] or 0)
-
-
-def app_total_points(app_id):
-    """某接入项目的累计消耗点数（全部历史，按当时单价结算）"""
-    agg = ApiCallStat.objects.filter(app_id=app_id).aggregate(total=Sum('cost_points'))
-    return agg['total'] or Decimal('0')
-
-
-def app_credit_summary(app_id):
-    """某接入项目的额度口径汇总（供调用统计「项目详情」展示）
-
-    返回：
-        balance          - 当前余额（`UserApp.balance`）
-        total_recharged  - 累计充值（`AppCreditLedger` 里正数之和；含扣回则看 net）
-        total_ledger     - 累计调整净值（正负相抵，= Σ流水）
-        total_points     - 累计消耗点数（统计表 cost_points 之和，按当时单价结算）
-        calls            - 累计调用次数（全部历史）
-        avg_points       - 平均每次调用消耗点数（total_points / calls）
-    项目不存在时各项为 0。
-    """
-    from API.models import AppCreditLedger, UserApp
-
-    app = UserApp.objects.filter(app_id=app_id).first()
-    ledger = AppCreditLedger.objects.filter(app__app_id=app_id)
-    net = ledger.aggregate(total=Sum('amount'))['total'] or Decimal('0')
-    recharged = (ledger.filter(amount__gt=0).aggregate(total=Sum('amount'))['total']
-                 or Decimal('0'))
-    calls = app_total_calls(app_id)
-    points = app_total_points(app_id)
-    return {
-        'balance': app.balance if app else Decimal('0'),
-        'total_recharged': recharged,
-        'total_ledger': net,
-        'total_points': points,
-        'calls': calls,
-        'avg_points': (points / calls).quantize(Decimal('0.0001')) if calls else Decimal('0'),
-    }

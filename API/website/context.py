@@ -46,6 +46,23 @@ def _fill_count(text, count):
     return (text or '').replace('{n}', str(count))
 
 
+def ip_ban_notice(request):
+    """返回 {'ip_ban_notice': dict|None}，供母版顶部「IP 已被封禁」提示条渲染
+
+    数据由 `IPBanMiddleware` 挂在 request 上（控制台 / 后台路径不参与判定，那里恒为 None）。
+    提示条里的联系方式直接用同页已有的 footer_contacts，不在这里重复取数。
+    """
+    ban = getattr(request, 'ip_ban', None)
+    if ban is None or request.path.startswith('/console/'):
+        return {'ip_ban_notice': None}
+    return {'ip_ban_notice': {
+        'ip': ban.ip,
+        'reason': ban.reason,
+        'permanent': ban.is_permanent,
+        'expire_time': ban.expire_time,
+    }}
+
+
 def site_appearance(request):
     """返回 {'site_feel', 'site_appearance', 'site_hero'}，供官网首页与文档中心套用视觉气质
 

@@ -49,7 +49,8 @@ def _render(request):
     rows = []
     for code, meta in SERVICES.items():
         # 注意：这里不能用 `_` 当丢弃变量 —— 会盖掉上面 `gettext as _` 的翻译函数
-        service, _created = QuotaService.objects.get_or_create(code=code)
+        service, _created = QuotaService.objects.get_or_create(
+            code=code, defaults={'threshold': meta.get('default_threshold')})
         rows.append({
             'code': code,
             'name': _(meta['name']),

@@ -8,22 +8,16 @@
     UserApp:
         id               - 项目唯一ID（UUID 主键）
         name             - 应用名称（唯一，不可重复）
-        owner            - 项目归属的注册用户（外键，可空）；留空 = 平台自有项目，只有超管能管
         app_id           - APPID（公开标识，唯一，系统自动生成，前缀 app_，
                             创建后固定不可修改）
         app_secret       - APPSECRET（签名密钥，系统自动生成，前缀 sk_，
                             创建后固定不可修改，仅项目方与用户中心知道）
         token_expire_days- Token 默认有效期天数（后台可配置，每个项目可不同）
-        balance          - 当前可用额度（点数，Decimal）。新建默认 0 = 什么都调不了
-                            （开放接口除外）；由超管在控制台手动充值增加，
-                            调用成功后按服务单价扣减（见 API/common/credit_guard.py）
         status           - 启用状态（True=正常，False=停止该项目的接入权限）
         create_time / updated_time - 继承 BaseModel
 
-额度口径（见 API/common/credit_guard.py）：**有余额才能调接口**，扣费只在调用成功
-（业务码 10000）时发生 —— 中间件在放行前判「余额 ≥ 本次单价」，实际扣减在调用统计
-批量落库时进行（进程内缓冲，满 200 条或每 5 秒一次）。因此判定略滞后于真实用量，
-允许余额短暂为负（表示欠费，下次充值自动抵扣）。
+授权口径：**只要项目启用、请求签名校验通过，就能调用全部接口**，不按次扣费、无额度门槛
+（历史上曾有「点数余额 + 按次扣点」，已整体下线）。
 
 自动生成规则:
     - 创建项目时无需手动填写 app_id / app_secret，系统自动生成并保证全局唯一
@@ -65,23 +59,12 @@ class UserApp(BaseModel):
     id = models.UUIDField('项目ID', primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField('应用名称', max_length=100, unique=True,
                             help_text='应用名称全局唯一，不可重复')
-    owner = models.ForeignKey(
-        'API.User', null=True, blank=True, on_delete=models.SET_NULL,
-        related_name='owned_apps', db_index=True, verbose_name='归属用户',
-        help_text='项目归属的注册用户，可在前台「我的项目」自助管理；'
-                  '留空表示平台自有项目，只有超管能管',
-    )
     app_id = models.CharField('APPID', max_length=32, unique=True, db_index=True, blank=True,
                               help_text='公开标识，系统自动生成（app_ 前缀），创建后固定')
     app_secret = EncryptedSecretField('APPSECRET', max_length=200, blank=True,
                                       help_text='签名密钥，系统自动生成（sk_ 前缀），HMAC-SHA256 签名用，创建后固定；落库 AES 加密存储（S-06）')
     token_expire_days = models.PositiveIntegerField('Token有效天数', default=7,
                                                     help_text='该项目的登录 Token 默认有效期（天），后台可修改')
-    balance = models.DecimalField(
-        '可用额度', max_digits=16, decimal_places=2, default=0,
-        help_text='点数余额：新建默认 0（什么都调不了），超管在控制台充值后增加，'
-                  '调用成功按服务单价扣减；允许为负（欠费，下次充值抵扣）',
-    )
     status = models.BooleanField('启用状态', default=True, db_index=True,
                                  help_text='True=正常，False=停止该项目接入权限')
 

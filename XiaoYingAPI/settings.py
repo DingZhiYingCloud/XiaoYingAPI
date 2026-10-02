@@ -59,6 +59,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware', # 消息中间件,用来处理消息相关的请求和响应
     'django.middleware.clickjacking.XFrameOptionsMiddleware', # 用来处理点击劫持攻击的中间件
     'API.common.middleware.ApiRequestLogMiddleware', # 请求日志（A-05）+ 调用统计（A-03）：必须在认证中间件之前，认证被拒的请求也要记录
+    'API.common.middleware.IPBanMiddleware', # IP 封禁：/api/ 命中即返回「IP 已被封禁」，网页侧只标记（顶部横幅提示）；在认证之前，被封请求不走签名校验
     'API.common.middleware.ApiAuthMiddleware', # API 服务认证中间件：按服务策略（服务→线路→端点，逐级继承）决定哪些 /api/ 服务需用户中心签名认证
     'API.common.middleware.ApiJsonErrorMiddleware', # /api/ 路径 404 / 405 统一返回 JSON（兜底）
 ]
@@ -143,6 +144,8 @@ TEMPLATES = [
                 'API.website.context.footer_contacts',
                 # 官网外观（视觉气质预设 + 首页 Hero 文案覆盖），超管在 /console/appearance/ 维护
                 'API.website.context.site_appearance',
+                # IP 封禁提示条（命中封禁时前台顶部显示原因与到期时间，见 API/common/ip_guard.py）
+                'API.website.context.ip_ban_notice',
                 # 文档中心左侧服务菜单（仅 /docs/* 由中间件注入）
                 'API.website.docs_menu.docs_menu_context',
                 # 控制台左侧导航（仅 /console/* 注入，菜单在 console_menu.py 一处声明）
@@ -228,6 +231,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # 媒体文件配置
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# 站点对外基础地址（scheme://host，不要带结尾斜杠），如 https://xiaoyingapi.com
+# 用途：在没有 request 的场景（后台线程）把站内相对地址（如 /media/uploads/...）拼成
+# 公网可访问的绝对地址 —— 目前只作为「问题反馈」送审附件的兜底：反馈附件默认从本地读出
+# 后内联给审核模型（见 API/apis/feedback/ai.py 的 _read_attachment），只有体积超过内联上限
+# 的超大视频才需要拼公网地址让上游抓取。留空不会退化成「不审附件」，只是那类超大视频会被跳过。
+SITE_URL = (os.getenv('XYAPI_SITE_URL') or '').strip().rstrip('/')
 
 
 # ==================== 影视爬虫缓存（按「服务 + 线路」分目录） ====================

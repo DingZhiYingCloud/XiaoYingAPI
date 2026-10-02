@@ -99,9 +99,25 @@ form_action 是提交给后端分发的动作名（见 console_ai._handle_post�
         <span class="text-base-content/60">{% trans "最多图片数" %}</span>
         <input type="text" name="max_images" inputmode="numeric" value="2" class="input input-sm w-20" required />
       </label>
+      <label class="flex items-center gap-2 text-sm">
+        <input type="checkbox" name="supports_video" value="1" class="checkbox checkbox-sm" />
+        <span>{% trans "支持视频理解" %}</span>
+      </label>
+      <label class="flex items-center gap-2 text-sm">
+        <span class="text-base-content/60">{% trans "最多视频数" %}</span>
+        <input type="text" name="max_videos" inputmode="numeric" value="1" class="input input-sm w-20" required />
+      </label>
+      <label class="flex items-center gap-2 text-sm">
+        <input type="checkbox" name="supports_audio" value="1" class="checkbox checkbox-sm" />
+        <span>{% trans "支持音频理解" %}</span>
+      </label>
+      <label class="flex items-center gap-2 text-sm">
+        <span class="text-base-content/60">{% trans "最多音频数" %}</span>
+        <input type="text" name="max_audios" inputmode="numeric" value="1" class="input input-sm w-20" required />
+      </label>
     </div>
     <p class="text-xs text-base-content/50">
-      {% trans "勾选后才允许请求携带 images；最多图片数仅对支持视觉的模型生效，超出会返回参数值非法。" %}
+      {% trans "勾选后才允许请求携带 images / videos / audios；张数与个数上限仅对相应能力生效，超出会返回参数值非法。视频走 video_url 块、音频走 input_audio 块，需上游模型支持相应能力（如豆包 Seed 2.0 全模态）。" %}
     </p>
   </section>
 

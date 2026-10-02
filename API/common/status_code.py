@@ -44,6 +44,10 @@ class StatusCode:
     # 权限相关 20020-20029
     FORBIDDEN = 20020
     ACCOUNT_DISABLED = 20021
+    # IP 已被封禁：客户端 IP 命中后台「IP 封禁」列表时，/api/ 一律返回此码
+    # （不做签名校验，也不落具体业务）。与 FORBIDDEN 区分开 —— 调用方据此知道
+    # 不是自己没权限，而是这个来源 IP 被人工封禁了，需联系管理员解禁。
+    IP_BANNED = 20022
 
     # 资源相关 20030-20039
     NOT_FOUND = 20030
@@ -73,9 +77,6 @@ class StatusCode:
     # 资源不足 30010-30019
     INSUFFICIENT_BALANCE = 30010
     INSUFFICIENT_STOCK = 30011
-    # 额度不足：接入项目余额低于本次调用的生效单价（扣费与判定见 API/common/credit_guard.py）。
-    # 与 RATE_LIMITED(20040) 区分开——那个是「请求太频繁」，这个是「余额用完了」，调用方需去充值。
-    QUOTA_EXCEEDED = 30012
 
     # ==================== 4xxxx 第三方/外部服务错误 ====================
 
@@ -123,6 +124,7 @@ class StatusCode:
 
         FORBIDDEN: '无权限',
         ACCOUNT_DISABLED: '账号已被禁用',
+        IP_BANNED: 'IP 已被封禁',
 
         NOT_FOUND: '资源不存在',
         RESOURCE_ALREADY_EXISTS: '资源已存在',
@@ -139,7 +141,6 @@ class StatusCode:
 
         INSUFFICIENT_BALANCE: '余额不足',
         INSUFFICIENT_STOCK: '库存不足',
-        QUOTA_EXCEEDED: '额度不足',
 
         EXTERNAL_API_FAILED: '外部API调用失败',
         EXTERNAL_API_TIMEOUT: '外部API调用超时',

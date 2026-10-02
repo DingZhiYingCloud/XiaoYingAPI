@@ -1,5 +1,5 @@
 {% extends 'console/base.html' %}
-{% load i18n %}
+{% load i18n static %}
 
 {# 问题反馈中心 · 反馈管理：筛选列表 + 详情（回复 / 送审 / 公开区 / 关闭 / 删除） #}
 
@@ -49,19 +49,7 @@
     </div>
 
     {% if detail.attachments %}
-    <div class="grid gap-2 sm:grid-cols-4">
-      {% for att in detail.attachments %}
-      {% if att.is_image %}
-      <a href="{{ att.url }}" target="_blank" rel="noopener noreferrer">
-        <img src="{{ att.url }}" alt="{{ att.original_name }}" loading="lazy"
-             class="h-28 w-full rounded-box border border-base-300 object-cover" />
-      </a>
-      {% else %}
-      <video src="{{ att.url }}" controls preload="metadata"
-             class="h-28 w-full rounded-box border border-base-300 bg-base-200"></video>
-      {% endif %}
-      {% endfor %}
-    </div>
+    {% include 'feedback/_attachments.html' with attachments=detail.attachments cols='sm:grid-cols-4' %}
     {% endif %}
 
     {# ---- 回复列表 ---- #}
@@ -79,19 +67,7 @@
       </div>
       <p class="mt-1.5 text-sm leading-relaxed whitespace-pre-line">{{ reply.content }}</p>
       {% if reply.attachments.all %}
-      <div class="mt-2 grid gap-2 sm:grid-cols-4">
-        {% for att in reply.attachments.all %}
-        {% if att.is_image %}
-        <a href="{{ att.url }}" target="_blank" rel="noopener noreferrer">
-          <img src="{{ att.url }}" alt="{{ att.original_name }}" loading="lazy"
-               class="h-24 w-full rounded-box border border-base-300 object-cover" />
-        </a>
-        {% else %}
-        <video src="{{ att.url }}" controls preload="metadata"
-               class="h-24 w-full rounded-box border border-base-300 bg-base-200"></video>
-        {% endif %}
-        {% endfor %}
-      </div>
+      {% include 'feedback/_attachments.html' with attachments=reply.attachments.all cols='sm:grid-cols-4' %}
       {% endif %}
     </div>
     {% empty %}
@@ -346,6 +322,8 @@
 
 {% block js %}
 {% if detail %}
+{% include 'feedback/_lightbox.html' %}
+<script src="{% static 'js/site/feedback_media.js' %}?v=20261002a"></script>
 <script>
 /* 回复发送：先让后端做一次 AI 语气预检，AI 提醒时弹窗由管理员决定是否强制发送。
    预检结果通过隐藏字段回传（一次回复只调用一次 AI），服务端仍会按同一口径复核。 */

@@ -12,10 +12,14 @@
             送审 / 公开区隐藏 / 关闭重开 / 删除）
     第九轮  超管后台 · 反馈中心设置（开关与规则 / 类型字典 / 联系方式平台 / 项目联系方式）
     第十轮  官网页脚「联系我们」（后台没配则隐藏 / 配了则展示平台名、值与可点击链接）
+    第十一轮  AI 送审的媒体附件（附件从本地内联送出、不依赖站点地址 / 图片送审前压缩 /
+            读不出来才回落公网地址 / 模型不支持多模态时不带附件 / 张数上限生效 /
+            送审消息里确实挂了 image_url 与 video_url）
 
 运行方式（使用真实数据库，结束后自动清理测试数据并还原全局设置）：
     .venv\\Scripts\\python.exe scripts\\test_feedback.py
 """
+import base64
 import io
 import itertools
 import os
@@ -306,6 +310,17 @@ def round_ticket(app, user, token, guest_fb):
     detail_url = reverse('website:feedback_detail', args=[app.app_id, fb.pk])
     r = c.get(detail_url)
     _check('本人可看自己未过审的反馈', r.status_code == 200, r.status_code)
+
+    # 附件的展示形态：缩略图 + 灯箱触发点（图片）/ 内联播放器（视频）——灯箱外壳随页渲染
+    own_att = FeedbackAttachment.objects.create(
+        feedback=fb, kind='image', path='uploads/images/tmp_owner_detail.png',
+        original_name='own.png', size=1024, ext='png', sort=0)
+    r = c.get(detail_url)
+    body = r.content.decode()
+    _check('本人详情页渲染附件缩略图与灯箱触发点',
+           f'data-fb-lightbox="{own_att.url}"' in body and 'id="fb-lightbox"' in body
+           and 'own.png' in body, r.status_code)
+    _check('附件标注原始文件名与体积', 'KB' in body, own_att.size)
 
     c.post(detail_url, {'content': '补充：导出格式希望支持 Excel。'})
     _check('跟帖写入成功', FeedbackReply.objects.filter(
@@ -719,6 +734,120 @@ def round_footer_contacts():
     _check('页脚联系方式数据已还原', ProjectContact.objects.filter(app=web_app).count() == len(backup))
 
 
+# ───────────────────────── 第十一轮 AI 送审的媒体附件 ─────────────────────────
+
+def round_ai_media(app, feedback_type):
+    """AI 送审会把用户上传的图片 / 视频一并带给模型（是否带、带多少都按模型能力与上限）
+
+    真正的调用用替身打桩（不外发），只验证「组装出来的 messages 长什么样」。
+
+    附件走**本地内联**（不依赖站点公网地址）：读得到就读出来压成 data URI，
+    读不到 / 体积超限才回落到公网地址。这里两种情形都要覆盖。
+    """
+    print('\n===== 第十一轮 AI 送审的媒体附件 =====')
+    from unittest.mock import patch
+
+    from django.test import override_settings
+
+    from API.apis.feedback import ai as fb_ai
+
+    # 造真实存在的附件文件：内联要能真的读到磁盘（图片故意做大，验证送审前会压缩）
+    img_dir = os.path.join(settings.MEDIA_ROOT, 'uploads', 'images')
+    vid_dir = os.path.join(settings.MEDIA_ROOT, 'uploads', 'videos')
+    os.makedirs(img_dir, exist_ok=True)
+    os.makedirs(vid_dir, exist_ok=True)
+    img_name, vid_name = 'probe_big.png', 'probe_small.mp4'
+    with open(os.path.join(img_dir, img_name), 'wb') as f:
+        buf = io.BytesIO()
+        Image.new('RGB', (2400, 1600), (200, 60, 60)).save(buf, 'PNG')
+        f.write(buf.getvalue())
+    with open(os.path.join(vid_dir, vid_name), 'wb') as f:
+        f.write(b'\x00\x00\x00\x18ftypmp42' + b'x' * 512)
+    _created_files.append(os.path.join(img_dir, img_name))
+    _created_files.append(os.path.join(vid_dir, vid_name))
+
+    img_rel = 'uploads/images/' + img_name
+    vid_rel = 'uploads/videos/' + vid_name
+
+    fb = Feedback.objects.create(app=app, type=feedback_type, content='带附件的反馈',
+                                 status=Feedback.Status.PENDING)
+    _created_feedback.append(str(fb.pk))
+    FeedbackAttachment.objects.create(feedback=fb, kind='image', path=img_rel,
+                                      original_name=img_name, size=123, ext='png', sort=0)
+    FeedbackAttachment.objects.create(feedback=fb, kind='video', path=vid_rel,
+                                      original_name=vid_name, size=456, ext='mp4', sort=1)
+
+    multimodal = {'key': 'fake-multimodal', 'supports_vision': True, 'max_images': 2,
+                  'supports_video': True, 'max_videos': 1,
+                  'temperature': None, 'max_tokens': None, 'stop_list': []}
+    text_only = {'key': 'fake-text', 'supports_vision': False, 'max_images': 0,
+                 'supports_video': False, 'max_videos': 0}
+
+    # 11.1 附件从本地内联送出 —— 不配站点地址也能真正审到图（本地开发的默认情形）
+    with override_settings(SITE_URL=''):
+        images, videos = fb_ai._review_media(fb, multimodal)
+    _check('不配站点地址时图片仍以 data URI 内联送出',
+           len(images) == 1 and images[0].startswith('data:image/jpeg;base64,'), images[:1])
+    _check('不配站点地址时视频同样内联送出',
+           len(videos) == 1 and videos[0].startswith('data:video/mp4;base64,'), videos[:1])
+
+    # 11.2 送审图片会被压到长边上限内（原图 2400×1600，压后长边不超过 1280）
+    head = images[0].split(',', 1)[1] if images and ',' in images[0] else ''
+    if head:
+        with Image.open(io.BytesIO(base64.b64decode(head))) as sent:
+            _check('送审图片已压到长边上限内', max(sent.size) <= fb_ai.REVIEW_IMAGE_MAX_EDGE,
+                   sent.size)
+    else:
+        _check('送审图片已压到长边上限内', False, '没有拿到内联图片')
+
+    # 11.3 内联优先于站点地址（配了地址也不会让上游回访我们的站点）
+    with override_settings(SITE_URL='https://example.com'):
+        images2, _ = fb_ai._review_media(fb, multimodal)
+    _check('配置了站点地址时仍优先内联', images2 == images, images2[:1])
+
+    # 11.4 本地读不出来的附件才回落公网绝对地址
+    missing = Feedback.objects.create(app=app, type=feedback_type, content='附件丢了',
+                                      status=Feedback.Status.PENDING)
+    _created_feedback.append(str(missing.pk))
+    FeedbackAttachment.objects.create(feedback=missing, kind='image',
+                                      path='uploads/images/gone.png', original_name='gone.png',
+                                      size=1, ext='png', sort=0)
+    with override_settings(SITE_URL='https://example.com/'):
+        images3, _ = fb_ai._review_media(missing, multimodal)
+    _check('附件读不出来时回落公网绝对地址',
+           images3 == ['https://example.com/media/uploads/images/gone.png'], images3)
+    with override_settings(SITE_URL=''):
+        images4, _ = fb_ai._review_media(missing, multimodal)
+    _check('读不出来又没配站点地址时跳过该附件', images4 == [], images4)
+
+    # 11.5 审核模型不支持多模态 → 一个附件都不带（否则上游直接报参数非法）
+    images5, videos5 = fb_ai._review_media(fb, text_only)
+    _check('审核模型不支持视觉 / 视频时不带附件', images5 == [] and videos5 == [])
+
+    # 11.6 张数上限为 0 → 该类附件不带
+    images6, videos6 = fb_ai._review_media(fb, {**multimodal, 'max_images': 0})
+    _check('图片张数上限为 0 时只带视频', images6 == [] and len(videos6) == 1, (images6, videos6))
+
+    # 11.7 端到端：送审时附件确实以多模态内容块挂在最后一条 user 消息上
+    captured = {}
+
+    def _fake_chat(target, messages, **kwargs):
+        captured['messages'] = messages
+        return True, {'reply': '{"verdict": "pass", "reason": ""}', 'model': target['key'],
+                      'usage': None, 'finish_reason': 'stop'}
+
+    with patch.object(fb_ai, 'resolve_review_target', return_value=(multimodal, None)), \
+            patch.object(fb_ai.ai_utils, 'chat_completion', _fake_chat):
+        ok, _note = fb_ai.review_submission(fb)
+
+    last = (captured.get('messages') or [{}])[-1]
+    parts = [p['type'] for p in last.get('content')] if isinstance(last.get('content'), list) else []
+    _check('送审时图片 / 视频作为多模态内容一并发给模型',
+           ok and parts == ['text', 'image_url', 'video_url'], parts)
+    _check('送审正文仍以文本形式放在最前',
+           isinstance(last.get('content'), list) and last['content'][0]['type'] == 'text')
+
+
 # ───────────────────────── 主流程 ─────────────────────────
 
 def _setting_fields():
@@ -800,6 +929,7 @@ def run():
             round_console(app, feedback_type)
             round_console_settings()
             round_footer_contacts()
+            round_ai_media(app, feedback_type)
         else:
             _check('游客提交成功（后续轮次依赖此条）', False, '未创建反馈，跳过后续轮次')
     finally:

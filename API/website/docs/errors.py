@@ -61,9 +61,6 @@ _ENTRIES = (
     (StatusCode.SERVICE_DEVELOPING,
      '该服务还在开发中，暂未对外开放。',
      '等待服务上线后再调用。'),
-    (StatusCode.QUOTA_EXCEEDED,
-     '项目的当日 / 当月调用量已达到配额上限。',
-     '等待配额周期重置，或联系管理员调整配额。'),
 
     (StatusCode.EXTERNAL_API_FAILED,
      '平台调用上游第三方服务失败（上游异常或网络问题）。',

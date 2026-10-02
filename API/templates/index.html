@@ -3,7 +3,7 @@
 
 {% block title %}{% trans "小影API - 通用 API 聚合服务平台" %}{% endblock %}
 {% block keywords %}{% trans "小影API,API聚合,免费API,接口平台,视频解析,代理IP,短信验证,用户中心" %}{% endblock %}
-{% block description %}{% blocktrans with n=services|length %}小影API 是一个通用 API 聚合服务平台，聚合音乐、视频解析、AI、代理IP、验证码、短信、邮箱、用户中心等 {{ n }} 类服务能力，统一签名认证与标准 JSON 响应，注册免费、调用按次消耗项目额度（点数）。{% endblocktrans %}{% endblock %}
+{% block description %}{% blocktrans with n=services|length %}小影API 是一个通用 API 聚合服务平台，聚合音乐、视频解析、AI、代理IP、验证码、短信、邮箱、用户中心等 {{ n }} 类服务能力，统一签名认证与标准 JSON 响应，注册免费、开通接入项目即可调用全部接口。{% endblocktrans %}{% endblock %}
 
 {% block content %}
 
@@ -59,7 +59,7 @@
           <i data-lucide="terminal" class="h-3.5 w-3.5 text-accent" aria-hidden="true"></i>{% trans "文档页在线调试" %}
         </li>
         <li class="feel-chip gap-1.5">
-          <i data-lucide="coins" class="h-3.5 w-3.5 text-warning" aria-hidden="true"></i>{% trans "按次计费 · 点数余额" %}
+          <i data-lucide="infinity" class="h-3.5 w-3.5 text-warning" aria-hidden="true"></i>{% trans "开通即无限调用" %}
         </li>
       </ul>
     </div>
@@ -155,7 +155,7 @@
     <h2 class="feel-h2 mt-3 text-3xl sm:text-4xl">{% trans "想得到的接口，基本都在这里" %}</h2>
     <p class="feel-sub mt-3 text-sm sm:text-base">
       {% blocktrans with n=services|length %}聚合 {{ n }} 类服务能力，全部统一在 <code class="font-mono text-xs text-primary">/api/</code> 前缀下对外提供；可用的服务点开即进文档页调试。{% endblocktrans %}
-      {% trans "调用按次消耗项目额度（点数），单价以文档页标价为准。" %}
+      {% trans "接入项目开通后即可调用全部接口，不按次计费。" %}
     </p>
   </div>
 
@@ -208,8 +208,8 @@
       </li>
       <li class="feel-card p-5">
         <span class="font-mono text-3xl font-bold text-primary">02</span>
-        <h3 class="mt-2 font-semibold">{% trans "创建接入项目" %}</h3>
-        <p class="mt-1 text-sm text-base-content/70">{% trans "登录后在「我的项目」自助创建，立即获得专属 APPID 与 APPSECRET，创建项目免费。" %}</p>
+        <h3 class="mt-2 font-semibold">{% trans "开通接入项目" %}</h3>
+        <p class="mt-1 text-sm text-base-content/70">{% trans "联系管理员在后台创建接入项目，开通后获得专属 APPID 与 APPSECRET。" %}</p>
       </li>
       <li class="feel-card p-5">
         <span class="font-mono text-3xl font-bold text-primary">03</span>
@@ -218,8 +218,8 @@
       </li>
       <li class="feel-card p-5">
         <span class="font-mono text-3xl font-bold text-primary">04</span>
-        <h3 class="mt-2 font-semibold">{% trans "充值额度并调用" %}</h3>
-        <p class="mt-1 text-sm text-base-content/70">{% blocktrans %}为项目充值点数后即可调用（新项目默认 0 额度）；成功后按次扣点、失败不扣，统一 <code class="font-mono text-xs">{ code, msg, data }</code> 响应。{% endblocktrans %}</p>
+        <h3 class="mt-2 font-semibold">{% trans "开通后调用" %}</h3>
+        <p class="mt-1 text-sm text-base-content/70">{% blocktrans %}接入项目开通后即可调用全部对外开放的接口，不按次计费，统一 <code class="font-mono text-xs">{ code, msg, data }</code> 响应。{% endblocktrans %}</p>
       </li>
     </ol>
 
@@ -245,13 +245,13 @@
     <details class="collapse collapse-arrow feel-card">
       <summary class="collapse-title font-medium">{% trans "接入项目需要自己创建吗？APPID/APPSECRET 怎么获取？" %}</summary>
       <div class="collapse-content text-sm leading-relaxed text-base-content/70">
-        {% blocktrans %}登录后在「我的项目」页自助创建接入项目，创建后即可看到 APPID / APPSECRET，创建项目免费。APPSECRET 请务必保存在你的服务端，严禁写入前端代码或提交到仓库。{% endblocktrans %}
+        {% blocktrans %}接入项目统一由管理员在后台创建，注册账号后请联系管理员开通。开通时会一次性展示 APPID / APPSECRET，请立即保存。APPSECRET 必须保存在你的服务端，严禁写入前端代码或提交到仓库。{% endblocktrans %}
       </div>
     </details>
     <details class="collapse collapse-arrow feel-card">
-      <summary class="collapse-title font-medium">{% trans "调用接口要收费吗？额度怎么算？" %}</summary>
+      <summary class="collapse-title font-medium">{% trans "调用接口要收费吗？" %}</summary>
       <div class="collapse-content text-sm leading-relaxed text-base-content/70">
-        {% blocktrans %}注册、登录、创建项目与浏览文档均免费。调用接口按次消耗项目额度（点数），单价以接口文档页标价为准（未单独配置的服务默认 1 点/次）；只有调用成功才扣点，失败不扣。新建项目默认 0 额度，额度不足时无法调用接口（开放接口除外），请联系管理员充值。{% endblocktrans %}
+        {% blocktrans %}注册、登录与浏览文档均免费。接入项目开通后即可调用全部对外开放的接口，<strong>不按次计费、没有额度门槛</strong>（开放接口本就免签名）。{% endblocktrans %}
       </div>
     </details>
     <details class="collapse collapse-arrow feel-card">

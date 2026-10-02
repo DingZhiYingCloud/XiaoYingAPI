@@ -65,15 +65,8 @@
               </span>
             </div>
             <code class="mt-1 block font-mono text-xs opacity-70">APPID：{{ app.app_id }}</code>
-            <p class="mt-1 text-xs text-base-content/60">
-              {% trans "归属：" %}{% if app.owner %}{{ app.owner.account }}（{{ app.owner.username|default:app.owner.account }}）{% else %}{% trans "平台自有（无归属用户）" %}{% endif %}
-            </p>
             <p class="mt-0.5 text-xs text-base-content/60">
               {% blocktrans with days=app.token_expire_days created=app.create_time|date:'Y-m-d H:i' %}Token 有效期 {{ days }} 天 · 创建于 {{ created }}{% endblocktrans %}
-            </p>
-            <p class="mt-0.5 text-xs text-base-content/60">
-              {% trans "额度余额：" %}<span class="font-mono {% if app.balance <= 0 %}text-error{% endif %}">{{ app.balance }}</span> {% trans "点" %}
-              · <a class="link" href="{% url 'website:console_credits' %}?q={{ app.name|urlencode }}">{% trans "去充值" %}</a>
             </p>
             <div class="mt-1.5 flex items-center gap-2">
               {% if reveal and app.pk|stringformat:'s' == reveal.id %}

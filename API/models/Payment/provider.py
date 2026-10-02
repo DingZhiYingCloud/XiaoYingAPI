@@ -10,7 +10,14 @@
     platform_public_key_enc - 平台公钥（**密文**，用于校验平台返回与异步通知的签名）
     gateway             - 网关地址（留空用 provider 的默认地址，便于切测试环境）
     enabled_methods     - 允许的支付方式（逗号分隔，如 alipay,wxpay；留空 = 该渠道全部可用）
+    refund_mode         - 退款方式：auto 自助退款（调平台接口）/ manual 人工受理（见下）
     sort / remark       - 排序 / 备注
+
+**为什么有 refund_mode**：并非每个渠道都对本商户开通了「自助退款」—— 易支付当前就是这样，
+调它的退款接口会被回「管理员未开启商户后台自助退款」。这类渠道退款不能直接报错，
+而要**先受理、落一条待退款申请、人工在平台后台退**（见 `PayOrder.PayRefundRequest`）。
+把它做成渠道级配置而不是代码常量：平台哪天给开通了，后台改成「自助退款」即可，不用改代码；
+以后新接的渠道也各配各的。
 
 密钥为什么落库而不是放 .env：与 AI 厂商 Key 同一套方案（`API/common/credential_crypto.py`
 的 AES-256-GCM，密钥由 SECRET_KEY 派生）。好处是后台可维护、多渠道各自一份、仓库里
@@ -24,6 +31,13 @@ from API.common.credential_crypto import decrypt_credential, encrypt_credential
 
 class PayProvider(BaseModel):
     """支付渠道配置（一渠道一行）"""
+
+    REFUND_AUTO = 'auto'
+    REFUND_MANUAL = 'manual'
+    REFUND_MODE_CHOICES = (
+        (REFUND_AUTO, '自助退款（调平台接口）'),
+        (REFUND_MANUAL, '人工受理（平台未开通自助退款）'),
+    )
 
     code = models.CharField('渠道标识', max_length=32, unique=True,
                             help_text='与 providers 注册表 key 一致，如 ezfp')
@@ -42,6 +56,10 @@ class PayProvider(BaseModel):
                                help_text='留空使用内置默认地址（如 https://www.ezfp.cn），便于切换测试环境')
     enabled_methods = models.CharField('允许的支付方式', max_length=200, blank=True, default='',
                                        help_text='逗号分隔，如 alipay,wxpay；留空表示该渠道全部支付方式可用')
+    refund_mode = models.CharField('退款方式', max_length=10, choices=REFUND_MODE_CHOICES,
+                                   default=REFUND_AUTO,
+                                   help_text='人工受理：退款不调平台接口，改为落「待退款申请」，'
+                                             '由管理员在平台后台退款后回本站标记')
     sort = models.PositiveIntegerField('排序', default=0, help_text='数字越小越靠前')
     remark = models.CharField('备注', max_length=200, blank=True, default='')
 
@@ -84,3 +102,8 @@ class PayProvider(BaseModel):
     def method_allowed(self, pay_type: str) -> bool:
         allowed = self.method_list
         return not allowed or pay_type in allowed
+
+    @property
+    def supports_auto_refund(self) -> bool:
+        """本渠道是否支持「调平台接口自助退款」（False = 退款走人工受理）"""
+        return self.refund_mode != self.REFUND_MANUAL

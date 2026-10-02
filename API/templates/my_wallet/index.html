@@ -2,8 +2,8 @@
 {% load i18n %}
 
 {% block title %}{% trans "充值中心 - 小影API" %}{% endblock %}
-{% block keywords %}{% trans "充值中心,账户余额,在线支付,兑换点数" %}{% endblock %}
-{% block description %}{% trans "小影API 充值中心：为账户余额充值（支付宝 / 微信扫码支付），并把余额按汇率兑换成接入项目的点数。" %}{% endblock %}
+{% block keywords %}{% trans "充值中心,账户余额,在线支付" %}{% endblock %}
+{% block description %}{% trans "小影API 充值中心：为账户余额充值（支付宝 / 微信扫码支付）。" %}{% endblock %}
 
 {% block content %}
 <section class="mx-auto w-full max-w-4xl px-4 py-8 sm:py-10">
@@ -17,7 +17,7 @@
   <div class="mt-2">
     <h1 class="text-2xl font-bold sm:text-3xl">{% trans "充值中心" %}</h1>
     <p class="mt-1 text-sm text-base-content/70">
-      {% trans "充值到账户余额（元），再按汇率兑换成接入项目的点数；接口调用扣的是项目点数。" %}
+      {% trans "为账户余额充值（元），可随时查看充值与退款记录。" %}
     </p>
   </div>
 
@@ -32,7 +32,7 @@
   {% endif %}
 
   {# ===== 余额概览 ===== #}
-  <div class="mt-5 grid gap-3 sm:grid-cols-3">
+  <div class="mt-5 grid gap-3 sm:grid-cols-2">
     <div class="rounded-box border border-base-300 bg-base-100 p-4">
       <p class="text-xs text-base-content/60">{% trans "账户余额" %}</p>
       <p class="mt-1 font-mono text-2xl font-semibold {% if summary.balance <= 0 %}text-base-content/70{% else %}text-primary{% endif %}">
@@ -42,10 +42,6 @@
     <div class="rounded-box border border-base-300 bg-base-100 p-4">
       <p class="text-xs text-base-content/60">{% trans "累计充值" %}</p>
       <p class="mt-1 font-mono text-2xl font-semibold">{{ summary.total_recharged }}</p>
-    </div>
-    <div class="rounded-box border border-base-300 bg-base-100 p-4">
-      <p class="text-xs text-base-content/60">{% trans "已兑换成点数" %}</p>
-      <p class="mt-1 font-mono text-2xl font-semibold">{{ summary.total_transferred }}</p>
     </div>
   </div>
 
@@ -115,14 +111,21 @@
         </span>
       </div>
 
-      <div class="grid gap-2">
+      <div class="grid gap-2.5">
         <span class="text-sm font-semibold">{% trans "支付方式" %}</span>
-        <div class="flex flex-wrap gap-3">
-          {% for value, label in methods %}
-          <label class="flex cursor-pointer items-center gap-1.5 text-sm">
-            <input type="radio" name="pay_type" value="{{ value }}" class="radio radio-sm"
+        {# 品牌图标 + 卡片式单选：整卡可点，选中态用 has-[:checked] 高亮（配色走主题变量） #}
+        <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {% for value, label, icon in methods %}
+          <label class="flex cursor-pointer items-center gap-2.5 rounded-box border border-base-300 bg-base-100 px-3 py-2.5 text-sm transition
+                        hover:border-primary/40 hover:bg-base-200/60
+                        has-[:checked]:border-primary has-[:checked]:bg-primary/10 has-[:checked]:shadow-sm
+                        focus-within:ring-2 focus-within:ring-primary/30">
+            <input type="radio" name="pay_type" value="{{ value }}" class="radio radio-sm radio-primary"
                    {% if forloop.first %}checked{% endif %} />
-            {% trans label %}
+            {% if icon %}
+            <img src="{{ icon }}" alt="" loading="lazy" class="h-5 w-6 shrink-0 object-contain" />
+            {% endif %}
+            <span class="min-w-0 truncate font-medium">{% trans label %}</span>
           </label>
           {% endfor %}
         </div>
@@ -140,39 +143,6 @@
         </span>
       </div>
     </form>
-    {% endif %}
-  </div>
-
-  {# ===== 余额兑换项目点数 ===== #}
-  <div class="mt-5 rounded-box border border-base-300 bg-base-100 p-5">
-    <h2 class="text-lg font-semibold">{% trans "兑换成项目点数" %}</h2>
-    <p class="mt-1 text-xs text-base-content/70">
-      {% blocktrans with rate=setting.points_per_yuan %}当前汇率：1 元 = {{ rate }} 点。兑换后余额减少、对应项目的点数增加，接口调用按点数扣费。{% endblocktrans %}
-    </p>
-    {% if apps %}
-    <form method="post" action="{% url 'website:my_wallet' %}" class="mt-3 flex flex-wrap items-end gap-3">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="transfer" />
-      <label class="grid gap-1">
-        <span class="text-sm font-semibold">{% trans "目标项目" %}</span>
-        <select name="app_id" class="select select-bordered select-sm min-w-56">
-          {% for app in apps %}
-          <option value="{{ app.pk }}">{{ app.name }}（{% trans "当前" %} {{ app.balance }} {% trans "点" %}）</option>
-          {% endfor %}
-        </select>
-      </label>
-      <label class="grid gap-1">
-        <span class="text-sm font-semibold">{% trans "兑换金额（元）" %}</span>
-        <input type="number" name="amount" step="0.01" min="0.01" required
-               class="input input-bordered input-sm w-40"
-               placeholder="{% trans '如 10' %}" />
-      </label>
-      <button type="submit" class="btn btn-primary btn-sm">{% trans "兑换" %}</button>
-    </form>
-    {% else %}
-    <p class="mt-2 text-sm text-base-content/70">
-      {% trans "你还没有接入项目，先到" %}<a class="link" href="/my/projects/">{% trans "我的项目" %}</a>{% trans "创建一个再兑换。" %}
-    </p>
     {% endif %}
   </div>
 
@@ -216,6 +186,7 @@
           <th class="whitespace-nowrap">{% trans "方式" %}</th>
           <th class="whitespace-nowrap">{% trans "状态" %}</th>
           <th class="whitespace-nowrap">{% trans "创建时间" %}</th>
+          <th class="whitespace-nowrap">{% trans "操作" %}</th>
         </tr>
       </thead>
       <tbody>
@@ -223,7 +194,9 @@
         <tr>
           <td class="whitespace-nowrap font-mono text-xs">{{ order.out_trade_no }}</td>
           <td class="whitespace-nowrap font-mono text-xs">{{ order.amount }}</td>
-          <td class="whitespace-nowrap text-xs">{{ order.provider_code }} / {{ order.pay_type }}</td>
+          <td class="whitespace-nowrap text-xs">
+            {{ order.provider_name }}{% if order.pay_type_label %} · {{ order.pay_type_label }}{% endif %}{% if order.pay_form_label %} · {{ order.pay_form_label }}{% endif %}
+          </td>
           <td class="whitespace-nowrap">
             {% if order.status == 'paid' %}
             <span class="badge badge-soft badge-success badge-sm">{% trans "已支付" %}</span>
@@ -238,12 +211,26 @@
             {% else %}
             <span class="badge badge-soft badge-ghost badge-sm">{% trans "已关闭" %}</span>
             {% endif %}
+            {% if order.pending_refund %}
+            <div><span class="badge badge-soft badge-warning badge-sm">{% trans "退款处理中" %}</span></div>
+            {% endif %}
           </td>
           <td class="whitespace-nowrap text-xs text-base-content/70">{{ order.create_time|date:"Y-m-d H:i" }}</td>
+          <td class="whitespace-nowrap">
+            {% if order.can_refund %}
+            <form method="post" action="{% url 'website:my_wallet' %}"
+                  data-confirm="{% trans '确认对这笔订单申请退款？' %}">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="refund_order" />
+              <input type="hidden" name="order_id" value="{{ order.pk }}" />
+              <button type="submit" class="btn btn-ghost btn-xs text-error">{% trans "申请退款" %}</button>
+            </form>
+            {% endif %}
+          </td>
         </tr>
         {% empty %}
         <tr>
-          <td colspan="5" class="py-6 text-center text-sm text-base-content/60">{% trans "还没有支付订单。" %}</td>
+          <td colspan="6" class="py-6 text-center text-sm text-base-content/60">{% trans "还没有支付订单。" %}</td>
         </tr>
         {% endfor %}
       </tbody>

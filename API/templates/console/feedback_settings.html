@@ -82,9 +82,10 @@
       <select name="review_model" class="select select-sm select-bordered w-full sm:w-80">
         <option value="">{% trans "跟随平台默认模型" %}</option>
         {% for model in models %}
-        <option value="{{ model.pk }}"{% if setting.review_model_id == model.pk %} selected{% endif %}>{{ model.name }}（{{ model.key }}）</option>
+        <option value="{{ model.pk }}"{% if setting.review_model_id == model.pk %} selected{% endif %}>{{ model.name }}（{{ model.key }}）{% if model.supports_vision %} · {% trans "支持视觉" %}{% endif %}{% if model.supports_video %} · {% trans "支持视频" %}{% endif %}</option>
         {% endfor %}
       </select>
+      <span class="text-xs text-base-content/50">{% trans "反馈带的图片 / 视频只有所选模型标了「支持视觉 / 支持视频」才会一起送审；纯文本模型只会审文字，附件相当于没审。" %}</span>
     </label>
 
     <div class="grid gap-3">

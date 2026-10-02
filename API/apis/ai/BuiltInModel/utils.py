@@ -71,6 +71,7 @@ def _catalog():
             .filter(enabled=True, provider__enabled=True)
             .order_by('sort', 'key')
             .values('key', 'name', 'upstream_name', 'supports_vision', 'max_images',
+                    'supports_video', 'max_videos', 'supports_audio', 'max_audios',
                     'context_window', 'is_default', 'provider_id', 'provider__base_url',
                     'prompt_mode', 'temperature', 'max_tokens', 'stop',
                     'system_prompt__content', 'system_prompt__enabled'))
@@ -83,6 +84,10 @@ def _catalog():
             'upstream': (r['upstream_name'] or r['key'] or '').strip(),
             'supports_vision': r['supports_vision'],
             'max_images': r['max_images'],
+            'supports_video': r['supports_video'],
+            'max_videos': r['max_videos'],
+            'supports_audio': r['supports_audio'],
+            'max_audios': r['max_audios'],
             'context_window': r['context_window'],
             'is_default': r['is_default'],
             'provider_id': r['provider_id'],
@@ -108,6 +113,8 @@ def public_models():
         'model': m['key'],
         'name': m['name'],
         'supports_vision': m['supports_vision'],
+        'supports_video': m['supports_video'],
+        'supports_audio': m['supports_audio'],
         'context_window': m['context_window'],
         'is_default': m['is_default'],
     } for m in _catalog()]
@@ -126,8 +133,10 @@ def resolve_target(model_key=None, user_key=None):
     :param model_key: 请求里的 model（留空取后台设置的默认模型）
     :param user_key:  调用方自带的 API Key（留空则用后台配置的平台 Key）
     :return: (target, None) 成功；target 含 key/name/upstream/url/supports_vision/
-             max_images（后台按模型配置的图片张数上限）/ platform_prompt（后台配置的
-             系统提示词）/ temperature / max_tokens / stop_list / api_key；
+             max_images（后台按模型配置的图片张数上限）/ supports_video / max_videos
+             （视频数量上限）/ supports_audio / max_audios（音频个数上限）/
+             platform_prompt（后台配置的系统提示词）/
+             temperature / max_tokens / stop_list / api_key；
              (None, (状态码, 错误文案)) 失败
     """
     items = _catalog()
@@ -157,17 +166,19 @@ def resolve_target(model_key=None, user_key=None):
 
 
 # ==================== 参数辅助 ====================
-MAX_IMAGE_URL_LEN = 2048
-"""单张图片地址的最大长度"""
+MAX_MEDIA_URL_LEN = 2048
+"""单个媒体地址（图片 / 视频 / 音频）的最大长度"""
 
 
-def parse_images(raw):
-    """解析并校验 images 参数（张数上限由调用方按模型配置校验，见 request._handle_chat）。
+def _parse_url_list(raw, field, unit):
+    """解析并校验一个「URL 列表」参数（images / videos / audios 共用同一套口径）
 
     接受 JSON 数组字符串（``["https://…/a.jpg"]``）或纯文本（按换行 / 逗号拆分）。
     每个地址都必须是可安全访问的 http/https 公网地址——复用 ``url_safety`` 的判定，
     拒绝内网 / 回环 / 保留地址（避免有人拿本接口当内网探测的跳板）。
 
+    :param field: 请求参数名（拼错误文案用）
+    :param unit:  中文单位（「图片」/「视频」/「音频」）
     :return: (urls, error_msg)；error_msg 非空表示参数非法
     """
     raw = (raw or '').strip()
@@ -187,15 +198,30 @@ def parse_images(raw):
         urls = [u.strip() for u in re.split(r'[\n,]+', raw) if u.strip()]
 
     if not urls:
-        return [], '参数格式错误: images 不能为空'
+        return [], f'参数格式错误: {field} 不能为空'
 
     for url in urls:
-        if len(url) > MAX_IMAGE_URL_LEN:
-            return [], f'参数值非法: 单张图片地址不得超过 {MAX_IMAGE_URL_LEN} 个字符'
+        if len(url) > MAX_MEDIA_URL_LEN:
+            return [], f'参数值非法: 单个{unit}地址不得超过 {MAX_MEDIA_URL_LEN} 个字符'
         ok, err = check_public_http_url(url)
         if not ok:
-            return [], f'参数值非法: 图片地址不可用（{err}）'
+            return [], f'参数值非法: {unit}地址不可用（{err}）'
     return urls, None
+
+
+def parse_images(raw):
+    """解析并校验 images 参数（张数上限由调用方按模型配置校验，见 request._handle_chat）"""
+    return _parse_url_list(raw, 'images', '图片')
+
+
+def parse_videos(raw):
+    """解析并校验 videos 参数（数量上限由调用方按模型配置校验，见 request._handle_chat）"""
+    return _parse_url_list(raw, 'videos', '视频')
+
+
+def parse_audios(raw):
+    """解析并校验 audios 参数（个数上限由调用方按模型配置校验，见 request._handle_chat）"""
+    return _parse_url_list(raw, 'audios', '音频')
 
 
 def _resolve_system_messages(system_prompt, platform_prompt):
@@ -235,27 +261,34 @@ def _resolve_system_messages(system_prompt, platform_prompt):
     return msgs
 
 
-def _attach_images(messages, images):
-    """把图片挂到最后一条 user 消息上（OpenAI 多模态 content 数组格式）
+def _attach_media(messages, images=None, videos=None, audios=None):
+    """把图片 / 视频 / 音频内容块挂到最后一条 user 消息上（OpenAI 多模态 content 数组格式）
+
+    图片走 ``image_url`` 块、视频走 ``video_url`` 块、音频走 ``input_audio`` 块
+    （均为豆包 / 方舟口径，已实测可用）。音频只支持公网 URL，故按 ``input_audio.url`` 下发。
 
     :raises ValueError: messages 里没有 user 消息时
     """
+    parts = [{'type': 'image_url', 'image_url': {'url': url}} for url in (images or [])]
+    parts += [{'type': 'video_url', 'video_url': {'url': url}} for url in (videos or [])]
+    parts += [{'type': 'input_audio', 'input_audio': {'url': url}} for url in (audios or [])]
+    if not parts:
+        return
     for msg in reversed(messages):
         if msg.get('role') != 'user':
             continue
         original = msg.get('content')
-        parts = list(original) if isinstance(original, list) else []
+        existing = list(original) if isinstance(original, list) else []
         if isinstance(original, str) and original.strip():
-            parts.insert(0, {'type': 'text', 'text': original})
-        for url in images:
-            parts.append({'type': 'image_url', 'image_url': {'url': url}})
-        msg['content'] = parts
+            existing.insert(0, {'type': 'text', 'text': original})
+        existing.extend(parts)
+        msg['content'] = existing
         return
-    raise ValueError('传 images 时，messages 中必须有一条 user 消息')
+    raise ValueError('传 images / videos / audios 时，messages 中必须有一条 user 消息')
 
 
 def build_messages(content, messages_json=None, system_prompt=None, images=None,
-                   platform_prompt=None):
+                   videos=None, audios=None, platform_prompt=None):
     """构建发给上游的 messages，自动在首位插入系统消息。
 
     :param content: 单条用户消息内容
@@ -264,7 +297,9 @@ def build_messages(content, messages_json=None, system_prompt=None, images=None,
                           - None/不传 → 用后台按模型配置的 platform_prompt
                           - '"[{...}]"' → 使用调用方自定义
                           - ''（空字符串） → 不使用系统提示词
-    :param images: 图片地址列表（仅视觉模型），挂到最后一条 user 消息上
+    :param images: 图片地址列表（仅支持视觉的模型），挂到最后一条 user 消息上
+    :param videos: 视频地址列表（仅支持视频理解的模型），同样挂在最后一条 user 消息上
+    :param audios: 音频地址列表（仅支持音频理解的模型），同样挂在最后一条 user 消息上
     :param platform_prompt: 后台解析出的系统提示词正文（见 resolve_target 的返回值）
     :return: messages 列表
     :raises ValueError: JSON 格式错误、role 校验失败或没有 user 消息时抛出
@@ -284,8 +319,7 @@ def build_messages(content, messages_json=None, system_prompt=None, images=None,
     if system_msgs:
         messages = system_msgs + messages
 
-    if images:
-        _attach_images(messages, images)
+    _attach_media(messages, images, videos, audios)
     return messages
 
 

@@ -6,8 +6,7 @@
 上下文依赖：status_choices / mode_choices / docs_visible_choices / audience_choices（均由 services_view 提供）。
 层级与 path_prefix 由「服务 → 线路 → 端点」三级选择自动推导，不手输；
 线路可多选（同一服务下的多条线路共用一条策略，见 ApiServicePolicy.extra_prefixes）。
-版面分两块：① 作用范围 ② 对外表现（状态 / 认证模式 / 可见性 / 使用范围）。
-调用单价不在这里：由独立的「线路价格」页按三级设置（见 console_prices.py）。{% endcomment %}
+版面分两块：① 作用范围 ② 对外表现（状态 / 认证模式 / 可见性 / 使用范围）。{% endcomment %}
 <input type="hidden" name="action" value="{{ form_action }}" />
 {% if form_action == 'edit' %}<input type="hidden" name="id" value="{{ policy.id|default:'' }}" />{% endif %}
 

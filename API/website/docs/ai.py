@@ -26,7 +26,7 @@ SERVICE = ServiceSpec(
     name='AI 服务',
     prefix='/api/ai/',
     summary='多模型 AI 对话接口：用 model 参数在多家厂商的模型间切换，'
-            '单轮 / 多轮、流式、图片理解（部分模型）一应俱全。',
+            '单轮 / 多轮、流式、图片 / 视频 / 音频理解（部分模型）一应俱全。',
     keywords='AI API,免费AI接口,大模型API,AI对话接口,DeepSeek API,Kimi API,豆包API,千问API',
     intro=[
         'AI 服务提供开箱即用的对话能力，已接入多家厂商的模型（当前含 DeepSeek）；'
@@ -42,7 +42,9 @@ SERVICE = ServiceSpec(
         '调用方不需要、也不能改生成策略——采样温度、最大回复长度、停止词同样由平台控制，'
         '接口不接受这些参数，从而保证所有接入方拿到的行为一致、可控。',
         '标记了「支持视觉」的模型可以额外传 images（公网图片地址）让它看图回答；'
-        '未标记的模型传图片会返回参数值非法，避免把参数静默丢掉。',
+        '标记了「支持视频理解」的模型还能传 videos（公网视频地址，如豆包 Seed 2.0 全模态）'
+        '让它看视频、连音轨一起理解；标记了「支持音频理解」的模型还可以传 audios（公网音频地址）'
+        '做语音转写与音频内容理解；未标记的模型传图片、视频或音频会返回参数值非法，避免把参数静默丢掉。',
         '本服务需项目签名。开启流式（stream=true）后返回的是逐段推送的 SSE 内容，'
         '与普通 JSON 响应的呈现方式不同，在文档页在线调试时会逐字打印出来。',
     ],
@@ -56,7 +58,7 @@ SERVICE = ServiceSpec(
             endpoints=[
                 EndpointSpec('chat', 'AI 对话（统一入口）', 'POST', '/api/ai/BuiltInModel/chat',
                              summary='用 model 选择模型发起对话：支持单条消息、完整消息列表、'
-                                     '系统提示词覆盖、图片理解与流式输出。',
+                                     '系统提示词覆盖、图片/视频/音频理解与流式输出。',
                              params=[
                                  ParamSpec('model', '模型', kind='select', default='',
                                            dynamic_options='ai_models',
@@ -73,6 +75,12 @@ SERVICE = ServiceSpec(
                                  ParamSpec('images', '图片地址', kind='textarea',
                                            placeholder='["https://xxx.com/a.jpg"]',
                                            desc='选填：仅「支持视觉」的模型可传；JSON 数组或纯文本（换行/逗号分隔）的公网图片地址，张数上限由平台按模型配置（后台可调）'),
+                                 ParamSpec('videos', '视频地址', kind='textarea',
+                                           placeholder='["https://xxx.com/a.mp4"]',
+                                           desc='选填：仅「支持视频理解」的模型可传（如豆包 Seed 2.0 全模态）；JSON 数组或纯文本（换行/逗号分隔）的公网视频地址，数量上限由平台按模型配置（后台可调）'),
+                                 ParamSpec('audios', '音频地址', kind='textarea',
+                                           placeholder='["https://xxx.com/a.mp3"]',
+                                           desc='选填：仅「支持音频理解」的模型可传（如豆包 Seed 2.0 全模态）；JSON 数组或纯文本（换行/逗号分隔）的公网音频地址，个数上限由平台按模型配置（后台可调）。音频文件可先经「文件上传」服务上传，再把返回地址传到这里'),
                                  ParamSpec('api_key', '自定义模型 Key', kind='password',
                                            placeholder='sk-…',
                                            desc='选填：传了就用调用方自己的 Key（须与所选模型所属厂商一致），不传则用平台密钥'),
@@ -83,6 +91,12 @@ SERVICE = ServiceSpec(
                                     'content 与 messages 至少提供一个，否则返回参数缺失。',
                                     'images 仅对「支持视觉」的模型有效，其它模型传了返回参数值非法（20003）；'
                                     '张数上限由平台按模型配置（后台可调），超限同样返回参数值非法。',
+                                    'videos 仅对「支持视频理解」的模型有效（如豆包 Seed 2.0 全模态，'
+                                    '可同时理解画面与音轨），其它模型传了返回参数值非法（20003）；'
+                                    '数量上限同样由平台按模型配置，超限返回参数值非法。',
+                                    'audios 仅对「支持音频理解」的模型有效（如豆包 Seed 2.0 全模态，'
+                                    '可做语音转写与音频内容理解），其它模型传了返回参数值非法（20003）；'
+                                    '个数上限同样由平台按模型配置，超限返回参数值非法。',
                                     '采样温度 / 最大回复长度 / 停止词由平台按模型统一配置，不接受调用方传入，'
                                     '传了会返回参数值非法（20003）。',
                                     '流式模式返回 SSE：每帧形如 data: {"content": "片段"}（答案正文）或'
@@ -112,7 +126,7 @@ SERVICE = ServiceSpec(
 }''',
                              markdown=True),
                 EndpointSpec('models', '模型清单', 'GET', '/api/ai/BuiltInModel/models',
-                             summary='列出平台当前可用的模型（标识、展示名、是否支持视觉、是否为默认模型）。',
+                             summary='列出平台当前可用的模型（标识、展示名、是否支持视觉/视频/音频、是否为默认模型）。',
                              notes=['用于让调用方动态发现可选模型，避免把模型名写死在客户端。',
                                     '只返回模型自身信息：不含厂商、上游地址与密钥。',
                                     '请求不传 model 时使用 is_default 为 true 的那个模型。'],
@@ -121,13 +135,16 @@ SERVICE = ServiceSpec(
                                  ResponseFieldSpec('models[].model', 'string', '模型标识（传参 model 的取值）'),
                                  ResponseFieldSpec('models[].name', 'string', '展示名'),
                                  ResponseFieldSpec('models[].supports_vision', 'bool', '是否支持视觉（可传 images）'),
+                                 ResponseFieldSpec('models[].supports_video', 'bool', '是否支持视频理解（可传 videos）'),
+                                 ResponseFieldSpec('models[].supports_audio', 'bool', '是否支持音频理解（可传 audios）'),
                                  ResponseFieldSpec('models[].context_window', 'int', '上下文长度；未知为 null'),
                                  ResponseFieldSpec('models[].is_default', 'bool', '是否为默认模型'),
                              ],
                              response_example='''{
   "models": [
     {"model": "deepseek-chat", "name": "DeepSeek Chat", "supports_vision": false,
-     "context_window": 65536, "is_default": true}
+     "supports_video": false, "supports_audio": false, "context_window": 65536,
+     "is_default": true}
   ]
 }'''),
             ],

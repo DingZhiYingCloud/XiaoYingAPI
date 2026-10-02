@@ -1,0 +1,32 @@
+{% load i18n %}
+{% comment %}反馈附件展示（提交附件 / 回复附件共用一套，前台与控制台也共用）：
+  图片 → 缩略图网格，点击由页面内灯箱看大图（灯箱见 feedback/_lightbox.html）
+  视频 → 内联播放器（反馈中心不接收音频附件）
+  每项下方标注原始文件名与体积，便于用户与管理员核对收到的是哪个文件。
+  cols：栅格列数的 Tailwind 类，由调用方传入（字面量写在调用处，保证能被 CSS 构建扫描到）。{% endcomment %}
+{% if attachments %}
+<div class="grid gap-2.5 {{ cols|default:'sm:grid-cols-3' }}">
+  {% for att in attachments %}
+  <figure class="flex min-w-0 flex-col gap-1.5">
+    {% if att.is_image %}
+    <button type="button" data-fb-lightbox="{{ att.url }}" data-fb-alt="{{ att.original_name }}"
+            class="group block overflow-hidden rounded-box border border-base-300"
+            title="{% trans '点击查看大图' %}">
+      <img src="{{ att.url }}" alt="{{ att.original_name }}" loading="lazy"
+           class="h-32 w-full object-cover transition-transform group-hover:scale-105" />
+    </button>
+    {% else %}
+    <video src="{{ att.url }}" controls preload="metadata"
+           class="max-h-56 w-full rounded-box border border-base-300 bg-base-200"></video>
+    {% endif %}
+    <figcaption class="flex items-center gap-1 text-xs text-base-content/50">
+      <i data-lucide="{% if att.is_image %}image{% else %}video{% endif %}" class="h-3 w-3 shrink-0"></i>
+      <span class="truncate" title="{{ att.original_name }}">
+        {% if att.original_name %}{{ att.original_name }}{% else %}{% trans "附件" %}{% endif %}
+      </span>
+      <span class="shrink-0">· {{ att.size|filesizeformat }}</span>
+    </figcaption>
+  </figure>
+  {% endfor %}
+</div>
+{% endif %}

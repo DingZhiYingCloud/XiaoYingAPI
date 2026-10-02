@@ -38,7 +38,6 @@ from API.apis.user_center.sign import build_sign
 from API.common import StatusCode
 from API.models import UserApp
 
-from _test_support import grant_credit
 from SpiderServices.dramas.hongguo import transcode
 from SpiderServices.dramas.hongguo.main import HongguoDramaSpider
 
@@ -211,7 +210,6 @@ def main():
               f'status={status} payload={payload}')
 
     app = UserApp.objects.create(name=f'DramaLink{MARK}')
-    grant_credit(app)   # 新项目默认 0 点额度，签名调用会被 30012 拦掉，先补一笔
     client = Client()
     try:
         section('测试 4：对外接口返回体（签名请求真实 HTTP）')

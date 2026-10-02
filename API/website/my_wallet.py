@@ -1,23 +1,24 @@
-"""前台「充值中心」—— 登录用户给自己充值 + 兑换项目点数
+"""前台「充值中心」—— 登录用户给自己的账户余额充值（在线支付）
 
 页面：
-    GET  /my/wallet/     余额 / 充值表单 / 待支付订单（含支付入口）/ 充值记录 / 兑换入口
+    GET  /my/wallet/     余额 / 充值表单 / 待支付订单（含支付入口）/ 充值记录
     POST /my/wallet/     action = create_order  下单（成功后跳转平台收银台）
                                  check_order   手动查单（轮询 / 「我已支付」按钮，回 JSON）
-                                 transfer      账户余额兑换成某个项目的点数
+                                 refund_order  对已支付订单申请退款（渠道不支持自助退款时转人工受理）
 
-鉴权：官网会话（复用 `my_projects.login_required`），未登录跳 `/login/?next=`。
+鉴权：官网会话（复用 `views.login_required`），未登录跳 `/login/?next=`。
 
 口径（与 `API/apis/pay/service.py` 一致，这里只做展示与编排）：
     · 下单固定 **method=jump + device=pc**：平台返回收银台跳转地址，**收银台页自带二维码**，
       PC 与手机浏览器都能直接打开（实测支付宝 / 微信均返回 jump）；因此本站不需要自备二维码库。
     · **到账只认异步回调 + 主动查单**，页面跳转不算：支付完平台跳回本页后，页面加载时会对
       「最近一笔待支付订单」做一次主动查单（带 10 秒节流），避免回调稍晚导致用户以为没到账。
-    · 兑换只允许换成**自己名下**项目的点数，汇率取控制台「支付设置」里的值。
+    · 充值金额直接进**账户余额（元）**，与接口调用无关（平台不再有任何额度 / 点数概念）。
 """
 import logging
 
 from django.contrib import messages
+from django.core.exceptions import ValidationError
 from django.db.models import Sum
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
@@ -26,10 +27,10 @@ from django.utils.translation import gettext as _
 
 from API.apis.pay import service
 from API.apis.pay.providers.base import PayError
-from API.apis.pay.utils import absolute_url, client_ip, format_money, parse_money
-from API.models import PayOrder, PayProvider, PaySetting, UserApp, UserBalanceLedger
+from API.apis.pay.utils import absolute_url, client_ip, format_money
+from API.models import PayOrder, PayProvider, PayRefundRequest, PaySetting, UserBalanceLedger
 
-from .my_projects import login_required
+from .views import login_required
 
 logger = logging.getLogger('api.pay')
 
@@ -48,16 +49,19 @@ AMOUNT_PRESETS = ('10', '50', '100', '200', '500', '1000')
 def _recharge_methods() -> list:
     """可用的支付方式（取第一个启用渠道的「已启用支付方式」，未限制则给主流的两个）
 
-    返回 [(value, label)]，供充值表单的单选；渠道不可用时返回空列表（页面提示去后台开启）。
+    返回 [(value, label, icon_url)]，供充值表单的卡片式单选（icon_url 为空则只显示文字）；
+    渠道不可用时返回空列表（页面提示去后台开启）。
     """
     from API.apis.pay.providers import PROVIDER_CLASSES
+    from API.apis.pay.providers.registry import pay_type_icon
 
     for config in service.available_channels():
         provider_cls = PROVIDER_CLASSES.get(config.code)
         if provider_cls is None:
             continue
         allowed = config.method_list or list(provider_cls.pay_types)
-        rows = [(value, label) for value, label in provider_cls.pay_types.items() if value in allowed]
+        rows = [(value, label, pay_type_icon(value))
+                for value, label in provider_cls.pay_types.items() if value in allowed]
         if rows:
             # 常用两种排前面，其余按渠道声明顺序
             rows.sort(key=lambda kv: 0 if kv[0] in ('alipay', 'wxpay') else 1)
@@ -66,16 +70,13 @@ def _recharge_methods() -> list:
 
 
 def _summary(user) -> dict:
-    """余额与累计数据（累计充值 = 支付充值流水之和；已兑换 = 兑换流水绝对值之和）"""
+    """余额与累计数据（累计充值 = 支付充值流水之和）"""
     balance = user.balance
     paid = (UserBalanceLedger.objects.filter(user=user, type=UserBalanceLedger.TYPE_PAY)
             .aggregate(total=Sum('amount'))['total']) or 0
-    transferred = (UserBalanceLedger.objects.filter(user=user, type=UserBalanceLedger.TYPE_TRANSFER)
-                   .aggregate(total=Sum('amount'))['total']) or 0
     return {
         'balance': balance,
         'total_recharged': paid,
-        'total_transferred': abs(transferred),
     }
 
 
@@ -105,15 +106,15 @@ def _sync_pending_order(user):
 
 @login_required
 def wallet_view(request, user):
-    """充值中心：展示 + 下单 / 查单 / 兑换"""
+    """充值中心：展示 + 下单 / 查单 / 退款"""
     if request.method == 'POST':
         action = (request.POST.get('action') or '').strip()
         if action == 'create_order':
             return _create_order(request, user)
         if action == 'check_order':
             return _check_order(request, user)
-        if action == 'transfer':
-            return _transfer(request, user)
+        if action == 'refund_order':
+            return _refund_order(request, user)
         messages.error(request, _('不支持的操作'))
         return redirect('website:my_wallet')
 
@@ -129,11 +130,29 @@ def wallet_view(request, user):
         'methods': _recharge_methods(),
         'amount_presets': AMOUNT_PRESETS,
         'pending_order': pending,
-        'orders': PayOrder.objects.filter(user=user).order_by('-create_time')[:ORDER_ROWS],
+        'orders': _orders_with_refund_state(user),
         'ledgers': (UserBalanceLedger.objects.filter(user=user)
                     .order_by('-create_time')[:LEDGER_ROWS]),
-        'apps': UserApp.objects.filter(owner=user),
     })
+
+
+def _orders_with_refund_state(user) -> list:
+    """订单列表 + 退款相关状态（模板据此决定是否显示「申请退款」与「退款处理中」）
+
+    每条订单上挂两个临时属性（不是模型字段，只在本页用）：
+        pending_refund - 该订单**待人工处理**的退款申请（有值 = 退款处理中）
+        can_refund     - 还有可退金额且没有待处理申请时，才给「申请退款」按钮；
+                         可退金额会扣掉待处理申请，避免同一笔重复申请
+    """
+    orders = list(PayOrder.objects.filter(user=user).order_by('-create_time')[:ORDER_ROWS])
+    pending = {row.order_id: row for row in PayRefundRequest.objects.filter(
+        applicant_user=user, status=PayRefundRequest.STATUS_PENDING)}
+    for order in orders:
+        order.pending_refund = pending.get(order.pk)
+        # 已支付才有得退；refundable_amount 只在需要时算（每算一次一条聚合查询）
+        order.can_refund = bool(order.is_paid and not order.pending_refund
+                                and service.refundable_amount(order) > 0)
+    return orders
 
 
 def _create_order(request, user):
@@ -141,11 +160,11 @@ def _create_order(request, user):
     amount = (request.POST.get('amount') or '').strip()
     pay_type = (request.POST.get('pay_type') or '').strip()
 
-    methods = dict(_recharge_methods())
+    methods = _recharge_methods()
     if not methods:
         messages.error(request, _('当前没有可用的支付渠道，请稍后再试或联系管理员'))
         return redirect('website:my_wallet')
-    if pay_type not in methods:
+    if pay_type not in {value for value, _label, _icon in methods}:
         messages.error(request, _('请选择支付方式'))
         return redirect('website:my_wallet')
 
@@ -201,23 +220,41 @@ def _check_order(request, user):
     })
 
 
-def _transfer(request, user):
-    """账户余额（元）按汇率兑换成自己名下某个项目的点数"""
-    app = UserApp.objects.filter(pk=(request.POST.get('app_id') or '').strip(), owner=user).first()
-    if app is None:
-        messages.error(request, _('请选择要兑换的项目'))
+def _refund_order(request, user):
+    """用户自助申请退款（金额留空 = 退剩余可退金额）
+
+    渠道支持自助退款就当场退掉并提示结果；不支持（如易支付当前）则转人工受理，
+    原样告知「人工审核后 N 个工作日内完成退款」—— 不能让用户以为点了没反应。
+    """
+    order = _own_order(request, user)
+    if order is None:
+        messages.error(request, _('订单不存在'))
         return redirect('website:my_wallet')
 
-    amount = parse_money((request.POST.get('amount') or '').strip())
-    if amount is None or amount <= 0:
-        messages.error(request, _('兑换金额非法'))
+    amount = (request.POST.get('amount') or '').strip() or service.refundable_amount(order)
+    try:
+        mode, obj = service.refund_order(
+            order, amount, source=PayRefundRequest.SOURCE_USER, user=user,
+            contact=(request.POST.get('contact') or '').strip(),
+            remark=(request.POST.get('remark') or '').strip())
+    except PayError as exc:
+        messages.error(request, _('申请退款失败：%(msg)s') % {'msg': str(exc)})
         return redirect('website:my_wallet')
 
-    ok, message, data = service.transfer_to_app_points(user, app, amount)
-    if not ok:
-        messages.error(request, message)
-        return redirect('website:my_wallet')
-    messages.success(request, _('已兑换：%(money)s 元 → 「%(app)s」%(points)s 点（当前项目余额 %(balance)s 点）')
-                     % {'money': format_money(amount), 'app': app.name,
-                        'points': data['points'], 'balance': data['app_balance']})
+    if mode == 'manual':
+        messages.info(request, service.refund_notice())
+    else:
+        messages.success(request, _('退款成功：%(money)s 元已原路退回，账户余额已同步扣减')
+                         % {'money': format_money(obj.refund_amount)})
     return redirect('website:my_wallet')
+
+
+def _own_order(request, user):
+    """取表单提交的**本人**订单（id 缺失 / 非法 UUID / 不是本人的，一律 None）"""
+    order_id = (request.POST.get('order_id') or '').strip()
+    if not order_id:
+        return None
+    try:
+        return PayOrder.objects.filter(pk=order_id, user=user).first()
+    except (ValidationError, ValueError):
+        return None

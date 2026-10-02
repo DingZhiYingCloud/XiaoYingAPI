@@ -20,11 +20,8 @@
 逐字段取第一个非 inherit 的值。认证判定的唯一口径是
 ``API/common/middleware.py`` 的 ``requires_auth()`` / ``resolve_service_policy()``。
 
-注意：``auth_mode=open`` 时额度不参与判定 —— 开放接口不校验签名、拿不到调用项目。
-
-**调用单价不在这里**：单价由独立的 ``ApiPricePolicy``（见 ``API/models/Credit/price.py``，
-控制台「线路价格」页）管理，与本策略表解耦；额度判定与扣费口径见
-``API/common/credit_guard.py``。
+注意：``auth_mode=open`` 时不做签名校验 —— 开放接口不校验签名、拿不到调用项目。
+（历史上这里还参与「单价 / 额度」判定，该体系已整体下线，见 ``API/common/middleware.py``。）
 """
 from django.core.exceptions import ValidationError
 from django.db import models

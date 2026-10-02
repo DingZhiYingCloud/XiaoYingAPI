@@ -1,0 +1,220 @@
+{% extends 'console/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "IP 封禁 - 超级管理员 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,IP 封禁,黑名单,解禁,安全" %}{% endblock %}
+{% block description %}{% trans "小影API 超级管理员：人工封禁 / 解禁来源 IP（默认 7 天、可自定义或永久），被封 IP 的接口调用会被拒绝，官网前台同步提示原因与解禁时间。" %}{% endblock %}
+
+{% block console_content %}
+{% trans "人工封禁来源 IP；被封 IP 的 /api/ 请求一律返回「IP 已被封禁」，官网前台顶部同步提示原因与解禁时间。" as ph_desc %}
+{% include 'console/_page_header.html' with icon='shield-ban' title='IP 封禁' desc=ph_desc %}
+
+{% include 'console/_messages.html' %}
+
+{# 规则说明（纯提示，中性灰） #}
+<div role="alert" class="alert alert-soft bg-base-200 mt-4 items-start py-3 text-sm">
+  <div class="space-y-1">
+    <p>
+      {% trans "封禁按来源 IP 生效，不需要重启或定时任务：到期后自动失效，也可以随时手动解禁。" %}
+    </p>
+    <p class="text-xs opacity-80">
+      {% trans "封禁原因会同时展示给被封访客（官网顶部提示条）与管理员，请填得具体一些，方便申诉与复核。" %}
+    </p>
+    <p class="text-xs opacity-80">
+      {% trans "本机 / 内网地址不允许封禁；控制台与 Django 后台永不参与判定，管理员被封后仍可进来解禁。" %}
+    </p>
+  </div>
+</div>
+
+{# ==================== 新增封禁 ==================== #}
+<form method="post" action="{% url 'website:console_ip_bans' %}" class="mt-5">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="ban" />
+  <fieldset class="con-panel p-4">
+    <legend class="flex items-center gap-2 px-1 text-base font-bold">
+      <i data-lucide="ban" class="h-4 w-4 text-error" aria-hidden="true"></i>
+      {% trans "新增封禁" %}
+    </legend>
+
+    <div class="mt-2 grid gap-4 sm:grid-cols-2">
+      <label class="grid gap-1">
+        <span class="font-semibold">{% trans "IP 地址" %}</span>
+        <input type="text" name="ip" required maxlength="45"
+               class="input input-bordered input-sm w-full max-w-sm font-mono"
+               placeholder="{% trans '如 203.0.113.7（支持 IPv6）' %}" />
+        <span class="text-xs text-base-content/70">
+          {% blocktrans with ip=operator_ip %}你当前的 IP 是 {{ ip }}（封禁前请先确认不是它）。{% endblocktrans %}
+        </span>
+      </label>
+
+      <label class="grid gap-1">
+        <span class="font-semibold">{% trans "封禁原因" %}</span>
+        <input type="text" name="reason" required maxlength="255"
+               class="input input-bordered input-sm w-full"
+               placeholder="{% trans '必填，如：高频扫描接口 / 恶意刷单' %}" />
+        <span class="text-xs text-base-content/70">
+          {% trans "会展示给被封访客与管理员，请写清具体依据。" %}
+        </span>
+      </label>
+    </div>
+
+    <div class="mt-3 grid gap-3 sm:grid-cols-3">
+      <label class="grid gap-1">
+        <span class="font-semibold">{% trans "封禁天数" %}</span>
+        <div class="flex flex-wrap items-center gap-2">
+          <input type="number" name="days" id="ban-days" min="1" step="1"
+                 value="{{ default_days }}"
+                 class="input input-bordered input-sm w-28" />
+          {% for days in presets %}
+          <button type="button" class="btn btn-xs btn-outline ban-preset"
+                  data-days="{{ days }}">{% blocktrans with n=days %}{{ n }} 天{% endblocktrans %}</button>
+          {% endfor %}
+        </div>
+        <span class="text-xs text-base-content/70">
+          {% blocktrans with n=default_days %}默认 {{ n }} 天；点上面的快捷档位可直接填入。{% endblocktrans %}
+        </span>
+      </label>
+
+      <label class="grid content-start gap-1">
+        <span class="font-semibold">{% trans "永久封禁" %}</span>
+        <input type="checkbox" name="permanent" class="toggle toggle-error"
+               id="ban-permanent" />
+        <span class="text-xs text-base-content/70">
+          {% trans "勾选后忽略「封禁天数」，记录不会自动失效，只能手动解禁。" %}
+        </span>
+      </label>
+
+      <div class="grid content-end">
+        <span class="text-xs text-base-content/70">
+          <i data-lucide="info" class="h-3.5 w-3.5 align-text-bottom" aria-hidden="true"></i>
+          {% trans "封禁立即生效；同一 IP 可重复封禁，历史记录都会保留。" %}
+        </span>
+      </div>
+    </div>
+
+    <div class="mt-4 flex justify-end">
+      <button type="submit" class="btn btn-error btn-sm gap-2">
+        <i data-lucide="shield-ban" class="h-4 w-4" aria-hidden="true"></i>
+        {% trans "立即封禁" %}
+      </button>
+    </div>
+  </fieldset>
+</form>
+
+{# ==================== 封禁列表 ==================== #}
+<div class="con-panel mt-5 p-4">
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <h2 class="flex items-center gap-2 text-base font-bold">
+      <i data-lucide="list" class="h-4 w-4 text-primary" aria-hidden="true"></i>
+      {% trans "封禁记录" %}
+      {% if active_total %}
+      <span class="badge badge-soft badge-error badge-sm">
+        {% blocktrans with n=active_total %}{{ n }} 条生效中{% endblocktrans %}
+      </span>
+      {% endif %}
+    </h2>
+    <span class="text-xs text-base-content/60">
+      {% blocktrans with n=total %}共 {{ n }} 条（生效中的全部列出，历史最多显示最近 50 条）{% endblocktrans %}
+    </span>
+  </div>
+
+  <div class="con-table-wrap mt-3">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th class="whitespace-nowrap">{% trans "IP 地址" %}</th>
+          <th class="whitespace-nowrap">{% trans "原因" %}</th>
+          <th class="whitespace-nowrap">{% trans "状态" %}</th>
+          <th class="whitespace-nowrap">{% trans "封禁时间" %}</th>
+          <th class="whitespace-nowrap">{% trans "解禁时间" %}</th>
+          <th class="whitespace-nowrap">{% trans "操作人" %}</th>
+          <th class="whitespace-nowrap">{% trans "操作" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td class="whitespace-nowrap">
+            <code class="font-mono text-xs">{{ row.ip }}</code>
+          </td>
+          <td class="max-w-xs text-xs">{{ row.reason }}</td>
+          <td class="whitespace-nowrap">
+            {% if row.status_key == 'active' %}
+            <span class="badge badge-soft badge-error badge-sm">{% trans "封禁中" %}</span>
+            {% elif row.status_key == 'expired' %}
+            <span class="badge badge-soft badge-warning badge-sm">{% trans "已过期" %}</span>
+            {% else %}
+            <span class="badge badge-soft badge-ghost badge-sm">{% trans "已解禁" %}</span>
+            {% endif %}
+          </td>
+          <td class="whitespace-nowrap text-xs text-base-content/70">
+            {{ row.create_time|date:"Y-m-d H:i" }}
+          </td>
+          <td class="whitespace-nowrap text-xs text-base-content/70">
+            {% if row.is_permanent %}
+            <span class="badge badge-soft badge-error badge-sm">{% trans "永久" %}</span>
+            {% elif row.expire_time %}
+            {{ row.expire_time|date:"Y-m-d H:i" }}
+            {% else %}—{% endif %}
+            {% if row.unbanned_at %}
+            <div class="text-base-content/60">
+              {% blocktrans with t=row.unbanned_at|date:"Y-m-d H:i" %}{{ t }} 已解禁{% endblocktrans %}
+            </div>
+            {% endif %}
+          </td>
+          <td class="whitespace-nowrap text-xs">
+            {% if row.operator %}{{ row.operator }}{% else %}—{% endif %}
+            {% if row.unban_note %}
+            <div class="text-base-content/60">{{ row.unban_note }}</div>
+            {% endif %}
+          </td>
+          <td class="whitespace-nowrap">
+            {% if row.is_active %}
+            <form method="post" action="{% url 'website:console_ip_bans' %}"
+                  class="flex flex-wrap items-center gap-1"
+                  data-confirm="{% trans '确认解禁该 IP？解禁后该来源的接口调用立即恢复。' %}">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="unban" />
+              <input type="hidden" name="id" value="{{ row.pk }}" />
+              <input type="text" name="note" maxlength="255"
+                     class="input input-bordered input-xs w-32"
+                     placeholder="{% trans '解禁备注（可选）' %}" />
+              <button type="submit" class="btn btn-ghost btn-xs text-success">
+                {% trans "解禁" %}
+              </button>
+            </form>
+            {% else %}
+            <span class="text-xs text-base-content/50">{% trans "已处理" %}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="py-6 text-center text-sm text-base-content/60">
+            {% trans "还没有封禁记录。" %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+(function () {
+  'use strict';
+  /* 快捷档位：把天数填进输入框，并顺手取消「永久封禁」勾选（两者互斥的心智模型） */
+  var daysInput = document.getElementById('ban-days');
+  var permanent = document.getElementById('ban-permanent');
+  if (!daysInput) return;
+  document.querySelectorAll('.ban-preset').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      daysInput.value = btn.dataset.days;
+      if (permanent) permanent.checked = false;
+    });
+  });
+})();
+</script>
+{% endblock %}

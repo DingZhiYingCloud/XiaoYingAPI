@@ -72,13 +72,18 @@
         <td class="whitespace-nowrap text-sm">{{ log.operator|default:"—" }}</td>
         <td class="whitespace-nowrap text-sm">{{ log.view_label|default:"—" }}</td>
         <td class="whitespace-nowrap">
-          <span class="badge badge-ghost badge-sm">{{ log.action|default:log.method }}</span>
+          {# 动作码在视图里已翻成中文；鼠标悬停仍能看到原始码，便于对照代码 #}
+          <span class="badge badge-ghost badge-sm"
+                {% if log.action_label != log.action %}title="{{ log.action }}"{% endif %}>{{ log.action_label|default:log.method_label }}</span>
         </td>
         <td class="whitespace-nowrap text-xs">{{ log.target|default:"—" }}</td>
         <td class="max-w-md text-sm">{{ log.note|default:"—" }}</td>
         <td class="whitespace-nowrap text-xs text-base-content/70">
           <div>{{ log.ip|default:"—" }}</div>
-          <div class="text-base-content/60">{{ log.method }} · {{ log.status_code }}</div>
+          {# 「POST · 302」这种技术口径翻成人话；原始值与状态码留在悬停提示里 #}
+          <div class="text-base-content/60" title="{{ log.method }} {{ log.status_code }}">
+            {{ log.method_label }} · {{ log.result_label }}
+          </div>
         </td>
       </tr>
       {% empty %}

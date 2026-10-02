@@ -37,7 +37,10 @@ def check_all():
     """
     results = []
     for code, meta in SERVICES.items():
-        service, _ = QuotaService.objects.get_or_create(code=code)
+        # 首次为某服务建行时带上注册表里的默认阈值（如 DeepSeek 默认 10 元），
+        # 之后一律以控制台页面上的配置为准
+        service, _ = QuotaService.objects.get_or_create(
+            code=code, defaults={'threshold': meta.get('default_threshold')})
         results.append(_check_one(service, meta))
     return results
 

@@ -10,8 +10,6 @@
           <tr>
             <th>{% trans "接入项目" %}</th>
             <th class="text-right">{% trans "调用量" %}</th>
-            <th class="text-right">{% trans "消耗点数" %}</th>
-            <th class="text-right">{% trans "平均每次" %}</th>
             <th class="text-right">{% trans "占比" %}</th>
             <th class="text-right">{% trans "成功率" %}</th>
             <th class="text-right">{% trans "失败率" %}</th>
@@ -27,8 +25,6 @@
               <div><code class="font-mono text-xs text-base-content/60">{{ row.key }}</code></div>
             </td>
             <td class="text-right font-mono">{{ row.calls }}</td>
-            <td class="text-right font-mono">{{ row.points|floatformat:"-4" }}</td>
-            <td class="text-right font-mono text-base-content/70">{{ row.avg_points|floatformat:"-4" }}</td>
             <td class="text-right font-mono text-base-content/70">{{ row.share }}%</td>
             <td class="text-right font-mono">{{ row.success_rate }}%</td>
             <td class="text-right">{% include 'console/_stats_rate.html' with row=row %}</td>
