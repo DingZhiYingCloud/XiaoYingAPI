@@ -621,6 +621,18 @@ def round11_wallet(user):
     check('未登录 → 跳登录页',
           resp.status_code == 302 and '/login/' in resp.get('Location', ''), str(resp.get('Location')))
 
+    # 浏览器里同时有「超管会话」时（进过后台控制台）打开充值页：登录页必须渲染出表单，
+    # 不能按 next 把请求打回 /my/wallet/ —— 那会和前台 login_required 互踢成无限重定向。
+    admin = get_user_model().objects.filter(is_superuser=True, is_active=True).first()
+    if admin is None:
+        check('存在可用超管账号（充值页死循环用例）', False, '本地没有超管，请先 createsuperuser')
+    else:
+        su = Client()
+        su.force_login(admin)
+        looped = su.get('/login/?next=/my/wallet/')
+        check('超管打开充值页不死循环（登录页正常渲染）', looped.status_code == 200,
+              f'status={looped.status_code} loc={looped.headers.get("Location", "")}')
+
     resp = client.get('/my/wallet/')
     body = resp.content.decode('utf-8')
     check('登录后可访问（200）', resp.status_code == 200, str(resp.status_code))

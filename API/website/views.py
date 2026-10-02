@@ -234,11 +234,17 @@ def login_view(request):
 
     if request.method == 'GET':
         is_admin = bool(request.user.is_authenticated and request.user.is_superuser)
-        # 防死循环：只有超管才允许按 next 回跳。
-        # next 通常来自超管页（superadmin_required 跳转过来），普通用户的 next 多半也是超管页，
-        # 回跳会被再次打回登录页 → 无限重定向；故普通用户一律回首页。
+        # 防死循环：只有**控制台**页面按 next 回跳 —— next 来自 superadmin_required 时必然是
+        # /console/…，回跳正是要回到刚才被打回的那个后台页。
+        # 前台页面（/my/wallet/、/my/projects/ 等）的 next 来自前台 login_required：一旦按它回跳，
+        # 就会被 login_required 再打回登录页 → 浏览器报 ERR_TOO_MANY_REDIRECTS；而且持有超管会话的
+        # 人永远看不到登录表单，也就无法以「官网用户」身份登录进前台。故这种情况照常渲染登录页。
         if is_admin:
-            return redirect(next_url if request.GET.get('next') else '/')
+            nxt = (request.GET.get('next') or '').strip()
+            if nxt.startswith('/console/'):
+                return redirect(nxt)
+            if not nxt:
+                return redirect('/')
         if _current_user(request):
             return redirect('/')
         ctx = _auth_page_context()

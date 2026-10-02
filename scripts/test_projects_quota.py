@@ -301,6 +301,21 @@ def round6_anonymous():
     check('跳转目标含登录页与 next 回跳',
           '/login/' in location and 'next=' in location, location)
 
+    # 浏览器同时持有「超管会话」时访问前台页：登录页绝不能按 next 把请求打回前台页，
+    # 否则与前台 login_required 互踢 → ERR_TOO_MANY_REDIRECTS（前台页永远打不开）。
+    admin = get_user_model().objects.filter(is_superuser=True, is_active=True).first()
+    if admin is None:
+        check('存在可用超管账号（超管死循环用例）', False, '本地没有超管，请先 createsuperuser')
+        return
+    su = Client()
+    su.force_login(admin)
+    first = su.get(reverse(LIST_URL))
+    check('超管访问前台页 → 仍 302 到登录页', first.status_code == 302, str(first.status_code))
+    looped = su.get(f'/login/?next={reverse(LIST_URL)}')
+    check('登录页不再回跳前台页（不死循环）', looped.status_code == 200,
+          f'status={looped.status_code} loc={looped.headers.get("Location", "")}')
+    check('登录页渲染出登录表单', 'id="login-account"' in looped.content.decode('utf-8'))
+
 
 # ───────────────────────── 第 7 轮：超管控制台（额度） ─────────────────────────
 
