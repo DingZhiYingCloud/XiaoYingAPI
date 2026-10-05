@@ -1,7 +1,7 @@
 # 代练通 - 辅助工具模块（常量配置 + 工具函数）
 
-import hashlib
 import base64
+import hashlib
 import random
 import json
 import os
@@ -25,7 +25,6 @@ API_URL = "https://server.dailiantong.com.cn/API/AppService.ashx"
 # 平台签名密钥从 .env 读取（DAILIAN_SIGN_KEY），禁止硬编码进代码库
 load_dotenv()
 SIGN_KEY = os.getenv("DAILIAN_SIGN_KEY", "") or ""
-SENSITIVE_WORDS_PATH = os.path.join(os.path.dirname(__file__), "English_Sensitive_Words_for_Order_Pos.json")
 
 
 # ==================== 辅助函数 ====================
@@ -52,34 +51,15 @@ def md5_encrypt(data: str) -> str:
     return md5_obj.hexdigest()
 
 
-def base64_encrypt(content, encoding='utf-8', url_safe=False):
+def base64_encrypt(content, encoding='utf-8'):
     """
-    实现 Base64 加密（编码），支持字符串/字节输入，可选 URL 安全模式
-    :param content: 待加密的内容（字符串或字节类型）
-    :param encoding: 字符串转字节的编码格式，默认 UTF-8
-    :param url_safe: 是否生成 URL 安全的 Base64 结果（替换 +/ 为 -_），默认 False
-    :return: Base64 加密后的字符串（去除末尾换行符）
-    :raises TypeError: 输入类型非字符串/字节时抛出
+    对字符串做 Base64 编码（发单 Actors 字段要求）
+    :param content: 待编码字符串
+    :return: Base64 字符串
     """
-    try:
-        if isinstance(content, str):
-            content_bytes = content.encode(encoding)
-        elif isinstance(content, bytes):
-            content_bytes = content
-        else:
-            raise TypeError("输入内容仅支持字符串（str）或字节（bytes）类型")
-
-        if url_safe:
-            encrypted_bytes = base64.urlsafe_b64encode(content_bytes)
-        else:
-            encrypted_bytes = base64.b64encode(content_bytes)
-
-        return encrypted_bytes.decode(encoding).strip()
-
-    except UnicodeEncodeError as e:
-        raise ValueError(f"编码失败：内容包含 {encoding} 无法编码的字符，错误：{e}")
-    except Exception as e:
-        raise RuntimeError(f"Base64 加密失败：{e}")
+    if isinstance(content, str):
+        content = content.encode(encoding)
+    return base64.b64encode(content).decode(encoding)
 
 
 def response_dict(code: int = 0, message: str = "", data: dict | list = None, is_return_response: bool = True):
@@ -166,13 +146,37 @@ def parse_response(response):
         return response_dict(code=1, message=f"解析响应异常: {e}")
 
 
-def encrypt_actors(actors):
-    """
-    对 Actors 参数进行 Base64 加密
-    :param actors: 原始角色信息字符串
-    :return: Base64 加密后的字符串
+# ==================== 凭据校验（供后台「账号管理」调用） ====================
+
+def check_credential(credential: str):
+    """校验代练通登录凭据是否有效（调 UserInfoList）
+
+    credential 为平台账号的「登录凭据」原文，约定 JSON：
+        {"user_id": "24479174", "token": "..."}
+
+    :return: (True, 说明) 表示凭据有效；(False, 原因) 表示已失效 / 无法校验
     """
     try:
-        return base64_encrypt(actors)
-    except Exception as e:
-        return response_dict(code=1, message=f"Actors加密异常: {e}")
+        data = json.loads(credential or '')
+        user_id = str(data.get('user_id') or '').strip()
+        token = str(data.get('token') or '').strip()
+    except (json.JSONDecodeError, TypeError, AttributeError):
+        return False, '凭据格式错误：应为 JSON {"user_id": "...", "token": "..."}'
+    if not user_id or not token:
+        return False, '凭据缺少 user_id 或 token'
+    if not SIGN_KEY:
+        return False, 'DAILIAN_SIGN_KEY 未配置，无法校验'
+
+    try:
+        params, query = get_public_data({'UserID': user_id}, 'UserInfoList',
+                                        sign_key=SIGN_KEY, token=token)
+        response = requests.post(API_URL, params=query, data=params,
+                                 headers=get_mobile_headers(), timeout=15)
+    except requests.exceptions.RequestException as e:
+        return False, f'校验请求异常：{e}'
+
+    result = parse_response(response)
+    if result['code'] == 0:
+        info = result.get('data') if isinstance(result.get('data'), dict) else {}
+        return True, f"有效（{info.get('NickName') or user_id}）"
+    return False, result.get('message') or '凭据已失效'

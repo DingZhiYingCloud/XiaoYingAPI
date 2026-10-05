@@ -982,3 +982,26 @@ msgstr "該接口需要簽名，而本次未填寫 APPID / APPSECRET，命令裡
 # 控制台首页图表图例（Chart.js 侧用 window.gettext 取词，必须落在 JS 目录里）
 msgid "消耗点数"
 msgstr "消耗點數"
+
+# ===== 补齐缺失词条（2026-10-04：代练丸子发单面板 docs_dlwz.js） =====
+
+msgid "选好游戏 / 大区 / 代练类型，下方的任务字段会跟着变；无需手写 JSON。"
+msgstr "選好遊戲 / 大區 / 代練類型，下方的任務字段會跟着變；無需手寫 JSON。"
+
+msgid "起始段位"
+msgstr "起始段位"
+
+msgid "目标段位"
+msgstr "目標段位"
+
+msgid "请输入数字"
+msgstr "請輸入數字"
+
+msgid "加载失败，请重试"
+msgstr "加載失敗，請重試"
+
+msgid "默认（自动定位）"
+msgstr "默認（自動定位）"
+
+msgid "搜索区服（共 %(n)s 个）"
+msgstr "搜索區服（共 %(n)s 個）"

@@ -22,6 +22,7 @@ from API.models.Captcha.captcha import CaptchaChallenge
 from API.models.Statistics.api_call_stat import ApiCallStat, ApiCallStatHour
 from API.models.ImageHosting.image_hosting_token import ImageHostingToken
 from API.models.Haijiao.account import HaijiaoAccount
+from API.models.Accounts.account import AccountStatus, Platform, PlatformAccount
 from API.models.Docs.announcement import Announcement
 from API.models.AI.provider import AiModel, AiProvider, AiSystemPrompt
 from API.models.Website.appearance import SiteAppearance
@@ -34,6 +35,10 @@ from API.models.Payment.ledger import UserBalanceLedger
 from API.models.Payment.order import PayNotifyLog, PayOrder, PayRefundRequest
 from API.models.Payment.provider import PayProvider
 from API.models.Payment.setting import PaySetting
+from API.models.OrderMigration.blacklist import DEFAULT_BLACKLIST_WORDS, OrderMigrationBlacklist
+from API.models.OrderMigration.order_migration import MigrationStatus, OrderMigration
+from API.models.OrderMigration.setting import OrderMigrationSetting
+from API.models.Push.log import PushLog
 
 __all__ = [
     'BaseModel',
@@ -64,6 +69,9 @@ __all__ = [
     'ApiCallStatHour',
     'ImageHostingToken',
     'HaijiaoAccount',
+    'PlatformAccount',
+    'Platform',
+    'AccountStatus',
     'Announcement',
     'AiProvider',
     'AiSystemPrompt',
@@ -80,4 +88,10 @@ __all__ = [
     'PayNotifyLog',
     'PayRefundRequest',
     'UserBalanceLedger',
+    'OrderMigration',
+    'MigrationStatus',
+    'OrderMigrationSetting',
+    'OrderMigrationBlacklist',
+    'DEFAULT_BLACKLIST_WORDS',
+    'PushLog',
 ]

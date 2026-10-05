@@ -43,6 +43,22 @@ class ParamSpec:
     repeat_hint: str = ''
     accept: str = ''
     dynamic_options: str = ''
+    # 级联下拉：同属一个 cascade（组名）的参数按 cascade_role=game / zone / server 联动——
+    # 选了 game 才刷新出该游戏的 zone，选了 zone 才刷新出该 zone 的 server（选项由 docs.js
+    # 在浏览器里按需拉取填充），避免一次性渲染上千个选项卡住页面。
+    cascade: str = ''
+    cascade_role: str = ''
+    # 仅对部分游戏显示：填游戏ID列表（如 ['107']），留空 = 所有游戏都显示。
+    # 由 docs.js 按「选择游戏」下拉的当前值切换该字段的显示 / 隐藏（不同游戏参数不同）。
+    games: Optional[List[str]] = None
+    # 双面板输入：alt_kind 非空时启用。同一参数同时提供「主面板(kind)」与「备用面板(alt_kind)」
+    # 两种输入方式（如「时限」既可用下拉时间表、也可手动输入），前端可自由切换，默认主面板；
+    # 两个面板同名，只提交当前激活面板的值（另一面板禁用）。切换按钮文案见下。
+    alt_kind: str = ''
+    alt_options: Optional[List[Dict[str, str]]] = None
+    alt_default: str = ''
+    alt_label: str = ''        # 备用面板切换按钮文案（如「手动输入」）
+    primary_label: str = ''    # 主面板切换按钮文案（如「时间表」）
     # 本机凭据：该参数**不在**在线调试的参数表单里填，改由文档页右侧栏「本机凭据」卡片提供
     # （值存在浏览器 localStorage，不上传、不落库），调试发请求时按参数名自动带上。
     # 用于「长文本、只在本地留着、每次调试都要用」的凭据，如抖音登录 Cookie：
@@ -110,6 +126,9 @@ class EndpointSpec:
     # 响应正文是 Markdown（如 AI 对话接口的 data.reply）：在线调试把正文按 Markdown 渲染排版，
     # 而非直接回显 JSON 里的原始字符串。声明后文档页会额外加载 marked 与 docs_markdown.js。
     markdown: bool = False
+    # 代练丸子「发布订单」专用面板：True 时文档页渲染「游戏 / 大区 / 代练类型 / 任务字段」联动表单
+    # （选项由 /docs/_dlwz_games/ 与 /docs/_dlwz_options/ 实时拉取，用户免填 JSON）。
+    dlwz_publish: bool = False
     # ===== 响应说明（三者可组合；都不声明时端点页只显示「外层统一格式」的指引）=====
     # 结构化字段表：适用于**结构固定**的接口（自研接口、固定信封的业务接口），读代码写准。
     response_fields: List['ResponseFieldSpec'] = field(default_factory=list)

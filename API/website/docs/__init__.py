@@ -33,7 +33,11 @@ from . import user_center as _user_center
 from . import movie as _movie
 from . import drama as _drama
 from . import haijiao as _haijiao
+from . import zhihu as _zhihu
+from . import weibo as _weibo
 from . import pay as _pay
+from . import order_migration as _order_migration
+from . import push as _push
 from .schema import (ChannelSpec, EndpointSpec, ParamSpec, ResponseFieldSpec,  # noqa: F401
                      ServiceSpec)  # noqa: F401 便于外部引用
 
@@ -60,7 +64,11 @@ _SERVICES = [
     _movie.SERVICE,
     _drama.SERVICE,
     _haijiao.SERVICE,
+    _zhihu.SERVICE,
+    _weibo.SERVICE,
     _pay.SERVICE,
+    _order_migration.SERVICE,
+    _push.SERVICE,
 ]
 
 ALL = {svc.slug: svc for svc in _SERVICES}
@@ -103,6 +111,7 @@ def _ai_model_options():
 # （用于「选项来自运行期数据」的场景；静态选项请直接写在 ParamSpec.options 里）
 OPTION_LOADERS = {
     'ai_models': _ai_model_options,
+    'dlt_games': _dlt._dlt_game_options,
 }
 
 
@@ -141,6 +150,9 @@ def localize(spec: ServiceSpec) -> ServiceSpec:
                 param.label, param.desc = _(param.label), _(param.desc)
                 param.placeholder = _(param.placeholder)
                 param.repeat_hint = _(param.repeat_hint)
+                param.primary_label, param.alt_label = _(param.primary_label), _(param.alt_label)
                 for option in (param.options or []):
+                    option['label'] = _(option['label'])
+                for option in (param.alt_options or []):
                     option['label'] = _(option['label'])
     return doc

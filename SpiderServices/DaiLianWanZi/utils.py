@@ -201,3 +201,63 @@ def base64_to_image(base64_str: str) -> bytes:
     except (ValueError, Exception) as e:
         print(f"base64解码失败: {e}")
         return b""
+
+
+# ==================== 凭据解析与校验（供 API 层 / 后台「账号管理」调用） ====================
+
+
+def parse_credential(credential: str) -> dict:
+    """解析平台托管凭据 → dict
+
+    约定存「登录接口返回的 JSON」（含 accessToken / uuid / id 等），也兼容
+    直接存纯令牌字符串（如 "Bearer xxx" 或裸 token）。
+
+    :return: 解析后的 dict；无法识别时返回 {}
+    """
+    text = (credential or "").strip()
+    if not text:
+        return {}
+    try:
+        data = json.loads(text)
+    except (json.JSONDecodeError, TypeError):
+        return {"accessToken": text}
+    return data if isinstance(data, dict) else {"accessToken": text}
+
+
+def credential_authorization(credential: str) -> str:
+    """从托管凭据中取可用于请求的 authorization 令牌
+
+    优先 accessToken（登录接口字段名），其次 token；都没有则返回空串。
+    返回的是原始令牌（不带 "Bearer " 前缀），由 get_public_data 按需补前缀。
+    """
+    data = parse_credential(credential)
+    return str(data.get("accessToken") or data.get("token") or "").strip()
+
+
+def check_credential(credential: str):
+    """校验代练丸子登录凭据是否有效（调「我的信息」/mine/main）
+
+    :param credential: 账号管理里托管的登录凭据（JSON 或纯令牌）
+    :return: (True, 说明) 表示凭据有效；(False, 原因) 表示已失效 / 无法校验
+    """
+    token = credential_authorization(credential)
+    if not token:
+        return False, "凭据缺少 accessToken"
+
+    try:
+        json_data = get_public_data(generate_device_id(), {}, authorization=token)
+        resp = requests.post(
+            f"{API_URL}/mine/main",
+            json=json_data,
+            headers=get_mobile_headers(),
+            timeout=15,
+        )
+    except requests.exceptions.RequestException as e:
+        return False, f"校验请求异常：{e}"
+
+    result = parse_response(resp)
+    if result["code"] == 0:
+        # parse_response 成功时 data 为上游完整响应对象，用户信息在其 data 字段下
+        info = (result.get("data") or {}).get("data") or {}
+        return True, f"有效（{info.get('username') or info.get('uuid') or '已登录'}）"
+    return False, result.get("message") or "凭据已失效"

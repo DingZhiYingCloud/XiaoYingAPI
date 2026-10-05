@@ -782,7 +782,7 @@ def round15_service_presets(client):
     section('第 15 轮 建议策略清单与「一键新建」（预览面板 / 幂等 / 不覆盖 / 免签兜底）')
     url = reverse('website:console_services')
 
-    # 1) 清单自证：必须与 0028 / 0031 / 0032 / 0035 / 0043 写入的 9 条逐条一致
+    # 1) 清单自证：必须与 0028 / 0031 / 0032 / 0035 / 0043 / 0065 写入的 10 条逐条一致
     #    （level 也照抄迁移原文，即便有几处与服务树归类不符 —— 见 service_presets.py 注释）
     expected = {
         '/api/captcha_self/': ('service', 'open'),
@@ -791,13 +791,14 @@ def round15_service_presets(client):
         '/api/haijiao/video/m3u8': ('endpoint', 'open'),
         '/api/haijiao/image': ('endpoint', 'open'),
         '/api/dramas/hongguo/stream': ('endpoint', 'open'),
+        '/api/weibo/video': ('endpoint', 'open'),
         '/api/feedback/': ('service', 'auth'),
         '/api/feedback/ticket': ('endpoint', 'open'),
         '/api/feedback/contacts': ('endpoint', 'open'),
     }
     rows = preset_rows()
     got = {row['path_prefix']: (row['level'], row['auth_mode']) for row in rows}
-    check('清单恰为迁移写入的 9 条建议策略（层级 / 认证模式一致）',
+    check('清单恰为迁移写入的 10 条建议策略（层级 / 认证模式一致）',
           got == expected, f'got={got}')
     check('每条都写明了「为什么需要」', all(row['reason'].strip() for row in rows))
 
@@ -854,7 +855,7 @@ def round15_service_presets(client):
         call_command('seed_service_policies', '--dry-run', stdout=out)
         text = out.getvalue()
         check('管理命令 --dry-run 显示无需新建',
-              '新建 0 条' in text and '已存在跳过 9 条' in text, f'out={text.strip()}')
+              '新建 0 条' in text and '已存在跳过 10 条' in text, f'out={text.strip()}')
 
         # 后台入口：删掉目标后再走一次真实按钮路径（POST action=apply_presets）
         ApiServicePolicy.objects.filter(path_prefix=PRESET_TARGET).delete()

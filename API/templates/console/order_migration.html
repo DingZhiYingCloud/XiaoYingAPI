@@ -1,0 +1,974 @@
+{% extends 'console/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "代练搬单 - 超级管理员 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,代练搬单,代练通,代练丸子" %}{% endblock %}
+{% block description %}{% trans "小影API 超级管理员：把代练通王者荣耀订单自动搬运到代练丸子发单，并监控被接单后回代练通接单。" %}{% endblock %}
+
+{% block console_content %}
+{% trans "把代练通王者荣耀公开订单映射后发布到代练丸子，监控被接单后回代练通接单取账号。" as ph_desc %}
+{% include 'console/_page_header.html' with icon='repeat' title='代练搬单' desc=ph_desc %}
+
+{% include 'console/_messages.html' %}
+
+{# 投运前检查清单（醒目公告栏）：能自动核对的项目按当前设置实时显示 ✔ / ⚠ #}
+<div class="mt-4 rounded-box border border-warning/40 bg-warning/5 p-4">
+  <div class="flex items-center gap-2">
+    <i data-lucide="clipboard-check" class="h-5 w-5 text-warning"></i>
+    <h2 class="text-base font-bold">{% trans "正式投运前检查清单" %}</h2>
+  </div>
+  <div class="mt-3 grid gap-1.5 text-sm sm:grid-cols-2">
+    <div class="flex items-center gap-2">
+      {% if setting.auto_run %}<i data-lucide="circle-check" class="h-4 w-4 text-success"></i>
+      {% else %}<i data-lucide="circle-alert" class="h-4 w-4 text-warning"></i>{% endif %}
+      <span>{% trans "自动运行 = 开（生产常开）" %}</span>
+    </div>
+    <div class="flex items-center gap-2">
+      {% if not setting.keyword %}<i data-lucide="circle-check" class="h-4 w-4 text-success"></i>
+      {% else %}<i data-lucide="circle-alert" class="h-4 w-4 text-warning"></i>{% endif %}
+      <span>{% trans "关键词 = 空（正式跑不要锁单；当前：" %}{{ setting.keyword|default:"空" }}{% trans "）" %}</span>
+    </div>
+    <div class="flex items-center gap-2">
+      {% if not setting.use_tier %}<i data-lucide="circle-check" class="h-4 w-4 text-success"></i>
+      {% else %}<i data-lucide="circle-alert" class="h-4 w-4 text-warning"></i>{% endif %}
+      <span>{% trans "严选发单 = 关（标准单，低等级打手可接）" %}</span>
+    </div>
+    <div class="flex items-center gap-2">
+      {% if setting.take_level == -1 %}<i data-lucide="circle-check" class="h-4 w-4 text-success"></i>
+      {% else %}<i data-lucide="circle-alert" class="h-4 w-4 text-warning"></i>{% endif %}
+      <span>{% trans "接单门槛 = 不限" %}</span>
+    </div>
+    <div class="flex items-center gap-2">
+      {% if setting.our_qq %}<i data-lucide="circle-check" class="h-4 w-4 text-success"></i>
+      {% else %}<i data-lucide="circle-alert" class="h-4 w-4 text-warning"></i>{% endif %}
+      {% trans "未填" as t_not_set %}<span>{% trans "我们的 QQ 已填（当前：" %}{{ setting.our_qq|default:t_not_set }}{% trans "）" %}</span>
+    </div>
+    <div class="flex items-center gap-2">
+      {% if setting.revoke_image %}<i data-lucide="circle-check" class="h-4 w-4 text-success"></i>
+      {% else %}<i data-lucide="circle-alert" class="h-4 w-4 text-warning"></i>{% endif %}
+      <span>{% trans "撤销凭证图 URL 已填（抢接失败兜底要用）" %}</span>
+    </div>
+  </div>
+  <div class="mt-2 grid gap-1.5 border-t border-warning/20 pt-2 text-xs text-base-content/70 sm:grid-cols-2">
+    <div>{% trans "代练通 A 账号：余额充足（接单要冻结该单双金）" %}</div>
+    <div>{% trans "代练丸子商家账号：余额充足（发单扣款）" %}</div>
+    <div>{% trans "代练丸子打手账号 B：等级 / 余额足够接单" %}</div>
+    <div>{% trans "服务进程：后台自动运行线程已随服务启动（uwsgi 同样生效）" %}</div>
+  </div>
+</div>
+
+<div role="alert" class="alert alert-warning alert-soft mt-4 items-start py-3 text-sm">
+  <div class="space-y-1">
+    <p>{% trans "「执行一轮」会真实发单（扣代练丸子余额）与接单（冻结代练通双金），请谨慎操作。" %}</p>
+    <p class="text-xs opacity-80">
+      {% trans "流程：取实时余额（代练通 / 丸子）→ 抓单 → 过滤黑名单 → 随机抽单 → 逐条「余额够才发」→ 监控「被接单」→ 代练通接单取账号。" %}
+      {% trans "任一余额不足即中断本轮发单（已发的保留），等下一轮再跑；余额每次运行只查一次。" %}
+    </p>
+    <p class="text-xs opacity-80">
+      {% trans "取到账号后需你通过 QQ 把账号交给丸子打手；若代练通抢接失败会自动撤单并告警（落日志）。" %}
+    </p>
+    <p class="text-xs opacity-80">
+      {% trans "开启「自动运行」后由后台线程按间隔自动执行，无需手动点；关闭则只能手动执行。" %}
+    </p>
+  </div>
+</div>
+
+{# 手动操作（独立表单，不能互相嵌套） #}
+<div class="mt-5 flex flex-wrap items-center gap-2">
+  <form method="post" action="{% url 'website:console_order_migration' %}">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="preview" />
+    <button type="submit" class="btn btn-sm btn-outline">
+      <i data-lucide="search" class="h-4 w-4"></i>{% trans "抓单预览" %}
+    </button>
+  </form>
+  <form method="post" action="{% url 'website:console_order_migration' %}"
+        data-confirm="{% trans "将真实发布到代练丸子并监控接单，确认执行一轮？" %}">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="run" />
+    <button type="submit" class="btn btn-sm btn-primary">
+      <i data-lucide="play" class="h-4 w-4"></i>{% trans "执行一轮" %}
+    </button>
+  </form>
+  <form method="post" action="{% url 'website:console_order_migration' %}"
+        data-confirm="{% trans "将撤销全部待接单（并关闭自动运行），确认？撤销后代练通的双金预扣会释放。" %}"
+        data-confirm-danger="1">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="cancel_all" />
+    <button type="submit" class="btn btn-sm btn-outline btn-error">
+      <i data-lucide="ban" class="h-4 w-4"></i>{% trans "全部撤销待接单" %}
+    </button>
+  </form>
+  <span class="mx-1 h-5 w-px bg-base-300"></span>
+  <span id="run-status" class="text-xs text-base-content/60">
+    {% if setting.last_run_time %}
+      {% blocktrans with t=setting.last_run_time %}最近运行：{{ t }}{% endblocktrans %}{% if setting.last_run_summary %}（{{ setting.last_run_summary }}）{% endif %}
+    {% else %}
+      {% trans "尚未运行过" %}
+    {% endif %}
+  </span>
+</div>
+<p id="run-error" class="mt-2 text-xs text-error/80">{% if setting.last_error %}{% trans "最近错误：" %}{{ setting.last_error }}{% endif %}</p>
+
+{# 抓单预览结果 #}
+{% if preview %}
+<fieldset class="con-panel mt-5 p-4">
+  <legend class="px-1 text-base font-bold">{% trans "抓单预览（未发布）" %}</legend>
+  <div class="con-table-wrap mt-2">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th class="whitespace-nowrap">{% trans "代练通单号" %}</th>
+          <th>{% trans "标题（照搬）" %}</th>
+          <th class="whitespace-nowrap">{% trans "大区" %}</th>
+          <th class="whitespace-nowrap">{% trans "原价" %}</th>
+          <th class="whitespace-nowrap">{% trans "发布价" %}</th>
+          <th class="whitespace-nowrap">{% trans "丸子双金" %}</th>
+          <th class="whitespace-nowrap">{% trans "代练通双金(占用)" %}</th>
+          <th class="whitespace-nowrap">{% trans "时限" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in preview %}
+        <tr>
+          <td class="whitespace-nowrap font-mono text-xs">{{ row.dlt_serial_no }}</td>
+          <td class="max-w-md truncate" title="{{ row.title }}">{{ row.title }}</td>
+          <td class="whitespace-nowrap">{{ row.region_name }}</td>
+          <td class="whitespace-nowrap">{{ row.dlt_price }}</td>
+          <td class="whitespace-nowrap font-semibold text-primary">{{ row.amount }}</td>
+          <td class="whitespace-nowrap">{{ row.security_deposit }} / {{ row.efficiency_deposit }}</td>
+          <td class="whitespace-nowrap">{{ row.dlt_ensure }}</td>
+          <td class="whitespace-nowrap">{{ row.hour }}{% trans " 小时" %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</fieldset>
+{% endif %}
+
+{# 号主信息查询 #}
+<form method="post" action="{% url 'website:console_order_migration' %}" class="mt-5">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="owner_info" />
+  <fieldset class="con-panel p-4">
+    <legend class="px-1 text-base font-bold">{% trans "号主信息查询" %}</legend>
+    <div class="mt-2 flex flex-wrap items-end gap-2">
+      <label class="grid min-w-[16rem] flex-1 gap-1">
+        <span class="font-semibold">{% trans "代练丸子订单号 或 代练通订单号" %}</span>
+        <input type="text" name="order" value="{{ owner.order|default:'' }}"
+               class="input input-bordered input-sm w-full"
+               placeholder="{% trans '如 WZ2026… 或 107187965…' %}" />
+      </label>
+      <button type="submit" class="btn btn-sm btn-primary">
+        <i data-lucide="search" class="h-4 w-4"></i>{% trans "查询" %}
+      </button>
+    </div>
+    <p class="mt-1 text-xs text-base-content/70">
+      {% trans "账号 / 密码 / 角色名只有代练通「接单后、撤销前」才能取到；已撤销 / 已结束的订单这些字段为空。" %}
+    </p>
+  </fieldset>
+</form>
+
+{% if owner %}
+<fieldset class="con-panel mt-4 p-4">
+  <legend class="px-1 text-base font-bold">{% trans "号主信息" %}</legend>
+  <p class="mt-1 text-xs text-base-content/60">
+    {% trans "代练通单号：" %}<code class="font-mono">{{ owner.serial }}</code>
+    {% if owner.trade %}{% trans " · 丸子单号：" %}<code class="font-mono">{{ owner.trade }}</code>{% endif %}
+  </p>
+  <div class="mt-3 grid gap-2 sm:grid-cols-2">
+    {% for label, value in owner.info.items %}
+    <div class="flex items-baseline gap-2 rounded bg-base-200/60 px-3 py-2">
+      <span class="w-24 shrink-0 text-base-content/60">{{ label }}</span>
+      <span class="min-w-0 break-all font-mono">{{ value|default:"—" }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</fieldset>
+{% endif %}
+
+{# 运行设置 #}
+<form method="post" action="{% url 'website:console_order_migration' %}" class="mt-5 grid gap-5">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="save" />
+
+  <fieldset class="con-panel p-4">
+    <legend class="px-1 text-base font-bold">{% trans "运行设置" %}</legend>
+    <div class="mt-2 grid gap-4 sm:grid-cols-2">
+      <label class="grid gap-1">
+        <span class="font-semibold">{% trans "我们的 QQ 号" %}</span>
+        <input type="text" name="our_qq" value="{{ setting.our_qq }}"
+               class="input input-bordered input-sm w-full" placeholder="{% trans '如 12345678' %}" />
+        <span class="text-xs text-base-content/70">
+          {% trans "发单时填入代练丸子的账号 / 密码 / 角色名与联系方式，引导打手加好友后私下交接账号。" %}
+        </span>
+      </label>
+
+      <label class="grid gap-1">
+        <span class="font-semibold">{% trans "轮询间隔(秒)" %}</span>
+        <input type="number" min="5" name="interval_seconds" value="{{ setting.interval_seconds }}"
+               class="input input-bordered input-sm w-full" />
+        <span class="text-xs text-base-content/70">
+          {% trans "监控丸子「被接单」的间隔，最小 5 秒；被接单检测的最坏延迟即此值。" %}
+        </span>
+      </label>
+
+      <label class="grid gap-1">
+        <span class="font-semibold">{% trans "每轮发布上限" %}</span>
+        <input type="number" min="0" name="publish_limit" value="{{ setting.publish_limit }}"
+               class="input input-bordered input-sm w-full" />
+        <span class="text-xs text-base-content/70">{% trans "每轮最多发布到代练丸子的订单数。" %}</span>
+      </label>
+
+      <label class="grid gap-1">
+        <span class="font-semibold">{% trans "丸子双金倍数" %}</span>
+        <input type="number" min="0" max="5" name="deposit_ratio" value="{{ setting.deposit_ratio }}"
+               class="input input-bordered input-sm w-full" />
+        <span class="text-xs text-base-content/70">
+          {% trans "双金合计（安全+效率保证金）= 发布价 × 该倍数，可设 0-5，默认 2（两项均分）。" %}
+        </span>
+      </label>
+
+      <div class="grid gap-1">
+        <span class="font-semibold">{% trans "价格区间(元)" %}</span>
+        <div class="flex items-center gap-2">
+          <input type="number" step="any" name="price_min" value="{{ setting.price_min|default_if_none:'' }}"
+                 class="input input-bordered input-sm w-full" placeholder="{% trans '下限' %}" />
+          <span class="text-base-content/50">~</span>
+          <input type="number" step="any" name="price_max" value="{{ setting.price_max|default_if_none:'' }}"
+                 class="input input-bordered input-sm w-full" placeholder="{% trans '上限' %}" />
+        </div>
+        <span class="text-xs text-base-content/70">{% trans "只搬价格在区间内的代练通订单；留空表示不限。" %}</span>
+      </div>
+
+      <label class="grid gap-1">
+        <span class="font-semibold">{% trans "标题关键词" %}</span>
+        <input type="text" name="keyword" value="{{ setting.keyword }}"
+               class="input input-bordered input-sm w-full" placeholder="{% trans '留空则不限' %}" />
+        <span class="text-xs text-base-content/70">
+          {% trans "透传给代练通搜索，可填「订单号」或标题里的独特文字（精确只搬某笔单）；留空则不限。" %}
+        </span>
+      </label>
+
+      <label class="flex items-center gap-3 sm:col-span-2">
+        <input type="checkbox" name="use_tier" class="toggle toggle-primary toggle-sm"
+               {% if setting.use_tier %}checked{% endif %} />
+        <span class="font-semibold">{% trans "严选发单" %}</span>
+        <span class="text-xs text-base-content/70">
+          {% trans "关闭=标准（默认，与丸子 App 一致，低等级打手可接）；开启=严选（带服务档位，要求打手 Lv2+）。" %}
+        </span>
+      </label>
+
+      <label class="grid gap-1">
+        <span class="font-semibold">{% trans "接单门槛(代练师等级)" %}</span>
+        <select name="take_level" class="select select-bordered select-sm w-full">
+          <option value="-1" {% if setting.take_level == -1 %}selected{% endif %}>{% trans "不限（标准，低等级打手可接）" %}</option>
+          <option value="0" {% if setting.take_level == 0 %}selected{% endif %}>{% trans "Lv1 以上（30天内完成1单以上）" %}</option>
+          <option value="1" {% if setting.take_level == 1 %}selected{% endif %}>{% trans "Lv2 以上（严选，需打手等级≥2）" %}</option>
+        </select>
+        <span class="text-xs text-base-content/70">
+          {% trans "不设置会沿用平台默认（严选）；1 级打手接不了就选「不限」。" %}
+        </span>
+      </label>
+
+      <label class="grid gap-1 sm:col-span-2">
+        <span class="font-semibold">{% trans "撤销凭证图URL" %}</span>
+        <input type="text" name="revoke_image" value="{{ setting.revoke_image }}"
+               class="input input-bordered input-sm w-full"
+               placeholder="https://…/proof.png" />
+        <span class="text-xs text-base-content/70">
+          {% trans "抢接失败、且订单已被接单无法「取消」时，用它发起「申请撤销」（丸子强制要求凭证图）；留空则只告警。" %}
+        </span>
+      </label>
+
+      <label class="flex items-center gap-3 sm:col-span-2">
+        <input type="checkbox" name="auto_run" class="toggle toggle-primary toggle-sm"
+               {% if setting.auto_run %}checked{% endif %} />
+        <span class="font-semibold">{% trans "自动运行" %}</span>
+        <span class="text-xs text-base-content/70">
+          {% trans "开启后后台线程按间隔自动执行流水线（会真实发单 / 接单）；关闭则仅手动执行。" %}
+        </span>
+      </label>
+    </div>
+  </fieldset>
+
+  {# 被接单通知：邮件 / 本机语音（丸子有打手接单时触发） #}
+  <fieldset class="con-panel p-4">
+    <legend class="px-1 text-base font-bold">{% trans "被接单通知" %}</legend>
+    <div class="mt-2 grid gap-4 sm:grid-cols-2">
+      <label class="flex items-center gap-3 sm:col-span-2">
+        <input type="checkbox" name="notify_mail" class="toggle toggle-primary toggle-sm"
+               {% if setting.notify_mail %}checked{% endif %} />
+        <span class="font-semibold">{% trans "被接单邮件通知" %}</span>
+        <span class="text-xs text-base-content/70">{% trans "代练丸子有打手接单时，发一封邮件通知。" %}</span>
+      </label>
+
+      <label class="grid gap-1 sm:col-span-2">
+        <span class="font-semibold">{% trans "通知邮箱" %}</span>
+        <input type="email" name="notify_mail_to" value="{{ setting.notify_mail_to }}"
+               class="input input-bordered input-sm w-full"
+               placeholder="{% trans '留空则用 .env 的 QQ_MAIL_ACCOUNT' %}" />
+        <span class="text-xs text-base-content/70">
+          {% trans "留空则发到 .env 里配置的 QQ_MAIL_ACCOUNT。" %}
+        </span>
+      </label>
+
+      <label class="flex items-center gap-3 sm:col-span-2">
+        <input type="checkbox" name="notify_sound" class="toggle toggle-primary toggle-sm"
+               {% if setting.notify_sound %}checked{% endif %} />
+        <span class="font-semibold">{% trans "被接单声音提醒" %}</span>
+        <span class="text-xs text-base-content/70">
+          {% trans "本页打开时用浏览器语音播报（不依赖服务器扬声器，Linux 云主机同样可用）。" %}
+        </span>
+      </label>
+
+      <div class="grid gap-1 sm:col-span-2">
+        <span class="font-semibold">{% trans "声音文本" %}</span>
+        <div class="flex items-center gap-2">
+          <input type="text" name="notify_sound_text" value="{{ setting.notify_sound_text }}"
+                 id="notify-sound-text" class="input input-bordered input-sm w-full" maxlength="100" />
+          <button type="button" id="sound-try" class="btn btn-outline btn-sm whitespace-nowrap">
+            <i data-lucide="volume-2" class="h-4 w-4"></i>{% trans "试听" %}
+          </button>
+        </div>
+        <span class="text-xs text-base-content/70">
+          {% trans "被接单时由本页（需保持打开）用浏览器语音播报该文本；点「试听」可先听效果。" %}
+        </span>
+      </div>
+    </div>
+  </fieldset>
+
+  <div class="flex justify-end">
+    <button type="submit" class="btn btn-primary btn-sm">{% trans "保存设置" %}</button>
+  </div>
+</form>
+
+{# 标题黑名单（独立表，可逐条增删） #}
+<fieldset class="con-panel mt-5 p-4">
+  <legend class="px-1 text-base font-bold">{% trans "标题黑名单" %}</legend>
+  <p class="mt-1 text-xs text-base-content/70">
+    {% trans "代练通标题包含其中任意一个词就不搬运（这类标题像「公告」，发到丸子有被判定公告的嫌疑）。" %}
+  </p>
+
+  <form method="post" action="{% url 'website:console_order_migration' %}" class="mt-3 flex items-center gap-2">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="blacklist_add" />
+    <input type="text" name="word" maxlength="64" required
+           class="input input-bordered input-sm w-full sm:w-64"
+           placeholder="{% trans '要拉黑的词，如：联系' %}" />
+    <button type="submit" class="btn btn-primary btn-sm whitespace-nowrap">
+      <i data-lucide="plus" class="h-4 w-4"></i>{% trans "添加" %}
+    </button>
+  </form>
+
+  <form method="post" action="{% url 'website:console_order_migration' %}" class="mt-3">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="blacklist_delete" />
+    <div class="flex flex-wrap gap-2">
+      {% for item in blacklist %}
+        <button type="submit" name="word" value="{{ item.word }}"
+                class="btn btn-sm btn-ghost border border-base-300"
+                title="{% trans '点击移除' %}">
+          {{ item.word }}<i data-lucide="x" class="h-3.5 w-3.5 opacity-60"></i>
+        </button>
+      {% empty %}
+        <span class="text-sm text-base-content/60">{% trans "暂无黑名单词" %}</span>
+      {% endfor %}
+    </div>
+  </form>
+</fieldset>
+
+{# 记录列表 #}
+<fieldset class="con-panel mt-5 p-4">
+  <legend class="px-1 text-base font-bold">{% trans "搬单记录" %}</legend>
+  <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-base-content/70">
+    <span class="badge badge-soft badge-ghost">{% trans "共" %} <span id="stat-total">{{ stats.total }}</span> {% trans "条" %}</span>
+    <span class="badge badge-soft badge-info">{% trans "待接单" %} <span id="stat-published">{{ stats.published }}</span></span>
+    <span class="badge badge-soft badge-success">{% trans "已接单" %} <span id="stat-taken">{{ stats.taken }}</span></span>
+    <span class="badge badge-soft badge-error">{% trans "失败" %} <span id="stat-failed">{{ stats.failed }}</span></span>
+    <span id="live-hint" class="ml-1 inline-flex items-center gap-1 text-base-content/50">
+      <i data-lucide="refresh-cw" class="h-3.5 w-3.5"></i><span id="live-text">{% trans "自动刷新中" %}</span>
+    </span>
+    <button type="button" id="live-resume" class="btn btn-ghost btn-xs text-primary hidden">
+      {% trans "恢复实时刷新" %}
+    </button>
+    <form method="post" action="{% url 'website:console_order_migration' %}" class="ml-auto"
+          data-confirm="{% trans "确定清空全部搬单记录？（不影响两平台上的真实订单）" %}"
+          data-confirm-danger="1">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="clear" />
+      <button type="submit" class="btn btn-ghost btn-xs text-error">
+        <i data-lucide="trash-2" class="h-3.5 w-3.5"></i>{% trans "清空记录" %}
+      </button>
+    </form>
+  </div>
+
+  <div class="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
+    <span class="text-base-content/60">{% trans "状态筛选：" %}</span>
+    <a href="{% url 'website:console_order_migration' %}" data-status-filter=""
+       class="badge badge-sm cursor-pointer {% if status_filter_active %}badge-ghost{% else %}badge-primary{% endif %}">
+      {% trans "全部" %}
+    </a>
+    {% for f in status_filters %}
+    <a href="{{ f.href }}" data-status-filter="{{ f.key }}"
+       class="badge badge-sm cursor-pointer {% if f.active %}badge-primary{% else %}badge-ghost{% endif %}">{{ f.label }}</a>
+    {% endfor %}
+    {% if status_filter_active %}
+    <span class="ml-1 text-base-content/50">{% trans "可多选，点一次切换选中状态" %}</span>
+    {% endif %}
+  </div>
+
+  <div class="con-table-wrap mt-2">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th class="whitespace-nowrap">{% trans "代练通单号" %}</th>
+          <th>{% trans "标题" %}</th>
+          <th class="whitespace-nowrap">{% trans "丸子单号" %}</th>
+          <th class="whitespace-nowrap">{% trans "发布价" %}</th>
+          <th class="whitespace-nowrap">{% trans "状态" %}</th>
+          <th class="whitespace-nowrap">{% trans "号主账号" %}</th>
+          <th class="whitespace-nowrap">{% trans "时间" %}</th>
+        </tr>
+      </thead>
+      <tbody id="records-body">
+        {% for row in page_obj %}
+        <tr>
+          <td class="whitespace-nowrap font-mono text-xs">{{ row.dlt_serial_no }}</td>
+          <td class="max-w-md truncate" title="{{ row.dlt_title }}">{{ row.dlt_title }}</td>
+          <td class="whitespace-nowrap font-mono text-xs">{{ row.dlwz_trade_no|default:"—" }}</td>
+          <td class="whitespace-nowrap">{{ row.amount }}</td>
+          <td class="whitespace-nowrap">
+            {% if row.status == 'taken' %}
+            <span class="badge badge-soft badge-success badge-sm">{% trans "代练通已接单" %}</span>
+            {% elif row.status == 'published' %}
+            <span class="badge badge-soft badge-info badge-sm">{% trans "待接单" %}</span>
+            {% elif row.status == 'publishing' %}
+            <span class="badge badge-soft badge-warning badge-sm">{% trans "发单中" %}</span>
+            {% elif row.status == 'failed' %}
+            <span class="badge badge-soft badge-error badge-sm">{% trans "失败" %}</span>
+            {% elif row.status == 'cancelled' %}
+            <span class="badge badge-soft badge-ghost badge-sm">{% trans "已撤单" %}</span>
+            {% else %}
+            <span class="badge badge-soft badge-ghost badge-sm">{% trans "已抓取" %}</span>
+            {% endif %}
+            {% if row.dlwz_status is not None %}
+            <span class="ml-1 text-xs text-base-content/50">{% trans "丸子状态" %} {{ row.dlwz_status }}</span>
+            {% endif %}
+            {% if row.message %}
+            <div class="mt-1 max-w-xs text-xs {% if row.status == 'failed' %}text-error/80{% else %}text-base-content/60{% endif %}">
+              {{ row.message }}
+            </div>
+            {% endif %}
+          </td>
+          <td class="whitespace-nowrap">
+            {% if row.account_info %}
+            <details>
+              <summary class="cursor-pointer text-xs text-primary">{% trans "查看账号" %}</summary>
+              <pre class="mt-1 max-w-md overflow-auto whitespace-pre-wrap break-all rounded bg-base-200 p-2 text-xs">{{ row.account_info }}</pre>
+            </details>
+            {% else %}
+            <span class="text-base-content/40">—</span>
+            {% endif %}
+          </td>
+          <td class="whitespace-nowrap text-xs text-base-content/70">{{ row.create_time|date:"m-d H:i" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="text-center text-base-content/50">{% trans "暂无搬单记录" %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div id="records-pagination">
+    {% include 'console/_pagination.html' %}
+  </div>
+</fieldset>
+
+{# 运行日志（实时）：后台线程每轮的汇总 + 错误 #}
+<fieldset class="con-panel mt-5 p-4">
+  <legend class="px-1 text-base font-bold">{% trans "运行日志" %}</legend>
+  <div class="mt-1 mb-2.5 flex flex-wrap items-center justify-between gap-2 text-xs text-base-content/60">
+    <span>{% trans "每轮汇总与错误，保留最近 30 轮" %}</span>
+    <span class="inline-flex flex-wrap items-center gap-2">
+      <span class="inline-flex items-center gap-1.5">
+        <span id="run-live-dot" class="status status-success status-sm animate-pulse"></span>
+        <span id="run-live-at">{% trans "实时更新中" %}</span>
+      </span>
+      <form method="post" action="{% url 'website:console_order_migration' %}"
+            data-confirm="{% trans "确定清空运行日志？（不影响搬单记录）" %}"
+            data-confirm-danger="1">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="clear_logs" />
+        <button type="submit" class="btn btn-ghost btn-xs text-error">
+          <i data-lucide="trash-2" class="h-3.5 w-3.5"></i>{% trans "清空日志" %}
+        </button>
+      </form>
+    </span>
+  </div>
+  <div class="relative">
+    <div id="run-logs"
+         class="max-h-80 divide-y divide-base-300/50 overflow-auto rounded-box border border-base-300/60 bg-base-100/40">
+      <div class="px-3 py-4 text-center text-xs text-base-content/50">{% trans "等待运行…" %}</div>
+    </div>
+    <button type="button" id="run-back-top"
+            class="btn btn-xs btn-soft absolute right-3 bottom-3 hidden">
+      <i data-lucide="arrow-up" class="h-3.5 w-3.5"></i>{% trans "回到最新" %}
+    </button>
+  </div>
+</fieldset>
+
+{# 实时刷新：轮询 feed 更新记录 / 统计 / 运行日志；被接单用浏览器语音播报 #}
+<script>
+(function () {
+  var FEED_URL = '{% url "website:console_order_migration_feed" %}';
+  var SOUND_ON = {% if setting.notify_sound %}true{% else %}false{% endif %};
+  var AUTO_RUN = {% if setting.auto_run %}true{% else %}false{% endif %};
+  var PAGE_SIZE = {{ paginator.per_page }};
+  var REFRESH_MS = 5000;
+  var T_PAGE_INFO = '{% trans "第 %(start)s-%(end)s 条，共 %(total)s 条" %}';
+  var T_PREV = '{% trans "上一页" %}';
+  var T_NEXT = '{% trans "下一页" %}';
+  var T_LIVE = '{% trans "自动刷新中" %}';
+  var T_PAUSED = '{% trans "已暂停（自动运行已关闭）" %}';
+
+  // 列表状态（筛选 + 页码），由 URL 初始化；切换筛选 / 翻页都走 JS，不再整页刷新
+  var state = (function () {
+    var sp = new URLSearchParams(window.location.search);
+    var pg = parseInt(sp.get('page'), 10);
+    return {statuses: sp.getAll('status').filter(function (s) { return !!s; }),
+            page: (pg > 0 ? pg : 1), cursor: ''};
+  })();
+  var manualResume = false;
+  var timer = null;
+  var textEl = document.getElementById('notify-sound-text');
+
+  function speak(text) {
+    if (!text || !window.speechSynthesis) { return; }
+    var utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'zh-CN';
+    window.speechSynthesis.speak(utter);
+  }
+
+  var tryBtn = document.getElementById('sound-try');
+  if (tryBtn) {
+    tryBtn.addEventListener('click', function () {
+      speak((textEl && textEl.value.trim()) || '');
+    });
+  }
+
+  // 运行日志：「回到最新」按钮 —— 用户往下翻看历史时才出现，一点回到顶部（最新）
+  function syncBackTop() {
+    var box = document.getElementById('run-logs');
+    var btn = document.getElementById('run-back-top');
+    if (box && btn) { btn.classList.toggle('hidden', box.scrollTop <= 8); }
+  }
+  var backTopBtn = document.getElementById('run-back-top');
+  var logBox = document.getElementById('run-logs');
+  if (backTopBtn && logBox) {
+    backTopBtn.addEventListener('click', function () {
+      logBox.scrollTop = 0;
+      syncBackTop();
+    });
+    logBox.addEventListener('scroll', syncBackTop);
+  }
+
+  function setText(id, value) {
+    var el = document.getElementById(id);
+    if (el) { el.textContent = String(value); }
+  }
+
+  // ---------- 实时刷新开关（自动运行关闭时不再发请求） ----------
+  function setLive(active) {
+    setText('live-text', active ? T_LIVE : T_PAUSED);
+    var hint = document.getElementById('live-hint');
+    if (hint) { hint.classList.toggle('hidden', !active); }
+    var resume = document.getElementById('live-resume');
+    if (resume) { resume.classList.toggle('hidden', active); }
+    var dot = document.getElementById('run-live-dot');
+    if (dot) { dot.classList.toggle('animate-pulse', active); }
+    if (!active) { setText('run-live-at', T_PAUSED); }
+  }
+
+  function startPolling() {
+    if (timer) { return; }
+    timer = setInterval(poll, REFRESH_MS);
+    setLive(true);
+  }
+
+  function stopPolling() {
+    if (timer) { clearInterval(timer); timer = null; }
+    setLive(false);
+  }
+
+  var resumeBtn = document.getElementById('live-resume');
+  if (resumeBtn) {
+    resumeBtn.addEventListener('click', function () {
+      manualResume = true;
+      startPolling();
+    });
+  }
+
+  // ---------- 筛选 + 分页：都走 JS，不刷新页面 ----------
+  function feedUrl() {
+    var p = new URLSearchParams();
+    state.statuses.forEach(function (s) { p.append('status', s); });
+    if (state.page > 1) { p.append('page', state.page); }
+    if (state.cursor) { p.append('after', state.cursor); }
+    var qs = p.toString();
+    return FEED_URL + (qs ? '?' + qs : '');
+  }
+
+  function syncUrl() {
+    var p = new URLSearchParams();
+    state.statuses.forEach(function (s) { p.append('status', s); });
+    if (state.page > 1) { p.append('page', state.page); }
+    var qs = p.toString();
+    window.history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : ''));
+  }
+
+  function updateChips() {
+    document.querySelectorAll('a[data-status-filter]').forEach(function (a) {
+      var key = a.getAttribute('data-status-filter');
+      var active = (key === '') ? state.statuses.length === 0
+                                : state.statuses.indexOf(key) >= 0;
+      a.classList.toggle('badge-primary', active);
+      a.classList.toggle('badge-ghost', !active);
+    });
+  }
+
+  function reloadList() {
+    state.page = 1;
+    state.cursor = '';
+    syncUrl();
+    updateChips();
+    poll();
+  }
+
+  document.querySelectorAll('a[data-status-filter]').forEach(function (a) {
+    a.addEventListener('click', function (ev) {
+      ev.preventDefault();
+      var key = a.getAttribute('data-status-filter');
+      if (key === '') {
+        state.statuses = [];
+      } else if (state.statuses.indexOf(key) >= 0) {
+        state.statuses = state.statuses.filter(function (s) { return s !== key; });
+      } else {
+        state.statuses = state.statuses.concat([key]);
+      }
+      reloadList();
+    });
+  });
+
+  function pageLink(page, label, cls) {
+    var a = document.createElement('a');
+    a.href = '#';
+    a.className = cls;
+    a.setAttribute('data-page', page);
+    a.textContent = label;
+    return a;
+  }
+
+  function disabledBtn(label, cls) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = cls;
+    b.disabled = true;
+    b.textContent = label;
+    return b;
+  }
+
+  function renderPagination(page, numPages, total) {
+    var box = document.getElementById('records-pagination');
+    if (!box) { return; }
+    box.textContent = '';
+    if (!numPages || numPages <= 1) { return; }
+    var start = (page - 1) * PAGE_SIZE + 1;
+    var end = Math.min(page * PAGE_SIZE, total);
+
+    var wrap = document.createElement('div');
+    wrap.className = 'mt-3 flex flex-wrap items-center justify-between gap-3';
+
+    var info = document.createElement('span');
+    info.className = 'text-xs text-base-content/60';
+    info.textContent = T_PAGE_INFO.replace('%(start)s', start)
+      .replace('%(end)s', end).replace('%(total)s', total);
+    wrap.appendChild(info);
+
+    var join = document.createElement('div');
+    join.className = 'join';
+    join.appendChild(page > 1 ? pageLink(page - 1, T_PREV, 'btn btn-sm join-item')
+                              : disabledBtn(T_PREV, 'btn btn-sm join-item'));
+    var num = document.createElement('span');
+    num.className = 'btn btn-sm join-item btn-active font-mono';
+    num.textContent = page + ' / ' + numPages;
+    join.appendChild(num);
+    join.appendChild(page < numPages ? pageLink(page + 1, T_NEXT, 'btn btn-sm join-item')
+                                     : disabledBtn(T_NEXT, 'btn btn-sm join-item'));
+    wrap.appendChild(join);
+    box.appendChild(wrap);
+  }
+
+  var pgBox = document.getElementById('records-pagination');
+  if (pgBox) {
+    pgBox.addEventListener('click', function (ev) {
+      var a = ev.target.closest('a[data-page]');
+      if (!a) { return; }
+      ev.preventDefault();
+      state.page = parseInt(a.getAttribute('data-page'), 10) || 1;
+      state.cursor = '';
+      syncUrl();
+      poll();
+    });
+  }
+
+  updateChips();
+
+  var STATUS = {
+    taken:      { label: '{% trans "代练通已接单" %}', cls: 'badge-success' },
+    published:  { label: '{% trans "待接单" %}', cls: 'badge-info' },
+    publishing: { label: '{% trans "发单中" %}', cls: 'badge-warning' },
+    failed:     { label: '{% trans "失败" %}', cls: 'badge-error' },
+    cancelled:  { label: '{% trans "已撤单" %}', cls: 'badge-ghost' },
+    candidate:  { label: '{% trans "已抓取" %}', cls: 'badge-ghost' }
+  };
+
+  function td(text, cls) {
+    var el = document.createElement('td');
+    el.textContent = (text === null || text === undefined || text === '') ? '—' : String(text);
+    if (cls) { el.className = cls; }
+    return el;
+  }
+
+  function renderRecords(rows) {
+    var body = document.getElementById('records-body');
+    if (!body) { return; }
+    body.textContent = '';
+    if (!rows.length) {
+      var empty = document.createElement('tr');
+      var cell = td('{% trans "暂无搬单记录" %}', 'text-center text-base-content/50');
+      cell.colSpan = 7;
+      empty.appendChild(cell);
+      body.appendChild(empty);
+      return;
+    }
+    rows.forEach(function (r) {
+      var tr = document.createElement('tr');
+      tr.appendChild(td(r.serial, 'whitespace-nowrap font-mono text-xs'));
+      var titleTd = td(r.title, 'max-w-md truncate');
+      titleTd.title = r.title || '';
+      tr.appendChild(titleTd);
+      tr.appendChild(td(r.trade_no, 'whitespace-nowrap font-mono text-xs'));
+      tr.appendChild(td(r.amount, 'whitespace-nowrap'));
+
+      var st = STATUS[r.status] || STATUS.candidate;
+      var stTd = document.createElement('td');
+      stTd.className = 'whitespace-nowrap';
+      var badge = document.createElement('span');
+      badge.className = 'badge badge-soft badge-sm ' + st.cls;
+      badge.textContent = st.label;
+      stTd.appendChild(badge);
+      if (r.dlwz_status !== null && r.dlwz_status !== undefined) {
+        var note = document.createElement('span');
+        note.className = 'ml-1 text-xs text-base-content/50';
+        note.textContent = '{% trans "丸子状态" %} ' + r.dlwz_status;
+        stTd.appendChild(note);
+      }
+      if (r.message) {
+        var msg = document.createElement('div');
+        msg.className = 'mt-1 max-w-xs text-xs ' + (r.status === 'failed' ? 'text-error/80' : 'text-base-content/60');
+        msg.textContent = r.message;
+        stTd.appendChild(msg);
+      }
+      tr.appendChild(stTd);
+
+      var accTd = document.createElement('td');
+      accTd.className = 'whitespace-nowrap';
+      if (r.account_info) {
+        var det = document.createElement('details');
+        var sum = document.createElement('summary');
+        sum.className = 'cursor-pointer text-xs text-primary';
+        sum.textContent = '{% trans "查看账号" %}';
+        det.appendChild(sum);
+        var pre = document.createElement('pre');
+        pre.className = 'mt-1 max-w-md overflow-auto whitespace-pre-wrap break-all rounded bg-base-200 p-2 text-xs';
+        pre.textContent = r.account_info;
+        det.appendChild(pre);
+        accTd.appendChild(det);
+      } else {
+        var dash = document.createElement('span');
+        dash.className = 'text-base-content/40';
+        dash.textContent = '—';
+        accTd.appendChild(dash);
+      }
+      tr.appendChild(accTd);
+      tr.appendChild(td(r.time, 'whitespace-nowrap text-xs text-base-content/70'));
+      body.appendChild(tr);
+    });
+  }
+
+  function renderRun(run) {
+    var el = document.getElementById('run-status');
+    if (el) {
+      el.textContent = run.time
+        ? ('{% trans "最近运行：" %}' + run.time + (run.summary ? '（' + run.summary + '）' : ''))
+        : '{% trans "尚未运行过" %}';
+    }
+    setText('run-error', run.error ? ('{% trans "最近错误：" %}' + run.error) : '');
+  }
+
+  var METRICS = [
+    { key: 'fetched', label: '{% trans "抓取" %}', cls: 'text-base-content/70' },
+    { key: 'published', label: '{% trans "发布" %}', cls: 'text-info' },
+    { key: 'taken', label: '{% trans "接单" %}', cls: 'text-success' },
+    { key: 'rollback', label: '{% trans "兜底" %}', cls: 'text-warning' }
+  ];
+
+  function chip(label, value, cls) {
+    var el = document.createElement('span');
+    el.className = 'inline-flex items-baseline gap-1 rounded-field bg-base-200/60 px-1.5 py-0.5 text-xs ' + cls;
+    var text = document.createElement('span');
+    text.className = 'text-base-content/50';
+    text.textContent = label;
+    var num = document.createElement('b');
+    num.className = 'font-semibold tabular-nums';
+    num.textContent = String(value === null || value === undefined ? 0 : value);
+    el.appendChild(text);
+    el.appendChild(num);
+    return el;
+  }
+
+  function renderLogs(logs) {
+    var box = document.getElementById('run-logs');
+    if (!box) { return; }
+    // 用户停在顶部（最新）时自动跟随最新；若已往下翻看历史，则按新增高度补偿，保持原视图不跳
+    var prevTop = box.scrollTop;
+    var prevHeight = box.scrollHeight;
+    var stick = prevTop <= 8;
+    box.textContent = '';
+    if (!logs.length) {
+      var hint = document.createElement('div');
+      hint.className = 'px-3 py-4 text-center text-xs text-base-content/50';
+      hint.textContent = '{% trans "等待运行…" %}';
+      box.appendChild(hint);
+      syncBackTop();
+      return;
+    }
+    logs.forEach(function (log, idx) {
+      var errors = log.errors || [];
+      var row = document.createElement('div');
+      row.className = 'flex gap-3 px-3 py-2.5' + (idx === 0 ? ' bg-base-200/40' : '');
+
+      var accent = document.createElement('div');
+      accent.className = 'w-0.5 shrink-0 self-stretch rounded-full '
+        + (errors.length ? 'bg-error/60' : 'bg-success/50');
+      row.appendChild(accent);
+
+      var main = document.createElement('div');
+      main.className = 'min-w-0 flex-1';
+
+      var top = document.createElement('div');
+      top.className = 'flex flex-wrap items-center gap-x-2.5 gap-y-1';
+      var time = document.createElement('span');
+      time.className = 'font-mono text-xs tabular-nums text-base-content/50';
+      time.textContent = log.time || '';
+      top.appendChild(time);
+      if (idx === 0) {
+        var tag = document.createElement('span');
+        tag.className = 'badge badge-xs badge-soft badge-primary';
+        tag.textContent = '{% trans "最新" %}';
+        top.appendChild(tag);
+      }
+      METRICS.forEach(function (m) { top.appendChild(chip(m.label, log[m.key], m.cls)); });
+      main.appendChild(top);
+
+      // 监控明细：每笔订单一行（代练通状态 / 丸子状态 / 处理结果）
+      (log.monitor || []).forEach(function (line) {
+        var m = document.createElement('div');
+        m.className = 'mt-1 flex items-start gap-1.5 text-xs text-base-content/60';
+        var bullet = document.createElement('span');
+        bullet.className = 'mt-1.5 h-1 w-1 shrink-0 rounded-full bg-base-content/30';
+        var mtext = document.createElement('span');
+        mtext.className = 'min-w-0 break-all';
+        mtext.textContent = line;
+        m.appendChild(bullet);
+        m.appendChild(mtext);
+        main.appendChild(m);
+      });
+
+      errors.forEach(function (err) {
+        var e = document.createElement('div');
+        e.className = 'mt-1.5 flex items-start gap-1.5 rounded-field bg-error/10 px-2 py-1 text-xs text-error';
+        var dot = document.createElement('span');
+        dot.className = 'mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-error/70';
+        var text = document.createElement('span');
+        text.className = 'min-w-0 break-all';
+        text.textContent = err;
+        text.title = err;
+        e.appendChild(dot);
+        e.appendChild(text);
+        main.appendChild(e);
+      });
+
+      row.appendChild(main);
+      box.appendChild(row);
+    });
+    box.scrollTop = stick ? 0 : Math.max(0, prevTop + (box.scrollHeight - prevHeight));
+    syncBackTop();
+  }
+
+  var lastRecords = '';
+  var lastLogs = '';
+  var lastRun = '';
+
+  // 只有数据真的变了才重绘，避免每轮无谓重排导致闪烁 / 打断阅读
+  function poll() {
+    fetch(feedUrl())
+      .then(function (resp) { return resp.json(); })
+      .then(function (data) {
+        if (!data || !data.ok) { return; }
+        state.cursor = data.cursor || '';
+
+        // 自动运行被关掉（含在别处「一键撤销」）→ 停止轮询，不再发请求
+        if (!data.run.auto_run && !manualResume) { stopPolling(); }
+
+        setText('stat-total', data.stats.total);
+        setText('stat-published', data.stats.published);
+        setText('stat-taken', data.stats.taken);
+        setText('stat-failed', data.stats.failed);
+
+        var recordsSig = JSON.stringify(data.records || []);
+        if (recordsSig !== lastRecords) {
+          lastRecords = recordsSig;
+          renderRecords(data.records || []);
+          renderPagination(data.page, data.num_pages, data.filtered_total);
+        }
+        var logsSig = JSON.stringify(data.logs || []);
+        if (logsSig !== lastLogs) {
+          lastLogs = logsSig;
+          renderLogs(data.logs || []);
+        }
+        var runSig = JSON.stringify(data.run || {});
+        if (runSig !== lastRun) {
+          lastRun = runSig;
+          renderRun(data.run || {});
+        }
+        if (timer) {   // 已暂停时不覆盖「已暂停」提示
+          var clock = new Date();
+          setText('run-live-at', '{% trans "更新于" %} ' + clock.toTimeString().slice(0, 8));
+        }
+
+        if (SOUND_ON && data.taken && data.taken.length) {
+          speak((textEl && textEl.value.trim()) || '{% trans "丸子来新订单了" %}');
+        }
+      })
+      .catch(function () { /* 网络抖动忽略，下轮再试 */ });
+  }
+
+  poll();                              // 首屏先拉一次（即使自动运行已关闭）
+  if (AUTO_RUN) { startPolling(); }    // 自动运行开启才持续轮询
+})();
+</script>
+{% endblock %}

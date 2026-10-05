@@ -12,7 +12,8 @@ import threading
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import connections
-from django.test import Client, TestCase, TransactionTestCase
+from django.test import RequestFactory, TestCase, TransactionTestCase
+from django.urls import resolve
 
 from API.apis.musics.xiaoying import utils
 from API.models.Music.music import Music, MusicSource
@@ -178,41 +179,48 @@ class ImportConcurrencyTests(TransactionTestCase):
 
 
 class ImportApiViewTests(TestCase):
-    """接口层：文件上传导入"""
+    """接口层：文件上传导入
+
+    注意：这里用 RequestFactory 直接调用视图（与项目其它视图测试一致），
+    只校验视图自身的参数解析 / 文件处理。**鉴权由 ApiAuthMiddleware 统一判定**
+    （`/api/music/` 策略为 inherit → 全局兜底 auth，即需要签名），不属于本用例关注点；
+    若改用 Client() 匿名请求，会被中间件按策略拦成 20011（AUTH_FAILED），
+    与本用例想校验的「文件上传」无关，故不在此重复鉴权测试。
+    """
 
     def setUp(self):
-        self.client = Client()
+        self.factory = RequestFactory()
         self.url = '/api/music/xiaoying/import'
+        self.view = resolve(self.url).func
 
     @staticmethod
     def _file(content, name='musics.json'):
         return SimpleUploadedFile(name, content.encode('utf-8'), content_type='application/json')
 
+    def _post(self, data=None):
+        return self.view(self.factory.post(self.url, data or {}))
+
     def test_upload_valid_file(self):
         payload = '[{"name": "接口导入", "singer": ["歌手"], "music_sources": ["https://example.com/api.mp3"]}]'
-        resp = self.client.post(self.url, {'file': self._file(payload)})
-        body = resp.json()
+        body = json.loads(self._post({'file': self._file(payload)}).content)
         self.assertEqual(body['code'], 10000)
         self.assertEqual(body['data']['success_count'], 1)
         self.assertEqual(Music.objects.filter(name='接口导入').count(), 1)
         self.assertEqual(MusicSource.objects.count(), 1)
 
     def test_upload_without_file(self):
-        resp = self.client.post(self.url)
-        body = resp.json()
+        body = json.loads(self._post().content)
         self.assertEqual(body['code'], 20001)
         self.assertIn('file', body['msg'])
 
     def test_upload_invalid_json(self):
-        resp = self.client.post(self.url, {'file': self._file('{bad json')})
-        body = resp.json()
+        body = json.loads(self._post({'file': self._file('{bad json')}).content)
         self.assertEqual(body['code'], 20002)
         self.assertIn('JSON 解析失败', body['msg'])
 
     def test_upload_over_limit(self):
         records = [{'name': f'超限{i}', 'singer': ['歌手']} for i in range(utils.MAX_IMPORT_COUNT + 1)]
-        resp = self.client.post(self.url, {'file': self._file(json.dumps(records))})
-        body = resp.json()
+        body = json.loads(self._post({'file': self._file(json.dumps(records))}).content)
         self.assertEqual(body['code'], 20003)
         self.assertIn('单次最多导入', body['msg'])
         self.assertEqual(Music.objects.count(), 0)

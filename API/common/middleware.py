@@ -246,7 +246,8 @@ class ApiRequestLogMiddleware:
 # 项目签名，只能免签放行：
 #   - 邮箱激活链接：点击链接本身即一次性凭证，链接里带的是自己的 token；
 #   - 注册 / 登录方式配置：客户端公开信息；
-#   - 红果短剧网页直出流：<video> 标签直连，鉴权由 play 下发的时效令牌承担。
+#   - 红果短剧网页直出流 / 微博视频代理播放：<video> 标签直连，鉴权由下发的时效令牌承担
+#     （播放器会为拖动进度条发多次 Range 请求，项目签名的 nonce 是一次性的，用不了）。
 # 为什么代码里还要列一遍（DB 里同样有对应的 open 策略）：策略表是运营数据，会被误删、
 # 换环境也不会自动重建（部分种子只存在于数据迁移里，迁移标记已执行就不会重跑）。
 # 这几个例外一旦丢失，登录 / 播放会直接整片挂掉，因此留一份**与 DB 解耦**的代码兜底，
@@ -257,6 +258,7 @@ PUBLIC_PATHS = (
     '/api/user_center/users/verify/email',
     '/api/user_center/users/methods',
     '/api/dramas/hongguo/stream',
+    '/api/weibo/video',
 )
 
 

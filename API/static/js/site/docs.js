@@ -15,6 +15,156 @@
     return m ? m[1] : '';
   }
 
+  // 级联下拉：同一 data-cascade 分组内按 data-cascade-role=game/zone/server 逐级联动。
+  // - 数据按需拉取一次并缓存，避免一次性渲染上千个选项把页面卡住（目前用于代练通「发布订单」）。
+  // - 区服（server）可能近千项：全量只留在内存，DOM 只渲染前 SERVER_LIMIT 项，
+  //   由上方搜索框输入筛选，兼顾性能与可用性（选不到时可再输入关键词缩小）。
+  var CASCADE_URLS = { 'dlt-zones': '/docs/_dlt_zone_tree/' };
+  var SERVER_LIMIT = 50;
+
+  function fillSelect(select, placeholder, options) {
+    select.innerHTML = '';
+    var first = document.createElement('option');
+    first.value = '';
+    first.textContent = placeholder || '默认';
+    select.appendChild(first);
+    (options || []).forEach(function (o) {
+      var opt = document.createElement('option');
+      opt.value = o.value;
+      opt.textContent = o.label;
+      select.appendChild(opt);
+    });
+  }
+
+  function initCascades() {
+    var groups = {};
+    document.querySelectorAll('[data-cascade][data-cascade-role]').forEach(function (node) {
+      var key = node.dataset.cascade;
+      if (!groups[key]) groups[key] = {};
+      groups[key][node.dataset.cascadeRole] = node;
+    });
+    Object.keys(groups).forEach(function (key) {
+      var group = groups[key];
+      if (!group.game || !group.zone || !group.server) return;
+      // 记下模板渲染出的「默认」选项文案，联动时作为占位
+      [group.zone, group.server].forEach(function (sel) {
+        if (sel.options.length && !sel.dataset.cascadePlaceholder) {
+          sel.dataset.cascadePlaceholder = sel.options[0].textContent;
+        }
+      });
+      var searchBox = group.server.parentNode
+        ? group.server.parentNode.querySelector('[data-cascade-search]') : null;
+      var list = null;    // 全量数据：游戏 → 大区 → 区服（只拉一次）
+      var servers = [];   // 当前大区下的全部区服（内存保留，DOM 只渲染前 SERVER_LIMIT 项）
+      // 按所选游戏切换「仅某些游戏才有」的参数（如「铭文」只属于王者荣耀）
+      // 注意：closest 会从元素自身算起，而游戏下拉自己就有 id，所以要从父节点往上找
+      var gameScope = group.game.parentElement
+        ? (group.game.parentElement.closest('[id]') || document) : document;
+      var toggleByGame = function () {
+        gameScope.querySelectorAll('[data-show-games]').forEach(function (box) {
+          var games = (box.dataset.showGames || '').split(/\s+/).filter(Boolean);
+          var hit = !games.length || games.indexOf(String(group.game.value)) >= 0;
+          box.classList.toggle('hidden', !hit);
+        });
+      };
+      var findGame = function () {
+        var hit = null;
+        (list || []).some(function (item) {
+          if (String(item.game_id) === String(group.game.value)) { hit = item; return true; }
+          return false;
+        });
+        return hit;
+      };
+      var findZone = function (game, zoneName) {
+        var hit = null;
+        (game ? game.zones : []).some(function (z) {
+          if (z.name === zoneName) { hit = z; return true; }
+          return false;
+        });
+        return hit;
+      };
+      // keyword 为空则展示前 SERVER_LIMIT 个；否则按关键词过滤（value/label 都参与匹配）
+      var renderServers = function (keyword) {
+        var kw = (keyword || '').trim();
+        var matched = kw
+          ? servers.filter(function (s) { return (s.label + ' ' + s.value).indexOf(kw) >= 0; })
+          : servers;
+        fillSelect(group.server, group.server.dataset.cascadePlaceholder || gettext('默认（自动定位）'),
+          matched.slice(0, SERVER_LIMIT));
+        if (searchBox) {
+          searchBox.placeholder = interpolate(gettext('搜索区服（共 %(n)s 个）'), { n: matched.length }, true);
+        }
+      };
+      var takeServers = function (game, zoneName) {
+        var zone = findZone(game, zoneName);
+        servers = (zone ? zone.servers : []).map(function (s) {
+          return { value: s.code, label: s.name || s.code };
+        });
+        renderServers('');
+      };
+      var ensureLoaded = function (done) {
+        if (list) { done(); return; }
+        fetch(CASCADE_URLS[key] || '', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+          .then(function (r) { return r.json(); })
+          .then(function (res) { list = (res && res.data) || []; done(); })
+          .catch(function () { list = []; done(); });
+      };
+      group.game.addEventListener('change', function () {
+        toggleByGame();
+        ensureLoaded(function () {
+          var game = findGame();
+          fillSelect(group.zone, group.zone.dataset.cascadePlaceholder || '默认',
+            (game ? game.zones : []).map(function (z) { return { value: z.name, label: z.name }; }));
+          servers = [];
+          renderServers('');
+        });
+      });
+      toggleByGame();   // 首屏按默认游戏（王者荣耀）先应用一次显隐
+      group.zone.addEventListener('change', function () {
+        ensureLoaded(function () { takeServers(findGame(), group.zone.value); });
+      });
+      if (searchBox) {
+        searchBox.addEventListener('input', function () { renderServers(searchBox.value); });
+      }
+    });
+  }
+
+  /* ---------- 双面板输入（如「时限」：时间表 / 手动输入） ----------
+   * 同一参数渲染两个面板（[data-dual-panel]），用 [data-dual-switch] 的按钮切换；
+   * 默认主面板；切换时禁用另一面板（禁用字段不随表单提交），故只提交激活面板的值。 */
+  function initDualInputs() {
+    document.querySelectorAll('[data-dual-switch]').forEach(function (bar) {
+      var wrapper = bar.parentElement;   // 该参数的容器（内含两个面板）
+      if (!wrapper) return;
+      var buttons = bar.querySelectorAll('[data-dual-mode]');
+      var panels = wrapper.querySelectorAll('[data-dual-panel]');
+      function apply(mode) {
+        panels.forEach(function (panel) {
+          var on = panel.getAttribute('data-dual-panel') === mode;
+          panel.classList.toggle('hidden', !on);
+          panel.querySelectorAll('input,select,textarea').forEach(function (f) { f.disabled = !on; });
+        });
+        buttons.forEach(function (btn) {
+          var on = btn.getAttribute('data-dual-mode') === mode;
+          btn.classList.toggle('btn-primary', on);
+          btn.classList.toggle('btn-ghost', !on);
+        });
+      }
+      buttons.forEach(function (btn) {
+        btn.addEventListener('click', function () { apply(btn.getAttribute('data-dual-mode')); });
+      });
+      apply('primary');   // 默认主面板（时间表）
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCascades);
+    document.addEventListener('DOMContentLoaded', initDualInputs);
+  } else {
+    initCascades();
+    initDualInputs();
+  }
+
   function el(tag, className, text) {
     var node = document.createElement(tag);
     if (className) node.className = className;
@@ -543,6 +693,8 @@
 
     card.querySelectorAll('[data-param-name]').forEach(function (field) {
       var name = field.dataset.paramName;
+      // 双面板输入里未激活的面板会被禁用：禁用的字段不参与本次提交
+      if (field.disabled) return;
       if (field.type === 'file') {
         // 文件字段：只取已选择的真实文件
         if (field.files && field.files.length) {

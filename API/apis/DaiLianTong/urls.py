@@ -18,13 +18,22 @@ urlpatterns = [
     path('user/sign-in', request.sign_in_view, name='dlt_sign_in'),
     path('user/real-name-info', request.real_name_info_view, name='dlt_real_name_info'),
 
+    # 游戏 (games)
+    path('games', request.games_view, name='dlt_games'),
+    path('games/orders', request.games_orders_view, name='dlt_games_orders'),
+
+    # 搜索 (search)
+    path('search/orders', request.search_orders_view, name='dlt_search_orders'),
+    path('search/hot-words', request.hot_search_words_view, name='dlt_hot_search_words'),
+
     # 订单 (orders)
-    path('orders/public', request.orders_public_view, name='dlt_orders_public'),
-    path('orders/detail', request.order_detail_view, name='dlt_order_detail'),
     path('orders/receive', request.receive_order_view, name='dlt_receive_order'),
     path('orders/publish', request.publish_order_view, name='dlt_publish_order'),
+    path('orders/apply-cancel', request.apply_cancel_view, name='dlt_apply_cancel_order'),
+    path('orders/handle-cancel', request.handle_cancel_view, name='dlt_handle_cancel_order'),
     path('orders/delete', request.delete_order_view, name='dlt_delete_order'),
     path('orders/my', request.my_orders_view, name='dlt_my_orders'),
+    path('orders/owner-info', request.owner_info_view, name='dlt_owner_info'),
     path('orders/upload-image', request.upload_image_view, name='dlt_upload_image'),
 
     # 头像 (avatar)

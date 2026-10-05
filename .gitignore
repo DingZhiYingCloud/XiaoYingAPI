@@ -39,6 +39,10 @@ toekns.txt
 # 火山引擎（方舟）访问密钥明文文件：含 AK / SK，绝不入库
 /火山引擎api访问密钥信息.txt
 
+# 平台账号登录 Cookie 的明文文件（知乎等）：含登录凭证，绝不入库。
+# 正式存储走「通用平台账号表」（落库 AES 加密），明文文件只作一次性导入用。
+/cookie.txt
+
 # 红果离线签名服务的运行物：unidbg 胖 jar（约 31MB）与 metasec 原生库/证书。
 # 属第三方二进制，按 scripts/hongguo_sign/start_sign_service.bat 顶部说明单独获取，不入库。
 # 注：内置裁剪版 JRE（jre/，约 32MB）已入库——它是「免装 Java 即可运行」的关键，

@@ -71,6 +71,13 @@ class ApiConfig(AppConfig):
         if is_serving_process():
             start_quota_worker()
 
+        # 代练搬单监控线程：同样只在「对外提供服务」的进程里启动；仅当后台「代练搬单」
+        # 页开启「自动运行」时才真正执行一轮（默认关闭，避免未配置就自动发单 / 接单）
+        from API.apis.order_migration.utils import start_worker as start_order_migration_worker
+
+        if is_serving_process():
+            start_order_migration_worker()
+
         # collectstatic：把「前端编译源码与工具」排除在收集之外 —— 它们只服务编译期，不是运行时资源：
         #   - css/input.css 第 1 行的 @import "tailwindcss" 会被 Manifest 存储当成待解析的 URL，直接报错；
         #   - tailwindcss.exe 有 109MB，收集它既拖慢部署又会让它被公开下载；

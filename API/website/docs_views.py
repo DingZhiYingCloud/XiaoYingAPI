@@ -86,6 +86,43 @@ def errors(request):
 
 
 @require_GET
+def dlt_zone_tree(request):
+    """代练通「游戏 → 大区 → 服务器」级联数据（发布订单在线调试的联动下拉用，公开只读）
+
+    数据取自上游 GameZoneServerList（服务层缓存 1 小时）；上游不可用时返回空数组，
+    前端下拉会退化成只剩「默认」一项，不影响接口本身。
+    """
+    from API.apis.DaiLianTong.utils import zone_tree
+    return JsonResponse({'code': 10000, 'msg': '获取成功', 'data': zone_tree()})
+
+
+@require_GET
+def dlwz_games(request):
+    """/docs/_dlwz_games/ 代练丸子「全部游戏」（发单面板用，公开只读）
+
+    服务端用后台托管的默认账号拉取；上游不可用时返回空数组，面板退化为只显示预设游戏。
+    """
+    from API.apis.DaiLianWanZi.utils import get_games
+    ok, result = get_games()
+    return JsonResponse({'code': StatusCode.SUCCESS, 'msg': '成功',
+                         'data': ((result or {}).get('data') or []) if ok else []})
+
+
+@require_GET
+def dlwz_options(request):
+    """/docs/_dlwz_options/ 代练丸子发单选项（大区 / 代练类型 / 子类型字段；发单面板用，公开只读）"""
+    from API.apis.DaiLianWanZi.utils import get_order_options
+    game_id = (request.GET.get('game_id') or '').strip()
+    if not game_id.isdigit():
+        return JsonResponse({'code': StatusCode.PARAM_MISSING, 'msg': '参数缺失: game_id', 'data': None})
+    ok, result = get_order_options(
+        game_id, leveling_type_id=(request.GET.get('leveling_type_id') or '').strip())
+    if not ok:
+        return JsonResponse({'code': StatusCode.EXTERNAL_API_FAILED, 'msg': result or '获取失败', 'data': None})
+    return JsonResponse({'code': StatusCode.SUCCESS, 'msg': '成功', 'data': (result or {}).get('data')})
+
+
+@require_GET
 @never_cache
 def my_projects(request):
     """/docs/_projects/ 当前访客可选用的接入项目（含密钥）
@@ -228,12 +265,22 @@ def service(request, slug: str):
                      for channel in doc.channels for ep in channel.endpoints)
     # 是否存在返回 Markdown 正文的端点（如 AI 对话），有则加载 marked 与渲染脚本
     has_markdown = any(ep.markdown for channel in doc.channels for ep in channel.endpoints)
+    # 代练丸子「发布订单」面板：任一端点标记 dlwz_publish 时，注入面板所需的预设默认值
+    has_dlwz_publish = any(ep.dlwz_publish for channel in doc.channels for ep in channel.endpoints)
+    dlwz_presets_json = ''
+    if has_dlwz_publish:
+        from API.apis.DaiLianWanZi.games import GAMES
+        dlwz_presets_json = json.dumps(
+            [{'game_id': p.game_id, 'region': p.region_name,
+              'type': p.leveling_type_name, 'tasks': p.tasks}
+             for p in GAMES.values()], ensure_ascii=False)
     # 本服务端点总数：供「接口目录」浮窗显示数量（仅 1 个端点时不渲染该浮窗）
     endpoint_count = sum(len(channel.endpoints) for channel in doc.channels)
     return render(request, 'docs/service.html',
                   {'doc': doc, 'status': status, 'has_player': has_player, 'has_image': has_image,
                    'has_register_ui': has_register_ui, 'has_picker': has_picker,
                    'has_markdown': has_markdown,
+                   'has_dlwz_publish': has_dlwz_publish, 'dlwz_presets_json': dlwz_presets_json,
                    'has_announcement': has_announcement,
                    'local_params': local_params,
                    'endpoint_count': endpoint_count})

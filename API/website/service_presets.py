@@ -65,6 +65,12 @@ SERVICE_POLICY_PRESETS = (
         '（该路径另有代码内免签名单兜底，见 API/common/middleware.py）。',
     ),
     (
+        '/api/weibo/video', '微博-视频代理播放', 'endpoint', 'open', 'inherit',
+        '<video> 标签直连播放，带不了项目签名（且拖动进度条会发多次 Range 请求，'
+        '签名 nonce 一次性、用不了）；其鉴权改由 feed 接口下发的时效令牌承担'
+        '（该路径另有代码内免签名单兜底，见 API/common/middleware.py）。',
+    ),
+    (
         '/api/feedback/', '问题反馈中心', 'service', 'auth', 'normal',
         '反馈中心服务本身仍要求项目签名；显式建一条服务级策略，避免日后新增子端点时'
         '被上层误判为开放。',

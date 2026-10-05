@@ -1,0 +1,107 @@
+{% extends 'console/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "推送日志 - 超级管理员 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,推送日志,消息推送,Server酱" %}{% endblock %}
+{% block description %}{% trans "小影API 超级管理员：查看消息推送服务每次推送的记录（成功 / 失败、上游返回码与推送ID）。" %}{% endblock %}
+
+{% block console_content %}
+{% blocktrans with total=total asvar ph_desc %}共 {{ total }} 条推送记录；成功与失败都会留痕，失败原因见「说明」列。{% endblocktrans %}
+{% include 'console/_page_header.html' with icon='send' title='推送日志' desc=ph_desc %}
+
+{% include 'console/_messages.html' %}
+
+{# 规则说明（纯提示，中性灰） #}
+<div role="alert" class="alert alert-soft bg-base-200 mt-4 items-start py-3 text-sm">
+  <div class="space-y-1">
+    <p>
+      {% trans "推送由「消息推送服务」写库留痕，本页只读；SendKey 不在本表、也不在此展示。" %}
+    </p>
+    <p class="text-xs opacity-80">
+      {% trans "SendKey 在「账号管理」里新增 platform=Server酱 的账号维护（凭据字段填 SendKey），服务端自动取用。" %}
+    </p>
+  </div>
+</div>
+
+{# 筛选（GET 表单，回车即可提交）；三项可叠加：选了项目后关键词即在该项目内搜 #}
+<form method="get" class="mt-4 flex flex-wrap items-end gap-2">
+  <label class="grid gap-1">
+    <span class="text-xs text-base-content/70">{% trans "关键词" %}</span>
+    <input type="search" name="q" value="{{ keyword }}"
+           class="input input-sm input-bordered w-52"
+           placeholder="{% trans '标题 / 正文' %}" />
+  </label>
+  <label class="grid gap-1">
+    <span class="text-xs text-base-content/70">{% trans "项目" %}</span>
+    <select name="project" class="select select-sm select-bordered">
+      <option value="">{% trans "全部" %}</option>
+      {% for opt in app_options %}
+      <option value="{{ opt.value }}" {% if opt.value == project_filter %}selected{% endif %}>{{ opt.label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label class="grid gap-1">
+    <span class="text-xs text-base-content/70">{% trans "结果" %}</span>
+    <select name="result" class="select select-sm select-bordered">
+      <option value="all" {% if result_filter == 'all' %}selected{% endif %}>{% trans "全部" %}</option>
+      <option value="ok" {% if result_filter == 'ok' %}selected{% endif %}>{% trans "成功" %}</option>
+      <option value="fail" {% if result_filter == 'fail' %}selected{% endif %}>{% trans "失败" %}</option>
+    </select>
+  </label>
+  <button type="submit" class="btn btn-sm btn-primary">{% trans "筛选" %}</button>
+  <a href="{% url 'website:console_push_logs' %}" class="btn btn-sm btn-ghost">{% trans "重置" %}</a>
+</form>
+
+{# 推送记录列表 #}
+<div class="con-table-wrap mt-3">
+  <table class="table table-sm">
+    <thead>
+      <tr>
+        <th class="whitespace-nowrap">{% trans "时间" %}</th>
+        <th class="whitespace-nowrap">{% trans "渠道" %}</th>
+        <th class="whitespace-nowrap">{% trans "项目" %}</th>
+        <th>{% trans "消息" %}</th>
+        <th class="whitespace-nowrap">{% trans "结果" %}</th>
+        <th class="whitespace-nowrap">{% trans "上游码" %}</th>
+        <th class="whitespace-nowrap">{% trans "推送ID" %}</th>
+        <th>{% trans "说明" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for log in page_obj %}
+      <tr>
+        <td class="whitespace-nowrap text-xs">{{ log.create_time|date:"Y-m-d H:i:s" }}</td>
+        <td class="whitespace-nowrap text-sm">{{ log.channel_label|default:log.channel }}</td>
+        <td class="whitespace-nowrap text-xs" {% if log.app_id %}title="{{ log.app_id }}"{% endif %}>
+          {{ log.app_label|default:"—" }}
+        </td>
+        <td class="max-w-xs text-sm">
+          <div class="font-medium">{{ log.title }}</div>
+          {% if log.content %}
+          <div class="text-xs text-base-content/60">{{ log.content|truncatechars:80 }}</div>
+          {% endif %}
+        </td>
+        <td class="whitespace-nowrap">
+          {% if log.ok %}
+          <span class="badge badge-soft badge-success badge-sm">{% trans "成功" %}</span>
+          {% else %}
+          <span class="badge badge-soft badge-error badge-sm">{% trans "失败" %}</span>
+          {% endif %}
+        </td>
+        <td class="whitespace-nowrap text-xs font-mono">
+          {% if log.code is not None %}{{ log.code }}{% else %}—{% endif %}
+        </td>
+        <td class="whitespace-nowrap text-xs font-mono">{{ log.pushid|default:"—" }}</td>
+        <td class="max-w-md text-xs">{{ log.message|default:"—" }}</td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="8" class="py-6 text-center text-sm text-base-content/60">{% trans "暂无推送记录。" %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% include 'console/_pagination.html' %}
+{% endblock %}

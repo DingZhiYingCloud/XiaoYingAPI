@@ -180,19 +180,69 @@
           </div>
           {% endif %}
 
+          {# 代练丸子「发布订单」面板：选游戏 / 大区 / 代练类型与任务字段，免填 JSON（选项实时拉取） #}
+          {% if ep.dlwz_publish %}
+          <div class="rounded-box border border-base-300 bg-base-200/40 p-3" data-dlwz-publish
+               data-games-url="{% url 'website:docs_dlwz_games' %}"
+               data-options-url="{% url 'website:docs_dlwz_options' %}"
+               data-presets="{{ dlwz_presets_json }}">
+            <div class="mb-2 flex flex-wrap items-center gap-2">
+              <span class="text-sm font-semibold">{% trans "发单选项" %}</span>
+              <span data-dlwz-status class="min-w-0 flex-1 text-xs text-base-content/60">
+                {% trans "选好游戏 / 大区 / 代练类型，下方的任务字段会跟着变；无需手写 JSON。" %}
+              </span>
+            </div>
+            <div class="grid gap-x-4 gap-y-3 sm:grid-cols-2">
+              <div>
+                <label class="fieldset-label">{% trans "选择游戏" %}</label>
+                <select class="select select-bordered w-full text-sm"
+                        data-param-name="game_id" data-dlwz-game></select>
+              </div>
+              <div>
+                <label class="fieldset-label">{% trans "选择大区" %}</label>
+                <select class="select select-bordered w-full text-sm"
+                        data-param-name="region_name" data-dlwz-region></select>
+              </div>
+              <div>
+                <label class="fieldset-label">{% trans "选择代练类型" %}</label>
+                <select class="select select-bordered w-full text-sm"
+                        data-param-name="leveling_type_name" data-dlwz-type></select>
+              </div>
+            </div>
+            <div class="mt-3 grid gap-x-4 gap-y-3 sm:grid-cols-2" data-dlwz-fields></div>
+            <input type="hidden" data-param-name="tasks" data-dlwz-tasks />
+          </div>
+          {% endif %}
+
           {# 参数表单（标记 local 的「本机凭据」不在这里填，见右侧栏「本机凭据」卡片） #}
           <div class="grid gap-x-4 gap-y-3 sm:grid-cols-2">
             {% for p in ep.params %}
             {% if not p.local %}
-            <div class="{% if p.kind == 'textarea' or p.repeatable %}sm:col-span-2{% endif %}">
+            <div class="{% if p.kind == 'textarea' or p.repeatable %}sm:col-span-2{% endif %}"
+                 {% if p.games %}data-show-games="{{ p.games|join:' ' }}"{% endif %}>
               <label class="fieldset-label" for="param-{{ channel.slug }}-{{ ep.slug }}-{{ p.name }}">
                 {{ p.label }}
                 {% if p.required %}<span class="text-error">*</span>{% endif %}
               </label>
 
+              {% if p.alt_kind %}
+              {# 双面板输入（如「时限」）：可在「时间表」下拉与「手动输入」之间自由切换，默认前者 #}
+              <div class="mb-1 inline-flex rounded-box border border-base-300 p-0.5" data-dual-switch>
+                <button type="button" class="btn btn-xs btn-primary" data-dual-mode="primary">{{ p.primary_label }}</button>
+                <button type="button" class="btn btn-xs btn-ghost" data-dual-mode="alt">{{ p.alt_label }}</button>
+              </div>
+              {% endif %}
+
+              <div{% if p.alt_kind %} data-dual-panel="primary"{% endif %}>
               {% if p.kind == 'select' %}
+              {% if p.cascade_role == 'server' %}
+              {# 区服可能上千项：DOM 只渲染前若干项，靠这里输入关键词筛选（选项由 docs.js 填） #}
+              <input type="search" class="input input-bordered input-sm mb-1 w-full text-xs"
+                     placeholder="{% trans "搜索区服…" %}" data-cascade-search autocomplete="off" />
+              {% endif %}
               <select id="param-{{ channel.slug }}-{{ ep.slug }}-{{ p.name }}"
-                      class="select select-bordered w-full text-sm" data-param-name="{{ p.name }}">
+                      class="select select-bordered w-full text-sm" data-param-name="{{ p.name }}"
+                      {% if p.cascade %}data-cascade="{{ p.cascade }}" data-cascade-role="{{ p.cascade_role }}"{% endif %}>
                 {% for opt in p.options %}
                 <option value="{{ opt.value }}" {% if opt.value == p.default %}selected{% endif %}>{{ opt.label }}</option>
                 {% endfor %}
@@ -211,6 +261,16 @@
                      inputmode="{% if p.kind == 'number' %}numeric{% else %}text{% endif %}"
                      class="input input-bordered w-full text-sm" placeholder="{{ p.placeholder }}"
                      value="{{ p.default }}" data-param-name="{{ p.name }}" autocomplete="off" />
+              {% endif %}
+              </div>
+
+              {% if p.alt_kind %}
+              {# 备用面板：手动输入，默认隐藏且禁用（禁用的字段不会随表单提交） #}
+              <div class="hidden" data-dual-panel="alt">
+                <input type="text" inputmode="numeric" class="input input-bordered w-full text-sm"
+                       placeholder="{{ p.placeholder }}" value="{{ p.alt_default }}"
+                       data-param-name="{{ p.name }}" autocomplete="off" />
+              </div>
               {% endif %}
 
               {% if p.desc_html %}
@@ -492,7 +552,7 @@
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'js/site/docs.js' %}?v=20261002d"></script>
+<script src="{% static 'js/site/docs.js' %}?v=20261004e"></script>
 {% if has_markdown %}
 {# AI 回复的 Markdown 渲染：marked 为第三方库（入库的 vendor 文件），渲染封装见 docs_markdown.js #}
 <script src="{% static 'js/vendor/marked.min.js' %}?v=20261001a"></script>
@@ -517,6 +577,10 @@
 {% if has_picker %}
 {# 参数选择器：账号选择器（搜库内账号）+ 礼物面板（看图挑礼物），见 docs_picker.js #}
 <script src="{% static 'js/site/docs_picker.js' %}?v=20260930a"></script>
+{% endif %}
+{% if has_dlwz_publish %}
+{# 代练丸子发单面板：游戏 / 大区 / 代练类型 / 任务字段 联动选择（免填 JSON），见 docs_dlwz.js #}
+<script src="{% static 'js/site/docs_dlwz.js' %}?v=20261004a"></script>
 {% endif %}
 {% if doc.slug == 'captcha_auth' %}
 {# 图形验证：在线调试中模拟“前端真实弹窗”完成验证（仅该服务需要） #}

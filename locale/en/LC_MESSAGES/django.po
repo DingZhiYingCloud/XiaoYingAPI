@@ -3809,6 +3809,462 @@ msgid "默认王者荣耀区服"
 msgstr "Default Honor of Kings Server / Realm"
 
 # ==================== API 文档内容 · 代练丸子 ====================
+msgid "搜索订单（接单大厅）"
+msgstr "Search orders (order hall)"
+
+msgid "搜索接单大厅的订单：关键词 / 游戏筛选 + 分页。"
+msgstr "Search orders in the taker hall by keyword / game with pagination."
+
+msgid "data 为上游完整响应对象：分页在 data.page（pageNo / pageSize / totalPage / totalCount），订单数组在 data.ordersList。"
+msgstr "data is the raw upstream response: pagination in data.page (pageNo / pageSize / totalPage / totalCount), orders in data.ordersList."
+
+msgid "【用途】接单前找单：拿到 `trade_no` 后可用「大厅订单详情」核对，再调「接单」接手。"
+msgstr "[Usage] Find an order before taking it: inspect the returned `trade_no` via \"Hall order detail\", then call \"Take order\"."
+
+msgid "【分页】上游用 `pageNo`/`pageSize`（对外仍是 `page`/`page_size`）。"
+msgstr "[Pagination] Upstream uses `pageNo`/`pageSize` (this API keeps `page`/`page_size`)."
+
+msgid "【热搜词】搜索框推荐词见「大厅热搜词」接口。"
+msgstr "[Hot words] Search suggestions are available via the \"Hall hot words\" endpoint."
+
+msgid "选填：标题 / 角色名 / 段位等；不传按默认顺序返回"
+msgstr "Optional: title / character name / rank, etc.; omit for the default order."
+
+msgid "王者"
+msgstr "Honor of Kings"
+
+msgid "0"
+msgstr "0"
+
+msgid "1"
+msgstr "1"
+
+msgid "选填：按游戏筛选（见「获取全部游戏」）"
+msgstr "Optional: filter by game (see \"List all games\")."
+
+msgid "大厅热搜词"
+msgstr "Hall hot words"
+
+msgid "接单大厅搜索框的推荐热词。"
+msgstr "Suggested keywords for the hall search box."
+
+msgid "data.wordList 为热词数组。"
+msgstr "data.wordList is an array of hot words."
+
+msgid "大厅订单详情"
+msgstr "Hall order detail"
+
+msgid "按订单号查看大厅订单详情（接单前核对金额 / 双金 / 区服 / 代练要求）。"
+msgstr "View a hall order by trade no (check amount / deposits / region / requirements before taking)."
+
+msgid "data 为上游订单对象：amount / hour / securityDeposit / efficiencyDeposit / totalDeposit / title / gameRegionName 等。"
+msgstr "data is the upstream order object: amount / hour / securityDeposit / efficiencyDeposit / totalDeposit / title / gameRegionName, etc."
+
+msgid "必填：订单号（「搜索订单」返回的 tradeNo）"
+msgstr "Required: trade no (the tradeNo returned by \"Search orders\")."
+
+msgid "接单密码校验"
+msgstr "Verify take password"
+
+msgid "指定单接单前校验「接单密码」。"
+msgstr "Verify the \"take password\" before taking a designated order."
+
+msgid "密码正确返回 code=10000。"
+msgstr "Returns code=10000 when the password is correct."
+
+msgid "接单"
+msgstr "Take order"
+
+msgid "接单（真实接手，双金从接单方余额冻结）。"
+msgstr "Take an order (really takes it; deposits are frozen from the taker's balance)."
+
+msgid "data 为上游响应对象，含 noneBalanceEnough / noneSetPayPwd / noneRealNameAuth 等校验标记。"
+msgstr "data is the upstream response with checks such as noneBalanceEnough / noneSetPayPwd / noneRealNameAuth."
+
+msgid "【会真实接单】成功后订单进入「代练中」，并按 安全保证金 + 效率保证金从**接单方余额**冻结双金（实测 2 元订单双金 2+2=4 元）。"
+msgstr "[Really takes the order] On success the order becomes \"In progress\", and (security + efficiency) deposits are frozen from the **taker's balance** (a 2 CNY order froze 2+2=4 CNY in testing)."
+
+msgid "【支付密码必填】缺 `pay_password` 会被上游拒绝（接单流程处理异常）。"
+msgstr "[Pay password required] Upstream rejects the request without `pay_password` (\"take flow error\")."
+
+msgid "【指定单】需要「接单密码」，可先用「接单密码校验」确认。"
+msgstr "[Designated orders] need the \"take password\"; verify it first with \"Verify take password\"."
+
+msgid "【重复接单】已被接手的单上游返回「该订单已被接手」，本接口映射为 40001。"
+msgstr "[Already taken] Upstream returns \"the order has already been taken\", mapped to 40001 here."
+
+msgid "必填：订单号（「搜索订单」/「大厅订单详情」得到）"
+msgstr "Required: trade no (from \"Search orders\" / \"Hall order detail\")."
+
+msgid "必填：本账号支付密码，用于冻结双金"
+msgstr "Required: this account's pay password, used to freeze deposits."
+
+msgid "选填：指定单才需要（可先用「接单密码校验」）"
+msgstr "Optional: only needed for designated orders (verify first with \"Verify take password\")."
+
+msgid "申请撤销"
+msgstr "Apply for revocation"
+
+msgid "申请撤销（提前终止代练），需对方同意才生效。"
+msgstr "Apply for revocation (end the order early); it takes effect once the other side agrees."
+
+msgid "成功返回 code=10000。"
+msgstr "Returns code=10000 on success."
+
+msgid "【流程】申请后订单进入「撤销中」(status=5)，对方「同意撤销」后按资金分配方案结算。"
+msgstr "[Flow] After applying, the order becomes \"Revoking\" (status=5); once the other side agrees, funds settle per the plan."
+
+msgid "【资金分配】`pay_amount` = 我愿支付的代练费（打手未开始代练填 0）；`deposit` = 对方需赔付的保证金（对方无违规填 0）。"
+msgstr "[Fund allocation] `pay_amount` = service fee you are willing to pay (0 if the taker has not started); `deposit` = compensation from the other side (0 if no violation)."
+
+msgid "【initiator】1=发单方 / 2=接单方（本方身份）。"
+msgstr "[initiator] 1 = order publisher / 2 = taker (your side's role)."
+
+msgid "【原因必填】`reason` 写清订单进度 + 撤销理由，客服据此处理。"
+msgstr "[Reason required] `reason` should state the order progress + the reason; support handles it based on this."
+
+msgid "【凭证图片必填】上游强制要求先关联凭证图片，缺 `images` 会被拒（「请补充传图」）。"
+msgstr "[Images required] Upstream requires evidence images to be linked first; the request is rejected without `images` (\"please add images\")."
+
+msgid "凭证图片"
+msgstr "Evidence images"
+
+msgid "必填：凭证图片URL列表（JSON 字符串数组，至少一张）"
+msgstr "Required: list of evidence image URLs (JSON string array, at least one)."
+
+msgid "发起方"
+msgstr "Initiator"
+
+msgid "1 = 发单方"
+msgstr "1 = Order publisher"
+
+msgid "2 = 接单方"
+msgstr "2 = Taker"
+
+msgid "撤销理由"
+msgstr "Revocation reason"
+
+msgid "未开始代练，双方无违规，资金分配填 0"
+msgstr "Not started yet, no violation on either side, fund allocation 0"
+
+msgid "对方赔付保证金(元)"
+msgstr "Compensation deposit (CNY)"
+
+msgid "选填：对方无违规填 0"
+msgstr "Optional: 0 if the other side has no violation."
+
+msgid "我愿支付代练费(元)"
+msgstr "Service fee I pay (CNY)"
+
+msgid "选填：打手未开始代练填 0"
+msgstr "Optional: 0 if the taker has not started."
+
+msgid "超时自动仲裁"
+msgstr "Auto arbitration on timeout"
+
+msgid "选填：对方超时未处理是否自动转仲裁（接单方发起时可用）"
+msgstr "Optional: whether to auto-escalate to arbitration if the other side times out (for taker-initiated requests)."
+
+msgid "否"
+msgstr "No"
+
+msgid "同意撤销"
+msgstr "Agree to revocation"
+
+msgid "同意对方的撤销申请（生效后按申请单的资金分配方案结算）。"
+msgstr "Agree to the other side's revocation request (funds settle per the request's plan)."
+
+msgid "data 含 revocationsDataBean（撤销单详情）。"
+msgstr "data contains revocationsDataBean (revocation details)."
+
+msgid "【会真实结算】同意后订单变为「已完结」，双金 / 代练金按申请单释放（实测：双方都填 0 时，接单方 4 元双金原路退回）。"
+msgstr "[Really settles] After agreeing, the order becomes \"Finished\" and deposits/fee are released per the request (testing: with both sides at 0, the taker's 4 CNY deposits were returned)."
+
+msgid "【支付密码】发单方同意时上游要求 `pay_password` 必填；接单方可省略。"
+msgstr "[Pay password] Upstream requires `pay_password` when the order publisher agrees; the taker may omit it."
+
+msgid "选填：发单方同意时必填；接单方可省略"
+msgstr "Optional: required when the order publisher agrees; the taker may omit it."
+
+msgid "取消撤销"
+msgstr "Cancel revocation"
+
+msgid "撤回已提交的撤销申请。"
+msgstr "Withdraw a submitted revocation request."
+
+msgid "订单状态已变更等场景返回 40001。"
+msgstr "Returns 40001 when e.g. the order status has already changed."
+
+msgid "申请仲裁"
+msgstr "Apply for arbitration"
+
+msgid "申请平台仲裁（订单产生争议时）。"
+msgstr "Apply for platform arbitration (when the order is disputed)."
+
+msgid "【凭证图片必填】上游强制要求先关联举证图片，缺 `images` 会被拒。"
+msgstr "[Images required] Upstream requires evidence images to be linked first; the request is rejected without `images`."
+
+msgid "【不可撤销】仲裁发起后只能等待平台处理（预计 48 小时内）。"
+msgstr "[Irreversible] Once arbitration is filed, you can only wait for the platform (usually within 48 hours)."
+
+msgid "操作方"
+msgstr "Operator"
+
+msgid "仲裁理由"
+msgstr "Arbitration reason"
+
+msgid "举证图片"
+msgstr "Evidence images"
+
+msgid "必填：举证图片URL列表（JSON 字符串数组，至少一张）"
+msgstr "Required: list of evidence image URLs (JSON string array, at least one)."
+
+msgid "争议代练费(元)"
+msgstr "Disputed service fee (CNY)"
+
+msgid "争议保证金(元)"
+msgstr "Disputed deposit (CNY)"
+
+msgid "操作类型"
+msgstr "Operation type"
+
+msgid "商家版发布订单（真实下单）：用上方「发单选项」面板选游戏/大区/代练类型与任务字段即可，免填 JSON。"
+msgstr "Merchant publish order (places a real order): use the \"Order options\" panel above to pick game / region / leveling type and task fields — no JSON needed."
+
+msgid "【怎么填】用上方「发单选项」面板：选游戏 → 大区 → 代练类型，任务字段（段位 / 数量 / 下拉）会自动出现并按预设预填；面板会把 `game_id` / `region_name` / `leveling_type_name` / `tasks` 一并带给接口（**不用手写 JSON**）。选王者只显示王者的字段，选三角洲只显示三角洲的字段。"
+msgstr "[How to fill] Use the \"Order options\" panel above: pick game → region → leveling type; the task fields (rank / quantity / select) appear automatically and are prefilled from the preset. The panel passes `game_id` / `region_name` / `leveling_type_name` / `tasks` along with the request (**no JSON needed**). Choosing Honor of Kings shows only its fields; choosing Delta Force shows only its fields."
+
+msgid "【会真实下单】按传入价格从商家余额扣款；取消用「取消订单」接口（金额原路退回）。"
+msgstr "[Places a real order] The price is deducted from the merchant balance; to cancel, use the \"Cancel order\" endpoint (the amount is refunded)."
+
+msgid "【不传也能发】`game_id`=1（王者）/ 134（三角洲）有内置预设（王者=排位/安卓QQ/青铜3段0星→王者50星/铭文150/英雄170；三角洲=哈夫币代刷/手机QQ/哈夫币100万/代肝/保险箱2格），面板已按此预填。"
+msgstr "[Presets] `game_id`=1 (Honor of Kings) / 134 (Delta Force) have built-in presets (HoK=Ranked/Android QQ/Bronze III 0 star→King 50 star/Inscription 150/Heroes 170; Delta Force=Havoc Coin farming/Mobile QQ/1,000,000 Havoc Coin/Self-farmed/Case 2 slots); the panel is prefilled accordingly."
+
+msgid "发单选项"
+msgstr "Order options"
+
+msgid "选好游戏 / 大区 / 代练类型，下方的任务字段会跟着变；无需手写 JSON。"
+msgstr "Pick a game / region / leveling type; the task fields below follow along — no JSON needed."
+
+msgid "选择游戏"
+msgstr "Choose game"
+
+msgid "选择大区"
+msgstr "Choose region"
+
+msgid "选择代练类型"
+msgstr "Choose leveling type"
+
+msgid "商家版取消已发布的订单（待付待接等可取消状态）。"
+msgstr "Merchant version: cancel a published order (pending payment/acceptance and other cancellable states)."
+
+msgid "data 为上游完整响应对象（原样透传）。"
+msgstr "`data` is the upstream response object passed through as-is."
+
+msgid "【会真实改变订单状态】仅「待付待接」等可取消状态可取消；取消后订单金额**原路退回**商家余额（实测 2 元订单取消后余额 +2）。"
+msgstr "[Changes the order state for real] Only cancellable states (e.g. pending payment/acceptance) can be cancelled; the order amount is **refunded to the merchant balance** (verified: a CNY 2 order adds +2 back to the balance)."
+
+msgid "必填：订单号（「发布订单」返回的 trade_no，如 WZ20261004121328255441）"
+msgstr "Required: order number (the `trade_no` returned by \"Publish Order\", e.g. WZ20261004121328255441)."
+
+msgid "代练丸子平台能力：验证码登录、用户资料/头像/实名/签到、余额查询；商家版「我的订单」（分类与列表）与「发布订单」（发单选项 / 一键发单）。"
+msgstr "DaiLianWanZi platform capabilities: SMS-code log in, user profile/avatar/real-name/sign-in, balance query; the merchant version's \"My Orders\" (categories and list) and \"Publish Order\" (order options / one-click publish)."
+
+msgid "代练丸子API,代练订单接口,代练丸子发单"
+msgstr "DaiLianWanZi API,Boosting Order API,DaiLianWanZi publish order"
+
+msgid "代练丸子分**打手版**与**商家版**两条线路：打手版接口正在建设中；商家版提供验证码登录（服务端自动完成图形验证码识别）、用户资料与头像维护、实名查询、每日签到、余额查询，「我的订单」（订单分类与订单列表），以及**发布订单**（发单选项查询 + 一键发单）。"
+msgstr "DaiLianWanZi has two channels: **Player** (the API is under construction) and **Merchant**. The Merchant version provides SMS-code log in (the server completes the graphic CAPTCHA automatically), user profile and avatar management, real-name verification lookup, daily check-in, balance query, \"My Orders\" (order categories and order list), and **Publish Order** (order-options lookup + one-click publish)."
+
+msgid "获取全部游戏"
+msgstr "All Games"
+
+msgid "商家版发单用：全部游戏（仅 id + 名称，代练丸子没有「每个游戏的订单数」）。"
+msgstr "For merchant publishing: all games (only id + name; DaiLianWanZi does not expose a per-game order count)."
+
+msgid "data 为游戏数组 [{game_id, game_name}]，热门游戏在前（如 1=王者 / 134=三角洲行动）。"
+msgstr "`data` is a game array [{game_id, game_name}]; hot games come first (e.g. 1=Honor of Kings / 134=Delta Force)."
+
+msgid "获取发单选项"
+msgstr "Order Options"
+
+msgid "商家版发单用：大区 + 代练类型 +（指定代练类型时）子类型字段（段位 / 数量等）。"
+msgstr "For merchant publishing: regions + leveling types + (when a leveling type is given) its sub-type fields (rank / quantity, etc.)."
+
+msgid "data 含 `regions`（大区，server 为默认服）、`leveling_types`（代练类型）、`fields`（子类型字段：下拉类带 options、段位类带 levels、数字类带 min_val/max_val）。"
+msgstr "`data` contains `regions` (with `server` = the default server), `leveling_types`, and `fields` (sub-type fields: select fields carry options, rank fields carry levels, numeric fields carry min_val/max_val)."
+
+msgid "【怎么用】先调「获取全部游戏」拿 `game_id` → 调本接口拿 `regions` 与 `leveling_types` → 想发某个代练类型时，再把该类型的 `leveling_type_id` 传进来，拿到它的字段与可选值。"
+msgstr "[How to use] First call \"All Games\" to get `game_id` → call this endpoint for `regions` and `leveling_types` → to publish a specific leveling type, pass its `leveling_type_id` to get its fields and allowed values."
+
+msgid "【字段类型】`fields[].type`：1=单选（带 `options`）、5=数字（带 `min_val/max_val`）、6=段位区间（带 `levels`，如「青铜3段0星」「王者50星」）。"
+msgstr "[Field types] `fields[].type`: 1=single select (with `options`), 5=number (with `min_val/max_val`), 6=rank range (with `levels`, e.g. \"Bronze III 0 star\", \"King 50 star\")."
+
+msgid "必填：游戏ID（由「获取全部游戏」取到）"
+msgstr "Required: game ID (from \"All Games\")."
+
+msgid "代练类型ID"
+msgstr "Leveling type ID"
+
+msgid "选填：代练类型ID；传了才返回该类型的子类型字段（段位/数量等）"
+msgstr "Optional: leveling type ID; only when provided are that type's sub-type fields (rank / quantity, etc.) returned."
+
+msgid "商家版发布订单（真实下单）：不传细分项就用该游戏预设默认值。"
+msgstr "Merchant publish order (places a real order): omitted fields fall back to that game's preset defaults."
+
+msgid "data 为 {\"trade_no\": 订单号, \"status\": 状态}。注意：会真实发布订单。"
+msgstr "`data` is {\"trade_no\": order number, \"status\": status}. Note: this places a real order."
+
+msgid "【会真实下单】按传入价格从商家余额扣款；请先用「获取发单选项」确认参数。"
+msgstr "[Places a real order] The price is deducted from the merchant balance; confirm parameters via \"Order Options\" first."
+
+msgid "【段位怎么传】`tasks` 是 JSON 数组，按「获取发单选项」的 `fields[].name` 传中文名："
+msgstr "[How to pass ranks] `tasks` is a JSON array; pass Chinese names per `fields[].name` from \"Order Options\":"
+
+msgid "- 王者·起止段位：`[{\"name\":\"起止段位\",\"start\":\"青铜3段0星\",\"end\":\"王者50星\"}]`"
+msgstr "- Honor of Kings, rank range: `[{\"name\":\"起止段位\",\"start\":\"青铜3段0星\",\"end\":\"王者50星\"}]`"
+
+msgid "- 三角洲·哈夫币：`[{\"name\":\"哈夫币(万)\",\"value\":100},{\"name\":\"保险箱\",\"value\":\"2格\"}]`"
+msgstr "- Delta Force, Havoc Coin: `[{\"name\":\"哈夫币(万)\",\"value\":100},{\"name\":\"保险箱\",\"value\":\"2格\"}]`"
+
+msgid "【不传也能发】`game_id`=1（王者）/ 134（三角洲）时内置预设（王者=排位/安卓QQ/青铜3段0星→王者50星/铭文150/英雄170；三角洲=哈夫币代刷/手机QQ/哈夫币100万/代肝/保险箱2格），只传 `game_id` 即可发布。"
+msgstr "[Presets] For `game_id`=1 (Honor of Kings) / 134 (Delta Force) built-in presets apply (HoK=Ranked/Android QQ/Bronze III 0 star→King 50 star/Inscription 150/Heroes 170; Delta Force=Havoc Coin farming/Mobile QQ/1,000,000 Havoc Coin/Self-farmed/Case 2 slots); passing just `game_id` is enough to publish."
+
+msgid "【上号方式】`login_method`=2 账密上号（配 `game_account/game_password/game_role`）；1 扫码上号（账号字段自动填「扫码上号」）。"
+msgstr "[Login method] `login_method`=2 account & password (with `game_account/game_password/game_role`); 1 scan QR (the account fields are filled with \"扫码上号\")."
+
+msgid "【加急服务包】默认不加（不会带 `insuranceProductId`）。"
+msgstr "[Rush service pack] Not added by default (no `insuranceProductId` is sent)."
+
+msgid "【标题】不传 `title` 时按上游规则自动生成，并追加默认提示「私单勿接，指定单，接了扣除双金」。"
+msgstr "[Title] When `title` is omitted it is generated by upstream rules with the default notice \"私单勿接，指定单，接了扣除双金\" appended."
+
+msgid "订单号（如 WZ20261004121317927440）"
+msgstr "Order number (e.g. WZ20261004121317927440)"
+
+msgid "订单状态（2=待付待接）"
+msgstr "Order status (2 = pending payment/acceptance)"
+
+msgid "选填：游戏ID，默认 1；当前支持 1=王者荣耀 / 134=三角洲行动"
+msgstr "Optional: game ID, default 1; currently 1=Honor of Kings / 134=Delta Force"
+
+msgid "任务字段(JSON)"
+msgstr "Task fields (JSON)"
+
+msgid "选填：任务字段 JSON 数组（覆盖预设默认值）。段位类传 start/end，下拉类传 value（中文名），数字类传 value"
+msgstr "Optional: task-fields JSON array (overrides the preset defaults). Rank fields take start/end, select fields take value (Chinese name), numeric fields take value"
+
+msgid "[{\"name\":\"起止段位\",\"start\":\"青铜3段0星\",\"end\":\"王者50星\"}]"
+msgstr "[{\"name\":\"起止段位\",\"start\":\"青铜3段0星\",\"end\":\"王者50星\"}]"
+
+msgid "订单价格(元)"
+msgstr "Order price (CNY)"
+
+msgid "安全保证金(元)"
+msgstr "Security deposit (CNY)"
+
+msgid "效率保证金(元)"
+msgstr "Efficiency deposit (CNY)"
+
+msgid "大区"
+msgstr "Region"
+
+msgid "选填：大区中文名（如 安卓QQ / 手机QQ），默认取该游戏预设"
+msgstr "Optional: region Chinese name (e.g. Android QQ / Mobile QQ); defaults to the game preset"
+
+msgid "选填：代练类型中文名（如 排位 / 哈夫币代刷），默认取该游戏预设"
+msgstr "Optional: leveling type Chinese name (e.g. Ranked / Havoc Coin farming); defaults to the game preset"
+
+msgid "上号方式"
+msgstr "Login method"
+
+msgid "2=账密上号（默认）"
+msgstr "2=Account & password (default)"
+
+msgid "1=扫码上号"
+msgstr "1=Scan QR to log in"
+
+msgid "号主手机"
+msgstr "Account owner phone"
+
+msgid "其它联系方式"
+msgstr "Other contact"
+
+msgid "选填：留空则按上游规则自动生成（并追加默认提示）"
+msgstr "Optional: when empty, generated by upstream rules (with the default notice appended)"
+
+msgid "选填：会拼进标题（ 备注：…）"
+msgstr "Optional: appended to the title as \" 备注：…\""
+
+msgid "代练说明"
+msgstr "Leveling instructions"
+
+msgid "选填：留空取上游默认文案"
+msgstr "Optional: when empty, the upstream default text is used"
+
+msgid "接单密码"
+msgstr "Take-order password"
+
+msgid "选填：仅指定打手可接时使用"
+msgstr "Optional: only used when restricting the order to a specific booster"
+
+msgid "代练丸子平台能力：验证码登录、用户资料/头像/实名/签到、余额查询，以及商家版「我的订单」（分类与列表）。"
+msgstr "DaiLianWanZi platform capabilities: SMS-code log in, user profile/avatar/real-name/sign-in, balance query, and the merchant version's \"My Orders\" (categories and list)."
+
+msgid "代练丸子分**打手版**与**商家版**两条线路：打手版接口正在建设中；商家版提供验证码登录（服务端自动完成图形验证码识别）、用户资料与头像维护、实名查询、每日签到、余额查询，以及「我的订单」（订单分类与订单列表）。"
+msgstr "DaiLianWanZi has two channels: **Player** (the API is under construction) and **Merchant**. The Merchant version provides SMS-code log in (the server completes the graphic CAPTCHA automatically), user profile and avatar management, real-name verification lookup, daily check-in, balance query, and \"My Orders\" (order categories and order list)."
+
+msgid "打手版"
+msgstr "Player"
+
+msgid "代练丸子（llwanzi.com）打手版接口"
+msgstr "DaiLianWanZi (llwanzi.com) player API"
+
+msgid "打手版接口正在建设中，暂不可用。"
+msgstr "The player API is under construction and is not available yet."
+
+msgid "打手版接口（建设中）"
+msgstr "Player API (under construction)"
+
+msgid "该线路尚未接入，统一返回 50002 服务建设中（data 为 null）。"
+msgstr "This channel is not connected yet; it always returns 50002 Service under construction (data is null)."
+
+msgid "商家版"
+msgstr "Merchant"
+
+msgid "代练丸子（llwanzi.com）商家版接口封装"
+msgstr "DaiLianWanZi (llwanzi.com) merchant API wrapper"
+
+msgid "订单分类"
+msgstr "Order category"
+
+msgid "商家版「我的订单」页顶部分类（含各分类订单数量），分类值传给「我的订单」做筛选。"
+msgstr "The categories (tabs) at the top of the merchant version's \"My Orders\" page (with the order count per category); the category value is passed to \"My Orders\" as a filter."
+
+msgid "data 为上游完整响应对象（原样透传）：分类数组在上游 data.tableList，每项含 table_type / table_name / count；常见取值：0=全部、101=待付待接、102=代练中、103=待验收、104=撤销中、105=仲裁中、106=已撤销、107=已仲裁、108=已结算、109=异常中、110=锁定中、111=已取消。"
+msgstr "`data` is the upstream response object passed through as-is: the category array is under upstream `data.tableList`, each item has table_type / table_name / count; common values: 0=All, 101=Pending payment/acceptance, 102=In progress, 103=Pending acceptance, 104=Cancelling, 105=In arbitration, 106=Revoked, 107=Arbitrated, 108=Settled, 109=Abnormal, 110=Locked, 111=Cancelled."
+
+msgid "商家版我的订单：按分类筛选 + 关键词搜索 + 分页。"
+msgstr "Merchant version My Orders: filter by category + keyword search + paging."
+
+msgid "data 为上游完整响应对象（原样透传）：分页在上游 data.page（pageNo / pageSize / totalPage / totalCount），订单数组在上游 data.ordersList。"
+msgstr "`data` is the upstream response object passed through as-is: paging is under upstream `data.page` (pageNo / pageSize / totalPage / totalCount), and the order array is under upstream `data.ordersList`."
+
+msgid "【分类怎么取】先调「订单分类」接口拿到 table_type（0=全部 / 101=待付待接 …），再作为本接口的 table_type 参数传入。"
+msgstr "[How to get categories] First call the \"Order category\" API to obtain table_type (0=All / 101=Pending payment/acceptance …), then pass it as this endpoint's table_type parameter."
+
+msgid "订单分类，默认 0=全部；取值来自「订单分类」接口的 table_type"
+msgstr "Order category, default 0=All; values come from the table_type of the \"Order category\" API"
+
+msgid "按标题 / 角色名 / 订单号 / 号主手机搜索，默认空"
+msgstr "Search by title / character name / order number / account owner phone; empty by default"
+
+msgid "从 1 开始，默认 1"
+msgstr "Starts from 1, defaults to 1"
+
+msgid "1-100，默认 20"
+msgstr "1-100, defaults to 20"
+
 msgid "122=安卓QQ"
 msgstr "122=Android QQ"
 
@@ -3833,11 +4289,11 @@ msgstr "DaiLianWanZi API,Boosting Order API"
 msgid "代练丸子平台"
 msgstr "DaiLianWanZi Platform"
 
-msgid "代练丸子平台能力：验证码登录、用户资料/头像/实名/签到、公共与搜索订单、发布/取消订单、余额查询。"
-msgstr "DaiLianWanZi platform capabilities: verification code log in, user profile/Avatar/real-name/sign-in, public and search orders, publish/cancel orders, balance query."
+msgid "代练丸子平台能力：验证码登录、用户资料/头像/实名/签到、余额查询。"
+msgstr "DaiLianWanZi platform capabilities: verification code log in, user profile/Avatar/real-name/sign-in, balance query."
 
-msgid "代练丸子服务封装代练丸子平台的能力，包含验证码登录（服务端自动完成图形验证码识别）、用户资料与头像维护、实名查询、每日签到，以及公共订单、搜索订单、订单详情、发布 / 取消订单与余额查询。"
-msgstr "The DaiLianWanZi service wraps the DaiLianWanZi platform: SMS-code log-in (the server completes the graphic CAPTCHA automatically), user profile and avatar management, real-name verification lookup, daily check-in, plus public orders, order search, order details, publish / cancel order and balance query."
+msgid "代练丸子服务封装代练丸子平台的能力，包含验证码登录（服务端自动完成图形验证码识别）、用户资料与头像维护、实名查询、每日签到与余额查询。"
+msgstr "The DaiLianWanZi service wraps the DaiLianWanZi platform: SMS-code log-in (the server completes the graphic CAPTCHA automatically), user profile and avatar management, real-name verification lookup, daily check-in and balance query."
 
 msgid "代练丸子（llwanzi.com）网页接口封装"
 msgstr "DaiLianWanZi (llwanzi.com) web API wrapper"
@@ -3884,8 +4340,8 @@ msgstr "Android QQ (default)"
 msgid "安卓微信"
 msgstr "Android WeChat"
 
-msgid "必填：平台登录令牌，形如 \"Bearer xxx\""
-msgstr "Required: platform log in token, in the form \"Bearer xxx\""
+msgid "选填：平台登录令牌，形如 \"Bearer xxx\"；不传则用后台「账号管理」的默认代练丸子账号"
+msgstr "Optional: platform log in token, in the form \"Bearer xxx\"; falls back to the default DaiLianWanZi account under Console › Accounts."
 
 msgid "我的余额"
 msgstr "My Balance"
@@ -3905,11 +4361,11 @@ msgstr "Maximum price"
 msgid "服务器ID"
 msgstr "Server ID"
 
-msgid "本服务需项目签名；发布与取消订单会真实作用于第三方平台数据，请勿在调试中滥用。"
-msgstr "This service requires project signature authentication; publishing and cancelling orders act on real third-party platform data, so do not abuse them while debugging."
+msgid "本服务需项目签名；`authorization` 为**选填**——不传时自动使用本站「账号管理」里维护的默认代练丸子账号，与代练通口径一致。"
+msgstr "This service requires project signature authentication; `authorization` is **optional** — when omitted, the default DaiLianWanZi account maintained under this site's Console › Accounts is used, consistent with DaiLianTong."
 
-msgid "本项目侧需项目签名；业务侧需先登录取得 authorization。发布/取消订单等操作会产生真实影响，请谨慎。"
-msgstr "Signature Required on this project's side; on the business side you must log in first to obtain authorization. Operations such as publishing/canceling orders have real effects; proceed with caution."
+msgid "本项目侧需项目签名；业务侧 authorization 选填——不传则用后台「账号管理」的默认代练丸子账号。"
+msgstr "Project signature is required on our side; on the business side authorization is optional — when omitted, the default DaiLianWanZi account under Console › Accounts is used."
 
 msgid "查询单个订单详情。"
 msgstr "Query the detail of a single Order."
@@ -3917,8 +4373,8 @@ msgstr "Query the detail of a single Order."
 msgid "查询实名认证信息。"
 msgstr "Query real-name verification info."
 
-msgid "查询账号余额（authorization 选填）。"
-msgstr "Query the account balance (authorization optional)."
+msgid "查询账号余额（不传 authorization 时用后台默认账号）。"
+msgstr "Query the account balance (uses the default back-office account when authorization is omitted)."
 
 msgid "每日签到。"
 msgstr "Daily sign-in."
@@ -3967,9 +4423,6 @@ msgstr "Set the Avatar (provide an image URL)."
 
 msgid "设置用户名/签名/QQ（username 必填，其它按需传）。"
 msgstr "Set the Username/Signature/QQ (username is Required; pass the others as needed)."
-
-msgid "选填：平台登录令牌"
-msgstr "Optional: platform log in token"
 
 msgid "选填：默认平台图标"
 msgstr "Optional: default platform icon"
@@ -12056,3 +12509,1475 @@ msgstr "When the platform shows the order as paid but the local order has not ad
 
 msgid "⚠️ **退款会从收款用户的账户余额里扣回**：若这笔钱已被花掉，余额会被扣成负数（记为欠款），需人工跟进。"
 msgstr "⚠️ **A refund debits the payee's account balance**: if the money has already been spent, the balance goes negative (recorded as a debt) and needs manual follow-up."
+
+
+# ===== 控制台「账号管理」页（/console/accounts/，2026-10-03） =====
+
+msgid "账号管理"
+msgstr "Accounts"
+
+msgid "统一托管第三方平台账号与登录凭据（Cookie）：知乎、小红书、微博、百家号、今日头条等；凭据加密落库、页面不回显，并可一键校验凭据是否过期（过期即提示重新登录）。"
+msgstr "Centrally host third-party platform accounts and login credentials (cookies) — Zhihu, Xiaohongshu, Weibo, Baijiahao, Toutiao and more; credentials are encrypted at rest and never shown on the page, with one-click checks for expired credentials (you are prompted to sign in again when they expire)."
+
+msgid "账号管理 - 超级管理员 - 小影API"
+msgstr "Accounts - Super Admin - XiaoYingAPI"
+
+msgid "超级管理员,账号管理,登录凭据,Cookie托管,凭据校验"
+msgstr "super admin,account management,login credentials,cookie hosting,credential check"
+
+msgid "小影API 超级管理员：统一托管各第三方平台账号与登录凭据（Cookie），加密落库、支持一键校验凭据是否过期。"
+msgstr "XiaoYingAPI Super Admin: centrally host third-party platform accounts and login credentials (cookies) — encrypted at rest, with one-click credential expiry checks."
+
+msgid "统一托管第三方平台账号与登录凭据（Cookie）；凭据加密落库，页面与接口都不回显明文。"
+msgstr "Centrally host third-party platform accounts and login credentials (cookies); credentials are encrypted at rest and never shown in plaintext on the page or through the API."
+
+msgid "这里存的是「平台代管的第三方账号」，各服务的接口会自动取一份可用凭据去访问，调用方无需传账号信息。"
+msgstr "This holds the third-party accounts hosted by the platform. Each service's endpoints automatically pick an available credential to make requests, so callers never need to pass account information."
+
+msgid "登录凭据与密码均 AES 加密落库、页面不回显；编辑时留空即「保持原值不变」。"
+msgstr "Credentials and passwords are AES-encrypted at rest and never shown on the page; leaving a field blank while editing means \"keep the current value\"."
+
+msgid "「校验」会调用该平台已接入的校验器判断凭据是否过期，并把结果写回状态；未接入校验器的平台不显示该按钮。"
+msgstr "\"Check\" runs the platform's configured validator to determine whether the credential has expired and writes the result back to the status; platforms without a validator do not show this button."
+
+msgid "新增账号"
+msgstr "Add account"
+
+msgid "平台"
+msgstr "Platform"
+
+msgid "账号标识"
+msgstr "Account ID"
+
+msgid "用户名 / 手机号 / 邮箱 / 备注名"
+msgstr "Username / phone / email / label"
+
+msgid "同一平台内唯一，用于在列表里辨认是哪个号。"
+msgstr "Unique within the same platform; used to tell which account it is in the list."
+
+msgid "密码（可选）"
+msgstr "Password (optional)"
+
+msgid "留空 = 不修改"
+msgstr "Leave blank = no change"
+
+msgid "登录凭据 / Cookie"
+msgstr "Login credentials / Cookie"
+
+msgid "把浏览器里复制的 Cookie 整串粘进来（留空 = 不修改）"
+msgstr "Paste the whole cookie string copied from the browser (leave blank = no change)"
+
+msgid "原样一整串粘贴即可，形如：_xsrf=...; d_c0=...; z_c0=...；保存后页面不再回显。"
+msgstr "Just paste the whole string as-is, e.g. _xsrf=...; d_c0=...; z_c0=...; it will no longer be displayed here once saved."
+
+msgid "取消编辑"
+msgstr "Cancel editing"
+
+msgid "凭据状态"
+msgstr "Credential status"
+
+msgid "登录凭据"
+msgstr "Login credentials"
+
+msgid "最近校验"
+msgstr "Last check"
+
+msgid "未校验"
+msgstr "Not checked"
+
+msgid "已录入"
+msgstr "Provided"
+
+msgid "未录入"
+msgstr "Not provided"
+
+msgid "校验"
+msgstr "Check"
+
+msgid "该平台暂未接入凭据校验"
+msgstr "This platform does not support credential checks yet"
+
+msgid "暂不支持校验"
+msgstr "Check not supported"
+
+msgid "确认删除该账号？其登录凭据也会一并删除。"
+msgstr "Delete this account? Its login credentials will be deleted as well."
+
+msgid "还没有账号，先在上面新增一个吧。"
+msgstr "No accounts yet — add one above to get started."
+
+msgid "编辑账号（凭据留空 = 不修改）"
+msgstr "Edit account (leave credentials blank = no change)"
+
+msgid "共 %(n)s 个"
+msgstr "%(n)s in total"
+
+msgid "其中 %(n)s 个已录入登录凭据"
+msgstr "%(n)s with login credentials"
+
+# 平台选项（Platform 模型选项，供下拉框与列表展示）
+msgid "小红书"
+msgstr "Xiaohongshu"
+
+msgid "微博"
+msgstr "Weibo"
+
+msgid "百家号"
+msgstr "Baijiahao"
+
+msgid "今日头条"
+msgstr "Toutiao"
+
+msgid "其他"
+msgstr "Other"
+
+# 后端文案（视图校验与提示，见 API/website/console_accounts.py）
+msgid "平台取值非法"
+msgstr "Invalid platform"
+
+msgid "账号标识不能为空"
+msgstr "Account identifier is required"
+
+msgid "账号不存在"
+msgstr "Account not found"
+
+msgid "同一平台下该账号标识已存在"
+msgstr "An account with this identifier already exists on this platform"
+
+msgid "已保存账号「%(name)s」"
+msgstr "Saved account \"%(name)s\""
+
+msgid "已删除账号「%(name)s」"
+msgstr "Deleted account \"%(name)s\""
+
+msgid "「%(name)s」凭据有效：%(msg)s"
+msgstr "Credential for \"%(name)s\" is valid: %(msg)s"
+
+msgid "「%(name)s」凭据校验未通过：%(msg)s"
+msgstr "Credential check failed for \"%(name)s\": %(msg)s"
+
+
+# ===== 知乎服务：官网首页服务卡片 + 文档中心正文（声明式数据的 localize，2026-10-03） =====
+
+msgid "知乎"
+msgstr "Zhihu"
+
+msgid "知乎热榜与内容检索：热榜按排名返回热点问题（标题 / 直达链接 / 摘要 / 热度 / 回答数）；综合搜索按关键词返回结果（每条自带完整正文与图片）；问题 / 专栏文章详情返回正文与图片、评论、相关问题与「大家都在搜」；登录凭据可用平台统一托管的账号（后台维护），也可由调用方自带 Cookie。"
+msgstr "Zhihu hot list and content search: the hot list returns trending questions by rank (title / direct link / excerpt / heat / answer count); the comprehensive search returns results by keyword (each result carries the full body and images); the question / column-article detail returns the body with images, comments, related questions and \"others are searching\"; login credentials can be a platform-hosted account (maintained in the console) or the caller's own cookie."
+
+msgid "知乎热榜"
+msgstr "Zhihu hot list"
+
+msgid "热点聚合"
+msgstr "Trending aggregation"
+
+msgid "知乎热榜与内容检索：热榜按排名返回当前热点问题；综合搜索按关键词返回结果（每条自带完整正文与图片）；问题 / 专栏文章详情返回正文与图片、评论、相关问题与「大家都在搜」。"
+msgstr "Zhihu hot list and content search: the hot list returns current trending questions by rank; the comprehensive search returns results by keyword (each result carries the full body and images); the question / column-article detail returns the body with images, comments, related questions and \"others are searching\"."
+
+msgid "知乎热榜API,知乎热榜接口,知乎热点,知乎榜单数据,知乎搜索API,知乎问题详情,知乎回答评论,知乎专栏文章"
+msgstr "zhihu hot list api,zhihu trending api,zhihu hot topics,zhihu ranking data,zhihu search api,zhihu question detail,zhihu answers comments,zhihu column article"
+
+msgid "知乎热榜接口，返回当前知乎热榜的排名、标题、直达链接、摘要、热度与回答数，适合做热点聚合、选题参考与内容看板。"
+msgstr "The Zhihu hot-list API returns the current rank, title, direct link, excerpt, heat and answer count for each trending item — handy for trending aggregation, topic research and content dashboards."
+
+msgid "**综合搜索** `/api/zhihu/search`：按关键词搜索知乎内容，**每条结果直接带完整正文与图片**（不是摘要）、作者、赞同数与评论数，并附「大家都在搜」；用 `offset` 翻页。"
+msgstr "**Comprehensive search** `/api/zhihu/search`: search Zhihu content by keyword; **each result comes with the full body and images** (not an excerpt), plus author, upvotes and comment count, along with \"others are searching\"; use `offset` to page through results."
+
+msgid "**登录凭据两种用法**：一是在请求里带上 `cookie`（你自己的知乎登录 Cookie，仅本次生效、我们不存储）；不带则回落到**平台统一托管**的账号 —— 平台在后台「账号管理」维护知乎账号与登录 Cookie，接口自动取一份可用凭据去访问。在文档页右侧栏「本机凭据」粘贴并「保存到本机浏览器」，在线调试会自动带上。若平台托管的凭据失效，接口会明确提示需要重新登录，并把该账号标记为「已过期」。"
+msgstr "**Two ways to supply the login credential**: pass `cookie` in the request (your own Zhihu login cookie — used for this call only, never stored by us); omit it and the endpoint falls back to the **platform-hosted** account — the platform keeps Zhihu accounts and login cookies under \"Accounts\" in the console and automatically picks an available credential. Paste it into the \"Local credentials\" card in the right sidebar of the docs page and click \"Save to this browser\" so the debugger sends it automatically. If the platform-hosted credential expires, the endpoint explicitly reports that a fresh login is required and marks that account as \"Expired\"."
+
+msgid "`/api/zhihu/check` 用于校验一份知乎凭据是否仍然有效：带上 `cookie` 就校验你自己那份（完全不碰平台账号），不带则校验平台托管的账号并把结果回写到账号状态。"
+msgstr "`/api/zhihu/check` verifies whether a Zhihu credential is still valid: pass `cookie` to check your own (the platform account is never touched), or omit it to check the platform-hosted account and write the result back to its status."
+
+msgid "知乎（zhihu.com）"
+msgstr "Zhihu (zhihu.com)"
+
+msgid "数据来自知乎官方 web 接口；调用方可自带登录 Cookie，不传则用平台托管的账号。"
+msgstr "Data comes from Zhihu's official web endpoints; callers may supply their own login cookie, otherwise the platform-hosted account is used."
+
+msgid "知乎登录 Cookie"
+msgstr "Zhihu login Cookie"
+
+msgid "在右侧栏「本机凭据」粘贴并保存到本机"
+msgstr "Paste it into the \"Local credentials\" card in the right sidebar and save it to this machine"
+
+msgid "可选。填了就用你这份 Cookie 访问（仅本次生效、不落库、不会上传给我们）；留空则用平台统一托管的账号。"
+msgstr "Optional. If provided, your cookie is used for this call only — never stored and never uploaded to us; if omitted, the platform-hosted account is used."
+
+msgid "可选。填了就只校验你这份（不碰平台账号、不回写任何状态）；留空则校验平台托管的账号并把结果回写其状态。"
+msgstr "Optional. If provided, only your cookie is checked (the platform account is neither read nor written); if omitted, the platform-hosted account is checked and its status is updated."
+
+msgid "也接受 GET（此时参数走 query 串）；因知乎 Cookie 较长，推荐用 POST 放表单体。"
+msgstr "GET is also accepted (parameters go in the query string); because a Zhihu cookie is long, POST with the cookie in the form body is recommended."
+
+msgid "热榜"
+msgstr "Hot list"
+
+msgid "获取知乎热榜（默认 50 条，最多 50 条）。"
+msgstr "Get the Zhihu hot list (50 items by default, 50 max)."
+
+msgid "返回条数"
+msgstr "Number of items"
+
+msgid "如 50"
+msgstr "e.g. 50"
+
+msgid "可选，1~50，默认 50。超出范围返回参数值非法。"
+msgstr "Optional, 1–50, default 50. Out-of-range values return an invalid-parameter error."
+
+msgid "热度为知乎原始文案（如「1370 万热度」），未做数值化处理，避免口径误读。"
+msgstr "Heat is kept as Zhihu's original wording (e.g. \"13.7M heat\") without numeric conversion, to avoid misreading the metric."
+
+msgid "`url` 是可在浏览器直接打开的网页地址；`question_id` 为知乎问题 ID。"
+msgstr "`url` is a web address you can open directly in a browser; `question_id` is the Zhihu question ID."
+
+msgid "本次返回的条数"
+msgstr "Number of items returned"
+
+msgid "排名，从 1 开始"
+msgstr "Rank, starting from 1"
+
+msgid "网页地址（可直接打开）"
+msgstr "Web address (openable directly)"
+
+msgid "摘要（可能为空）"
+msgstr "Excerpt (may be empty)"
+
+msgid "热度文案，如「1370 万热度」"
+msgstr "Heat text, e.g. \"13.7M heat\""
+
+msgid "回答数（可能为 0）"
+msgstr "Answer count (may be 0)"
+
+msgid "知乎问题 ID"
+msgstr "Zhihu question ID"
+
+msgid "封面图地址（可能为空）"
+msgstr "Cover image URL (may be empty)"
+
+msgid "校验登录凭据"
+msgstr "Verify login credentials"
+
+msgid "校验知乎登录凭据是否有效（自带 cookie 校验你自己那份，否则校验平台托管的账号）。"
+msgstr "Verify whether a Zhihu login credential is valid (pass `cookie` to check your own, otherwise the platform-hosted account is checked)."
+
+msgid "凭据无效**不算接口调用失败**：仍返回成功码，把 `valid=false` 与原因放在 data 里，由调用方自行决定是否提示用户重新登录。"
+msgstr "An invalid credential **does not count as an API failure**: the endpoint still returns a success code, with `valid=false` and the reason in `data`, letting the caller decide whether to prompt the user to sign in again."
+
+msgid "校验平台托管的账号时会更新其「凭据状态」与「最近校验结果」，在后台「账号管理」页可直接看到；自带 Cookie 校验不涉及平台账号。"
+msgstr "Checking the platform-hosted account updates its \"credential status\" and \"last check result\", visible directly on the console's \"Accounts\" page; checking your own cookie does not touch the platform account."
+
+msgid "凭据是否有效"
+msgstr "Whether the credential is valid"
+
+msgid "被校验的账号标识（自带 Cookie 校验时为空）"
+msgstr "The account identifier that was checked (empty when checking your own cookie)"
+
+msgid "校验说明（有效时含登录用户名）"
+msgstr "Check message (includes the signed-in username when valid)"
+
+
+# ===== 知乎服务：问题详情（/api/zhihu/question，2026-10-03） =====
+
+msgid "**问题详情** `/api/zhihu/question`：传问题 ID（或问题网页地址）即可拿到问题正文与其中的图片、回答列表（含正文图片与各自的热门评论）、问题本身的评论、相关问题与「大家都在搜」；回答条数与评论条数都可用参数调整。"
+msgstr "**Question detail** `/api/zhihu/question`: pass a question ID (or the question page URL) to get the question body with its images, the answer list (with images and each answer's top comments), the question's own comments, related questions and \"others are searching\"; the number of answers and comments can be tuned with parameters."
+
+msgid "**专栏文章详情** `/api/zhihu/article`：传文章 ID（或文章网页地址）即可拿到**完整正文**与其中的图片、评论与「大家都在搜」。文章页只有这三个模块 —— 没有「回答列表」和「相关问题」（后者是问题页专有）。"
+msgstr "**Column article detail** `/api/zhihu/article`: pass an article ID (or the article page URL) to get the **full article body** with its images, comments and \"others are searching\". An article page has only these three modules — there is no \"answer list\" and no \"related questions\" (those are question-page only)."
+
+msgid "问题详情"
+msgstr "Question detail"
+
+msgid "问题详情：问题正文与图片、回答（含图片与评论）、问题评论、相关问题、大家都在搜。"
+msgstr "Question detail: the question body with images, answers (with images and comments), question comments, related questions and \"others are searching\"."
+
+msgid "问题 ID 或网页地址"
+msgstr "Question ID or page URL"
+
+msgid "回答条数"
+msgstr "Number of answers"
+
+msgid "每条回答的评论数"
+msgstr "Comments per answer"
+
+msgid "问题评论数"
+msgstr "Number of question comments"
+
+msgid "如 2089437755591713926"
+msgstr "e.g. 2089437755591713926"
+
+msgid "如 5"
+msgstr "e.g. 5"
+
+msgid "如 3"
+msgstr "e.g. 3"
+
+msgid "必填。知乎问题 ID（纯数字），也可以直接填问题网页地址（形如 https://www.zhihu.com/question/2089437755591713926）。"
+msgstr "Required. The Zhihu question ID (plain digits), or the question page URL (e.g. https://www.zhihu.com/question/2089437755591713926)."
+
+msgid "可选，1~20，默认 5。返回多少条回答。"
+msgstr "Optional, 1–20, default 5. How many answers to return."
+
+msgid "可选，0~20，默认 3。每条回答返回多少条热门评论（0 = 不取）。"
+msgstr "Optional, 0–20, default 3. How many top comments to return per answer (0 = none)."
+
+msgid "可选，0~20，默认 10。问题本身的评论返回多少条（0 = 不取）。"
+msgstr "Optional, 0–20, default 10. How many of the question's own comments to return (0 = none)."
+
+msgid "**图片**：问题正文与回答正文都同时给出 HTML 原文（`detail` / `content`，可直接渲染）与抽好的 `images` 图片地址数组（原图优先、已去重）。"
+msgstr "**Images**: both the question body and each answer body come with the raw HTML (`detail` / `content`, ready to render) *and* a pre-extracted `images` array of image URLs (original resolution preferred, de-duplicated)."
+
+msgid "**评论**：问题评论在 `question.comments`，每条回答的评论在该回答的 `comments` 里；每条评论会内联最多 3 条子评论（回复）。"
+msgstr "**Comments**: the question's comments are in `question.comments`, and each answer's comments are in that answer's `comments`; every comment inlines up to 3 child comments (replies)."
+
+msgid "`answer_count` / `comment_count` 是**总数**，不等于本次返回的条数 —— 本次条数由 `answer_limit` / `comment_limit` 决定。"
+msgstr "`answer_count` / `comment_count` are **totals**, not the number returned in this call — the returned counts are controlled by `answer_limit` / `comment_limit`."
+
+msgid "「相关问题」由知乎动态给出，条数不固定（最多 5 条）；「大家都在搜」固定 10 条，并附带可直接打开的知乎搜索页地址。"
+msgstr "\"Related questions\" are supplied dynamically by Zhihu, so the count varies (5 max); \"others are searching\" always returns 10 items, each with a ready-to-open Zhihu search URL."
+
+msgid "问题本体（标题 / 正文 / 话题 / 计数）解析自问题页内嵌数据（知乎该接口带签名校验，无法直取）；解析失败时接口会明确报错。"
+msgstr "The question itself (title / body / topics / counters) is parsed from data embedded in the question page (Zhihu's own endpoint is signature-gated and cannot be called directly); if parsing fails, the endpoint reports it explicitly."
+
+msgid "问题 ID"
+msgstr "Question ID"
+
+msgid "问题网页地址"
+msgstr "Question page URL"
+
+msgid "问题正文 HTML（原样保留）"
+msgstr "Question body HTML (kept verbatim)"
+
+msgid "问题正文里的图片地址"
+msgstr "Image URLs in the question body"
+
+msgid "正文摘要"
+msgstr "Body excerpt"
+
+msgid "话题名"
+msgstr "Topic name"
+
+msgid "话题网页地址"
+msgstr "Topic page URL"
+
+msgid "回答总数"
+msgstr "Total answers"
+
+msgid "关注者数"
+msgstr "Followers"
+
+msgid "评论总数"
+msgstr "Total comments"
+
+msgid "被浏览数"
+msgstr "View count"
+
+msgid "创建时间（Unix 秒）"
+msgstr "Created time (Unix seconds)"
+
+msgid "更新时间（Unix 秒）"
+msgstr "Updated time (Unix seconds)"
+
+msgid "问题评论（结构见下）"
+msgstr "Question comments (shape listed below)"
+
+msgid "评论正文（纯文本）"
+msgstr "Comment body (plain text)"
+
+msgid "评论者昵称"
+msgstr "Commenter name"
+
+msgid "子评论总数"
+msgstr "Total child comments"
+
+msgid "回复的对象（子评论才有）"
+msgstr "Reply target (child comments only)"
+
+msgid "内联的子评论（最多 3 条，结构与父评论一致）"
+msgstr "Inlined child comments (up to 3, same shape as the parent)"
+
+msgid "回答 ID"
+msgstr "Answer ID"
+
+msgid "回答网页地址"
+msgstr "Answer page URL"
+
+msgid "回答正文 HTML"
+msgstr "Answer body HTML"
+
+msgid "回答正文里的图片地址"
+msgstr "Image URLs in the answer body"
+
+msgid "回答摘要"
+msgstr "Answer excerpt"
+
+msgid "回答者昵称"
+msgstr "Author name"
+
+msgid "回答者主页地址"
+msgstr "Author profile URL"
+
+msgid "赞同数"
+msgstr "Upvotes"
+
+msgid "该回答的评论总数"
+msgstr "Total comments on this answer"
+
+msgid "该回答的评论（结构与 question.comments[] 一致）"
+msgstr "This answer's comments (same shape as question.comments[])"
+
+msgid "相关问题标题"
+msgstr "Related question title"
+
+msgid "相关问题网页地址"
+msgstr "Related question page URL"
+
+msgid "回答数"
+msgstr "Answer count"
+
+msgid "搜索词"
+msgstr "Search term"
+
+msgid "热度值"
+msgstr "Heat value"
+
+msgid "热度文案（如「648 万」）"
+msgstr "Heat text (e.g. \"6.48M\")"
+
+msgid "知乎搜索页地址"
+msgstr "Zhihu search page URL"
+
+
+# ===== 知乎服务：专栏文章详情（/api/zhihu/article，2026-10-03） =====
+
+msgid "专栏文章详情"
+msgstr "Column article detail"
+
+msgid "知乎专栏文章详情：完整正文与图片、评论、大家都在搜。"
+msgstr "Zhihu column article detail: the full article body with images, comments and \"others are searching\"."
+
+msgid "文章 ID 或网页地址"
+msgstr "Article ID or page URL"
+
+msgid "如 608180793"
+msgstr "e.g. 608180793"
+
+msgid "必填。知乎文章 ID（纯数字），也可以直接填文章网页地址（形如 https://zhuanlan.zhihu.com/p/608180793）。"
+msgstr "Required. The Zhihu article ID (plain digits), or the article page URL (e.g. https://zhuanlan.zhihu.com/p/608180793)."
+
+msgid "可选，0~20，默认 10。返回多少条热门评论（0 = 不取）。"
+msgstr "Optional, 0–20, default 10. How many top comments to return (0 = none)."
+
+msgid "**正文是全文**：取的是文章页内嵌的完整正文，不是摘要；`content_truncated` 为 `true` 时才表示知乎把超长文章的正文截断了（罕见）。"
+msgstr "**The body is the full text**: it is the complete article body embedded in the page, not an excerpt; `content_truncated` is `true` only when Zhihu itself truncated a very long article (rare)."
+
+msgid "**图片**：`content` 是 HTML 原文（可直接渲染），`images` 是抽好的图片地址数组（原图优先、已去重）。"
+msgstr "**Images**: `content` is the raw HTML (ready to render) and `images` is a pre-extracted array of image URLs (original resolution preferred, de-duplicated)."
+
+msgid "**文章页只有三个模块**：正文、评论、大家都在搜 —— 没有「回答列表」与「相关问题」（后者是问题页专有）。"
+msgstr "**An article page has only three modules**: body, comments and \"others are searching\" — there is no \"answer list\" and no \"related questions\" (those are question-page only)."
+
+msgid "`comment_count` 是评论**总数**，不等于本次返回的条数（本次条数由`comment_limit` 决定）。"
+msgstr "`comment_count` is the **total** number of comments, not the number returned in this call (that is controlled by `comment_limit`)."
+
+msgid "文章 ID"
+msgstr "Article ID"
+
+msgid "文章网页地址"
+msgstr "Article page URL"
+
+msgid "文章正文 HTML（原样保留，可含图片 / 代码块 / 引用）"
+msgstr "Article body HTML (kept verbatim; may contain images / code blocks / quotes)"
+
+msgid "正文里的图片地址"
+msgstr "Image URLs in the body"
+
+msgid "「喜欢」数"
+msgstr "\"Like\" count"
+
+msgid "正文是否被知乎截断（true 表示拿到的不是全文）"
+msgstr "Whether Zhihu truncated the body (true means this is not the full text)"
+
+msgid "发布时间（Unix 秒）"
+msgstr "Published time (Unix seconds)"
+
+msgid "评论（结构与 question.comments[] 一致）"
+msgstr "Comments (same shape as question.comments[])"
+
+
+# ===== 知乎服务：综合搜索（/api/zhihu/search，2026-10-03） =====
+
+msgid "综合搜索"
+msgstr "Comprehensive search"
+
+msgid "知乎综合搜索：结果列表（每条自带完整正文与图片）+「大家都在搜」。"
+msgstr "Zhihu comprehensive search: a result list (each result carries the full body and images) plus \"others are searching\"."
+
+msgid "如 学生妹"
+msgstr "e.g. 学生妹"
+
+msgid "必填。要搜索的关键词。"
+msgstr "Required. The keyword to search for."
+
+msgid "如 20"
+msgstr "e.g. 20"
+
+msgid "可选，1~20，默认 20（知乎单页上限就是 20 条）。"
+msgstr "Optional, 1–20, default 20 (a single Zhihu page returns at most 20 items)."
+
+msgid "翻页偏移"
+msgstr "Page offset"
+
+msgid "如 0"
+msgstr "e.g. 0"
+
+msgid "可选，0~1000，默认 0。翻页时把上一次返回的 `next_offset` 填进来。"
+msgstr "Optional, 0–1000, default 0. To page through results, pass the `next_offset` returned by the previous call."
+
+msgid "**每条结果直接带完整正文**（`content`，实测最长上万字，不是摘要），所以「阅读全文」不需要再逐条回源。"
+msgstr "**Each result carries the full body directly** (`content`, up to tens of thousands of characters in practice, not an excerpt), so \"read the full text\" needs no per-item round trip."
+
+msgid "结果类型有 `answer`（回答）/ `article`（专栏文章）/ `zvideo`（视频）；视频没有正文，`content` 为空字符串。回答会带 `question`（所属问题），文章与视频为 `null`。"
+msgstr "Result types are `answer`, `article` and `zvideo`; a video has no body, so `content` is an empty string. An answer includes `question` (the question it belongs to); for articles and videos it is `null`."
+
+msgid "**评论只给数量**（`comment_count`，即页面上的「N 条评论」），不逐条回源 —— 否则一次搜索要打几十个请求；要评论内容请用问题详情 / 专栏文章详情接口。"
+msgstr "**Comments are given as a count only** (`comment_count`, i.e. the \"N comments\" shown on the page) rather than fetched item by item — otherwise a single search would fire dozens of requests; for comment content use the question detail / column-article detail endpoints."
+
+msgid "标题与摘要里的 `<em>` 高亮标签已去掉、HTML 实体已还原，是可直接展示的纯文本。"
+msgstr "The `<em>` highlight tags in titles and excerpts have been stripped and HTML entities restored, so they are plain text ready for display."
+
+msgid "**翻页**：把返回的 `next_offset` 作为下一次的 `offset`；`is_end` 为 `true` 时 `next_offset` 为 `null`，表示没有下一页了。"
+msgstr "**Paging**: pass the returned `next_offset` as the next call's `offset`; when `is_end` is `true`, `next_offset` is `null`, meaning there is no next page."
+
+msgid "是否已到最后一页"
+msgstr "Whether the last page has been reached"
+
+msgid "下一页的 offset（已是最后一页时为 null）"
+msgstr "Offset of the next page (null on the last page)"
+
+msgid "本页内的序号，从 1 开始"
+msgstr "Index within this page, starting from 1"
+
+msgid "结果类型：answer / article / zvideo"
+msgstr "Result type: answer / article / zvideo"
+
+msgid "内容 ID"
+msgstr "Content ID"
+
+msgid "标题（已去高亮标签）"
+msgstr "Title (highlight tags removed)"
+
+msgid "完整正文 HTML（视频为空）"
+msgstr "Full body HTML (empty for videos)"
+
+msgid "摘要（已去高亮标签）"
+msgstr "Excerpt (highlight tags removed)"
+
+msgid "作者主页地址"
+msgstr "Author profile URL"
+
+msgid "回答所属问题的标题（非回答时为空）"
+msgstr "Title of the question the answer belongs to (empty for non-answers)"
+
+
+# ===== 微博服务：官网首页服务卡片 + 文档中心正文（声明式数据的 localize，2026-10-03） =====
+
+msgid "微博内容聚合：按频道（分类）取内容 —— 正文、图片、视频直链、被转发的原微博、作者与转发 / 评论 / 点赞数，长文自动展开全文；频道分类（我的频道 / 频道推荐）单独一个接口。登录凭据可用平台统一托管的账号（后台维护），也可由调用方自带 Cookie。"
+msgstr "Weibo content aggregation: fetch content by channel (category) — text, images, direct video links, the reposted original post, author and repost / comment / like counts, with long posts auto-expanded to full text; the channel list (my channels / recommended channels) has its own endpoint. Login credentials can be a platform-hosted account (maintained in the console) or the caller's own cookie."
+
+msgid "微博热门"
+msgstr "Weibo hot"
+
+msgid "内容聚合"
+msgstr "Content aggregation"
+
+msgid "微博内容聚合：按频道（分类）取内容 —— 正文、图片、视频直链、转发原微博、作者与互动数，长文自动展开全文；频道分类（我的频道 / 频道推荐）单独给一个接口。"
+msgstr "Weibo content aggregation: fetch content by channel (category) — text, images, direct video links, the reposted original post, author and interaction counts, with long posts auto-expanded to full text; the channel list (my channels / recommended channels) comes from its own endpoint."
+
+msgid "微博API,微博热门接口,微博频道分类,微博内容采集,微博长文,微博视频直链"
+msgstr "weibo api,weibo hot api,weibo channel list,weibo content scraping,weibo long post,weibo video direct link"
+
+msgid "微博内容聚合接口：先调 `/api/weibo/channels` 拿到**频道分类**，再用 `/api/weibo/feed` 按频道取内容 —— 每条微博给出正文、图片、视频直链、被转发的原微博、作者与转发 / 评论 / 点赞数。"
+msgstr "The Weibo content aggregation API: first call `/api/weibo/channels` to get the **channel list**, then `/api/weibo/feed` to fetch content by channel — each post comes with its text, images, direct video links, the reposted original post, author and repost / comment / like counts."
+
+msgid "**频道（分类）**：微博热门页 `https://weibo.com/hot/weibo/102803` 里的 `102803` 就是频道 ID（= 热门）。分类接口返回「我的频道」（当前登录账号的频道）与「频道推荐」两组，每组都给出频道名、ID 与 `containerid` —— 取内容时两个 ID 都要带上（微博要求它们分别传，且取值不同）。"
+msgstr "**Channels (categories)**: in the Weibo hot page `https://weibo.com/hot/weibo/102803`, `102803` is the channel ID (= Hot). The channel endpoint returns two groups — \"My channels\" (the signed-in account's channels) and \"Recommended channels\" — each giving the channel name, ID and `containerid`; both IDs must be passed when fetching content (Weibo requires them separately, and their values differ)."
+
+msgid "**长文自动展开**：正文被截断的长微博会自动回源取全文，`content` 就是完整正文，不需要调用方再点一次「展开全文」。"
+msgstr "**Long posts are auto-expanded**: when a long post's text is truncated, the service fetches the full text upstream, so `content` is already the complete text and the caller does not need to expand it again."
+
+msgid "**登录凭据两种用法**：一是在请求里带上 `cookie`（你自己的微博登录 Cookie，仅本次生效、我们不存储）；不带则回落到**平台统一托管**的账号 —— 平台在后台「账号管理」维护微博账号与登录 Cookie，接口自动取一份可用凭据去访问。在文档页右侧栏「本机凭据」粘贴并「保存到本机浏览器」，在线调试会自动带上。若平台托管的凭据失效，接口会明确提示需要重新登录，并把该账号标记为「已过期」。"
+msgstr "**Two ways to supply the login credential**: pass `cookie` in the request (your own Weibo login cookie — used for this call only, never stored by us); omit it and the endpoint falls back to the **platform-hosted** account — the platform keeps Weibo accounts and login cookies under \"Accounts\" in the console and automatically picks an available credential. Paste it into the \"Local credentials\" card in the right sidebar of the docs page and click \"Save to this browser\" so the debugger sends it automatically. If the platform-hosted credential expires, the endpoint explicitly reports that a fresh login is required and marks that account as \"Expired\"."
+
+msgid "`/api/weibo/check` 用于校验一份微博凭据是否仍然有效：带上 `cookie` 就校验你自己那份（完全不碰平台账号），不带则校验平台托管的账号并把结果回写到账号状态。"
+msgstr "`/api/weibo/check` verifies whether a Weibo credential is still valid: pass `cookie` to check your own (the platform account is never touched), or omit it to check the platform-hosted account and write the result back to its status."
+
+msgid "微博（weibo.com）"
+msgstr "Weibo (weibo.com)"
+
+msgid "数据来自微博官方 web 接口；调用方可自带登录 Cookie，不传则用平台托管的账号。"
+msgstr "Data comes from Weibo's official web endpoints; callers may supply their own login cookie, otherwise the platform-hosted account is used."
+
+msgid "微博登录 Cookie"
+msgstr "Weibo login Cookie"
+
+msgid "频道分类"
+msgstr "Channel list"
+
+msgid "微博频道分类：「我的频道」与「频道推荐」两组，含频道名 / ID / containerid。"
+msgstr "Weibo channels: the \"My channels\" and \"Recommended channels\" groups, with name / ID / containerid."
+
+msgid "**频道 ID 就是网页里的数字**：`https://weibo.com/hot/weibo/102803` 的 `102803` 即频道 ID（热门）；换别的频道就是换这个数字。"
+msgstr "**The channel ID is the number in the page URL**: `102803` in `https://weibo.com/hot/weibo/102803` is the channel ID (Hot); switching channels means switching this number."
+
+msgid "**两组都返回**，用 `section` 区分：「我的频道」随登录账号而变，「频道推荐」是微博推荐的通用频道。"
+msgstr "**Both groups are returned**, distinguished by `section`: \"My channels\" varies per signed-in account, while \"Recommended channels\" are Weibo's generic suggestions."
+
+msgid "**`containerid` 要一起带上**：取内容时微博要求 `group_id` 传频道 ID、`containerid` 传它自己的值，两者对多数频道**并不相同**（如 明星 `1028034288` / `102803_ctg1_4288_-_ctg1_4288`）。"
+msgstr "**Pass `containerid` along**: when fetching content, Weibo requires `group_id` to be the channel ID and `containerid` to be its own value, and the two **differ** for most channels (e.g. Celebrity `1028034288` / `102803_ctg1_4288_-_ctg1_4288`)."
+
+msgid "该接口本身不校验登录态（不带 Cookie 也能返回游客默认频道），但「我的频道」会随账号不同而变化。"
+msgstr "This endpoint does not require a login (without a cookie it still returns a guest's default channels), but \"My channels\" varies per account."
+
+msgid "也接受 GET（此时参数走 query 串）；因微博 Cookie 较长，推荐用 POST 放表单体。"
+msgstr "GET is also accepted (parameters go in the query string); because a Weibo cookie is long, POST with the cookie in the form body is recommended."
+
+msgid "两组加起来的频道总数"
+msgstr "Total channels across both groups"
+
+msgid "分组名：我的频道 / 频道推荐"
+msgstr "Group name: My channels / Recommended channels"
+
+msgid "该分组下的频道数"
+msgstr "Number of channels in this group"
+
+msgid "频道 ID（= 网页 /hot/weibo/{id} 里的数字）"
+msgstr "Channel ID (= the number in /hot/weibo/{id})"
+
+msgid "频道名"
+msgstr "Channel name"
+
+msgid "频道 containerid（取内容时与 id 一起传）"
+msgstr "Channel containerid (pass together with id when fetching content)"
+
+msgid "频道网页地址"
+msgstr "Channel page URL"
+
+msgid "按频道取内容"
+msgstr "Fetch content by channel"
+
+msgid "按频道取内容：正文、图片、视频直链、转发原微博、作者与互动数。"
+msgstr "Fetch content by channel: text, images, direct video links, the reposted original post, author and interaction counts."
+
+msgid "频道 ID"
+msgstr "Channel ID"
+
+msgid "如 102803"
+msgstr "e.g. 102803"
+
+msgid "可选，默认 102803（热门）。取值 = `/api/weibo/channels` 返回的频道 ID。"
+msgstr "Optional, default 102803 (Hot). Value = the channel ID returned by `/api/weibo/channels`."
+
+msgid "频道 containerid"
+msgstr "Channel containerid"
+
+msgid "留空自动解析"
+msgstr "Leave empty to auto-resolve"
+
+msgid "可选。取值 = `/api/weibo/channels` 返回的 containerid；留空时服务端会按 channel 自动解析（多一次请求）。"
+msgstr "Optional. Value = the containerid returned by `/api/weibo/channels`; when empty the server resolves it from `channel` (one extra request)."
+
+msgid "可选，1~50，默认 20。"
+msgstr "Optional, 1–50, default 20."
+
+msgid "翻页游标"
+msgstr "Page cursor"
+
+msgid "可选，默认 0。翻页时把上一次返回的 `next_since_id` 填进来。"
+msgstr "Optional, default 0. To page through results, pass the `next_since_id` returned by the previous call."
+
+msgid "**长文自动展开**：`is_long_text` 为 `true` 的长微博，服务端会回源取全文（取到的更长才替换），`content` 即完整正文（不是摘要、无需再点「展开全文」）。"
+msgstr "**Long posts are auto-expanded**: for long posts where `is_long_text` is `true`, the server fetches the full text and replaces the body when it is longer, so `content` is the complete text (not an excerpt, no need to expand)."
+
+msgid "**图片**：`content_html` 是 HTML 原文（可直接渲染），`images` 是抽好的图片地址数组（大图优先、已去重）。"
+msgstr "**Images**: `content_html` is the raw HTML (ready to render) and `images` is a pre-extracted array of image URLs (large size preferred, de-duplicated)."
+
+msgid "**视频**：`video.url` 是 mp4 直链（高清优先，**已统一升级为 https**），另有封面 / 标题 / 时长 / 视频页地址；没有视频时 `video` 为 `null`。"
+msgstr "**Video**: `video.url` is a direct mp4 link (HD preferred, **normalized to https**), plus cover / title / duration / video page URL; `video` is `null` when there is no video."
+
+msgid "**视频直链有防盗链**：`video.url` 是微博 CDN 的 mp4 直链，请求时必须带 `Referer: https://weibo.com/` 才能取到（无 Referer 或第三方域名一律返回 403），且地址带 `Expires` 签名、**限时有效**。要在网页里直接播放，请用 `video.stream_url`（本站代理，见「视频代理播放」端点）；`video.url` 更适合你服务端下载后再自行处理。"
+msgstr "**The video direct link is referer-protected**: `video.url` points to Weibo's mp4 CDN and can only be fetched with a `Referer: https://weibo.com/` header (no referer, or any third-party domain, returns 403). The URL is signed with `Expires` and is **time-limited**. To play it directly in a web page, use `video.stream_url` (our proxy — see the \"Video proxy playback\" endpoint); `video.url` is better suited to server-side downloading."
+
+msgid "**转发**：被转发的原微博在 `retweeted`（裁剪版，不再向下展开它的转发与长文）；没有转发时为 `null`。"
+msgstr "**Repost**: the reposted original post is in `retweeted` (a trimmed version — its own repost and long text are not expanded); it is `null` when there is no repost."
+
+msgid "**翻页**：把返回的 `next_since_id` 作为下一次的 `since_id`；`next_since_id` 为 `null`（`has_more` 为 `false`）表示上游没有给出下一页游标。"
+msgstr "**Paging**: pass the returned `next_since_id` as the next call's `since_id`; a `null` `next_since_id` (`has_more` is `false`) means the upstream provided no cursor for the next page."
+
+msgid "`containerid` 留空时服务端会先查一次频道分类来解析它；想省这次请求，就把 `/api/weibo/channels` 返回的 `containerid` 一起带上。"
+msgstr "When `containerid` is empty the server first queries the channel list to resolve it; to save that request, pass the `containerid` returned by `/api/weibo/channels`."
+
+msgid "频道 ID（原样回传）"
+msgstr "Channel ID (echoed back)"
+
+msgid "频道 containerid（原样回传）"
+msgstr "Channel containerid (echoed back)"
+
+msgid "上游给出的该频道总条数（翻页参考）"
+msgstr "Total items for this channel as reported upstream (for paging reference)"
+
+msgid "本次请求使用的翻页游标"
+msgstr "Page cursor used for this request"
+
+msgid "下一页游标（null 表示没有下一页）"
+msgstr "Cursor for the next page (null means no next page)"
+
+msgid "是否还有下一页"
+msgstr "Whether there is a next page"
+
+msgid "微博 ID"
+msgstr "Post ID"
+
+msgid "微博 mid"
+msgstr "Post mid"
+
+msgid "微博短 ID（网页地址用它拼）"
+msgstr "Post short ID (used to build the page URL)"
+
+msgid "微博网页地址（可直接打开）"
+msgstr "Post page URL (openable directly)"
+
+msgid "正文纯文本（长文已展开为全文）"
+msgstr "Post text as plain text (long posts expanded to full text)"
+
+msgid "正文 HTML 原文（含 @ / 话题 / 链接标签）"
+msgstr "Raw post HTML (with @ / topic / link tags)"
+
+msgid "是否为长文"
+msgstr "Whether this is a long post"
+
+msgid "图片地址（大图优先）"
+msgstr "Image URLs (large size preferred)"
+
+msgid "视频信息（无视频为 null）"
+msgstr "Video info (null when there is no video)"
+
+msgid "微博 CDN 的 mp4 直链（https、高清优先；有 Referer 防盗链）"
+msgstr "Weibo CDN mp4 direct link (https, HD preferred; referer-protected)"
+
+msgid "本站代理播放地址（<video> 直接可用、长期有效）"
+msgstr "Our proxy playback URL (ready for a <video> tag, long-lived)"
+
+msgid "视频封面地址"
+msgstr "Video cover URL"
+
+msgid "视频标题"
+msgstr "Video title"
+
+msgid "视频时长（秒）"
+msgstr "Video duration (seconds)"
+
+msgid "视频页地址"
+msgstr "Video page URL"
+
+msgid "被转发的原微博（无转发为 null）"
+msgstr "The reposted original post (null when there is none)"
+
+msgid "原微博正文"
+msgstr "Original post text"
+
+msgid "原作者昵称"
+msgstr "Original author name"
+
+msgid "原微博网页地址"
+msgstr "Original post page URL"
+
+msgid "作者 ID"
+msgstr "Author ID"
+
+msgid "作者头像地址"
+msgstr "Author avatar URL"
+
+msgid "作者是否认证"
+msgstr "Whether the author is verified"
+
+msgid "转发数"
+msgstr "Reposts"
+
+msgid "来源（如 iPhone客户端）"
+msgstr "Source (e.g. iPhone client)"
+
+msgid "地区（可能为空）"
+msgstr "Region (may be empty)"
+
+msgid "是否广告"
+msgstr "Whether this is an ad"
+
+msgid "校验微博登录凭据是否有效（自带 cookie 校验你自己那份，否则校验平台托管的账号）。"
+msgstr "Verify whether a Weibo login credential is valid (pass `cookie` to check your own, otherwise the platform-hosted account is checked)."
+
+msgid "微博接口在未登录时**仍返回 HTTP 200**（body 是 `ok: -100` 的登录跳转），本接口按此判定凭据是否有效，因此比只看状态码可靠。"
+msgstr "Weibo endpoints **still return HTTP 200 when not signed in** (the body is an `ok: -100` login redirect); this endpoint judges validity from that, which is more reliable than the status code alone."
+
+msgid "校验说明"
+msgstr "Check message"
+
+msgid "视频代理播放"
+msgstr "Video proxy playback"
+
+msgid "微博视频代理播放：本站取流后转发，普通 <video> 标签直接播放。"
+msgstr "Weibo video proxy playback: the stream is fetched upstream and relayed, so a plain <video> tag can play it."
+
+msgid "由 feed 接口的 video.stream_url 携带"
+msgstr "Carried by video.stream_url from the feed endpoint"
+
+msgid "必填：由 `/api/weibo/feed` 下发的时效令牌，无需项目签名（浏览器加不了签名）。"
+msgstr "Required: the time-limited token issued by `/api/weibo/feed`; no project signature needed (browsers cannot sign)."
+
+msgid "**为什么需要代理**：微博视频 CDN 有 Referer 防盗链，只认微博系域名 —— 第三方页面的 `<video>` 带的是自己的域名，一律 403；直链又是 `http://`，https 页面还会被浏览器按混合内容直接拦掉。本端点带 `Referer` 取流后原样转发。"
+msgstr "**Why a proxy is needed**: Weibo's video CDN enforces a referer check and only accepts Weibo domains — a third-party page's `<video>` sends its own domain and always gets 403; the direct link is also `http://`, which an https page blocks as mixed content. This endpoint fetches the stream with a `Referer` header and relays it as-is."
+
+msgid "地址由 `/api/weibo/feed` 的 `video.stream_url` 给出、**长期有效**：令牌里只有微博 id，播放时按 id 现场解析新鲜直链（微博直链带 `Expires` 会过期）。"
+msgstr "The URL comes from `video.stream_url` of `/api/weibo/feed` and is **long-lived**: the token only carries the Weibo id, and the fresh direct link is resolved by id at playback time (Weibo's direct links carry `Expires` and do expire)."
+
+msgid "**本端点不带项目签名**：浏览器加不了签名，且拖动进度条产生的多次 Range 请求会撞上「nonce 一次性」的重放拦截，故鉴权由 URL 里的时效令牌承担。"
+msgstr "**This endpoint does not use the project signature**: browsers cannot sign, and the multiple Range requests produced by seeking would hit the one-time-nonce replay block, so authentication is carried by the time-limited token in the URL."
+
+msgid "支持 HTTP Range（200 整段 / 206 分片）：可拖动进度条、可断点续传。"
+msgstr "HTTP Range is supported (200 for the whole file / 206 for a chunk): seeking and resuming both work."
+
+msgid "令牌无效或过期返回 403（重新调用 feed 拿新地址即可）；上游取流失败走统一错误码（40001 / 50002）。"
+msgstr "An invalid or expired token returns 403 (just call feed again for a fresh URL); upstream fetch failures use the standard codes (40001 / 50002)."
+
+msgid "成功返回视频二进制流（video/mp4，支持 Range），**不是统一 JSON 信封**；令牌无效或过期返回 403。"
+msgstr "On success it returns a video binary stream (video/mp4, Range supported) — **not** the standard JSON envelope; an invalid or expired token returns 403."
+
+
+# ==================== 代练搬单（console/order_migration.html） ====================
+msgid "代练搬单 - 超级管理员 - 小影API"
+msgstr "Order migration - Super admin - XiaoYingAPI"
+
+msgid "超级管理员,代练搬单,代练通,代练丸子"
+msgstr "Super admin, order migration, DaiLianTong, DaiLianWanZi"
+
+msgid "小影API 超级管理员：把代练通王者荣耀订单自动搬运到代练丸子发单，并监控被接单后回代练通接单。"
+msgstr "XiaoYingAPI super admin: automatically migrate Honor of Kings orders from DaiLianTong to DaiLianWanZi, then take the order on DaiLianTong once a booster takes it."
+
+msgid "把代练通王者荣耀公开订单映射后发布到代练丸子，监控被接单后回代练通接单取账号。"
+msgstr "Map public Honor of Kings orders from DaiLianTong, publish them to DaiLianWanZi, and take the order on DaiLianTong once a booster takes it, to retrieve the account."
+
+msgid "正式投运前检查清单"
+msgstr "Pre-launch checklist"
+
+msgid "自动运行 = 开（生产常开）"
+msgstr "Auto-run = on (normally on in production)"
+
+msgid "关键词 = 空（正式跑不要锁单；当前："
+msgstr "Keyword = empty (do not lock orders in production; current: "
+
+msgid "严选发单 = 关（标准单，低等级打手可接）"
+msgstr "Premium publishing = off (Standard orders; low-level boosters can take them)"
+
+msgid "接单门槛 = 不限"
+msgstr "Take threshold = no limit"
+
+msgid "我们的 QQ 已填（当前："
+msgstr "Our QQ is set (current: "
+
+msgid "未填"
+msgstr "Not set"
+
+msgid "撤销凭证图 URL 已填（抢接失败兜底要用）"
+msgstr "Revocation proof image URL is set (needed for the fallback)"
+
+msgid "代练通 A 账号：余额充足（接单要冻结该单双金）"
+msgstr "DaiLianTong account A: sufficient balance (taking an order freezes its deposit)"
+
+msgid "代练丸子商家账号：余额充足（发单扣款）"
+msgstr "DaiLianWanZi merchant account: sufficient balance (publishing deducts it)"
+
+msgid "代练丸子打手账号 B：等级 / 余额足够接单"
+msgstr "DaiLianWanZi booster account B: sufficient level / balance to take orders"
+
+msgid "服务进程：后台自动运行线程已随服务启动（uwsgi 同样生效）"
+msgstr "Service process: the background auto-run thread starts with the service (works under uwsgi too)"
+
+msgid "「执行一轮」会真实发单（扣代练丸子余额）与接单（冻结代练通双金），请谨慎操作。"
+msgstr "Run one cycle really publishes orders (deducting the Wanzi balance) and takes orders (freezing the DaiLianTong deposit). Proceed with caution."
+
+msgid "流程：取实时余额（代练通 / 丸子）→ 抓单 → 过滤黑名单 → 随机抽单 → 逐条「余额够才发」→ 监控「被接单」→ 代练通接单取账号。"
+msgstr "Flow: read live balances (DaiLianTong / Wanzi) → fetch orders → filter blacklist → randomly pick orders → publish one by one only if the balance allows → watch for takers → take the order on DaiLianTong to retrieve the account."
+
+msgid "任一余额不足即中断本轮发单（已发的保留），等下一轮再跑；余额每次运行只查一次。"
+msgstr "If either balance is insufficient, publishing stops for this cycle (already published orders are kept) and resumes next cycle; balances are read once per run."
+
+msgid "取到账号后需你通过 QQ 把账号交给丸子打手；若代练通抢接失败会自动撤单并告警（落日志）。"
+msgstr "After the account is retrieved, hand it to the Wanzi booster via QQ; if taking the order on DaiLianTong fails, the order is cancelled automatically and an alert is logged."
+
+msgid "开启「自动运行」后由后台线程按间隔自动执行，无需手动点；关闭则只能手动执行。"
+msgstr "With auto-run on, the background thread runs the pipeline at the interval; with it off you can only run manually."
+
+msgid "抓单预览"
+msgstr "Fetch preview"
+
+msgid "执行一轮"
+msgstr "Run one cycle"
+
+msgid "将真实发布到代练丸子并监控接单，确认执行一轮？"
+msgstr "This really publishes to DaiLianWanZi and watches for takers. Run one cycle?"
+
+msgid "全部撤销待接单"
+msgstr "Cancel all pending"
+
+msgid "将撤销全部待接单（并关闭自动运行），确认？撤销后代练通的双金预扣会释放。"
+msgstr "This cancels all pending orders (and turns off auto-run). Continue? The reserved DaiLianTong deposit is released."
+
+msgid "最近运行："
+msgstr "Last run: "
+
+msgid "最近运行：%(t)s"
+msgstr "Last run: %(t)s"
+
+msgid "尚未运行过"
+msgstr "Not run yet"
+
+msgid "最近错误："
+msgstr "Last error: "
+
+msgid "抓单预览（未发布）"
+msgstr "Fetch preview (not published)"
+
+msgid "代练通单号"
+msgstr "DaiLianTong order no."
+
+msgid "标题（照搬）"
+msgstr "Title (copied as-is)"
+
+msgid "丸子单号"
+msgstr "Wanzi order no."
+
+msgid "发布价"
+msgstr "Publish price"
+
+msgid "丸子双金"
+msgstr "Wanzi deposit"
+
+msgid "代练通双金(占用)"
+msgstr "DaiLianTong deposit (reserved)"
+
+msgid "时限"
+msgstr "Time limit"
+
+msgid "小时"
+msgstr "h"
+
+msgid "号主信息查询"
+msgstr "Owner info lookup"
+
+msgid "代练丸子订单号 或 代练通订单号"
+msgstr "DaiLianWanZi order no. or DaiLianTong order no."
+
+msgid "如 WZ2026… 或 107187965…"
+msgstr "e.g. WZ2026… or 107187965…"
+
+msgid "查询"
+msgstr "Search"
+
+msgid "账号 / 密码 / 角色名只有代练通「接单后、撤销前」才能取到；已撤销 / 已结束的订单这些字段为空。"
+msgstr "Account / password / role name are only available on DaiLianTong after taking the order and before cancellation; cancelled / finished orders have these fields empty."
+
+msgid "号主信息"
+msgstr "Owner info"
+
+msgid "代练通单号："
+msgstr "DaiLianTong order no.: "
+
+msgid "· 丸子单号："
+msgstr "· Wanzi order no.: "
+
+msgid "我们的 QQ 号"
+msgstr "Our QQ number"
+
+msgid "如 12345678"
+msgstr "e.g. 12345678"
+
+msgid "发单时填入代练丸子的账号 / 密码 / 角色名与联系方式，引导打手加好友后私下交接账号。"
+msgstr "Filled into the Wanzi order as account / password / role name and contact info, so the booster adds you and you hand over the account privately."
+
+msgid "轮询间隔(秒)"
+msgstr "Polling interval (s)"
+
+msgid "监控丸子「被接单」的间隔，最小 5 秒；被接单检测的最坏延迟即此值。"
+msgstr "Interval for watching Wanzi for takers, minimum 5s; this is the worst-case detection delay."
+
+msgid "每轮发布上限"
+msgstr "Publish limit per cycle"
+
+msgid "每轮最多发布到代练丸子的订单数。"
+msgstr "Maximum number of orders published to DaiLianWanZi per cycle."
+
+msgid "丸子双金倍数"
+msgstr "Wanzi deposit multiple"
+
+msgid "双金合计（安全+效率保证金）= 发布价 × 该倍数，可设 0-5，默认 2（两项均分）。"
+msgstr "Total deposit (security + efficiency) = publish price × this multiple, configurable 0-5, default 2 (split evenly)."
+
+msgid "价格区间(元)"
+msgstr "Price range (CNY)"
+
+msgid "下限"
+msgstr "Min"
+
+msgid "上限"
+msgstr "Max"
+
+msgid "只搬价格在区间内的代练通订单；留空表示不限。"
+msgstr "Only migrate DaiLianTong orders within this price range; leave blank for no limit."
+
+msgid "标题关键词"
+msgstr "Title keyword"
+
+msgid "留空则不限"
+msgstr "Leave blank for no limit"
+
+msgid "透传给代练通搜索，可填「订单号」或标题里的独特文字（精确只搬某笔单）；留空则不限。"
+msgstr "Passed to the DaiLianTong search; use an order number or unique words in the title (to migrate exactly one order); leave blank for no limit."
+
+msgid "严选发单"
+msgstr "Premium publishing"
+
+msgid "关闭=标准（默认，与丸子 App 一致，低等级打手可接）；开启=严选（带服务档位，要求打手 Lv2+）。"
+msgstr "Off = Standard (default, same as the Wanzi app; low-level boosters can take); On = Premium (with service tier; requires booster Lv2+)."
+
+msgid "接单门槛(代练师等级)"
+msgstr "Take threshold (booster level)"
+
+msgid "不限（标准，低等级打手可接）"
+msgstr "No limit (Standard; low-level boosters can take orders)"
+
+msgid "Lv1 以上（30天内完成1单以上）"
+msgstr "Lv1 or above (1+ order done within 30 days)"
+
+msgid "Lv2 以上（严选，需打手等级≥2）"
+msgstr "Lv2 or above (Premium; booster level ≥ 2 required)"
+
+msgid "不设置会沿用平台默认（严选）；1 级打手接不了就选「不限」。"
+msgstr "If unset, the platform default (Premium) applies; if Lv1 boosters cannot take orders, choose No limit."
+
+msgid "撤销凭证图URL"
+msgstr "Revocation proof image URL"
+
+msgid "抢接失败、且订单已被接单无法「取消」时，用它发起「申请撤销」（丸子强制要求凭证图）；留空则只告警。"
+msgstr "Used to request revocation when taking the order fails and the order can no longer be cancelled (Wanzi requires a proof image); if blank, only an alert is raised."
+
+msgid "自动运行"
+msgstr "Auto-run"
+
+msgid "开启后后台线程按间隔自动执行流水线（会真实发单 / 接单）；关闭则仅手动执行。"
+msgstr "When on, the background thread runs the pipeline at the interval (really publishing / taking orders); when off, only manual runs happen."
+
+msgid "被接单通知"
+msgstr "Taken notifications"
+
+msgid "被接单邮件通知"
+msgstr "Email when taken"
+
+msgid "代练丸子有打手接单时，发一封邮件通知。"
+msgstr "Send an email when a booster takes an order on DaiLianWanZi."
+
+msgid "通知邮箱"
+msgstr "Notification email"
+
+msgid "留空则用 .env 的 QQ_MAIL_ACCOUNT"
+msgstr "Leave blank to use QQ_MAIL_ACCOUNT from .env"
+
+msgid "留空则发到 .env 里配置的 QQ_MAIL_ACCOUNT。"
+msgstr "Leave blank to send to QQ_MAIL_ACCOUNT configured in .env."
+
+msgid "被接单声音提醒"
+msgstr "Sound alert when taken"
+
+msgid "本页打开时用浏览器语音播报（不依赖服务器扬声器，Linux 云主机同样可用）。"
+msgstr "Spoken by the browser while this page is open (no server speaker needed; works on Linux cloud hosts too)."
+
+msgid "声音文本"
+msgstr "Sound text"
+
+msgid "试听"
+msgstr "Preview"
+
+msgid "被接单时由本页（需保持打开）用浏览器语音播报该文本；点「试听」可先听效果。"
+msgstr "When an order is taken, this page (kept open) speaks this text in the browser; click Preview to hear it first."
+
+msgid "标题黑名单"
+msgstr "Title blacklist"
+
+msgid "代练通标题包含其中任意一个词就不搬运（这类标题像「公告」，发到丸子有被判定公告的嫌疑）。"
+msgstr "If a DaiLianTong title contains any of these words it is skipped (such titles look like announcements and may be flagged on Wanzi)."
+
+msgid "要拉黑的词，如：联系"
+msgstr "Word to blacklist, e.g. 联系"
+
+msgid "暂无黑名单词"
+msgstr "No blacklist words"
+
+msgid "点击移除"
+msgstr "Click to remove"
+
+msgid "搬单记录"
+msgstr "Migration records"
+
+msgid "共"
+msgstr "Total"
+
+msgid "条"
+msgstr "items"
+
+msgid "待接单"
+msgstr "Pending"
+
+msgid "已接单"
+msgstr "Taken"
+
+msgid "自动刷新中"
+msgstr "Auto-refreshing"
+
+msgid "清空记录"
+msgstr "Clear records"
+
+msgid "确定清空全部搬单记录？（不影响两平台上的真实订单）"
+msgstr "Clear all migration records? (Real orders on both platforms are not affected)"
+
+msgid "丸子状态"
+msgstr "Wanzi status"
+
+msgid "号主账号"
+msgstr "Owner account"
+
+msgid "查看账号"
+msgstr "View account"
+
+msgid "暂无搬单记录"
+msgstr "No migration records"
+
+msgid "代练通已接单"
+msgstr "Taken on DaiLianTong"
+
+msgid "发单中"
+msgstr "Publishing"
+
+msgid "已撤单"
+msgstr "Cancelled"
+
+msgid "已抓取"
+msgstr "Fetched"
+
+msgid "运行日志"
+msgstr "Run log"
+
+msgid "每轮汇总与错误，保留最近 30 轮"
+msgstr "Per-cycle summary and errors; the latest 30 cycles are kept"
+
+msgid "实时更新中"
+msgstr "Live"
+
+msgid "更新于"
+msgstr "Updated at"
+
+msgid "最新"
+msgstr "Latest"
+
+msgid "抓取"
+msgstr "Fetched"
+
+msgid "兜底"
+msgstr "Fallback"
+
+msgid "等待运行…"
+msgstr "Waiting for a run…"
+
+msgid "回到最新"
+msgstr "Back to latest"
+
+msgid "丸子来新订单了"
+msgstr "New order on Wanzi"
+
+msgid "丸子"
+msgstr "Wanzi"
+
+msgid "状态筛选："
+msgstr "Filter by status: "
+
+msgid "可多选，点一次切换选中状态"
+msgstr "Multi-select: click a status to toggle it"
+
+msgid "恢复实时刷新"
+msgstr "Resume live refresh"
+
+msgid "已暂停（自动运行已关闭）"
+msgstr "Paused (auto-run is off)"
+
+msgid "清空日志"
+msgstr "Clear log"
+
+msgid "确定清空运行日志？（不影响搬单记录）"
+msgstr "Clear the run log? (Migration records are not affected)"
+
+msgid "已清空运行日志"
+msgstr "Run log cleared"
+
+
+# ==================== 接口文档（docs/service.html） ====================
+msgid "搜索区服…"
+msgstr "Search servers…"
+
+
+# ==================== 消息推送服务（首页服务清单 / 文档中心 / 控制台推送日志） ====================
+# --- 首页服务清单（website/services.py） ---
+msgid "消息推送"
+msgstr "Message Push"
+
+msgid "把消息推送到手机的通知服务：当前接入 Server酱（sct.ftqq.com）一条线路，适合服务器告警、任务完成、定时任务结果等场景；SendKey 由后台「账号管理」统一托管。"
+msgstr "A notification service that pushes messages to your phone. It currently has one channel: ServerChan (sct.ftqq.com), ideal for server alerts, task completion and scheduled-job results; the SendKey is managed centrally in the console's Account Management."
+
+msgid "微信推送"
+msgstr "WeChat push"
+
+msgid "通知"
+msgstr "Notification"
+
+msgid "Server酱"
+msgstr "ServerChan"
+
+# --- 文档中心（website/docs/push.py） ---
+msgid "消息推送服务"
+msgstr "Message Push Service"
+
+msgid "把消息推送到手机的通知服务。当前接入 Server酱 1 条线路，后续可继续扩展更多推送平台/线路。"
+msgstr "A notification service that pushes messages to your phone. One channel (ServerChan) is available now; more push platforms/channels can be added later."
+
+msgid "消息推送API,微信推送接口,Server酱API,ServerChan,服务器告警推送,通知接口"
+msgstr "message push API,WeChat push API,ServerChan API,ServerChan,server alert push,notification API"
+
+msgid "消息推送服务把「服务器 / 脚本 / 设备上发生的事」发送到手机，适合告警、任务完成通知、定时任务结果汇总等场景。当前接入 Server酱（sct.ftqq.com）一条线路：调用本服务的发送接口，消息经由 Server酱 推送到你手机。"
+msgstr "The message push service sends what happens on your server / scripts / devices to your phone — ideal for alerts, task-completion notices and scheduled-job summaries. One channel is available now: ServerChan (sct.ftqq.com). Call this service's send endpoint and the message is delivered to your phone through ServerChan."
+
+msgid "**消息实际推送到哪个通道**（微信服务号、企业微信应用消息、企业微信/钉钉/飞书群机器人、Bark、PushDeer 或自定义 Webhook）由 Server酱 后台的通道配置决定 —— 换通道不用改调用代码。"
+msgstr "**Which channel the message actually reaches** (WeChat service account, WeCom app message, WeCom/DingTalk/Feishu group bot, Bark, PushDeer or a custom webhook) is decided by the channel configuration in the ServerChan console — switching channels requires no code change."
+
+msgid "**SendKey 由服务端托管**：在超管控制台「账号管理」里新增一个平台为「Server酱」的账号，把 SendKey 填进「登录凭据」字段即可（凭据加密落库、页面不回显）。调用方无需、也不应传递 SendKey。"
+msgstr "**The SendKey is hosted server-side**: add an account whose platform is \"ServerChan\" in the superadmin console's Account Management, and put the SendKey in the credential field (stored encrypted, never shown on pages). Callers neither need to nor should pass a SendKey."
+
+msgid "本服务接口需项目签名调用；每次推送都会在控制台「推送日志」留痕（成功与失败都记）。"
+msgstr "These endpoints require a project signature; every push leaves a record in the console's Push Logs (both successes and failures)."
+
+msgid "Server酱（sct.ftqq.com）微信推送"
+msgstr "ServerChan (sct.ftqq.com) WeChat push"
+
+msgid "通过 Server酱 的 SendKey 推送消息；SendKey 由服务端托管（控制台「账号管理」）。需项目签名调用。"
+msgstr "Push messages via a ServerChan SendKey; the SendKey is hosted server-side (console's Account Management). Project signature required."
+
+msgid "发送消息"
+msgstr "Send Message"
+
+msgid "发送一条消息，经由 Server酱 推送到微信（或你在 Server酱 后台配置的其它通道）。"
+msgstr "Send a message; it is delivered to WeChat (or any other channel configured in your ServerChan console) through ServerChan."
+
+msgid "消息标题"
+msgstr "Title"
+
+msgid "消息正文"
+msgstr "Content"
+
+msgid "指定通道"
+msgstr "Channel"
+
+msgid "短链标题"
+msgstr "Short-link title"
+
+msgid "企微成员"
+msgstr "WeCom member"
+
+msgid "如 服务器磁盘告警"
+msgstr "e.g. Server disk alert"
+
+msgid "支持 Markdown 的正文，如：\n## 告警详情\n\n磁盘使用率 **92%**，请及时清理。"
+msgstr "Markdown content, e.g.:\n## Alert details\n\nDisk usage **92%**, please clean up."
+
+msgid "留空则不发送短链"
+msgstr "Leave empty to skip the short link"
+
+msgid "多个用 | 分隔"
+msgstr "Separate multiple values with |"
+
+msgid "必填：消息标题，最长 32 个字符，不能包含换行"
+msgstr "Required: message title, up to 32 characters, no line breaks"
+
+msgid "选填：消息正文，支持 Markdown（订阅会员的卡片可显示全文）"
+msgstr "Optional: message content, Markdown supported (paid members' cards can show the full text)"
+
+msgid "选填：本次推送使用的消息通道；不选则用 Server酱 后台「通道配置」页设置的默认通道。需要同时推送到两个通道时，可直接传组合值用 | 分隔（如 9|66）。通道值：方糖服务号=9、企业微信应用消息=66、企业微信群机器人=1、钉钉群机器人=2、飞书群机器人=3、Bark iOS=8、PushDeer=18、官方 Android 版=98、测试号=0、自定义=88。"
+msgstr "Optional: the message channel for this push; if not selected, the default channel set on the \"Channel Config\" page of ServerChan is used. To push to two channels at once, pass a combined value separated by | (e.g. 9|66). Channel values: Fangtang WeChat service account=9, WeCom app message=66, WeCom group bot=1, DingTalk group bot=2, Feishu group bot=3, Bark iOS=8, PushDeer=18, official Android client=98, test account=0, custom=88."
+
+# channel 下拉选项（docs/push.py CHANNEL_OPTIONS）
+msgid "不指定（用后台设置的默认通道）"
+msgstr "Not specified (use the default channel set in ServerChan)"
+
+msgid "方糖服务号（微信）"
+msgstr "Fangtang WeChat service account"
+
+msgid "企业微信应用消息"
+msgstr "WeCom app message"
+
+msgid "企业微信群机器人"
+msgstr "WeCom group bot"
+
+msgid "钉钉群机器人"
+msgstr "DingTalk group bot"
+
+msgid "飞书群机器人"
+msgstr "Feishu group bot"
+
+msgid "Bark iOS"
+msgstr "Bark iOS"
+
+msgid "PushDeer"
+msgstr "PushDeer"
+
+msgid "官方 Android 版·β"
+msgstr "Official Android client · β"
+
+msgid "测试号"
+msgstr "Test account"
+
+msgid "自定义 Webhook"
+msgstr "Custom Webhook"
+
+msgid "选填：卡片消息的短链标题"
+msgstr "Optional: short-link title for the card message"
+
+msgid "选填：消息标签，多个用 | 分隔"
+msgstr "Optional: message tags, separated by |"
+
+msgid "选填：企业微信通道抄送的成员 openid，多个用 | 分隔"
+msgstr "Optional: WeCom member openids to copy the message to, separated by |"
+
+msgid "title 最长 32 个字符且不能含换行；desp 支持 Markdown。"
+msgstr "title is at most 32 characters with no line breaks; desp supports Markdown."
+
+msgid "SendKey 由服务端托管（控制台「账号管理」→ 平台选「Server酱」、凭据填 SendKey），调用方不传。"
+msgstr "The SendKey is hosted server-side (console Account Management → pick the \"ServerChan\" platform and put the SendKey in the credential field); callers do not pass it."
+
+msgid "Server酱 免费账号限制每日 5 条、每分钟 50 条，超限时上游会返回错误码（本接口按外部服务错误返回）。"
+msgstr "Free ServerChan accounts are limited to 5 messages per day and 50 per minute; when exceeded, the upstream returns an error code (this API reports it as an external service error)."
+
+msgid "上游返回非 0 时，本接口返回 40001，msg 即上游给的原因。"
+msgstr "When the upstream returns a non-zero code, this API returns 40001 with the upstream reason in msg."
+
+msgid "本次推送的消息标识，用于「查询推送状态」"
+msgstr "Identifier of this push; use it with the status query endpoint"
+
+msgid "阅读密钥，用于「查询推送状态」与阅读页地址"
+msgstr "Read key used for the status query endpoint and the reading page URL"
+
+msgid "本次是否为端对端加密推送（传了 encrypt_password 为 true）"
+msgstr "Whether this push is end-to-end encrypted (true when encrypt_password was passed)"
+
+# --- send 新增可选参数：noip / encrypt_password ---
+msgid "隐藏调用 IP"
+msgstr "Hide caller IP"
+
+msgid "显示调用 IP（默认）"
+msgstr "Show caller IP (default)"
+
+msgid "选填：是否隐藏本次调用的来源 IP；选「隐藏」后 Server酱 不记录调用方 IP。"
+msgstr "Optional: whether to hide the source IP of this call; when hidden, ServerChan does not record the caller IP."
+
+msgid "阅读密码"
+msgstr "Read password"
+
+msgid "留空则不加密"
+msgstr "Leave empty to skip encryption"
+
+msgid "选填：填了即对 desp 做端对端加密后再推送，消息在 Server酱 / 微信 侧都是密文；收件人需在消息详情页输入同一密码才能查看内容。密码请另行告知收件人，平台不保存。"
+msgstr "Optional: when set, desp is end-to-end encrypted before pushing, so the message stays ciphertext on ServerChan / WeChat; the recipient must enter the same password on the message detail page to read it. Share the password out-of-band — this platform does not store it."
+
+msgid "发送是**异步入队**：返回成功只代表已入队，实际是否送达请用「查询推送状态」接口看 wxstatus。"
+msgstr "Sending is **asynchronous**: a successful response only means it was queued. Use the status query endpoint and check wxstatus for actual delivery."
+
+msgid "传了 encrypt_password 即为端对端加密：推送日志里记录的是密文，不是明文正文。"
+msgstr "Passing encrypt_password enables end-to-end encryption: the push log stores the ciphertext, not the plaintext content."
+
+# --- 查询推送状态端点 ---
+msgid "查询推送状态"
+msgstr "Query Push Status"
+
+msgid "用「发送消息」返回的 pushid + readkey，查询这条消息的实际送达结果（wxstatus）。"
+msgstr "Use the pushid + readkey returned by \"Send Message\" to check this message's actual delivery result (wxstatus)."
+
+msgid "推送 ID"
+msgstr "Push ID"
+
+msgid "来自「发送消息」返回的 pushid"
+msgstr "pushid returned by \"Send Message\""
+
+msgid "必填：发送消息返回的 pushid"
+msgstr "Required: the pushid returned by the send endpoint"
+
+msgid "阅读密钥"
+msgstr "Read key"
+
+msgid "来自「发送消息」返回的 readkey"
+msgstr "readkey returned by \"Send Message\""
+
+msgid "必填：发送消息返回的 readkey"
+msgstr "Required: the readkey returned by the send endpoint"
+
+msgid "Server酱 的发送是异步入队，发送接口返回成功只代表「已入队」；实际是否送达微信要看本接口的 wxstatus。"
+msgstr "ServerChan sends asynchronously: a successful send response only means \"queued\". Whether it actually reached WeChat is shown by wxstatus from this endpoint."
+
+msgid "wxstatus 为空表示该任务可能还没执行，稍后重试即可。"
+msgstr "An empty wxstatus means the task may not have run yet; retry later."
+
+msgid "data 为上游的推送详情 JSON，其中 wxstatus 即微信接口返回的内容（为空表示可能还未执行），以实际返回为准。"
+msgstr "data is the upstream push-detail JSON; wxstatus is the raw WeChat API result (empty means it may not have run yet). Refer to the actual response."
+
+# --- 控制台推送日志（console_menu.py / console/push_logs.html） ---
+msgid "推送日志"
+msgstr "Push Logs"
+
+msgid "消息推送服务（当前接入 Server酱）每次推送的记录：标题 / 正文摘要、发起项目、成功或失败、上游返回码与推送ID，便于回看与排错。SendKey 在「账号管理」维护。"
+msgstr "Records of every push made by the message push service (currently ServerChan): title / content summary, calling project, success or failure, upstream code and pushid — handy for review and troubleshooting. The SendKey is managed in Account Management."
+
+msgid "推送日志 - 超级管理员 - 小影API"
+msgstr "Push Logs - Superadmin - XiaoYingAPI"
+
+msgid "超级管理员,推送日志,消息推送,Server酱"
+msgstr "superadmin,push logs,message push,ServerChan"
+
+msgid "小影API 超级管理员：查看消息推送服务每次推送的记录（成功 / 失败、上游返回码与推送ID）。"
+msgstr "XiaoYingAPI superadmin: view every push record of the message push service (success / failure, upstream code and pushid)."
+
+msgid "推送由「消息推送服务」写库留痕，本页只读；SendKey 不在本表、也不在此展示。"
+msgstr "Pushes are recorded to the database by the message push service; this page is read-only. The SendKey is neither stored in this table nor shown here."
+
+msgid "SendKey 在「账号管理」里新增 platform=Server酱 的账号维护（凭据字段填 SendKey），服务端自动取用。"
+msgstr "Maintain the SendKey by adding an account with platform=ServerChan in Account Management (put the SendKey in the credential field); the server picks it up automatically."
+
+msgid "标题 / 正文"
+msgstr "Title / content"
+
+msgid "消息"
+msgstr "Message"
+
+msgid "上游码"
+msgstr "Upstream code"
+
+msgid "推送ID"
+msgstr "Push ID"
+
+msgid "暂无推送记录。"
+msgstr "No push records yet."
+
+msgid "共 %(total)s 条推送记录；成功与失败都会留痕，失败原因见「说明」列。"
+msgstr "%(total)s push record(s); both successes and failures are logged — see the \"Note\" column for failure reasons."

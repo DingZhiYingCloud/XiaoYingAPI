@@ -1,0 +1,239 @@
+{% extends 'console/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "账号管理 - 超级管理员 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,账号管理,登录凭据,Cookie托管,凭据校验" %}{% endblock %}
+{% block description %}{% trans "小影API 超级管理员：统一托管各第三方平台账号与登录凭据（Cookie），加密落库、支持一键校验凭据是否过期。" %}{% endblock %}
+
+{% block console_content %}
+{% trans "统一托管第三方平台账号与登录凭据（Cookie）；凭据加密落库，页面与接口都不回显明文。" as ph_desc %}
+{% include 'console/_page_header.html' with icon='key-round' title='账号管理' desc=ph_desc %}
+
+{% include 'console/_messages.html' %}
+
+{# 口径说明（纯提示，中性灰） #}
+<div role="alert" class="alert alert-soft bg-base-200 mt-4 items-start py-3 text-sm">
+  <div class="space-y-1">
+    <p>{% trans "这里存的是「平台代管的第三方账号」，各服务的接口会自动取一份可用凭据去访问，调用方无需传账号信息。" %}</p>
+    <p class="text-xs opacity-80">{% trans "登录凭据与密码均 AES 加密落库、页面不回显；编辑时留空即「保持原值不变」。" %}</p>
+    <p class="text-xs opacity-80">{% trans "「校验」会调用该平台已接入的校验器判断凭据是否过期，并把结果写回状态；未接入校验器的平台不显示该按钮。" %}</p>
+  </div>
+</div>
+
+{# ==================== 新增 / 编辑 ==================== #}
+<form method="post" action="{% url 'website:console_accounts' %}" class="mt-5" id="account-form">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="save" />
+  <input type="hidden" name="id" id="account-id" value="" />
+  <fieldset class="con-panel p-4">
+    <legend class="flex items-center gap-2 px-1 text-base font-bold">
+      <i data-lucide="key-round" class="h-4 w-4 text-primary" aria-hidden="true"></i>
+      <span id="account-form-title">{% trans "新增账号" %}</span>
+    </legend>
+
+    <div class="mt-2 grid gap-4 sm:grid-cols-2">
+      <label class="grid gap-1">
+        <span class="font-semibold">{% trans "平台" %}</span>
+        <select name="platform" id="account-platform"
+                class="select select-bordered select-sm w-full max-w-sm">
+          {% for value, label in platform_choices %}
+          <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <label class="grid gap-1">
+        <span class="font-semibold">{% trans "账号标识" %}</span>
+        <input type="text" name="account" id="account-name" required maxlength="128"
+               class="input input-bordered input-sm w-full"
+               placeholder="{% trans '用户名 / 手机号 / 邮箱 / 备注名' %}" />
+        <span class="text-xs text-base-content/70">
+          {% trans "同一平台内唯一，用于在列表里辨认是哪个号。" %}
+        </span>
+      </label>
+
+      <label class="grid gap-1">
+        <span class="font-semibold">{% trans "密码（可选）" %}</span>
+        <input type="password" name="password" id="account-password" maxlength="128"
+               autocomplete="new-password"
+               class="input input-bordered input-sm w-full max-w-sm"
+               placeholder="{% trans '留空 = 不修改' %}" />
+      </label>
+
+      <label class="grid gap-1">
+        <span class="font-semibold">{% trans "备注（可选）" %}</span>
+        <input type="text" name="remark" id="account-remark" maxlength="255"
+               class="input input-bordered input-sm w-full" />
+      </label>
+    </div>
+
+    <label class="mt-3 grid gap-1">
+      <span class="font-semibold">{% trans "登录凭据 / Cookie" %}</span>
+      <textarea name="credential" id="account-credential" rows="4"
+                class="textarea textarea-bordered w-full font-mono text-xs"
+                placeholder="{% trans '把浏览器里复制的 Cookie 整串粘进来（留空 = 不修改）' %}"></textarea>
+      <span class="text-xs text-base-content/70">
+        {% trans "原样一整串粘贴即可，形如：_xsrf=...; d_c0=...; z_c0=...；保存后页面不再回显。" %}
+      </span>
+    </label>
+
+    <div class="mt-4 flex justify-end gap-2">
+      <button type="button" class="btn btn-ghost btn-sm hidden" id="account-cancel">
+        {% trans "取消编辑" %}
+      </button>
+      <button type="submit" class="btn btn-primary btn-sm gap-2">
+        <i data-lucide="save" class="h-4 w-4" aria-hidden="true"></i>
+        {% trans "保存" %}
+      </button>
+    </div>
+  </fieldset>
+</form>
+
+{# ==================== 账号列表 ==================== #}
+<div class="con-panel mt-5 p-4">
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <h2 class="flex items-center gap-2 text-base font-bold">
+      <i data-lucide="list" class="h-4 w-4 text-primary" aria-hidden="true"></i>
+      {% trans "账号列表" %}
+      <span class="badge badge-soft badge-primary badge-sm">
+        {% blocktrans with n=total %}共 {{ n }} 个{% endblocktrans %}
+      </span>
+    </h2>
+    <span class="text-xs text-base-content/60">
+      {% blocktrans with n=has_credential_count %}其中 {{ n }} 个已录入登录凭据{% endblocktrans %}
+    </span>
+  </div>
+
+  <div class="con-table-wrap mt-3">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th class="whitespace-nowrap">{% trans "平台" %}</th>
+          <th class="whitespace-nowrap">{% trans "账号标识" %}</th>
+          <th class="whitespace-nowrap">{% trans "凭据状态" %}</th>
+          <th class="whitespace-nowrap">{% trans "登录凭据" %}</th>
+          <th class="whitespace-nowrap">{% trans "最近校验" %}</th>
+          <th class="whitespace-nowrap">{% trans "备注" %}</th>
+          <th class="whitespace-nowrap">{% trans "操作" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr data-id="{{ row.pk }}" data-platform="{{ row.platform }}"
+            data-account="{{ row.account }}" data-remark="{{ row.remark }}">
+          <td class="whitespace-nowrap">{{ row.platform_label }}</td>
+          <td class="whitespace-nowrap font-mono text-xs">{{ row.account }}</td>
+          <td class="whitespace-nowrap">
+            {% if row.status == 'valid' %}
+            <span class="badge badge-soft badge-success badge-sm">{% trans "有效" %}</span>
+            {% elif row.status == 'expired' %}
+            <span class="badge badge-soft badge-error badge-sm">{% trans "已过期" %}</span>
+            {% else %}
+            <span class="badge badge-soft badge-ghost badge-sm">{% trans "未校验" %}</span>
+            {% endif %}
+          </td>
+          <td class="whitespace-nowrap text-xs">
+            {% if row.has_credential %}
+            <span class="badge badge-soft badge-info badge-sm">{% trans "已录入" %}</span>
+            {% else %}
+            <span class="text-base-content/50">{% trans "未录入" %}</span>
+            {% endif %}
+          </td>
+          <td class="text-xs text-base-content/70">
+            {% if row.last_check_time %}
+            <div>{{ row.last_check_time|date:"Y-m-d H:i" }}</div>
+            {% endif %}
+            <div>{{ row.check_message|default:"—" }}</div>
+          </td>
+          <td class="max-w-xs text-xs">{{ row.remark|default:"—" }}</td>
+          <td class="whitespace-nowrap">
+            <div class="flex flex-wrap items-center gap-1">
+              <button type="button" class="btn btn-ghost btn-xs account-edit">
+                {% trans "编辑" %}
+              </button>
+
+              {% if row.check_supported %}
+              <form method="post" action="{% url 'website:console_accounts' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="check" />
+                <input type="hidden" name="id" value="{{ row.pk }}" />
+                <button type="submit" class="btn btn-ghost btn-xs text-primary">
+                  {% trans "校验" %}
+                </button>
+              </form>
+              {% else %}
+              <span class="text-xs text-base-content/40"
+                    title="{% trans '该平台暂未接入凭据校验' %}">{% trans "暂不支持校验" %}</span>
+              {% endif %}
+
+              <form method="post" action="{% url 'website:console_accounts' %}"
+                    data-confirm="{% trans '确认删除该账号？其登录凭据也会一并删除。' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete" />
+                <input type="hidden" name="id" value="{{ row.pk }}" />
+                <button type="submit" class="btn btn-ghost btn-xs text-error">
+                  {% trans "删除" %}
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="py-6 text-center text-sm text-base-content/60">
+            {% trans "还没有账号，先在上面新增一个吧。" %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+(function () {
+  'use strict';
+  /* 「编辑」把该行数据回填进表单；凭据与密码不回显（留空 = 不修改） */
+  var form = document.getElementById('account-form');
+  if (!form) return;
+  var idInput = document.getElementById('account-id');
+  var platformInput = document.getElementById('account-platform');
+  var nameInput = document.getElementById('account-name');
+  var passwordInput = document.getElementById('account-password');
+  var credentialInput = document.getElementById('account-credential');
+  var remarkInput = document.getElementById('account-remark');
+  var title = document.getElementById('account-form-title');
+  var cancelBtn = document.getElementById('account-cancel');
+  var ADD_TITLE = '{% trans "新增账号" %}';
+  var EDIT_TITLE = '{% trans "编辑账号（凭据留空 = 不修改）" %}';
+
+  function backToAdd() {
+    form.reset();
+    idInput.value = '';
+    if (title) title.textContent = ADD_TITLE;
+    if (cancelBtn) cancelBtn.classList.add('hidden');
+  }
+
+  document.querySelectorAll('.account-edit').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var tr = btn.closest('tr');
+      if (!tr) return;
+      idInput.value = tr.dataset.id || '';
+      platformInput.value = tr.dataset.platform || '';
+      nameInput.value = tr.dataset.account || '';
+      remarkInput.value = tr.dataset.remark || '';
+      passwordInput.value = '';
+      credentialInput.value = '';
+      if (title) title.textContent = EDIT_TITLE;
+      if (cancelBtn) cancelBtn.classList.remove('hidden');
+      form.scrollIntoView({behavior: 'smooth', block: 'start'});
+      nameInput.focus();
+    });
+  });
+
+  if (cancelBtn) cancelBtn.addEventListener('click', backToAdd);
+})();
+</script>
+{% endblock %}

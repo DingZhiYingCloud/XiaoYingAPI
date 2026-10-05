@@ -3,10 +3,10 @@ from django.urls import path
 from django.views.generic import TemplateView
 from django.views.i18n import JavaScriptCatalog
 
-from . import (console, console_ai, console_announcements, console_appearance,
-               console_audit, console_feedback, console_haijiao,
-               console_ip_bans, console_pay, console_quota,
-               console_security, console_users, docs_views,
+from . import (console, console_accounts, console_ai, console_announcements,
+               console_appearance, console_audit, console_feedback, console_haijiao,
+               console_ip_bans, console_order_migration, console_pay, console_push,
+               console_quota, console_security, console_users, docs_views,
                feedback_views, my_wallet, programs_views, views)
 # 第三方支付的异步通知：必须挂在 /api/ 之外（平台回调带不了我们的项目签名，靠平台公钥验签）
 from API.apis.pay.notify import notify_view as pay_notify_view
@@ -54,6 +54,10 @@ urlpatterns = [
     path('docs/errors/', docs_views.errors, name='docs_errors'),  # 错误码总表（须排在 <slug> 之前）
     # 「鉴权设置」下拉的数据源（当前访客名下 / 超管可见的接入项目，含密钥；须排在 <slug> 之前）
     path('docs/_projects/', docs_views.my_projects, name='docs_my_projects'),
+    path('docs/_dlt_zone_tree/', docs_views.dlt_zone_tree, name='docs_dlt_zone_tree'),
+    # 代练丸子「发布订单」面板的数据源（游戏 / 发单选项；公开只读）
+    path('docs/_dlwz_games/', docs_views.dlwz_games, name='docs_dlwz_games'),
+    path('docs/_dlwz_options/', docs_views.dlwz_options, name='docs_dlwz_options'),
     path('docs/<str:slug>/', docs_views.service, name='docs_service'),  # 单服务文档页
 
     # 计算程序模块（内容取自 settings.PROGRAMS_ROOT 目录树）
@@ -84,6 +88,9 @@ urlpatterns = [
     path('console/audit/', console_audit.audit_view, name='console_audit'),
     # IP 封禁（超管专属）：人工封禁 / 解禁来源 IP，默认 7 天、到期自动失效（判定见 API/common/ip_guard.py）
     path('console/ip-bans/', console_ip_bans.ip_bans_view, name='console_ip_bans'),
+    # 账号管理（超管专属）：通用平台账号 + 登录凭据（Cookie）托管与失效校验
+    # （底层能力见 API/common/platform_accounts.py，各平台账号表见 API/models/Accounts/）
+    path('console/accounts/', console_accounts.accounts_view, name='console_accounts'),
     # 问题反馈中心（超管专属）：反馈处理（筛选/回复/AI 送审）与全局设置（含类型字典）
     path('console/feedback/settings/', console_feedback.feedback_settings_view,
          name='console_feedback_settings'),
@@ -110,4 +117,12 @@ urlpatterns = [
          name='console_haijiao_register_stream'),                                # 自动注册进度流（SSE）
     # 服务余量（超管专属）：上游服务账号余量监控 + 低量邮件告警配置
     path('console/quotas/', console_quota.quotas_view, name='console_quotas'),
+    # 代练搬单（超管专属）：代练通订单 → 代练丸子发单的设置与记录，可手动执行一轮
+    path('console/order-migration/', console_order_migration.order_migration_view,
+         name='console_order_migration'),
+    # 搬单页实时数据轮询：记录 / 统计 / 运行日志 + 被接单语音（页面免刷新）
+    path('console/order-migration/feed/', console_order_migration.feed_view,
+         name='console_order_migration_feed'),
+    # 推送日志（超管专属）：消息推送服务每次推送的记录（成功 / 失败）
+    path('console/push-logs/', console_push.push_logs_view, name='console_push_logs'),
 ]

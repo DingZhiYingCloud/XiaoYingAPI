@@ -10,13 +10,12 @@ from urllib.parse import quote, unquote
 from utils import (
     get_mobile_headers,
     md5_encrypt,
+    base64_encrypt,
     response_dict,
     get_public_data,
     parse_response,
-    encrypt_actors,
     API_URL,
     SIGN_KEY,
-    SENSITIVE_WORDS_PATH,
 )
 
 # 全局请求超时（秒）
@@ -24,8 +23,6 @@ _REQUEST_TIMEOUT = 30
 
 
 class DaiLianTongService:
-    # 类级别敏感词缓存，避免每个实例都重新读文件
-    _sensitive_words_cache = None
 
     def __init__(self):
         self.api_url = API_URL
@@ -35,11 +32,6 @@ class DaiLianTongService:
         # 复用 Session 以启用 HTTP Keep-Alive，减少连接开销
         self.session = requests.Session()
         self.session.headers.update(get_mobile_headers())
-        # 惰性加载敏感词列表
-        if DaiLianTongService._sensitive_words_cache is None:
-            with open(SENSITIVE_WORDS_PATH, "r", encoding="utf-8") as f:
-                DaiLianTongService._sensitive_words_cache = json.loads(f.read())
-        self.sensitive_words = DaiLianTongService._sensitive_words_cache
 
     @staticmethod
     def _ensure_str(value) -> str:
@@ -323,136 +315,20 @@ class DaiLianTongService:
         except (requests.exceptions.RequestException, json.JSONDecodeError) as e:
             return response_dict(code=1, message=f"实名信息请求异常: {e}")
 
-    # 获取公共订单列表
-    def get_public_order_list(self,
-        user_id,
-        token,
-        page_index=1,
-        page_size=20,
-        game_id=107,
-        price_str='10_20',
-        is_pub=1,
-        search_str='',
-        pg_type=0,
-        filter_sensitive=False,
-        ):
-        """
-        获取公共订单列表
-
-        参数:
-            user_id: 用户ID
-            token: 登录令牌
-            page_index: 页码, 默认为1
-            page_size: 每页数量, 默认为20
-            game_id: 游戏ID, 默认为107
-            price_str: 价格范围, 默认为10_20
-            is_pub: 是否公共订单, 默认为1
-            search_str: 搜索字符串
-            pg_type: 区服, 0全部 1安卓 2IOS
-            filter_sensitive: 是否过滤敏感词订单
-
-        返回:
-            成功时返回订单列表，启用敏感词过滤时额外返回过滤统计信息
-        """
-        try:
-            pub_flag = int(is_pub) if not isinstance(is_pub, int) else is_pub
-            if pub_flag == 0 and not search_str:
-                return response_dict(code=1, message="is_pub为0时必须输入search_str")
-
-            data, params = get_public_data({
-                'IsPub': str(is_pub),
-                'GameID': str(game_id),
-                'ZoneID': '0',
-                'ServerID': '0',
-                'SearchStr': search_str,
-                'STier': '',
-                'ETier': '',
-                'Sort_Str': '',
-                'PageIndex': str(page_index),
-                'PageSize': str(page_size),
-                'Price_Str': price_str,
-                'PubCancel': '0',
-                'SettleHour': '0',
-                'FilterType': '0',
-                'PGType': str(pg_type),
-                'Focused': '-1',
-                'OrderType': '0',
-                'PubRecommend': '0',
-                'Score1': '0',
-                'Score2': '0',
-                'UserID': self._ensure_str(user_id),
-            }, "LevelOrderList", sign_key=self.SignKey, token=token)
-
-            response = self.session.post(self.api_url, params=params, data=data, timeout=_REQUEST_TIMEOUT).json()
-            order_list = response.get('LevelOrderList')
-            if not order_list:
-                return response_dict(code=1, message="没有找到该订单")
-
-            if not filter_sensitive:
-                return response_dict(code=0, message="获取单子成功", data=order_list)
-
-            # ---------- 敏感词过滤 ----------
-            filtered_orders = []
-            filtered_count = 0
-            filtered_reasons = []
-            lower_title_cache = {}  # 缓存已 lower() 的标题，重复订单标题可复用
-
-            for order in order_list:
-                order_title = order.get('Title') or order.get('OrderName') or ''
-                if order_title not in lower_title_cache:
-                    lower_title_cache[order_title] = order_title.lower()
-
-                title_lower = lower_title_cache[order_title]
-                is_sensitive = False
-                matched_words = []
-                for word in self.sensitive_words:
-                    if len(word) <= 1:
-                        continue
-                    if word.lower() in title_lower:
-                        is_sensitive = True
-                        matched_words.append(word)
-
-                if is_sensitive:
-                    filtered_count += 1
-                    filtered_reasons.append({
-                        'order_id': order.get('ODSerialNo', ''),
-                        'title': order_title,
-                        'matched_words': matched_words,
-                    })
-                else:
-                    filtered_orders.append(order)
-
-            return response_dict(
-                code=0,
-                message=f"获取单子成功，已过滤{filtered_count}条敏感订单" if filtered_count > 0 else "获取单子成功",
-                data={
-                    'orders': filtered_orders,
-                    'total_count': len(order_list),
-                    'filtered_count': filtered_count,
-                    'remaining_count': len(filtered_orders),
-                    'filtered_reasons': filtered_reasons if filtered_count > 0 else [],
-                },
-            )
-        except requests.exceptions.JSONDecodeError:
-            return response_dict(code=1, message="返回数据不是JSON格式")
-        except requests.exceptions.Timeout:
-            return response_dict(code=1, message="请求超时")
-        except Exception as e:
-            return response_dict(code=1, message=f"请求异常: {e}")
-
     # 获取订单详情
-    def get_order_detail(self, user_id, token, order_id):
+    def get_order_detail(self, user_id, token, order_id, is_publish='2'):
         """
         获取订单详情
         参数:
             user_id: 用户ID
             token: 登录令牌
             order_id: 订单ID
+            is_publish: 视角标记；接单方取号主账号须用 '0'（默认 '2' 供接单校验取 Stamp）
         """
         try:
             data, params = get_public_data({
                 'ODSerialNo': self._ensure_str(order_id),
-                'IsPublish': '2',
+                'IsPublish': str(is_publish),
                 'UserID': self._ensure_str(user_id),
             }, "LevelOrderDetail", sign_key=self.SignKey, token=token)
 
@@ -502,87 +378,6 @@ class DaiLianTongService:
         except Exception as e:
             return response_dict(code=1, message=f"接收订单异常: {e}")
 
-    # 发布订单
-    def publish_order(self,
-        title,
-        uid,
-        price,
-        time_limit,
-        token,
-        user_id,
-        ensure1,
-        ensure2,
-        game_mobile,
-        pay_pass,
-        game_account,
-        game_password,
-        game_author_name,
-        hero_count=10,
-        requirements="1、未经同意请勿动用账号点券、物品，不要联系或回复好友信息\n\n2、切勿使用外挂，不允许打广告、挂机、恶意骂人等恶意行为",
-        zone_serverID='107103017095500',
-        ):
-        """
-        发布订单
-        参数:
-            title: 订单标题
-            uid: 登录令牌
-            price: 订单价格
-            time_limit: 订单时间限制
-            token: 登录令牌
-            user_id: 用户ID
-            ensure1: 安全保证金
-            ensure2: 效率保证金
-            game_mobile: 号主联系方式
-            pay_pass: 支付密码
-            game_account: 游戏账号
-            game_password: 游戏密码
-            game_author_name: 游戏角色名
-            hero_count: 英雄数量,默认10
-            requirements: 代练要求
-            zone_serverID: 游戏ID,默认王者荣耀
-        """
-        try:
-            actors_str = f"{game_account}|*|{game_password}|*|{game_author_name}|*|英雄数量{hero_count}个|*|{requirements}"
-            ext_str = f'{{"ID":4,"IsEnable":1,"Content":"{requirements}","Mode":0,"Data":[],"YSData":[]}}'
-
-            data, params = get_public_data({
-                'ZoneServerID': zone_serverID,
-                'Title': title,
-                'Price': price,
-                'TimeLimit': time_limit,
-                'Ensure1': ensure1,
-                'Ensure2': ensure2,
-                'GameMobile': game_mobile,
-                'PayPass': md5_encrypt(md5_encrypt(pay_pass) + uid),
-                'Mobile': '',
-                'QQ': '',
-                'LimitAccept': '0',
-                'BasePrice': '0',
-                'Label1': '',
-                'Label2': '',
-                'Memo': '',
-                'Groups': 'OTHER',
-                'Actors': encrypt_actors(actors_str),
-                'Members': '',
-                'ReCode': '',
-                'OverPrice': '',
-                'LevelType2': '14',
-                'Insurance': '0',
-                'MaxClaimAmount': '20',
-                'OrderType': '0',
-                'NonceStr': '',
-                'ExtStr': ext_str,
-                'ReceiveOrderSetInfoId': '0',
-                'IsMerchant': '0',
-                'IsNeedExtraDeposit': '0',
-                'TransTime': '0',
-                'UserID': self._ensure_str(user_id),
-            }, "LevelOrderAdd", sign_key=self.SignKey, token=token)
-            response = self.session.post(self.api_url, params=params, data=data, timeout=_REQUEST_TIMEOUT)
-            return parse_response(response)
-        except Exception as e:
-            return response_dict(code=1, message=f"发布订单异常: {e}")
-
     # 删除订单
     def delete_order(self, order_id, token, user_id, reason="不用了"):
         """
@@ -604,45 +399,111 @@ class DaiLianTongService:
         except Exception as e:
             return response_dict(code=1, message=f"删除订单异常: {e}")
 
-    # 获取我的订单
-    def get_my_order(self,
-        token,
-        user_id,
-        page_index='1',
-        page_size='20',
-        over_days='-99',
-        search_str="",
-        ):
+    # 申请撤销订单
+    def apply_cancel_order(self, order_id, pay_pass, uid, token, user_id,
+                           flag=0, pay_level_bal=0, rep_ensure_bal=0,
+                           comment='', revoke_price=0):
         """
-        获取我的订单
+        申请撤销订单（上游 LevelOrderCancel）
+
         参数:
-            token: 登录令牌
-            user_id: 用户ID
-            page_index: 页码,默认1
-            page_size: 每页数量,默认20
-            over_days: -99代表正在代练的订单,99已完成的订单
-            search_str: 搜索字符串,默认空
+            order_id: 订单ID
+            pay_pass: 支付密码（原密码，内部按 md5(md5(pwd)+uid) 处理）
+            uid: 账号 UID（USR 开头，支付密码哈希用）
+            token / user_id: 登录态
+            flag: 0=申请撤销 1=取消撤销 2=同意撤销 3=申请平台介入
+            pay_level_bal: 支付代练费金额（撤销意愿=「我愿意支付代练费」时填）
+            rep_ensure_bal: 赔偿保证金金额（撤销意愿=「我要求赔偿保证金」时填）
+            comment: 撤销说明（页面把撤销原因/进度/意愿等拼成一段文本，这里原样下发）
+            revoke_price: 撤销金额
         """
         try:
             data, params = get_public_data({
-                'Publish': '1',
-                'Status': '0',
-                'CancelStatus': '0',
-                'GameID': '0',
+                'ODSerialNo': self._ensure_str(order_id),
+                'Flag': str(flag),
+                'PayLevelBal': str(pay_level_bal),
+                'RepEnsureBal': str(rep_ensure_bal),
+                'Comment': comment,
+                'PayPass': md5_encrypt(md5_encrypt(pay_pass) + uid),
+                'RevokePrice': str(revoke_price or 0),
+                'UserID': self._ensure_str(user_id),
+            }, "LevelOrderCancel", sign_key=self.SignKey, token=token)
+            response = self.session.post(self.api_url, params=params, data=data, timeout=_REQUEST_TIMEOUT)
+            return parse_response(response)
+        except Exception as e:
+            return response_dict(code=1, message=f"申请撤销异常: {e}")
+
+    # 申请平台介入（撤销/协商无法达成一致时）
+    def request_arbitration(self, order_id, token, user_id):
+        """
+        申请平台介入（上游 LevelOrderRequestArbitration）
+
+        参数:
+            order_id: 订单ID
+            token / user_id: 登录态
+        """
+        try:
+            data, params = get_public_data({
+                'ODSerialNo': self._ensure_str(order_id),
+                'UserID': self._ensure_str(user_id),
+            }, "LevelOrderRequestArbitration", sign_key=self.SignKey, token=token)
+            response = self.session.post(self.api_url, params=params, data=data, timeout=_REQUEST_TIMEOUT)
+            return parse_response(response)
+        except Exception as e:
+            return response_dict(code=1, message=f"申请平台介入异常: {e}")
+
+    # 获取我的订单（可多条件筛选，上游服务端分页）
+    def get_my_order(self, token, user_id, publish=1, over_days=-99, status=0,
+                     cancel_status=0, game_id=0, search_str="", game_mobile="",
+                     with_tg=1, page_index=1, page_size=20):
+        """
+        获取我的订单（我发布的 / 我接的）
+
+        参数:
+            token / user_id: 登录态
+            publish: 1=我发布的 0=我接的, 默认1
+            over_days: -99=进行中 99=已完成, 默认-99
+            status: 订单状态位, 0=不限, 默认0
+            cancel_status: 撤单状态位, 0=不限, 默认0
+            game_id: 游戏ID筛选, 0=全部, 默认0
+            search_str: 关键词, 默认空
+            game_mobile: 号主联系方式筛选, 默认空
+            with_tg: 是否含托管, 默认1
+            page_index / page_size: 分页（上游为服务端分页，按其返回结果原样透传）
+
+        返回:
+            成功时 data 为 {"items": [...], "total": int, "page": int,
+                          "page_size": int, "total_pages": int}
+        """
+        try:
+            data, params = get_public_data({
+                'Publish': str(publish),
+                'Status': str(status),
+                'CancelStatus': str(cancel_status),
+                'GameID': str(game_id),
                 'OverDays': str(over_days),
                 'SearchStr': search_str,
                 'PageIndex': str(page_index),
                 'PageSize': str(page_size),
-                'GameMobile': '',
-                'WithTG': '1',
+                'GameMobile': game_mobile,
+                'WithTG': str(with_tg),
                 'UserID': self._ensure_str(user_id),
             }, "LevelOrderMyList", sign_key=self.SignKey, token=token)
-            resp_json = self.session.post(self.api_url, params=params, data=data, timeout=_REQUEST_TIMEOUT).json()
+            resp_json = self.session.post(self.api_url, params=params, data=data,
+                                          timeout=_REQUEST_TIMEOUT).json()
+            if not isinstance(resp_json, dict) or "LevelOrderList" not in resp_json:
+                message = resp_json.get("Err") if isinstance(resp_json, dict) else None
+                return response_dict(code=1, message=message or "获取我的订单失败", data=None)
 
-            if "LevelOrderList" in resp_json:
-                return response_dict(code=0, message="获取我的订单成功", data=resp_json["LevelOrderList"])
-            else:
-                return response_dict(code=1, message=resp_json.get("Err", "未知错误"), data=None)
+            orders = resp_json.get('LevelOrderList') or []
+            total = resp_json.get('RecordCount') or len(orders)
+            return response_dict(code=0, message="获取我的订单成功", data={
+                'items': orders,
+                'total': total,
+                'page': int(page_index),
+                'page_size': int(page_size),
+                'total_pages': (total + int(page_size) - 1) // int(page_size) if total else 0,
+            })
         except requests.exceptions.JSONDecodeError:
             return response_dict(code=1, message="返回数据不是JSON格式")
         except requests.exceptions.Timeout:
@@ -651,7 +512,7 @@ class DaiLianTongService:
             return response_dict(code=1, message=f"获取我的订单异常: {e}")
 
     # 在订单留言中上传图片
-    def upload_image_in_order_comment(self, token, user_id, image_path, order_id):
+    def upload_image_in_order_comment(self, token, user_id, image_path, order_id, msg='留言'):
         """
         在订单留言中上传图片
         参数:
@@ -659,12 +520,13 @@ class DaiLianTongService:
             user_id: 用户ID
             image_path: 图片路径
             order_id: 订单ID
+            msg: 留言内容（申请撤销时上传凭证用「撤销」）
         """
         try:
             data, params = get_public_data({
                 'ODSerialNo': order_id,
                 'Tier': '',
-                'Msg': '留言',
+                'Msg': msg,
                 'Img': image_path,
                 'OrderWinTxt': '',
                 'UserID': self._ensure_str(user_id),
@@ -713,13 +575,367 @@ class DaiLianTongService:
         except (requests.exceptions.RequestException, json.JSONDecodeError) as e:
             return response_dict(code=1, message=f"上传头像异常: {e}")
 
+    # 获取各游戏当前的公开订单数量
+    def get_games(self):
+        """
+        获取全部游戏及其当前可接的公开订单数量
 
-if __name__ == "__main__":
-    dailiantong_service = DaiLianTongService()
-    print(dailiantong_service.get_public_order_list(
-        user_id="<你的 user_id>",
-        token="<你的 token>",
-        page_index=1,
-        page_size=20,
-        game_id=107,
-    ))
+        流程:
+            1. 调 GameZoneServerList 取游戏清单（GameID -> GameName）
+            2. 调 LevelOrderCountGame 取各游戏公开订单数（GameID -> iCount）
+            3. 按 GameID 合并，仅保留有订单的游戏，按订单数降序
+
+        返回:
+            成功时 data 为 [{"game_id": int, "game_name": str, "order_count": int}, ...]
+        """
+        try:
+            # ---- 1. 游戏清单（GameID -> 名称）----
+            data, params = get_public_data({'UserID': '0'}, "GameZoneServerList",
+                                           sign_key=self.SignKey)
+            games_resp = self.session.post(self.api_url, params=params, data=data,
+                                           timeout=_REQUEST_TIMEOUT).json()
+            if not isinstance(games_resp, list):
+                return response_dict(code=1, message="获取游戏列表失败")
+            game_names = {
+                item.get('GameID'): item.get('GameName') or ''
+                for item in games_resp if isinstance(item, dict)
+            }
+
+            # ---- 2. 各游戏公开订单数（GameID -> iCount）----
+            data, params = get_public_data({'IsPub': '1', 'UserID': '0'}, "LevelOrderCountGame",
+                                           sign_key=self.SignKey)
+            count_resp = self.session.post(self.api_url, params=params, data=data,
+                                           timeout=_REQUEST_TIMEOUT).json()
+            count_list = count_resp.get('LevelOrderCountGame') if isinstance(count_resp, dict) else None
+            if not count_list:
+                return response_dict(code=1, message="获取游戏订单数量失败")
+
+            # ---- 3. 合并（仅保留有订单的游戏），按订单数降序 ----
+            result = [
+                {
+                    'game_id': item.get('GameID'),
+                    'game_name': game_names.get(item.get('GameID'), ''),
+                    'order_count': item.get('iCount', 0),
+                }
+                for item in count_list
+            ]
+            result.sort(key=lambda x: x['order_count'], reverse=True)
+            return response_dict(code=0, message="获取成功", data=result)
+        except requests.exceptions.JSONDecodeError:
+            return response_dict(code=1, message="返回数据不是JSON格式")
+        except requests.exceptions.Timeout:
+            return response_dict(code=1, message="请求超时")
+        except Exception as e:
+            return response_dict(code=1, message=f"获取游戏订单数量异常: {e}")
+
+    # 按游戏ID获取该游戏的公开订单列表（分页）
+    def get_game_orders(self, game_id, page=1, page_size=20, pg_type=0,
+                        order_type='', start_tier='', end_tier='', price_str='',
+                        pub_cancel=0, settle_hour=0, filter_type=1,
+                        sort_str='', search_str='', user_id=0, token=''):
+        """
+        按游戏ID获取该游戏的公开订单列表（分页 + 多条件筛选）
+
+        参数:
+            game_id: 游戏ID
+            page: 页码, 默认1
+            page_size: 每页数量, 默认20
+            pg_type: 区服, 0全部 1安卓 2IOS
+            order_type: 订单类型(上游 LevelType2), 空=不限 / 10=5V5排位赛 / 13=巅峰赛 /
+                        15=荣耀战力 / 1920=国标
+            start_tier: 初始段位, 空=不限 / 青铜/白银/黄金/铂金/钻石/星耀/王者
+            end_tier: 目标段位, 取值同 start_tier
+            price_str: 价格区间(最低_最高), 空=不限
+            pub_cancel: 仲裁介入率上限(%), 0=不限
+            settle_hour: 结算时间上限(小时), 0=不限
+            filter_type: 只看本账号可接手的订单, 1=是(默认) / 0=否
+            sort_str: 排序, 空=平台默认排序
+            search_str: 关键词; 对王者荣耀等游戏即「指定英雄」(多个英雄名用空格分隔)
+            user_id: 代练通账号ID, 默认0(匿名); 与 token 一起传才按登录态筛选
+            token: 代练通登录令牌, 默认空(匿名); 参与签名
+
+        返回:
+            成功时 data 为 {"items": [...], "total": int, "page": int,
+                          "page_size": int, "total_pages": int}
+
+        说明:
+            上游 LevelOrderList 会一次性返回全部匹配订单（忽略 PageIndex/PageSize），
+            故这里由本层按 page/page_size 对结果切片，保证分页语义正确。
+            段位/订单类型/filter_type 等账号相关筛选需登录态（user_id + token）才生效。
+        """
+        try:
+            data_params = {
+                'IsPub': '1',
+                'GameID': self._ensure_str(game_id),
+                'ZoneID': '0',
+                'ServerID': '0',
+                'SearchStr': search_str,
+                'STier': start_tier,
+                'ETier': end_tier,
+                'Sort_Str': sort_str,
+                'PageIndex': str(page),
+                'PageSize': str(page_size),
+                'Price_Str': price_str,
+                'PubCancel': str(pub_cancel),
+                'SettleHour': str(settle_hour),
+                'FilterType': str(filter_type),
+                'PGType': str(pg_type),
+                'Focused': '-1',
+                'OrderType': '0',
+                'PubRecommend': '0',
+                'Score1': '0',
+                'Score2': '0',
+                'UserID': self._ensure_str(user_id),
+            }
+            # 订单类型（LevelType2）为空时不下发该字段：上游对空值会返回异常
+            if order_type:
+                data_params['LevelType2'] = order_type
+            data, params = get_public_data(data_params, "LevelOrderList",
+                                           sign_key=self.SignKey, token=token)
+            resp = self.session.post(self.api_url, params=params, data=data,
+                                     timeout=_REQUEST_TIMEOUT).json()
+            if not isinstance(resp, dict) or 'LevelOrderList' not in resp:
+                return response_dict(code=1, message="获取订单列表失败")
+
+            all_orders = resp.get('LevelOrderList') or []
+            # 上游忽略分页、一次性返回全部匹配订单，故以列表长度作为真实总数
+            # （RecordCount 不随筛选变化，不能用）
+            total = len(all_orders)
+            start = (page - 1) * page_size
+            return response_dict(code=0, message="获取订单列表成功", data={
+                'items': all_orders[start:start + page_size],
+                'total': total,
+                'page': page,
+                'page_size': page_size,
+                'total_pages': (total + page_size - 1) // page_size if total else 0,
+            })
+        except requests.exceptions.JSONDecodeError:
+            return response_dict(code=1, message="返回数据不是JSON格式")
+        except requests.exceptions.Timeout:
+            return response_dict(code=1, message="请求超时")
+        except Exception as e:
+            return response_dict(code=1, message=f"获取订单列表异常: {e}")
+
+    # 按关键词搜索订单（参数对齐官网搜索页，可高度自定义）
+    def search_orders(self, game_id, search_str='', is_pub=9, pg_type=2, zone_id=0,
+                      server_id=0, level_type2='', stier='', etier='', price_str='',
+                      pub_cancel=0, settle_hour=0, filter_type=0, sort_str='', focused=-1,
+                      order_type=0, pub_recommend=0, score1=0, score2=0,
+                      page=1, page_size=20, user_id=0, token=''):
+        """
+        按关键词搜索订单（默认对齐官网「搜索」页，参数可高度自定义）
+
+        默认值对齐官网搜索页：IsPub=9（优选订单池）、PGType=2（苹果）、FilterType=0。
+
+        参数:
+            game_id: 游戏ID（必填）
+            search_str: 搜索关键词（如「马可波罗」「安琪拉」）
+            is_pub: 订单池, 默认9（对齐官网搜索）
+            pg_type: 区服, 0全部 1安卓 2IOS, 默认2
+            zone_id: 大区ID, 默认0
+            server_id: 服务器ID, 默认0
+            level_type2: 订单类型(上游 LevelType2), 空=不限
+            stier: 初始段位, 空=不限
+            etier: 目标段位, 空=不限
+            price_str: 价格区间(最低_最高), 空=不限
+            pub_cancel: 仲裁介入率上限(%), 默认0
+            settle_hour: 结算时间上限(小时), 默认0
+            filter_type: 只看本账号可接手的订单, 1=是 0=否, 默认0
+            sort_str: 排序, 空=默认
+            focused: 关注筛选, 默认-1
+            order_type: 上游 OrderType, 默认0
+            pub_recommend: 上游 PubRecommend, 默认0
+            score1 / score2: 上游评分筛选位, 默认0
+            page: 页码, 默认1
+            page_size: 每页数量, 默认20
+            user_id / token: 登录态（默认走后台上管的默认账号）
+
+        返回:
+            成功时 data 为 {"items": [...], "total": int, "page": int,
+                          "page_size": int, "total_pages": int}
+        """
+        try:
+            data_params = {
+                'IsPub': str(is_pub),
+                'GameID': self._ensure_str(game_id),
+                'ZoneID': str(zone_id),
+                'ServerID': str(server_id),
+                'SearchStr': search_str,
+                'STier': stier,
+                'ETier': etier,
+                'Sort_Str': sort_str,
+                'PageIndex': str(page),
+                'PageSize': str(page_size),
+                'Price_Str': price_str,
+                'PubCancel': str(pub_cancel),
+                'SettleHour': str(settle_hour),
+                'FilterType': str(filter_type),
+                'PGType': str(pg_type),
+                'Focused': str(focused),
+                'OrderType': str(order_type),
+                'PubRecommend': str(pub_recommend),
+                'Score1': str(score1),
+                'Score2': str(score2),
+                'UserID': self._ensure_str(user_id),
+            }
+            # 订单类型（LevelType2）为空时不下发该字段：上游对空值会返回异常
+            if level_type2:
+                data_params['LevelType2'] = level_type2
+            data, params = get_public_data(data_params, "LevelOrderList",
+                                           sign_key=self.SignKey, token=token)
+            resp = self.session.post(self.api_url, params=params, data=data,
+                                     timeout=_REQUEST_TIMEOUT).json()
+            if not isinstance(resp, dict) or 'LevelOrderList' not in resp:
+                return response_dict(code=1, message="搜索订单失败")
+
+            all_orders = resp.get('LevelOrderList') or []
+            # 上游忽略分页、一次性返回全部匹配订单，故以列表长度作为真实总数
+            total = len(all_orders)
+            start = (page - 1) * page_size
+            return response_dict(code=0, message="搜索成功", data={
+                'items': all_orders[start:start + page_size],
+                'total': total,
+                'page': page,
+                'page_size': page_size,
+                'total_pages': (total + page_size - 1) // page_size if total else 0,
+            })
+        except requests.exceptions.JSONDecodeError:
+            return response_dict(code=1, message="返回数据不是JSON格式")
+        except requests.exceptions.Timeout:
+            return response_dict(code=1, message="请求超时")
+        except Exception as e:
+            return response_dict(code=1, message=f"搜索订单异常: {e}")
+
+    # 获取某游戏的热门搜索词
+    def get_hot_search_words(self, game_id):
+        """
+        获取某游戏的热门搜索词（上游 HotSearchWord1）
+
+        参数:
+            game_id: 游戏ID
+
+        返回:
+            成功时 data 为 {"words": [词...], "tip": 说明文字}
+        """
+        try:
+            game_id = self._ensure_str(game_id)
+            timestamp = str(int(time.time()))
+            params = {
+                'GameID': game_id,
+                'timeStamp': timestamp,
+                'Sign': md5_encrypt(game_id + timestamp + self.SignKey),
+            }
+            resp_json = self.session.get(
+                'https://quickorder.dailiantong.com.cn/api/share/HotSearchWord1',
+                params=params, timeout=_REQUEST_TIMEOUT,
+            ).json()
+            if not isinstance(resp_json, dict) or str(resp_json.get('ReturnCode')) != '1':
+                message = resp_json.get('Message') if isinstance(resp_json, dict) else None
+                return response_dict(code=1, message=message or "获取热门搜索词失败")
+            return response_dict(code=0, message="获取成功", data={
+                'words': resp_json.get('Result') or [],
+                'tip': resp_json.get('Result1') or '',
+            })
+        except requests.exceptions.JSONDecodeError:
+            return response_dict(code=1, message="返回数据不是JSON格式")
+        except requests.exceptions.Timeout:
+            return response_dict(code=1, message="请求超时")
+        except Exception as e:
+            return response_dict(code=1, message=f"获取热门搜索词异常: {e}")
+
+    # 获取全部游戏 + 区服/服务器清单（发布订单选游戏/区服用）
+    def get_game_zone_server_list(self):
+        """
+        获取全部游戏及其区服/服务器清单（上游 GameZoneServerList）
+
+        返回:
+            成功时 data 为游戏数组，每项含 GameID / GameName / ZoneList[].ServerList[].Code
+        """
+        try:
+            data, params = get_public_data({'UserID': '0'}, "GameZoneServerList",
+                                           sign_key=self.SignKey)
+            resp = self.session.post(self.api_url, params=params, data=data,
+                                     timeout=_REQUEST_TIMEOUT).json()
+            if not isinstance(resp, list):
+                return response_dict(code=1, message="获取游戏区服清单失败")
+            return response_dict(code=0, message="获取成功", data=resp)
+        except requests.exceptions.JSONDecodeError:
+            return response_dict(code=1, message="返回数据不是JSON格式")
+        except requests.exceptions.Timeout:
+            return response_dict(code=1, message="请求超时")
+        except Exception as e:
+            return response_dict(code=1, message=f"获取游戏区服清单异常: {e}")
+
+    # 发布订单（自定义发布）
+    def publish_order(self, title, price, time_limit, ensure1, ensure2, game_mobile,
+                      pay_pass, uid, game_account, game_password, game_author_name,
+                      requirements, zone_server_id='107103017095500', level_type2='14',
+                      game_extra='', mobile='', qq='', insurance=0,
+                      max_claim_amount=20, order_type=0, user_id=0, token=''):
+        """
+        发布订单（自定义发布；标题/要求需自行写明规则，如「指定单」）
+
+        参数:
+            title: 订单标题
+            price: 订单价格(元)
+            time_limit: 代练时限(小时)
+            ensure1 / ensure2: 安全保证金 / 效率保证金(元)
+            game_mobile: 号主联系方式
+            pay_pass: 支付密码（原密码，内部按 md5(md5(pwd)+uid) 处理；可空）
+            uid: 账号 UID（USR 开头，支付密码哈希用）
+            game_account / game_password / game_author_name: 游戏账号 / 密码 / 角色名
+            requirements: 代练要求（写入 Actors 与 ExtStr）
+            zone_server_id: 区服ID, 默认王者荣耀-安卓QQ
+            level_type2: 订单类型(上游 LevelType2), 默认14
+            game_extra: Actors 第 4 段（如 王者荣耀铭文等级 150）
+            mobile / qq: 发单者联系方式
+            insurance / max_claim_amount / order_type: 上游字段
+            user_id / token: 登录态
+
+        返回:
+            成功时 data 为上游发布结果（含订单信息，字段由上游定义）
+        """
+        try:
+            # Actors 为 Base64(游戏账号|*|游戏密码|*|角色名|*|附加信息|*|代练要求)
+            actors_str = (f"{game_account}|*|{game_password}|*|{game_author_name}"
+                          f"|*|{game_extra}|*|{requirements}")
+            ext_str = json.dumps({'ID': 4, 'IsEnable': 1, 'Content': requirements,
+                                  'Mode': 0, 'Data': [], 'YSData': []}, ensure_ascii=False)
+            data, params = get_public_data({
+                'ZoneServerID': zone_server_id,
+                'Title': title,
+                'Price': str(price),
+                'TimeLimit': str(time_limit),
+                'Ensure1': str(ensure1),
+                'Ensure2': str(ensure2),
+                'GameMobile': game_mobile,
+                'PayPass': md5_encrypt(md5_encrypt(pay_pass) + uid) if pay_pass else '',
+                'Mobile': mobile,
+                'QQ': qq,
+                'LimitAccept': '0',
+                'BasePrice': '0',
+                'Label1': '',
+                'Label2': '',
+                'Memo': '',
+                'Groups': 'OTHER',
+                'Actors': base64_encrypt(actors_str),
+                'Members': '',
+                'ReCode': '',
+                'OverPrice': '',
+                'LevelType2': str(level_type2),
+                'Insurance': str(insurance),
+                'MaxClaimAmount': str(max_claim_amount),
+                'OrderType': str(order_type),
+                'NonceStr': '',
+                'ExtStr': ext_str,
+                'ReceiveOrderSetInfoId': '0',
+                'IsMerchant': '0',
+                'IsNeedExtraDeposit': '0',
+                'TransTime': '0',
+                'UserID': self._ensure_str(user_id),
+            }, "LevelOrderAdd", sign_key=self.SignKey, token=token)
+            response = self.session.post(self.api_url, params=params, data=data,
+                                         timeout=_REQUEST_TIMEOUT)
+            return parse_response(response)
+        except Exception as e:
+            return response_dict(code=1, message=f"发布订单异常: {e}")

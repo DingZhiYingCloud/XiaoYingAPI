@@ -984,3 +984,26 @@ msgstr "This endpoint requires a signature, but no APPID / APPSECRET was provide
 msgid "消耗点数"
 msgstr "Points consumed"
 
+# ===== 补齐缺失词条（2026-10-04：代练丸子发单面板 docs_dlwz.js） =====
+
+msgid "选好游戏 / 大区 / 代练类型，下方的任务字段会跟着变；无需手写 JSON。"
+msgstr "Pick a game / region / leveling type; the task fields below follow along — no JSON needed."
+
+msgid "起始段位"
+msgstr "Start rank"
+
+msgid "目标段位"
+msgstr "Target rank"
+
+msgid "请输入数字"
+msgstr "Enter a number"
+
+msgid "加载失败，请重试"
+msgstr "Load failed, please retry"
+
+msgid "默认（自动定位）"
+msgstr "Default (auto-located)"
+
+msgid "搜索区服（共 %(n)s 个）"
+msgstr "Search servers (%(n)s total)"
+
