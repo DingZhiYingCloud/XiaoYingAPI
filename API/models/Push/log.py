@@ -26,6 +26,8 @@ class PushLog(BaseModel):
                               help_text='发起调用的接入项目 APPID（未认证时为空）')
     title = models.CharField('消息标题', max_length=255)
     content = models.TextField('消息正文', blank=True)
+    recipients = models.CharField('收件人', max_length=1000, blank=True,
+                                  help_text='邮件收件人（多个用逗号分隔）；Server酱 推送等无收件人的渠道为空')
 
     ok = models.BooleanField('是否成功', default=False, db_index=True,
                              help_text='上游返回 code=0 视为成功')

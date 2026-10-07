@@ -39,6 +39,8 @@ from API.models.OrderMigration.blacklist import DEFAULT_BLACKLIST_WORDS, OrderMi
 from API.models.OrderMigration.order_migration import MigrationStatus, OrderMigration
 from API.models.OrderMigration.setting import OrderMigrationSetting
 from API.models.Push.log import PushLog
+from API.models.Push.message import QQPrivateMessage
+from API.models.Push.setting import PushSetting
 
 __all__ = [
     'BaseModel',
@@ -94,4 +96,6 @@ __all__ = [
     'OrderMigrationBlacklist',
     'DEFAULT_BLACKLIST_WORDS',
     'PushLog',
+    'PushSetting',
+    'QQPrivateMessage',
 ]

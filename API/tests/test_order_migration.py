@@ -197,7 +197,7 @@ class NotifyTests(TestCase):
     def test_no_mail_when_disabled(self):
         self.setting.notify_mail = False
         self.setting.save()
-        with patch('API.apis.emails.v1.utils.send_email') as send:
+        with patch('API.apis.push.email.utils.send_email') as send:
             om_utils.notify_taken(self.record)
         send.assert_not_called()
 
@@ -205,7 +205,7 @@ class NotifyTests(TestCase):
         self.setting.notify_mail = True
         self.setting.notify_mail_to = 'boss@example.com'
         self.setting.save()
-        with patch('API.apis.emails.v1.utils.send_email',
+        with patch('API.apis.push.email.utils.send_email',
                    return_value=(True, 'ok')) as send:
             om_utils.notify_taken(self.record)
         send.assert_called_once()
@@ -219,7 +219,7 @@ class NotifyTests(TestCase):
         self.setting.notify_mail_to = ''
         self.setting.save()
         with patch('django.conf.settings.EMAIL_HOST_USER', 'env@qq.com'), \
-                patch('API.apis.emails.v1.utils.send_email',
+                patch('API.apis.push.email.utils.send_email',
                       return_value=(True, 'ok')) as send:
             om_utils.notify_taken(self.record)
         send.assert_called_once()
@@ -227,7 +227,7 @@ class NotifyTests(TestCase):
 
 
 class TakenFeedTests(TestCase):
-    """浏览器语音提醒的数据源：只回传「游标之后新被接单」的记录"""
+    """浏览器语音提醒的数据源：只回传「游标之后、丸子刚被接单」的记录"""
 
     def setUp(self):
         self.record = OrderMigration.objects.create(
@@ -244,14 +244,23 @@ class TakenFeedTests(TestCase):
         _cursor, items = om_utils.taken_feed(timezone.now())
         self.assertEqual(items, [])
 
-    def test_new_taken_record_returned(self):
+    def test_new_taker_joined_record_returned(self):
         from django.utils import timezone
         start = timezone.now()
-        self.record.status = MigrationStatus.TAKEN
+        self.record.status = MigrationStatus.TAKER_JOINED
         self.record.save()
         cursor, items = om_utils.taken_feed(start)
         self.assertEqual([i['trade_no'] for i in items], ['WZ1'])
         self.assertEqual(cursor, items[0]['time'])
+
+    def test_taken_record_not_returned(self):
+        """代练通接单 / 转传图片等后续流转不该再响（只有丸子被接单那一刻响一次）"""
+        from django.utils import timezone
+        start = timezone.now()
+        self.record.status = MigrationStatus.TAKEN
+        self.record.save()
+        _cursor, items = om_utils.taken_feed(start)
+        self.assertEqual(items, [])
 
 
 class RunLogTests(TestCase):
@@ -268,7 +277,7 @@ class RunLogTests(TestCase):
 
     @patch('API.apis.order_migration.utils.run_cycle')
     def test_run_once_writes_log(self, run_cycle):
-        run_cycle.return_value = {'fetched': 3, 'published': 1, 'taken': 0,
+        run_cycle.return_value = {'fetched': 3, 'published': 1, 'taker_joined': 1, 'taken': 0,
                                   'rollback': 0, 'errors': ['e1']}
         OrderMigrationSetting.get_solo().save()
         om_utils.run_once(publish_count=1)
@@ -354,6 +363,15 @@ class FeedViewTests(TestCase):
         self.assertEqual(body2['page'], 2)
         self.assertEqual(len(body2['records']), 3)
 
+    def test_records_include_id_and_booster_cancel_stat(self):
+        """列表带上记录 id（编辑按钮要用）+ 新增「打手申请退单」统计"""
+        OrderMigration.objects.create(dlt_serial_no='B1', dlt_title='t', dlt_price=10,
+                                      dlt_zone='安卓QQ', dlt_time_limit=2,
+                                      dlwz_trade_no='WZB', status=MigrationStatus.BOOSTER_CANCEL)
+        body = self._get()
+        self.assertEqual(body['stats']['booster_cancel'], 1)
+        self.assertTrue(all(r.get('id') for r in body['records']))
+
     def test_method_not_allowed(self):
         request = self.factory.post(self.url)
         request.user = self.user
@@ -436,3 +454,63 @@ class CancelAllViewTests(TestCase):
         setting.refresh_from_db()
         self.assertFalse(setting.auto_run)
         cancel_all.assert_called_once()
+
+
+class EditRecordViewTests(TestCase):
+    """编辑记录：只改本地状态 + 备注，不发任何平台请求"""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        from django.test import Client
+        self.client = Client()
+        self.user = get_user_model().objects.create_superuser('admin5', 'a@b.com', 'pw')
+        self.client.force_login(self.user)
+        self.record = OrderMigration.objects.create(
+            dlt_serial_no='S1', dlt_title='t', dlt_price=10, dlt_zone='安卓QQ',
+            dlt_time_limit=2, dlwz_trade_no='WZ1', status=MigrationStatus.BOOSTER_CANCEL,
+            message='旧备注')
+
+    def _post(self, **data):
+        return self.client.post('/console/order-migration/', data)
+
+    def test_updates_status_and_message(self):
+        resp = self._post(action='edit', record_id=str(self.record.pk),
+                          status=MigrationStatus.CANCELLED.value, message='已人工撤销')
+        self.assertEqual(resp.status_code, 302)
+        self.record.refresh_from_db()
+        self.assertEqual(self.record.status, MigrationStatus.CANCELLED)
+        self.assertEqual(self.record.message, '已人工撤销')
+
+    def test_rejects_invalid_status(self):
+        self._post(action='edit', record_id=str(self.record.pk), status='bogus', message='x')
+        self.record.refresh_from_db()
+        self.assertEqual(self.record.status, MigrationStatus.BOOSTER_CANCEL)    # 未变
+
+    def test_unknown_record_is_ignored(self):
+        self._post(action='edit', record_id='00000000-0000-0000-0000-000000000000',
+                   status=MigrationStatus.CANCELLED.value, message='x')
+        self.record.refresh_from_db()
+        self.assertEqual(self.record.status, MigrationStatus.BOOSTER_CANCEL)
+
+    def test_invalid_uuid_is_ignored(self):
+        resp = self._post(action='edit', record_id='not-a-uuid',
+                          status=MigrationStatus.CANCELLED.value, message='x')
+        self.assertEqual(resp.status_code, 302)
+        self.record.refresh_from_db()
+        self.assertEqual(self.record.status, MigrationStatus.BOOSTER_CANCEL)
+
+
+class NotifyQqSettingTests(TestCase):
+    """设置页可维护「管理员QQ」（退单通知）"""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        from django.test import Client
+        self.client = Client()
+        self.user = get_user_model().objects.create_superuser('admin6', 'a@b.com', 'pw')
+        self.client.force_login(self.user)
+
+    def test_saves_notify_qq(self):
+        self.client.post('/console/order-migration/', {
+            'action': 'save', 'notify_qq': '99887766'})
+        self.assertEqual(OrderMigrationSetting.get_solo().notify_qq, '99887766')

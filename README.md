@@ -57,7 +57,7 @@ XiaoYingAPI/
 │   │   ├── docs/                 # 文档中心的「服务 × 线路 × 端点」声明式数据
 │   │   └── programs.py           # 「计算程序」模块：扫描内容目录、渲染说明文档（见第八章第 6 节）
 │   ├── middlewares/              # 独立中间件组件（cloak_guard 斗篷守卫，见其目录内 README.md）
-│   ├── management/commands/      # 自定义管理命令（security_backfill / prune_api_call_hour / cleanup_api_stats / seed_service_policies）
+│   ├── management/commands/      # 自定义管理命令（security_backfill / prune_api_call_hour / prune_qq_messages / cleanup_api_stats / seed_service_policies）
 │   ├── migrations/               # 数据库迁移（随代码入库，详见第六章）
 │   ├── templates/                # 全站模板，前端规范见其目录内 前端开发必看.md
 │   ├── static/                   # 应用内静态文件（前端 CSS/JS 源码与编译产物）
@@ -108,7 +108,9 @@ XiaoYingAPI/
 - `Website/appearance.py`：官网外观单例（`SiteAppearance`：视觉预设 / 首页文案 / 页脚等）
 - `Security/`：`setting.py` 安全设置单例（`SecuritySetting`，后台入口隐身等开关）+ `audit.py` 超管操作审计（`ConsoleAuditLog`）
 - `Quota/`：服务余量监控——`service.py` 逐项余量（`QuotaService`）+ `setting.py` 通知设置单例（`QuotaSetting`）
-- `Push/log.py`：消息推送记录（`PushLog`，每次推送的渠道 / 项目 / 标题 / 正文 / 成败 / 上游码 / pushid；SendKey 由「账号管理」托管，不落本表）
+- `Push/log.py`：消息推送记录（`PushLog`，每次推送的渠道 / 项目 / 标题 / 正文 / 收件人 / 成败 / 上游码 / pushid；SendKey 由「账号管理」托管，不落本表）
+- `Push/setting.py`：消息推送设置单例（`PushSetting`，QQBot / NapCat 的 HTTP 地址与 **密文 token**、超时、事件回调基址与密钥、**AI 自动回复开关与人格**；控制台 `/console/qqbot/` 维护）
+- `Push/message.py`：QQBot 好友私聊消息（`QQPrivateMessage`：收到 / 后台回复发出、已读、星标；NapCat 事件上报落库，供控制台「好友消息」实时展示与回复）
 - `Payment/`：第三方支付——`setting.py` 全局支付设置单例（开关 / 最低金额 / 人工退款告知天数）、`provider.py` 支付渠道配置（商户ID + 私钥与平台公钥**密文落库**）、`order.py` 支付订单 `PayOrder` + 回调留痕 `PayNotifyLog` + 退款申请 `PayRefundRequest`、`ledger.py` 用户余额流水 `UserBalanceLedger`（`User.balance` 单位「元」；发货 = 给订单指定的用户加钱，与接口调用无关）
 - 服务对外状态不再单独建表：已并入「服务策略」表的 `status` 字段（见第七章第 3 节）
 
@@ -120,7 +122,6 @@ XiaoYingAPI/
 
 | 服务      | URL 前缀                      | 说明                           |
 | ------- | --------------------------- | ---------------------------- |
-| 邮箱服务    | `/api/email/`               | 邮箱 v1（发送邮件）                   |
 | 虚拟邮箱(mail.cx) | `/api/VMEmail_mailcx/`      | mail.cx 临时邮箱：随机生成地址收信（仅收信，需签名） |
 | 音乐服务    | `/api/music/`               | 爱听音乐网（2t58）、小影音乐             |
 | 文件上传    | `/api/upload/`              | 通用文件上传                       |
@@ -145,7 +146,7 @@ XiaoYingAPI/
 | 图形验证    | `/api/captcha_auth/`        | 图形验证码集成（阿里云）                 |
 | 自研图形验证码 | `/api/captcha_self/`        | 自研字符图片 / 算术验证码（本地绘制，一次性校验）   |
 | 调用统计    | `/api/statistics/`          | 公开查询 API 调用量（仅调用次数，免签名）      |
-| 消息推送    | `/api/push/`                | 把消息推送到手机：当前接入 Server酱 1 条线路（`/send` 发送、`/status` 查送达状态，SendKey 由「账号管理」托管，需签名） |
+| 消息推送    | `/api/push/`                | 把消息推送到手机、邮箱或 QQ：Server酱（`/serverchan/send` 发送、`/serverchan/status` 查送达状态，SendKey 由「账号管理」托管）+ 邮件（`/email/send`，原邮箱服务已并入）+ QQBot（`/qqbot/send`，走 NapCat / OneBot 11 HTTP，地址与 token 在「QQBot」页维护）；三条线路都记入「推送日志」，需签名 |
 
 ### 抖音服务（唯一需要 Node.js 运行时的服务）
 
@@ -264,6 +265,7 @@ python manage.py runserver 0.0.0.0:10000
 > **Node.js 仅在用到抖音评论接口或海角视频播放时才需要**（`node -v` 确认 ≥ 18）；其余服务不依赖。⚠️ **Linux 服务器默认不带 node**，要靠海角取流或抖音评论就必须自行安装（官方静态包即可，脚本无 npm 依赖），装在非默认位置时用 `.env` 的 `HAIJIAO_NODE_BIN` 指定 —— 少了它的报错长得像权限问题（`[Errno 13] Permission denied: 'node'`），其实是「没装」，详见部署手册第五节第 12 条。
 > **红果短剧不需要安装 Java**（取流签名器用项目内置的裁剪版 JRE，随代码入库）；但需要 **ffmpeg** 在 PATH 上（或由 `HONGGUO_FFMPEG_BIN` 指定），第 4 集及以后的网页直出靠它解密与转码。
 > 前端样式产物 `API/static/css/output.css` 与多语言词条 `locale/**/*.mo` 均**随代码入库**，拉到代码直接跑即可；只有新增 daisyUI / Tailwind 类名或改动 `.po` 词条时才需本机重新编译（命令见第八章第 4 节）。
+> **NapCat 的事件上报用 `Transfer-Encoding: chunked` 发请求体**，而 Django 自带的开发服务器只按 `Content-Length` 读 body（没有它就按 0 字节算）——所以 `runserver` 启动时会自动打一个小补丁（`API/common/devserver.py`：先把 chunked 请求体解出来再交给 WSGI），否则 `/hook/qqbot/` 收到的永远是空 body、事件被静默丢弃（现象：NapCat 显示已上报、我们回 200 但什么都没落库，日志里还会出现 `"c2" 400` 这类把分块长度当成新请求的记录）。生产用 gunicorn / uvicorn 或前置 nginx 都会自行解开 chunked，无需关心。
 
 启动后：
 
@@ -512,9 +514,10 @@ python manage.py cleanup_api_stats --no-drop-orphan-apps  # 只归并路径，�
 **调用授权**：只要项目**启用**（`UserApp.status=True`）且请求**签名校验通过**，就能调用**全部** `/api/` 接口 —— **不按次计费、没有额度门槛**（`开放` 模式的接口连签名都不需要）。平台不再存在点数 / 余额 / 单价概念。
 
 **文档可见性（`docs_visible`）与使用范围（`audience`）**（供后台内部接口使用）：
-- 生效 `docs_visible=hidden` 的路径**不出现**在官网文档中心与在线调试中：`/docs/` 服务目录、左侧菜单、`/docs/<slug>/` 端点列表都会过滤掉它（服务级隐藏时该服务文档页直接 404），`/docs/_call/` 在线调试也会拒绝（该页是公开的，隐藏的接口不得可调试）。
-- 生效 `audience=admin_only` 的路径仅供后台内部使用：命中该路径的 `/api/` 请求**一律返回 `20020`**（无权限），**不区分是否带签名**，拦截位置在状态拦截之后、签名校验之前。
-- 判定口径同样只有一处：`middleware.is_docs_hidden()` / `middleware.is_admin_only()`。
+- 生效 `docs_visible=hidden` 的路径**对所有人隐藏**（含超管）：不出现在官网文档中心与在线调试中 —— `/docs/` 服务目录、左侧菜单、`/docs/<slug>/` 端点列表都会过滤掉它（服务级隐藏时该服务文档页直接 404），`/docs/_call/` 在线调试也会拒绝（该页是公开的，隐藏的接口不得可调试）。
+- 生效 `audience=admin_only` 的路径仅供后台内部使用：命中该路径的 `/api/` 请求**一律返回 `20020`**（无权限），**不区分是否带签名**，拦截位置在状态拦截之后、签名校验之前。同时它按「文档对非超管隐藏」处理 —— 非超管在官网首页服务卡片、文档目录、左侧菜单、服务文档页与在线调试中**整项看不到**该服务 / 端点，**超管登录后可见**。
+- 唯一放行例外是**超管在文档中心在线调试**：`/docs/_call/` 确认外层为超管后，转发时带一枚由 `SECRET_KEY` 签发的短时效令牌（`middleware.make_docs_debug_token()`，默认 120 秒有效），中间件验签通过才跳过 `20020`；**签名校验照旧**（该接口仍需在面板里填 APPID / APPSECRET）。超管**直接在浏览器访问 `/api/`** 不带该令牌，仍返回 `20020`。
+- 判定口径同样只有一处：`middleware.is_docs_hidden(path, viewer_is_superadmin=False)` / `middleware.is_admin_only()`。
 
 **可视化配置**：超管进入 `/console/services/`，用「服务 → 线路（可多选）→ 端点」三级联动下拉自动推导层级与 URL 前缀（数据源为真实 Django 路由，无需手输），同时展示每条策略的**真实生效结果**（复用中间件判定），保存后立即生效、无需重启。新建 / 编辑弹窗按「作用范围 / 对外表现」两块分区；列表支持勾选多条**批量删除**。
 
@@ -534,11 +537,12 @@ curl -s -X POST "https://<你的域名>/api/movies/movie_555/search" -d "keyword
 # {"code": 30004, "msg": "服务维护中", "data": null}
 
 # 3) 命中「已下线」的服务：同样不做签名校验，返回 30005
-#   （下面以 /api/email/ 为例，前提是超管已在「服务策略」把它置为「已下线」）
-curl -s -X POST "https://<你的域名>/api/email/v1/send" -d "subject=t&body=t&recipients=a@example.com"
+#   （下面以 /api/push/email/send 为例，前提是超管已在「服务策略」把它置为「已下线」）
+curl -s -X POST "https://<你的域名>/api/push/email/send" -d "subject=t&body=t&recipients=a@example.com"
 # {"code": 30005, "msg": "服务已下线", "data": null}
 
 # 4) 生效 audience=admin_only 的接口：对外一律 20020（带不带签名都一样）
+#    （唯一例外：超管在文档中心在线调试，见上文；超管直连同样返回 20020）
 curl -s "https://<你的域名>/api/xxx/internal_yyy"
 # {"code": 20020, "msg": "该接口仅限后台内部使用，不对外开放", "data": null}
 ```
@@ -723,7 +727,7 @@ curl -s "https://<你的域名>/api/xxx/internal_yyy"
 - **巡检**：后台线程每 30 分钟一轮（`API/apis/quota/utils.py` 的 `CHECK_INTERVAL_SECONDS`），只在「对外提供服务」的进程里启动（与反馈中心 AI 审核同一判定，见 `API/apps.py`）；多 worker 靠**行级条件更新抢占告警态翻转**，保证同一轮告警只发出一封邮件。页面上的「立即检查」用同一套逻辑手动触发。
 - **告警语义（不刷屏）**：跌破阈值**只发一封**；余量回升到阈值以上（或关闭该服务的通知）后自动复位、**重新武装**，再次跌破时才会再发一封。阈值留空 = 该服务不通知。
 - **取数失败**只记在「最近错误」里，**不覆盖**上一次成功取得的余量，也不参与告警判定。
-- **通知方式**目前只有邮件，走与 `/api/email/v1/send` 相同的发信能力（`API/apis/emails/v1/utils.py` 的 `send_email()`）；接收邮箱是**全局一个**（超管在页面上设置，存单例表 `quota_setting`），未配置时只记日志、不发信。
+- **通知方式**目前只有邮件，走推送服务的发信能力（`API/apis/push/email/utils.py` 的 `send_email()`，同时会写进控制台「推送日志」）；接收邮箱是**全局一个**（超管在页面上设置，存单例表 `quota_setting`），未配置时只记日志、不发信。
 
 **回归测试**：`python scripts/test_quota.py`（真实取数口径 / 巡检写回 / 告警只发一次 / 恢复重新武装 / 未启用与留空不通知 / 取数失败不覆盖余量 / 控制台页面保存与权限 / 三语渲染；邮件用替身不外发，跑完**原样还原**余量行与通知设置）
 
@@ -824,6 +828,7 @@ curl -s "https://<你的域名>/api/xxx/internal_yyy"
 | `/console/stats/app/<APPID>/`               | 项目调用统计详情   | 单个接入项目的指标、时段分布与服务 / 接口排行（超管专属）                         |
 | `/console/quotas/`                          | 服务余量       | 监控上游服务账号余量（51代理余额、超级鹰题分），逐项设最低数量阈值，低于阈值发邮件（超管专属，见第 7 节第 10 小节） |
 | `/console/push-logs/`                       | 推送日志       | 消息推送服务每次推送的记录（渠道 / 项目 / 标题与正文摘要 / 成功失败 / 上游返回码 / 推送ID），可按结果筛选与关键词搜索（超管专属） |
+| `/console/qqbot/`                           | QQBot          | QQBot（NapCat）操作台：连接配置（HTTP 地址、token、超时、机器人 QQ 与安装目录、事件回调基址；token **加密落库、页面不回显**，留空 = 保持原值）、**一键部署**（自动探测环境 → 下载（国内镜像优先、失败回退官方）→ 解压 → 生成 token 并写 HTTP 服务端 + 事件上报配置 → 拉起进程（已在运行则自动重启）→ 等端口就绪 → 回填配置，全程**实时日志（SSE + 落库，带时间戳 / 级别过滤 / 长行折叠 / 清屏 · 复制 · 下载 · 自动滚底）**）、以及**好友消息**（好友私聊机器人的消息经 NapCat 事件上报落库；左侧会话列表带未读红点、右侧对话流实时追加，**全程无刷新**：切会话 / 发送都不刷新页面；每条气泡带头像（对方在左、自己在右）；回复支持 **CQ 码（表情选择器，点「表情」才展开）与本地图片**（转 base64 图源直发，不落盘）；未读总数显示在浏览器标签标题上。**AI 自动回复**：开关 + 三种内置人格（尖酸刻薄 / 温柔善良聪明可爱 / 幽默搞笑），好友私聊由 AI 判断「值不值得回」，值得就自动回一句（带最近往来做上下文、用后台默认模型、跑在后台线程不阻塞事件回调，回复照常落库到「好友消息」）。历史消息用 `python manage.py prune_qq_messages` 定期清理（默认保留最新 5000 条 / 最近 30 天）。仅人工步骤是扫码登录 QQ（超管专属，见第 7 节） |
 | `/console/users/`                           | 用户管理       | 用户搜索 / 筛选 / 分页，行内封禁解封；建号、编辑、重置密码、删除（超管专属）              |
 | `/console/users/<用户ID>/`                     | 用户详情       | 资料、注册信息、按项目登录明细（次数 / 最后登录 / 登录态剩余天数）、Token 明细、验证记录（超管专属）  |
 | `/console/contacts/`                        | 联系方式       | 联系方式平台字典（渠道、填写项名称、跳转链接模板）与各接入项目的具体值，`?capp=` 切换项目（超管专属，见第 9 节） |
@@ -1026,7 +1031,7 @@ proxy_set_header Host $host;
 | `test_api_stats.py`                    | 调用统计回归测试（两级预聚合口径一致性、筛选/环比/热力图/峰值、保留期清理命令、页面三语渲染、公开接口不回归、统计口径标签：已删除项目 / 未匹配路径归并、`canonical_path` 折算与 `purge_app` 清理） |
 | `test_ip_ban.py`                       | IP 封禁 + 控制台首页仪表盘回归测试（默认 7 天 / 自定义天数 / 永久 / 到期自动失效 / 手动解禁 / 重复封禁保留历史；非法 IP、本机内网 IP、空原因一律拒绝；中间件对 `/api/` 返回 `20022` 且控制台路径不受影响；前台顶部提示条含 IP / 原因 / 解禁时间；控制台页面鉴权与封禁解禁动作；首页仪表盘可访问且含趋势与排行数据。测试 IP 取自 TEST-NET 网段，跑完按网段清理） |
 | `test_console_users.py`                | 超管用户管理回归测试（建号/改资料/重置密码校验、登录日志写入、注册来源项目、列表筛选分页、详情聚合口径、增删改查视图、权限与三语、对话框入口守卫） |
-| `test_service_policy.py`               | 服务策略回归测试（fail-closed、开放节点、服务/线路/端点三级继承、状态拦截（只有正常可调用：开发中 30006 / 维护中 30004 / 已下线 30005）、前缀边界、缓存即时失效、控制台三级联动增删改与三语、服务树枚举自证、前台状态图标（服务级 / 线路级 / 线路 Tab）、文档可见性与使用范围（hidden 从文档页/菜单/在线调试消失、admin_only 对外 20020、状态拦截优先）、线路多选（一条策略覆盖多条线路、接管让位）、批量删除与弹窗版面、建议策略（清单与迁移写入的 9 条逐条一致、前缀可在服务树反查、一键新建预览面板、只补缺失 / 可反复执行 / 不覆盖已有、`seed_service_policies --dry-run`、stream 免签代码兜底））。原「额度与单价继承」一轮已随计费体系下线移除 |
+| `test_service_policy.py`               | 服务策略回归测试（fail-closed、开放节点、服务/线路/端点三级继承、状态拦截（只有正常可调用：开发中 30006 / 维护中 30004 / 已下线 30005）、前缀边界、缓存即时失效、控制台三级联动增删改与三语、服务树枚举自证、前台状态图标（服务级 / 线路级 / 线路 Tab）、文档可见性与使用范围（hidden 从文档页/菜单/在线调试消失、admin_only 对外 20020、状态拦截优先）、线路多选（一条策略覆盖多条线路、接管让位）、批量删除与弹窗版面、建议策略（清单与迁移写入的 10 条逐条一致、前缀可在服务树反查、一键新建预览面板、只补缺失 / 可反复执行 / 不覆盖已有、`seed_service_policies --dry-run`、stream 免签代码兜底）、仅专属管理员（admin_only 对非超管的文档隐藏：目录/服务页/左侧菜单/首页卡片不展示、在线调试不可调试；hidden 对超管同样隐藏；超管在线调试凭时效令牌放行 20020）。原「额度与单价继承」一轮已随计费体系下线移除 |
 | `test_hongguo_drama.py`                | 短剧（红果线路）「详情 / 播放 口径一致」回归测试（字段契约 episode_cnt / playable_cnt / listed_cnt、episodes[].playable 与 source（origin/stream）与 play 结论一致、直出可用时全量集数可播、playable_cnt 口径不变、不污染爬虫缓存、签名 HTTP 返回体；另含**不依赖源站**的出流 HTTP 契约（202 正在生成 / 503 失败 / 无令牌 403，失败响应不得是 `video/*`）；结束清理测试数据） |
 | `test_hongguo_catalog.py`              | 短剧「分类树 + 榜单」回归测试（两级分类：4 个一级 + 40 个二级题材，取值唯一且可拼出分类页 URL；文档页下拉与后端白名单一致；4 个榜单均能抓取且**不得混入面包屑脏条目**；签名 HTTP 下二级取值与漫剧榜被接受、非法取值被拒）。分类树形状与文档一致性为**离线**断言，联网断言在源站不可达时整段 SKIP |
 | `test_hongguo_stream_lock.py`          | 短剧「网页直出」转码状态的锁语义回归测试（僵尸锁立刻接管而非干等 30 分钟、属主存活时不重复转码、elapsed 由锁文件推算、失败落状态并释放锁、释放锁只删自己的、并发只转一次）。**离线、秒级**：产物目录指向临时目录、转码函数换成桩，不联网也不起 ffmpeg |

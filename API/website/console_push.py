@@ -4,8 +4,8 @@
 
 鉴权：仅 Django is_superuser（见 admin_auth.py）。
 
-数据由 `API/apis/push/serverchan/utils.py` 在每次推送后写入（成功 / 失败均记），
-本页只读；SendKey 不在本表、也不在页面展示（凭据只在控制台「账号管理」维护）。
+数据由 `API/apis/push/*/utils.py` 在每次推送后写入（成功 / 失败均记），
+本页只读。
 
 筛选口径（三者可叠加）：
     · 结果：全部 / 成功 / 失败；
@@ -14,10 +14,13 @@
 「项目」列把 app_id 翻成项目名（复用统计页的 `_app_names` / `_app_label`；项目已删除时显示「已删除项目」），
 悬停仍可看到原始 app_id。
 筛选与分页与其它控制台列表页同一套骨架（复用 `console_users._page_prefix` 与 `_pagination.html`）。
+
+QQBot 的运行配置与好友申请在「QQBot」页（`console_qqbot.py`）。
 """
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.shortcuts import render
+from django.utils.translation import gettext as _
 
 from API.models import PushLog
 
@@ -30,6 +33,8 @@ PAGE_SIZE = 50
 #: 渠道标识 -> 展示名（新增推送线路时在此补一行）
 CHANNEL_LABELS = {
     'serverchan': 'Server酱',
+    'email': '邮件',
+    'qqbot': 'QQBot',
 }
 
 #: 结果筛选档位

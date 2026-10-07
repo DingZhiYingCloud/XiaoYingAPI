@@ -6,7 +6,7 @@ from django.views.i18n import JavaScriptCatalog
 from . import (console, console_accounts, console_ai, console_announcements,
                console_appearance, console_audit, console_feedback, console_haijiao,
                console_ip_bans, console_order_migration, console_pay, console_push,
-               console_quota, console_security, console_users, docs_views,
+               console_qqbot, console_quota, console_security, console_users, docs_views,
                feedback_views, my_wallet, programs_views, views)
 # 第三方支付的异步通知：必须挂在 /api/ 之外（平台回调带不了我们的项目签名，靠平台公钥验签）
 from API.apis.pay.notify import notify_view as pay_notify_view
@@ -125,4 +125,26 @@ urlpatterns = [
          name='console_order_migration_feed'),
     # 推送日志（超管专属）：消息推送服务每次推送的记录（成功 / 失败）
     path('console/push-logs/', console_push.push_logs_view, name='console_push_logs'),
+    # QQBot 操作台（超管专属）：连接配置 + 一键部署 + 好友消息，QQBot 相关操作都在这一页
+    path('console/qqbot/', console_qqbot.qqbot_view, name='console_qqbot'),
+    # QQBot 一键部署的实时日志流（SSE，超管专属）
+    path('console/qqbot/stream/', console_qqbot.qqbot_stream_view, name='console_qqbot_stream'),
+    # QQBot 好友消息实时流（SSE，超管专属）：按主键增量推送新收到的私聊消息
+    path('console/qqbot/messages/stream/', console_qqbot.qqbot_messages_stream_view,
+         name='console_qqbot_messages_stream'),
+    # 切换会话（无刷新）：返回该会话对话流并标记已读（GET，不进操作审计）
+    path('console/qqbot/messages/thread/', console_qqbot.qqbot_messages_thread_view,
+         name='console_qqbot_messages_thread'),
+    # 发送回复（无刷新）：JSON 进出，POST 会进操作审计
+    path('console/qqbot/messages/reply/', console_qqbot.qqbot_messages_reply_view,
+         name='console_qqbot_messages_reply'),
+    # 星标 / 取消星标（无刷新）
+    path('console/qqbot/messages/star/', console_qqbot.qqbot_messages_star_view,
+         name='console_qqbot_messages_star'),
+    # 删除本地记录 / 撤回（无刷新）
+    path('console/qqbot/messages/delete/', console_qqbot.qqbot_messages_delete_view,
+         name='console_qqbot_messages_delete'),
+    # 旧「推送设置」地址（QQBot 配置已并入 QQBot 操作台）：保留跳转，兼容书签与历史链接
+    path('console/push-settings/', console_qqbot.legacy_settings_redirect,
+         name='console_push_settings_legacy'),
 ]

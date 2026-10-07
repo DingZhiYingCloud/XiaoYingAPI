@@ -612,6 +612,38 @@ SERVICE = ServiceSpec(
                                  ParamSpec('order_id', '订单ID', kind='text', required=True),
                              ],
                              response_note='data 为代练通订单留言接口返回的原始 JSON 对象（原样透传），字段由上游定义。'),
+                EndpointSpec('orders_upload_first_image', '上传首图', 'POST',
+                             '/api/dlt/orders/upload-first-image',
+                             summary='上传订单首图（接单后须在规定时间内上传；王者荣耀一般 2 张：好友天梯图 + 物品图）。',
+                             notes=['服务端会先把图片转存到代练通图片存储，再逐张以「首图」留言挂到订单上'
+                                    '（每张调一次上游接口）。',
+                                    '失败时 msg 会指明是第几张出错，此前已挂上的图片仍然有效。'],
+                             params=[
+                                 ParamSpec('order_id', '订单ID', kind='text', required=True),
+                                 ParamSpec('image_url_1', '第1张图片地址', kind='text', required=True,
+                                           desc='必填：可访问的 http/https 图片链接（王者荣耀＝好友天梯图）'),
+                                 ParamSpec('image_url_2', '第2张图片地址', kind='text', required=False,
+                                           desc='选填：可访问的 http/https 图片链接（王者荣耀＝物品图）'),
+                                 _t_uid(), _t_token(),
+                             ],
+                             response_note='data 含 images（已成功挂到订单上的图片地址）与 results（每张挂单的上游返回）。'),
+                EndpointSpec('orders_upload_end_image', '上传完单图', 'POST',
+                             '/api/dlt/orders/upload-end-image',
+                             summary='上传订单完单图并申请完单（接单方上传完成凭证后，订单进入「等待验收」）。',
+                             notes=['服务端会先把图片转存到代练通图片存储，再逐张以「完单图」留言挂到订单上'
+                                    '（每张调一次上游接口）。',
+                                    '全部图片挂完后自动发起「申请完单」，之后发单方即可验收。',
+                                    '失败时 msg 会指明是第几张出错，此前已挂上的图片仍然有效。'],
+                             params=[
+                                 ParamSpec('order_id', '订单ID', kind='text', required=True),
+                                 ParamSpec('image_url_1', '第1张完单图地址', kind='text', required=True,
+                                           desc='必填：可访问的 http/https 图片链接'),
+                                 ParamSpec('image_url_2', '第2张完单图地址', kind='text', required=False,
+                                           desc='选填：可访问的 http/https 图片链接'),
+                                 _t_uid(), _t_token(),
+                             ],
+                             response_note='data 含 images（已成功挂到订单上的图片地址）、results（每张挂单的上游返回）'
+                                           '与 over（申请完单的上游返回）。'),
                 # ---------- 头像 ----------
                 EndpointSpec('avatar_upload', '上传头像', 'POST', '/api/dlt/avatar/upload',
                              summary='上传代练通头像（传图片 URL/路径，无需 token）。',

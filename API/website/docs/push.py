@@ -24,16 +24,19 @@ SERVICE = ServiceSpec(
     slug='push',
     name='消息推送服务',
     prefix='/api/push/',
-    summary='把消息推送到手机的通知服务。当前接入 Server酱 1 条线路，后续可继续扩展更多推送平台/线路。',
-    keywords='消息推送API,微信推送接口,Server酱API,ServerChan,服务器告警推送,通知接口',
+    summary='把消息推送到手机、邮箱或 QQ 的通知服务。当前接入 Server酱（微信推送）、邮件与 QQBot 3 条线路，后续可继续扩展更多推送平台/线路。',
+    keywords='消息推送API,微信推送接口,Server酱API,ServerChan,邮件发送接口,QQ推送接口,QQ机器人推送,NapCat,通知接口',
     intro=[
-        '消息推送服务把「服务器 / 脚本 / 设备上发生的事」发送到手机，适合告警、任务完成通知、'
-        '定时任务结果汇总等场景。当前接入 Server酱（sct.ftqq.com）一条线路：调用本服务的发送接口，'
-        '消息经由 Server酱 推送到你手机。',
+        '消息推送服务把「服务器 / 脚本 / 设备上发生的事」发送到手机、邮箱或 QQ，适合告警、任务完成通知、'
+        '定时任务结果汇总等场景。当前有 3 条线路：**Server酱**（微信推送）、**邮件** 与 **QQBot**。',
         '**消息实际推送到哪个通道**（微信服务号、企业微信应用消息、企业微信/钉钉/飞书群机器人、Bark、'
         'PushDeer 或自定义 Webhook）由 Server酱 后台的通道配置决定 —— 换通道不用改调用代码。',
         '**SendKey 由服务端托管**：在超管控制台「账号管理」里新增一个平台为「Server酱」的账号，'
         '把 SendKey 填进「登录凭据」字段即可（凭据加密落库、页面不回显）。调用方无需、也不应传递 SendKey。',
+        '**邮件线路**由原「邮箱服务」的发送邮件并入：`POST /api/push/email/send` 与原 `/api/email/v1/send` '
+        '是同一实现、同一参数与响应，老路由继续可用。',
+        '**QQBot 线路**通过 NapCat（OneBot 11 HTTP）把消息发到 QQ 群 / 好友；NapCat 的 HTTP 地址与 token '
+        '在超管控制台「QQBot」页维护，调用方只传目标与内容。',
         '本服务接口需项目签名调用；每次推送都会在控制台「推送日志」留痕（成功与失败都记）。',
     ],
     channels=[
@@ -117,6 +120,89 @@ SERVICE = ServiceSpec(
                     ],
                     response_note='data 为上游的推送详情 JSON，其中 wxstatus 即微信接口返回的内容（为空表示可能还未执行），'
                                   '以实际返回为准。',
+                ),
+            ],
+        ),
+        ChannelSpec(
+            slug='email',
+            name='邮件',
+            provider='站内邮件（Django 邮件后端 / SMTP）',
+            auth_note='auth',
+            note='把消息以邮件形式发送出去（原「邮箱服务」的发送邮件能力，已并入本服务）；'
+                 '与 `/api/email/v1/send` 是同一实现，参数与响应完全一致。需项目签名调用。',
+            endpoints=[
+                EndpointSpec(
+                    slug='send',
+                    name='发送邮件',
+                    method='POST',
+                    path='/api/push/email/send',
+                    summary='发送一封邮件，可指定多个收件人。',
+                    params=[
+                        ParamSpec('subject', '邮件标题', kind='text', required=True,
+                                  placeholder='邮件标题', desc='邮件标题（必填）'),
+                        ParamSpec('body', '邮件正文', kind='textarea', required=True,
+                                  placeholder='邮件正文内容', desc='邮件正文内容（必填）'),
+                        ParamSpec('recipients', '收件人邮箱', kind='textarea', required=True,
+                                  repeatable=True,
+                                  repeat_hint='多个邮箱用逗号或换行分隔，也可通过同一字段多次传递',
+                                  placeholder='a@example.com\nb@example.com',
+                                  desc='收件人邮箱（必填，支持多个）'),
+                    ],
+                    notes=[
+                        '收件人支持两种写法：同一字段重复传多次，或单个字段内用逗号分隔。',
+                        '发送失败归为外部服务错误。',
+                        '老入口 `/api/email/v1/send` 仍可用，与本端点等价（同一实现）。',
+                    ],
+                    response_fields=[
+                        ResponseFieldSpec('subject', 'string', '邮件标题'),
+                        ResponseFieldSpec('recipients', 'array', '收件人邮箱列表'),
+                        ResponseFieldSpec('count', 'int', '收件人数量'),
+                    ],
+                    response_example='{"subject": "Welcome", "recipients": ["a@example.com", "b@example.com"], "count": 2}',
+                ),
+            ],
+        ),
+        ChannelSpec(
+            slug='qqbot',
+            name='QQBot',
+            provider='QQBot（NapCat / OneBot 11 HTTP）',
+            auth_note='auth',
+            note='通过 NapCat 的 OneBot 11 HTTP 接口把消息发到 QQ 群 / 好友；'
+                 'NapCat 的 HTTP 地址与 token 由服务端托管（控制台「QQBot」），调用方只传目标与内容。需项目签名调用。',
+            endpoints=[
+                EndpointSpec(
+                    slug='send',
+                    name='发送 QQ 消息',
+                    method='POST',
+                    path='/api/push/qqbot/send',
+                    summary='发送一条纯文本消息到指定的 QQ 群或好友。',
+                    params=[
+                        ParamSpec('target_type', '目标类型', kind='select', required=True, default='group',
+                                  desc='必填：group=发到群聊，private=发到好友私聊',
+                                  options=[{'value': 'group', 'label': '群聊'},
+                                           {'value': 'private', 'label': '私聊'}]),
+                        ParamSpec('target_id', '目标号码', kind='select', required=True, default='',
+                                  placeholder='群号或好友 QQ 号，如 123456789',
+                                  dynamic_options='qqbot_groups',
+                                  alt_kind='text', alt_label='手动输入', primary_label='群列表',
+                                  desc='必填：群号（target_type=group）或好友 QQ 号（target_type=private），纯数字。'
+                                       '主面板是机器人已加入的群（实时取自 NapCat）；'
+                                       '发私聊或群不在列表里时，点「手动输入」直接填号码。'),
+                        ParamSpec('message', '消息内容', kind='textarea', required=True,
+                                  placeholder='要发送的纯文本内容',
+                                  desc='必填：消息正文，按纯文本原样发送（不会解析 CQ 码）'),
+                    ],
+                    notes=[
+                        '消息以**纯文本**发送（服务端 auto_escape=true）：`[CQ:xxx]` 会作为普通文字发出，'
+                        '不会被解析成图片 / @ / 表情。',
+                        'QQBot（NapCat）的 HTTP 地址与 token 在控制台「QQBot」页维护，调用方不传。',
+                        'QQ 侧有风控：请低频调用、避免重复发送相同内容。',
+                        '上游 retcode 非 0 时，本接口返回 40001，msg 即上游给的原因。',
+                    ],
+                    response_fields=[
+                        ResponseFieldSpec('message_id', 'int', '上游返回的消息 ID'),
+                    ],
+                    response_example='{"message_id": 123456}',
                 ),
             ],
         ),

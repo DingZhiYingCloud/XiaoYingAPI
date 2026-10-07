@@ -1,64 +1,28 @@
-"""邮箱服务 - 接口文档与在线调试数据（首个接入服务）
+"""邮箱服务 - 接口文档与在线调试数据
 
-数据与 API/apis/emails/ 与 API/apis/VMEmail_mailcx/ 实际实现对齐：
-- 邮箱v1（发送邮件）：POST /api/email/v1/send（默认需签名）
+数据与 API/apis/VMEmail_mailcx/ 实际实现对齐：
 - VMEmail(mail.cx)（mail.cx 临时邮箱）：GET domains/emails/email_detail、POST generate（需签名）
+
+说明：原「发送邮件」（旧 `/api/email/` 服务）已并入**消息推送服务**，见 docs/push.py 的邮件线路
+（`POST /api/push/email/send`）。
 """
 from .schema import ChannelSpec, EndpointSpec, ParamSpec, ResponseFieldSpec, ServiceSpec
 
 SERVICE = ServiceSpec(
     slug='email',
     name='邮箱服务',
-    prefix='/api/email/',
-    summary='邮件发送与虚拟邮箱收发能力。当前接入 2 条线路，后续可继续扩展更多平台/线路。',
-    keywords='临时邮箱API,虚拟邮箱接口,邮箱验证码API,邮件发送接口',
+    prefix='/api/VMEmail_mailcx/',
+    summary='虚拟邮箱（临时邮箱）能力：随机生成一个邮箱地址并接收来信，常用于注册验证、接口联调与自动化测试。',
+    keywords='临时邮箱API,虚拟邮箱接口,一次性邮箱,接收邮件接口',
     intro=[
-        '邮箱服务把「发信」和「收信」拆成两条线路：邮箱 v1 用平台邮箱发送业务邮件，适合验证码、通知、'
-        '告警等场景；VMEmail(mail.cx) 提供临时邮箱（虚拟邮箱）能力，可随机生成一个邮箱地址'
-        '并接收来信，常用于注册验证、接口联调、自动化测试等需要一次性邮箱的场合。',
-        '两条线路均需项目签名。',
+        '邮箱服务提供**虚拟邮箱（临时邮箱）**能力：本地随机生成一个邮箱地址、无需注册，该地址即可接收来信，'
+        '适合注册验证、接口联调、自动化测试等需要一次性邮箱的场合。'
+        '（原「发送邮件」能力已并入**消息推送服务**：`POST /api/push/email/send`。）',
+        '本服务需项目签名调用。',
         '临时邮箱的收件是长轮询：没有新邮件时请求会挂起约 25 秒后返回空列表，属正常行为，'
         '请不要按短超时判定为失败；邮件有留存期限，重要内容请及时取回。',
     ],
     channels=[
-        ChannelSpec(
-            slug='v1',
-            name='邮箱 v1',
-            provider='发送邮件（默认线路）',
-            auth_note='auth',
-            note='发送文本/HTML 邮件，支持多个收件人。需项目签名调用。',
-            endpoints=[
-                EndpointSpec(
-                    slug='send',
-                    name='发送邮件',
-                    method='POST',
-                    path='/api/email/v1/send',
-                    summary='发送一封邮件，可指定多个收件人。',
-                    params=[
-                        ParamSpec('subject', '邮件标题', kind='text', required=True,
-                                  placeholder='邮件标题', desc='邮件标题（必填）'),
-                        ParamSpec('body', '邮件正文', kind='textarea', required=True,
-                                  placeholder='邮件正文内容', desc='邮件正文内容（必填）'),
-                        ParamSpec('recipients', '收件人邮箱', kind='textarea', required=True,
-                                  repeatable=True,
-                                  repeat_hint='多个邮箱用逗号或换行分隔，也可通过同一字段多次传递',
-                                  placeholder='a@example.com\nb@example.com',
-                                  desc='收件人邮箱（必填，支持多个）'),
-                    ],
-                    notes=[
-                        '收件人支持两种写法：同一字段重复传多次，或单个字段内用逗号分隔。',
-                        '发送失败归为外部服务错误。',
-                    ],
-                    # data 由本接口显式拼装，结构固定，写出字段表
-                    response_fields=[
-                        ResponseFieldSpec('subject', 'string', '邮件标题'),
-                        ResponseFieldSpec('recipients', 'array', '收件人邮箱列表'),
-                        ResponseFieldSpec('count', 'int', '收件人数量'),
-                    ],
-                    response_example='{"subject": "Welcome", "recipients": ["a@example.com", "b@example.com"], "count": 2}',
-                ),
-            ],
-        ),
         ChannelSpec(
             slug='mailcx',
             name='VMEmail(mail.cx)',

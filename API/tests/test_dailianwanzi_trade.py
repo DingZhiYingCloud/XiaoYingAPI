@@ -105,6 +105,13 @@ class SpiderContractTests(TestCase):
         self.assertEqual((captured["path"], captured["params"]),
                          ("/order/action/cancelRevocation", {"tradeNo": "WZ1"}))
 
+    def test_accept_completion_params(self):
+        captured = {}
+        self._service(captured).accept_completion('tok', 'WZ1', '128524')
+        self.assertEqual((captured["path"], captured["params"]),
+                         ("/order/action/acceptCompletion",
+                          {"tradeNo": "WZ1", "payPassword": "128524"}))
+
     def test_apply_arbitration_uploads_images_then_applies(self):
         captured = {}
         self._service(captured).apply_arbitration(
@@ -262,3 +269,70 @@ class RevocationViewTests(TestCase):
         self.assertEqual(mocked.call_args.kwargs['amount'], 2.0)
         self.assertEqual(mocked.call_args.kwargs['opera_type'], 1)
         self.assertEqual(mocked.call_args.args[3], ['https://x/a.png'])
+
+
+class AcceptCompletionViewTests(TestCase):
+    """视图层：同意验收并结账的必填校验与参数透传"""
+
+    def setUp(self):
+        self.factory = RequestFactory()
+
+    def _post(self, **data):
+        return dlwz_request.business_accept_completion_view(
+            self.factory.post('/api/dlwz/business/orders/accept-completion', data))
+
+    def test_missing_trade_no(self):
+        body = json.loads(self._post(pay_password='128524').content)
+        self.assertEqual(body['code'], 20001)
+        self.assertIn('trade_no', body['msg'])
+
+    @mock.patch.object(dlwz_request.utils, 'accept_completion',
+                       return_value=(True, {'code': 0, 'message': 'Success', 'data': {}}))
+    def test_pay_password_optional_forwarded_empty(self, mocked):
+        # 选填：不传时视图原样透传空串，由 utils 回落到后台账号凭据里的 pay_password
+        body = json.loads(self._post(trade_no='WZ1').content)
+        self.assertEqual(body['code'], 10000)
+        self.assertEqual(mocked.call_args.kwargs['pay_password'], '')
+
+    @mock.patch.object(dlwz_request.utils, 'accept_completion',
+                       return_value=(True, {'code': 0, 'message': 'Success', 'data': {}}))
+    def test_success_passes_params(self, mocked):
+        body = json.loads(self._post(trade_no='WZ1', pay_password='128524').content)
+        self.assertEqual(body['code'], 10000)
+        self.assertEqual(mocked.call_args.args[0], 'WZ1')
+        self.assertEqual(mocked.call_args.kwargs['pay_password'], '128524')
+
+    @mock.patch.object(dlwz_request.utils, 'accept_completion',
+                       return_value=(False, '上游异常'))
+    def test_upstream_failure_maps_to_40001(self, mocked):
+        body = json.loads(self._post(trade_no='WZ1', pay_password='128524').content)
+        self.assertEqual(body['code'], 40001)
+        self.assertIn('上游异常', body['msg'])
+
+
+class ResolvePayPasswordTests(TestCase):
+    """支付密码回落：请求值 > 后台账号凭据 > 空"""
+
+    def test_request_value_wins(self):
+        self.assertEqual(dlwz_utils._resolve_pay_password('123456'), '123456')
+
+    @mock.patch.object(dlwz_utils, '_default_credential_dict',
+                       return_value={'accessToken': 't', 'pay_password': '128524'})
+    def test_falls_back_to_credential(self, mocked):
+        self.assertEqual(dlwz_utils._resolve_pay_password(''), '128524')
+
+    @mock.patch.object(dlwz_utils, '_default_credential_dict', return_value={'accessToken': 't'})
+    def test_empty_when_credential_has_none(self, mocked):
+        self.assertEqual(dlwz_utils._resolve_pay_password(''), '')
+
+    @mock.patch.object(dlwz_utils, '_default_credential_dict', return_value={})
+    def test_empty_when_no_account(self, mocked):
+        self.assertEqual(dlwz_utils._resolve_pay_password(''), '')
+
+    @mock.patch.object(dlwz_utils, '_call_business')
+    @mock.patch.object(dlwz_utils, '_default_credential_dict', return_value={})
+    def test_accept_completion_without_any_password_errors(self, mocked_cred, mocked_call):
+        ok, message = dlwz_utils.accept_completion('WZ1')
+        self.assertFalse(ok)
+        self.assertIn('支付密码', message)
+        mocked_call.assert_not_called()

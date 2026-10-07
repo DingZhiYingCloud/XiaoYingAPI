@@ -27,11 +27,14 @@ from ..services import SERVICES as _MARKET
 from ..services import localize as _localize_services
 
 
-def build_docs_menu():
+def build_docs_menu(superadmin=False):
     """按官网服务清单顺序构建菜单（幂等、无缓存：数据源均为常量，构建开销极小）
 
     被服务策略判为「文档隐藏」的服务整项略过；线路则先剔除隐藏端点，
     整条线路端点全被隐藏时该线路也不展示（与文档页 /docs/<slug>/ 口径一致）。
+
+    ``superadmin`` 为当前查看者是否超管：决定「仅专属管理员」的服务 / 端点
+    是否进入菜单（非超管不可见，超管可见）。
     """
     from . import all_docs as _all
     from . import localize as _localize_doc
@@ -41,14 +44,15 @@ def build_docs_menu():
     menu = []
     for item in _annotate(_localize_services(_MARKET), lambda p: p in ready):
         prefix = item['url_prefix']
-        if is_docs_hidden(prefix):
+        if is_docs_hidden(prefix, superadmin):
             continue
         doc = ready.get(prefix)
         unavailable = item['status'] in UNCLICKABLE_STATUSES
         if doc is not None and not unavailable:
             children = []
             for ch in doc.channels:
-                endpoints = [ep for ep in ch.endpoints if not is_docs_hidden(ep.path)]
+                endpoints = [ep for ep in ch.endpoints
+                             if not is_docs_hidden(ep.path, superadmin)]
                 if not endpoints:
                     continue
                 # 线路状态 = 该线路下端点最严重者（端点级策略也会体现）

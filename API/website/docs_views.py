@@ -23,6 +23,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from API.apis.user_center.sign import build_sign
 from API.common import StatusCode, api_stats_query
+from .admin_auth import is_superadmin
 from .docs import ALL_ENDPOINT_SPECS, ALL_ENDPOINTS, all_docs, get_doc, localize
 from .services import SERVICES, localize as localize_services
 
@@ -51,14 +52,16 @@ def index(request):
     """/docs/ 文档目录：左侧为全量服务导航（见中间件注入 docs_menu），
     右侧按“服务对外状态”展示全量服务卡（可进入的 = 已接入文档且非 开发中/已下线）。
 
-    服务策略里被设为「文档隐藏」的服务不在此展示（见 middleware.is_docs_hidden）。
+    服务策略里被设为「文档隐藏」的服务不在此展示；「仅专属管理员」的服务只对超管展示
+    （见 middleware.is_docs_hidden）。
     """
     from API.common.middleware import is_docs_hidden
     from .service_status import STATUS_KEYS, annotate as _annotate_status, status_def
-    by_prefix = {d.prefix: d for d in all_docs() if not is_docs_hidden(d.prefix)}
+    viewer = is_superadmin(getattr(request, 'user', None))
+    by_prefix = {d.prefix: d for d in all_docs() if not is_docs_hidden(d.prefix, viewer)}
     services = []
     for svc in _annotate_status(localize_services(SERVICES), lambda p: p in by_prefix):
-        if is_docs_hidden(svc['url_prefix']):
+        if is_docs_hidden(svc['url_prefix'], viewer):
             continue
         doc = by_prefix.get(svc['url_prefix'])
         if doc is not None:
@@ -204,17 +207,20 @@ def service(request, slug: str):
 
     服务策略里被设为「文档隐藏」的服务 / 端点不会出现在本页：服务级隐藏返回 404，
     端点级隐藏从列表中移除（某线路下端点全部隐藏时，该线路也不再展示）。
+    「仅专属管理员」的按同一口径过滤，但超管登录后可见（见 middleware.is_docs_hidden）。
     """
     from API.common.middleware import is_docs_hidden
     from .service_status import annotate as _annotate_status, channel_status_fields
+    viewer = is_superadmin(getattr(request, 'user', None))
     doc = get_doc(slug)
-    if doc is None or is_docs_hidden(doc.prefix):
+    if doc is None or is_docs_hidden(doc.prefix, viewer):
         return render(request, '404.html', status=404)
     doc = localize(doc)  # 文档内容按当前语言翻译（副本）
     doc.channels = [channel for channel in doc.channels
-                    if any(not is_docs_hidden(ep.path) for ep in channel.endpoints)]
+                    if any(not is_docs_hidden(ep.path, viewer) for ep in channel.endpoints)]
     for channel in doc.channels:
-        channel.endpoints = [ep for ep in channel.endpoints if not is_docs_hidden(ep.path)]
+        channel.endpoints = [ep for ep in channel.endpoints
+                             if not is_docs_hidden(ep.path, viewer)]
     # 累计调用次数（全部历史）：公开信息，未登录也能看到每个接口被调用了多少次
     counts = api_stats_query.endpoint_call_counts(
         [ep.path for channel in doc.channels for ep in channel.endpoints])
@@ -476,6 +482,9 @@ def call(request):
             'params': params,
         }
 
+    # 当前调试者是不是超管：决定「仅专属管理员」的端点是否可见 / 可调试
+    viewer = is_superadmin(getattr(request, 'user', None))
+
     path = (payload.get('path') or '').strip()
     declared_path = path                     # 计算属性用声明路径（含 <uuid>/<id> 占位符）
     method = (payload.get('method') or '').upper().strip()
@@ -483,9 +492,9 @@ def call(request):
     if not allowed_methods:
         return JsonResponse({'http_status': 404, 'json': None,
                              'text': '不允许调试的接口路径（未在文档注册表中声明）'})
-    # 「文档隐藏」的端点不得在此调试（本调试页是公开的，与之同源）
+    # 「文档隐藏」与「仅专属管理员」（非超管）的端点不得在此调试（本调试页是公开的，与之同源）
     from API.common.middleware import is_docs_hidden
-    if is_docs_hidden(declared_path):
+    if is_docs_hidden(declared_path, viewer):
         return JsonResponse({'http_status': 404, 'json': None,
                              'text': '不允许调试的接口路径（未在文档注册表中声明）'})
     if method not in allowed_methods:
@@ -565,6 +574,11 @@ def call(request):
     forwarded = {'HTTP_HOST': request.get_host()}
     if request.is_secure():
         forwarded['wsgi.url_scheme'] = 'https'
+    # 超管调试「仅专属管理员」的端点时，带一枚时效令牌：内层请求不带登录态，中间件
+    # 据此放行 admin_only 拦截（令牌由 SECRET_KEY 签发，外部无法伪造；签名校验照旧）。
+    if viewer:
+        from API.common.middleware import DOCS_DEBUG_HEADER, make_docs_debug_token
+        forwarded[DOCS_DEBUG_HEADER] = make_docs_debug_token()
 
     if method == 'GET':
         response = client.get(path, {**groups, **auth_params}, **forwarded)

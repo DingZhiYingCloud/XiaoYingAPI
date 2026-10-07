@@ -9246,6 +9246,9 @@
       --toast-y: 0;
     }
   }
+  .-top-1 {
+    top: calc(var(--spacing) * -1);
+  }
   .top-0 {
     top: 0px;
   }
@@ -9254,6 +9257,12 @@
   }
   .top-2 {
     top: calc(var(--spacing) * 2);
+  }
+  .top-full {
+    top: 100%;
+  }
+  .-right-1 {
+    right: calc(var(--spacing) * -1);
   }
   .right-0 {
     right: 0px;
@@ -9332,6 +9341,9 @@
   }
   .bottom-3 {
     bottom: calc(var(--spacing) * 3);
+  }
+  .left-0 {
+    left: 0px;
   }
   .left-1 {
     left: var(--spacing);
@@ -10265,6 +10277,12 @@
       grid-column: 1 / 6;
       grid-row: 3 / 6;
     }
+  }
+  .col-span-1 {
+    grid-column: span 1 / span 1;
+  }
+  .col-span-3 {
+    grid-column: span 3 / span 3;
   }
   .col-span-full {
     grid-column: 1 / -1;
@@ -12338,6 +12356,9 @@
   .h-1\.5 {
     height: calc(var(--spacing) * 1.5);
   }
+  .h-2 {
+    height: calc(var(--spacing) * 2);
+  }
   .h-2\.5 {
     height: calc(var(--spacing) * 2.5);
   }
@@ -12367,6 +12388,9 @@
   }
   .h-11 {
     height: calc(var(--spacing) * 11);
+  }
+  .h-12 {
+    height: calc(var(--spacing) * 12);
   }
   .h-16 {
     height: calc(var(--spacing) * 16);
@@ -12565,6 +12589,9 @@
   .w-1\.5 {
     width: calc(var(--spacing) * 1.5);
   }
+  .w-2 {
+    width: calc(var(--spacing) * 2);
+  }
   .w-2\.5 {
     width: calc(var(--spacing) * 2.5);
   }
@@ -12583,6 +12610,9 @@
   .w-6 {
     width: calc(var(--spacing) * 6);
   }
+  .w-7 {
+    width: calc(var(--spacing) * 7);
+  }
   .w-8 {
     width: calc(var(--spacing) * 8);
   }
@@ -12591,6 +12621,9 @@
   }
   .w-11 {
     width: calc(var(--spacing) * 11);
+  }
+  .w-12 {
+    width: calc(var(--spacing) * 12);
   }
   .w-16 {
     width: calc(var(--spacing) * 16);
@@ -12699,6 +12732,9 @@
   }
   .max-w-\[90rem\] {
     max-width: 90rem;
+  }
+  .max-w-\[95\%\] {
+    max-width: 95%;
   }
   .max-w-\[calc\(100vw-2rem\)\] {
     max-width: calc(100vw - 2rem);
@@ -13195,6 +13231,9 @@
   }
   .grid-cols-4 {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .grid-cols-6 {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
   .grid-cols-8 {
     grid-template-columns: repeat(8, minmax(0, 1fr));
@@ -13979,6 +14018,9 @@
   }
   .bg-blue-400 {
     background-color: var(--color-blue-400);
+  }
+  .bg-error {
+    background-color: var(--color-error);
   }
   .bg-error\/10 {
     background-color: var(--color-error);
@@ -16806,6 +16848,9 @@
         background-color: color-mix(in oklab, var(--color-base-200) 60%, transparent);
       }
     }
+    .hover\:bg-base-300:hover {
+      background-color: var(--color-base-300);
+    }
     .hover\:bg-primary\/10:hover {
       background-color: var(--color-primary);
     }
@@ -16921,6 +16966,9 @@
   @media (width >= 40rem) {
     .sm\:col-span-2 {
       grid-column: span 2 / span 2;
+    }
+    .sm\:col-span-3 {
+      grid-column: span 3 / span 3;
     }
     .sm\:hidden {
       display: none;

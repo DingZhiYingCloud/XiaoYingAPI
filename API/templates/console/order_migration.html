@@ -314,6 +314,15 @@
         </span>
       </label>
 
+      <label class="grid gap-1 sm:col-span-2">
+        <span class="font-semibold">{% trans "管理员QQ（退单通知）" %}</span>
+        <input type="text" name="notify_qq" value="{{ setting.notify_qq }}"
+               class="input input-bordered input-sm w-full" placeholder="3091995257" />
+        <span class="text-xs text-base-content/70">
+          {% trans "打手申请退单等需要人工处理的事件，用 QQBot 私聊通知这个 QQ。" %}
+        </span>
+      </label>
+
       <label class="flex items-center gap-3 sm:col-span-2">
         <input type="checkbox" name="notify_sound" class="toggle toggle-primary toggle-sm"
                {% if setting.notify_sound %}checked{% endif %} />
@@ -336,7 +345,19 @@
           {% trans "被接单时由本页（需保持打开）用浏览器语音播报该文本；点「试听」可先听效果。" %}
         </span>
       </div>
+
+      <p class="text-xs text-base-content/70 sm:col-span-2">
+        {% trans "被接单时同时用 Server酱 推送到手机；SendKey 在「账号管理」里以 platform=serverchan 的账号维护。" %}
+      </p>
     </div>
+  </fieldset>
+
+  {# 打手 QQ 自动接待：随流程自动执行，无需开关 #}
+  <fieldset class="con-panel mt-4 p-4">
+    <legend class="px-1 text-base font-bold">{% trans "打手 QQ 自动接待" %}</legend>
+    <p class="mt-2 text-xs text-base-content/70">
+      {% trans "丸子订单被接单后：打手加我们 QQ 时由 AI 自动索要丸子订单号；他报出单号后自动去代练通接单并把号主信息发给他。接单失败会自动在丸子撤销并告知他。" %}
+    </p>
   </fieldset>
 
   <div class="flex justify-end">
@@ -385,7 +406,11 @@
   <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-base-content/70">
     <span class="badge badge-soft badge-ghost">{% trans "共" %} <span id="stat-total">{{ stats.total }}</span> {% trans "条" %}</span>
     <span class="badge badge-soft badge-info">{% trans "待接单" %} <span id="stat-published">{{ stats.published }}</span></span>
+    <span class="badge badge-soft badge-warning">{% trans "待报单号" %} <span id="stat-taker-joined">{{ stats.taker_joined }}</span></span>
     <span class="badge badge-soft badge-success">{% trans "已接单" %} <span id="stat-taken">{{ stats.taken }}</span></span>
+    <span class="badge badge-soft badge-primary">{% trans "等待验收" %} <span id="stat-waiting-accept">{{ stats.waiting_accept }}</span></span>
+    <span class="badge badge-soft badge-success">{% trans "已结算" %} <span id="stat-settled">{{ stats.settled }}</span></span>
+    <span class="badge badge-soft badge-error">{% trans "打手申请退单" %} <span id="stat-booster-cancel">{{ stats.booster_cancel }}</span></span>
     <span class="badge badge-soft badge-error">{% trans "失败" %} <span id="stat-failed">{{ stats.failed }}</span></span>
     <span id="live-hint" class="ml-1 inline-flex items-center gap-1 text-base-content/50">
       <i data-lucide="refresh-cw" class="h-3.5 w-3.5"></i><span id="live-text">{% trans "自动刷新中" %}</span>
@@ -430,6 +455,7 @@
           <th class="whitespace-nowrap">{% trans "状态" %}</th>
           <th class="whitespace-nowrap">{% trans "号主账号" %}</th>
           <th class="whitespace-nowrap">{% trans "时间" %}</th>
+          <th class="whitespace-nowrap">{% trans "操作" %}</th>
         </tr>
       </thead>
       <tbody id="records-body">
@@ -442,6 +468,14 @@
           <td class="whitespace-nowrap">
             {% if row.status == 'taken' %}
             <span class="badge badge-soft badge-success badge-sm">{% trans "代练通已接单" %}</span>
+            {% elif row.status == 'taker_joined' %}
+            <span class="badge badge-soft badge-warning badge-sm">{% trans "丸子已接单（待报单号）" %}</span>
+            {% elif row.status == 'waiting_accept' %}
+            <span class="badge badge-soft badge-primary badge-sm">{% trans "等待验收中" %}</span>
+            {% elif row.status == 'settled' %}
+            <span class="badge badge-soft badge-success badge-sm">{% trans "已结算" %}</span>
+            {% elif row.status == 'booster_cancel' %}
+            <span class="badge badge-soft badge-error badge-sm">{% trans "打手申请退单" %}</span>
             {% elif row.status == 'published' %}
             <span class="badge badge-soft badge-info badge-sm">{% trans "待接单" %}</span>
             {% elif row.status == 'publishing' %}
@@ -457,7 +491,7 @@
             <span class="ml-1 text-xs text-base-content/50">{% trans "丸子状态" %} {{ row.dlwz_status }}</span>
             {% endif %}
             {% if row.message %}
-            <div class="mt-1 max-w-xs text-xs {% if row.status == 'failed' %}text-error/80{% else %}text-base-content/60{% endif %}">
+            <div class="mt-1 max-w-xs whitespace-normal break-all text-xs {% if row.status == 'failed' %}text-error/80{% else %}text-base-content/60{% endif %}">
               {{ row.message }}
             </div>
             {% endif %}
@@ -473,10 +507,20 @@
             {% endif %}
           </td>
           <td class="whitespace-nowrap text-xs text-base-content/70">{{ row.create_time|date:"m-d H:i" }}</td>
+          <td class="whitespace-nowrap">
+            <button type="button" class="btn btn-ghost btn-xs text-primary"
+                    data-edit-id="{{ row.pk }}"
+                    data-edit-status="{{ row.status }}"
+                    data-edit-message="{{ row.message }}"
+                    data-edit-serial="{{ row.dlt_serial_no }}"
+                    data-edit-trade="{{ row.dlwz_trade_no }}">
+              <i data-lucide="pencil" class="h-3.5 w-3.5"></i>{% trans "编辑" %}
+            </button>
+          </td>
         </tr>
         {% empty %}
         <tr>
-          <td colspan="7" class="text-center text-base-content/50">{% trans "暂无搬单记录" %}</td>
+          <td colspan="8" class="text-center text-base-content/50">{% trans "暂无搬单记录" %}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -486,6 +530,40 @@
     {% include 'console/_pagination.html' %}
   </div>
 </fieldset>
+
+{# 编辑记录弹窗：只改本地状态 + 备注，平台动作需人工做 #}
+<dialog id="edit-modal" class="modal">
+  <div class="modal-box">
+    <h3 class="text-base font-bold">{% trans "编辑搬单记录" %}</h3>
+    <p id="edit-summary" class="mt-1 font-mono text-xs text-base-content/60"></p>
+    <form method="post" action="{% url 'website:console_order_migration' %}" class="mt-3 grid gap-3">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="edit" />
+      <input type="hidden" name="record_id" id="edit-record-id" />
+      <label class="grid gap-1">
+        <span class="font-semibold">{% trans "状态" %}</span>
+        <select name="status" id="edit-status" class="select select-bordered select-sm w-full">
+          {% for value, label in status_choices %}
+          <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="grid gap-1">
+        <span class="font-semibold">{% trans "备注" %}</span>
+        <textarea name="message" id="edit-message" rows="3" maxlength="500"
+                  class="textarea textarea-bordered textarea-sm w-full"></textarea>
+      </label>
+      <p class="text-xs text-base-content/70">
+        {% trans "此操作只改本地记录，不会联动两个平台；平台上的撤销 / 结账等动作需你手动完成。" %}
+      </p>
+      <div class="modal-action">
+        <button type="button" id="edit-cancel" class="btn btn-sm btn-ghost">{% trans "取消" %}</button>
+        <button type="submit" class="btn btn-sm btn-primary">{% trans "保存" %}</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
 
 {# 运行日志（实时）：后台线程每轮的汇总 + 错误 #}
 <fieldset class="con-panel mt-5 p-4">
@@ -726,8 +804,42 @@
 
   updateChips();
 
+  // ---------- 编辑记录：弹窗填「状态 + 备注」，只改本地记录 ----------
+  function openEdit(btn) {
+    var dlg = document.getElementById('edit-modal');
+    if (!dlg) { return; }
+    document.getElementById('edit-record-id').value = btn.getAttribute('data-edit-id') || '';
+    document.getElementById('edit-status').value = btn.getAttribute('data-edit-status') || '';
+    document.getElementById('edit-message').value = btn.getAttribute('data-edit-message') || '';
+    var summary = document.getElementById('edit-summary');
+    if (summary) {
+      summary.textContent = (btn.getAttribute('data-edit-serial') || '') + ' → ' +
+        (btn.getAttribute('data-edit-trade') || '—');
+    }
+    dlg.showModal();
+  }
+
+  var recordsBody = document.getElementById('records-body');
+  if (recordsBody) {
+    recordsBody.addEventListener('click', function (ev) {
+      var btn = ev.target.closest('button[data-edit-id]');
+      if (btn) { openEdit(btn); }
+    });
+  }
+  var editCancel = document.getElementById('edit-cancel');
+  if (editCancel) {
+    editCancel.addEventListener('click', function () {
+      var dlg = document.getElementById('edit-modal');
+      if (dlg) { dlg.close(); }
+    });
+  }
+
   var STATUS = {
     taken:      { label: '{% trans "代练通已接单" %}', cls: 'badge-success' },
+    taker_joined: { label: '{% trans "丸子已接单（待报单号）" %}', cls: 'badge-warning' },
+    waiting_accept: { label: '{% trans "等待验收中" %}', cls: 'badge-primary' },
+    settled:    { label: '{% trans "已结算" %}', cls: 'badge-success' },
+    booster_cancel: { label: '{% trans "打手申请退单" %}', cls: 'badge-error' },
     published:  { label: '{% trans "待接单" %}', cls: 'badge-info' },
     publishing: { label: '{% trans "发单中" %}', cls: 'badge-warning' },
     failed:     { label: '{% trans "失败" %}', cls: 'badge-error' },
@@ -749,7 +861,7 @@
     if (!rows.length) {
       var empty = document.createElement('tr');
       var cell = td('{% trans "暂无搬单记录" %}', 'text-center text-base-content/50');
-      cell.colSpan = 7;
+      cell.colSpan = 8;
       empty.appendChild(cell);
       body.appendChild(empty);
       return;
@@ -778,7 +890,7 @@
       }
       if (r.message) {
         var msg = document.createElement('div');
-        msg.className = 'mt-1 max-w-xs text-xs ' + (r.status === 'failed' ? 'text-error/80' : 'text-base-content/60');
+        msg.className = 'mt-1 max-w-xs whitespace-normal break-all text-xs ' + (r.status === 'failed' ? 'text-error/80' : 'text-base-content/60');
         msg.textContent = r.message;
         stTd.appendChild(msg);
       }
@@ -805,6 +917,20 @@
       }
       tr.appendChild(accTd);
       tr.appendChild(td(r.time, 'whitespace-nowrap text-xs text-base-content/70'));
+
+      var opTd = document.createElement('td');
+      opTd.className = 'whitespace-nowrap';
+      var editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'btn btn-ghost btn-xs text-primary';
+      editBtn.setAttribute('data-edit-id', r.id || '');
+      editBtn.setAttribute('data-edit-status', r.status || '');
+      editBtn.setAttribute('data-edit-message', r.message || '');
+      editBtn.setAttribute('data-edit-serial', r.serial || '');
+      editBtn.setAttribute('data-edit-trade', r.trade_no || '');
+      editBtn.textContent = '{% trans "编辑" %}';
+      opTd.appendChild(editBtn);
+      tr.appendChild(opTd);
       body.appendChild(tr);
     });
   }
@@ -936,7 +1062,11 @@
 
         setText('stat-total', data.stats.total);
         setText('stat-published', data.stats.published);
+        setText('stat-taker-joined', data.stats.taker_joined);
         setText('stat-taken', data.stats.taken);
+        setText('stat-waiting-accept', data.stats.waiting_accept);
+        setText('stat-settled', data.stats.settled);
+        setText('stat-booster-cancel', data.stats.booster_cancel);
         setText('stat-failed', data.stats.failed);
 
         var recordsSig = JSON.stringify(data.records || []);

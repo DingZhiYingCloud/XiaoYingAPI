@@ -38,7 +38,7 @@ from django.db import IntegrityError, transaction
 from django.template import Context, Template
 from django.utils import timezone
 
-from API.apis.emails.v1.utils import send_email
+from API.apis.push.email.utils import send_email
 from API.apis.sms_verify.aliyun.utils import send_verify_code as aliyun_send_verify_code
 from API.common.credential_crypto import hash_token
 from API.common.security_guard import code_fail_exhausted

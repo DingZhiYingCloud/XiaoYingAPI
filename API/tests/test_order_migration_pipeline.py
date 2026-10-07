@@ -386,35 +386,48 @@ class RunCycleTests(TestCase):
         fields.update(overrides)
         return OrderMigration.objects.create(**fields)
 
+    @mock.patch('API.apis.order_migration.utils.notify_taken')
     @mock.patch('API.apis.order_migration.utils.dlt_order_state',
                 return_value=(True, {'available': True, 'status': 11, 'reason': '未接手（可接）'}))
-    @mock.patch('API.apis.order_migration.utils._take_on_dlt', return_value=True)
+    @mock.patch('API.apis.order_migration.utils._take_on_dlt')
     @mock.patch('API.apis.order_migration.utils.poll_dlwz_orders')
     @mock.patch('API.apis.order_migration.utils.publish_candidate')
     @mock.patch('API.apis.order_migration.utils.fetch_candidates')
-    def test_cycle_takes_when_taken(self, fetch, publish, poll, take, dlt_avail):
+    def test_cycle_marks_taker_joined_without_take(self, fetch, publish, poll, take,
+                                                   dlt_state, notify):
+        """丸子被接单 → 只置「待报单号」并通知，**不再自动去代练通接单**（等打手 QQ 报单号）"""
         fetch.return_value = (True, [_candidate()])
         publish.return_value = (True, mock.Mock())
-        self._published_record()
+        record = self._published_record()
         poll.return_value = (True, {'WZ1': {'tradeNo': 'WZ1', 'status': 3,
                                             'takerUsername': 'x'}})
         summary = om.run_cycle(publish_limit=1)
-        self.assertEqual((summary['fetched'], summary['published'], summary['taken']), (1, 1, 1))
-        take.assert_called_once()
+        self.assertEqual((summary['fetched'], summary['published'], summary['taker_joined']),
+                         (1, 1, 1))
+        self.assertEqual(summary['taken'], 0)
+        take.assert_not_called()
+        notify.assert_called_once()
+        record.refresh_from_db()
+        self.assertEqual(record.status, MigrationStatus.TAKER_JOINED)
 
-    @mock.patch('API.apis.order_migration.utils.dlt_order_state',
-                return_value=(True, {'available': True, 'status': 11, 'reason': '未接手（可接）'}))
-    @mock.patch('API.apis.order_migration.utils._take_on_dlt', return_value=False)
-    @mock.patch('API.apis.order_migration.utils.poll_dlwz_orders')
+    @mock.patch('API.apis.order_migration.utils.notify_taken')
+    @mock.patch('API.apis.order_migration.utils.poll_dlwz_orders', return_value=(True, {}))
+    @mock.patch('API.apis.order_migration.utils._cancel_dlwz')
     @mock.patch('API.apis.order_migration.utils.publish_candidate')
     @mock.patch('API.apis.order_migration.utils.fetch_candidates')
-    def test_cycle_counts_rollback(self, fetch, publish, poll, take, dlt_avail):
+    @mock.patch('API.apis.order_migration.utils.dlt_order_state',
+                return_value=(True, {'available': False, 'status': 12, 'reason': '正在代练'}))
+    def test_cycle_rolls_back_taker_joined_when_dlt_gone(self, dlt_state, fetch, publish,
+                                                        cancel, poll, notify):
+        """已被打手接单、还在等他报单号时，代练通原单若被抢走 → 同样要回滚丸子那笔"""
         fetch.return_value = (True, [])
-        self._published_record()
-        poll.return_value = (True, {'WZ1': {'tradeNo': 'WZ1', 'status': 3,
-                                            'takerUsername': 'x'}})
+        cancel.return_value = (True, {'code': 0, 'message': 'ok'})
+        record = self._published_record(status=MigrationStatus.TAKER_JOINED)
         summary = om.run_cycle(publish_limit=1)
         self.assertEqual(summary['rollback'], 1)
+        record.refresh_from_db()
+        self.assertEqual(record.status, MigrationStatus.FAILED)
+        notify.assert_not_called()             # 原单都没了，不必再通知去打手交接
 
     @mock.patch('API.apis.order_migration.utils.poll_dlwz_orders', return_value=(True, {}))
     @mock.patch('API.apis.order_migration.utils._take_on_dlt')
@@ -436,9 +449,10 @@ class RunCycleTests(TestCase):
         self.assertEqual(record.status, MigrationStatus.FAILED)
         self.assertIn('无需再等', record.message)
         take.assert_not_called()
-        # 监控日志：抬头 1 行 + 每笔 1 行（不再分两段打印）
-        self.assertEqual(len(summary['monitor']), 2)
+        # 监控日志：抬头 1 行 + 每笔 1 行，外加「验收巡检 / 结算巡检」各 1 行
+        self.assertEqual(len(summary['monitor']), 4)
         self.assertTrue(any('已回滚撤单' in line for line in summary['monitor']))
+        self.assertTrue(any('验收巡检' in line for line in summary['monitor']))
 
     @mock.patch('API.apis.order_migration.utils.poll_dlwz_orders')
     @mock.patch('API.apis.order_migration.utils.publish_candidate')
@@ -529,3 +543,444 @@ class RunCycleTests(TestCase):
         self.assertEqual(summary['published'], 0)
         publish.assert_not_called()
         self.assertTrue(any('代练通余额不足' in e for e in summary['errors']))
+
+
+class NotifyTakenTests(TestCase):
+    """被接单通知：Server酱手机推送 + 邮件"""
+
+    def _record(self):
+        return OrderMigration.objects.create(
+            dlt_serial_no='A1', dlt_title='t', dlt_price=29, dlt_zone='安卓QQ',
+            dlt_time_limit=3, dlwz_trade_no='WZ1', status=MigrationStatus.TAKER_JOINED)
+
+    @mock.patch('API.apis.push.serverchan.utils.send')
+    def test_pushes_to_phone(self, push):
+        push.return_value = (True, {'pushid': 'p1'})
+        om.notify_taken(self._record())
+        push.assert_called_once()
+        title, body = push.call_args.args[:2]
+        self.assertIn('WZ1', title)
+        self.assertLessEqual(len(title), 32)            # Server酱 标题上限 32
+        self.assertIn('WZ1', body)
+
+    @mock.patch('API.apis.push.email.utils.send_email')
+    @mock.patch('API.apis.push.serverchan.utils.send', return_value=(True, {'pushid': 'p1'}))
+    def test_sends_mail_when_enabled(self, push, mail):
+        setting = OrderMigrationSetting.get_solo()
+        setting.notify_mail = True
+        setting.notify_mail_to = 'a@b.com'
+        setting.save()
+        mail.return_value = (True, 'ok')
+        om.notify_taken(self._record())
+        mail.assert_called_once()
+        self.assertEqual(mail.call_args.args[2], ['a@b.com'])
+
+    @mock.patch('API.apis.push.email.utils.send_email')
+    @mock.patch('API.apis.push.serverchan.utils.send',
+                return_value=(False, {'message': '未配置 SendKey'}))
+    def test_push_failure_does_not_block_mail(self, push, mail):
+        setting = OrderMigrationSetting.get_solo()
+        setting.notify_mail = True
+        setting.notify_mail_to = 'a@b.com'
+        setting.save()
+        mail.return_value = (True, 'ok')
+        om.notify_taken(self._record())
+        mail.assert_called_once()
+
+    @mock.patch('API.apis.push.email.utils.send_email')
+    @mock.patch('API.apis.push.serverchan.utils.send', return_value=(True, {'pushid': 'p1'}))
+    def test_mail_off_sends_no_mail(self, push, mail):
+        setting = OrderMigrationSetting.get_solo()
+        setting.notify_mail = False
+        setting.save()
+        om.notify_taken(self._record())
+        mail.assert_not_called()
+
+
+class TakenFeedTests(TestCase):
+    """被接单语音提醒：只在「丸子被接单」(taker_joined) 那一刻响一次"""
+
+    def _record(self, status, serial='A1', **overrides):
+        fields = dict(dlt_serial_no=serial, dlt_title='t', dlt_price=29, dlt_zone='安卓QQ',
+                      dlt_time_limit=3, dlwz_trade_no='WZ1', status=status)
+        fields.update(overrides)
+        return OrderMigration.objects.create(**fields)
+
+    def test_fires_for_taker_joined(self):
+        from django.utils import timezone
+        after = timezone.now() - timezone.timedelta(seconds=5)
+        self._record(MigrationStatus.TAKER_JOINED)
+        _cursor, items = om.taken_feed(after)
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]['trade_no'], 'WZ1')
+
+    def test_does_not_fire_for_later_stages(self):
+        """代练通接单 / 转传首图 / 申请完单等后续更新都不该再响"""
+        from django.utils import timezone
+        after = timezone.now() - timezone.timedelta(seconds=5)
+        self._record(MigrationStatus.TAKEN)
+        self._record(MigrationStatus.WAITING_ACCEPT, serial='A2')
+        _cursor, items = om.taken_feed(after)
+        self.assertEqual(items, [])
+
+
+class SettleCycleTests(TestCase):
+    """结算巡检：代练通验收结算 → 丸子自动同意验收、给打手结账"""
+
+    def _record(self, **overrides):
+        fields = dict(dlt_serial_no='A1', dlt_title='t', dlt_price=29, dlt_zone='安卓QQ',
+                      dlt_time_limit=3, dlwz_trade_no='WZ1',
+                      status=MigrationStatus.WAITING_ACCEPT)
+        fields.update(overrides)
+        return OrderMigration.objects.create(**fields)
+
+    def test_no_waiting_accept_records(self):
+        self.assertEqual(om._settle_cycle(), ['结算巡检：本轮无「等待验收中」记录'])
+
+    @mock.patch('API.apis.order_migration.utils.dlt_order_state',
+                return_value=(False, {'available': None, 'status': None, 'reason': '请求超时'}))
+    def test_query_failure_retries(self, dlt_state):
+        record = self._record()
+        lines = om._settle_cycle()
+        record.refresh_from_db()
+        self.assertEqual(record.status, MigrationStatus.WAITING_ACCEPT)
+        self.assertTrue(any('代练通状态查询失败' in line for line in lines))
+
+    @mock.patch('API.apis.order_migration.utils.dlt_order_state',
+                return_value=(True, {'available': False, 'status': 13, 'reason': '等待验收'}))
+    def test_not_settled_yet_keeps_status(self, dlt_state):
+        record = self._record()
+        lines = om._settle_cycle()
+        record.refresh_from_db()
+        self.assertEqual(record.status, MigrationStatus.WAITING_ACCEPT)
+        self.assertTrue(any('继续等老板验收' in line for line in lines))
+
+    @mock.patch('API.apis.DaiLianWanZi.utils.accept_completion',
+                return_value=(True, {'code': 0, 'message': 'Success'}))
+    @mock.patch('API.apis.order_migration.utils.dlt_order_state',
+                return_value=(True, {'available': False, 'status': 17, 'reason': '已结算'}))
+    def test_settled_accepts_on_dlwz(self, dlt_state, accept):
+        record = self._record()
+        lines = om._settle_cycle()
+        record.refresh_from_db()
+        accept.assert_called_once_with('WZ1')
+        self.assertEqual(record.status, MigrationStatus.SETTLED)
+        self.assertTrue(any('打手已结账' in line for line in lines))
+
+    @mock.patch('API.apis.DaiLianWanZi.utils.accept_completion',
+                return_value=(False, '缺少支付密码'))
+    @mock.patch('API.apis.order_migration.utils.dlt_order_state',
+                return_value=(True, {'available': False, 'status': 17, 'reason': '已结算'}))
+    def test_accept_failure_keeps_status(self, dlt_state, accept):
+        record = self._record()
+        lines = om._settle_cycle()
+        record.refresh_from_db()
+        self.assertEqual(record.status, MigrationStatus.WAITING_ACCEPT)
+        self.assertTrue(any('丸子同意验收失败' in line for line in lines))
+
+
+class PickImageTests(TestCase):
+    """按 remark 从丸子图片列表里取图"""
+
+    def test_picks_first_match(self):
+        images = [{'remark': '首图', 'url': 'https://x/1.png'},
+                  {'remark': '申请验收', 'url': 'https://x/2.png'},
+                  {'remark': '申请验收', 'url': 'https://x/3.png'}]
+        self.assertEqual(om._pick_image(images, om.IMG_REMARK_END), 'https://x/2.png')
+
+    def test_returns_empty_when_absent(self):
+        self.assertEqual(om._pick_image([{'remark': '首图', 'url': 'u'}], om.IMG_REMARK_END), '')
+        self.assertEqual(om._pick_image(None, om.IMG_REMARK_FIRST), '')
+
+    def test_first_image_ignores_remark(self):
+        """打手不一定标「首图」，兜底取列表里第一张"""
+        images = [{'remark': '上号图', 'url': 'https://x/1.png'},
+                  {'remark': '申请验收', 'url': 'https://x/2.png'}]
+        self.assertEqual(om._first_image(images), 'https://x/1.png')
+        self.assertEqual(om._first_image([]), '')
+        self.assertEqual(om._first_image(None), '')
+
+    def test_first_image_can_exclude_end_image(self):
+        """排除完单图后取第一张；全被排除则返回空"""
+        images = [{'remark': '申请验收', 'url': 'https://x/2.png'},
+                  {'remark': '上号图', 'url': 'https://x/3.png'}]
+        self.assertEqual(
+            om._first_image(images, exclude_remarks=(om.IMG_REMARK_END,)), 'https://x/3.png')
+        self.assertEqual(
+            om._first_image([{'remark': '申请验收', 'url': 'u'}],
+                            exclude_remarks=(om.IMG_REMARK_END,)), '')
+
+
+class DlwzOrderImagesTests(TestCase):
+    """丸子订单图片列表：解析与失败兜底"""
+
+    @mock.patch('API.apis.DaiLianWanZi.utils.get_order_images')
+    def test_parses_nested_images(self, mocked):
+        mocked.return_value = (True, {'code': 0, 'message': 'Success', 'data': {
+            'code': 10000, 'data': {'imagesList': [{'url': 'u', 'remark': '首图'}]}}})
+        ok, images = om._dlwz_order_images('WZ1')
+        self.assertTrue(ok)
+        self.assertEqual(images, [{'url': 'u', 'remark': '首图'}])
+
+    @mock.patch('API.apis.DaiLianWanZi.utils.get_order_images')
+    def test_api_failure_returns_reason(self, mocked):
+        mocked.return_value = (False, '网络异常')
+        ok, reason = om._dlwz_order_images('WZ1')
+        self.assertFalse(ok)
+        self.assertIn('网络异常', reason)
+
+    @mock.patch('API.apis.DaiLianWanZi.utils.get_order_images')
+    def test_business_failure_returns_reason(self, mocked):
+        mocked.return_value = (True, {'code': 1, 'message': '登录已失效'})
+        ok, reason = om._dlwz_order_images('WZ1')
+        self.assertFalse(ok)
+        self.assertIn('登录已失效', reason)
+
+
+class AcceptCycleTests(TestCase):
+    """已接单巡检：首图转传 + 丸子申请验收 → 转传完单图 → 记录转「等待验收中」"""
+
+    def _taken_record(self, **overrides):
+        fields = dict(dlt_serial_no='A1', dlt_title='t', dlt_price=29, dlt_zone='安卓QQ',
+                      dlt_time_limit=3, dlwz_trade_no='WZ1', status=MigrationStatus.TAKEN)
+        fields.update(overrides)
+        return OrderMigration.objects.create(**fields)
+
+    @staticmethod
+    def _images(*items):
+        return True, [{'url': u, 'remark': r, 'initiator': 2} for r, u in items]
+
+    def test_no_taken_records(self):
+        self.assertEqual(om._accept_cycle({'WZ1': {'status': 4}}),
+                         ['验收巡检：本轮无「代练通已接单」记录'])
+
+    def test_training_forwards_first_image(self):
+        """丸子上手传了首图 → 立刻转传到代练通，并记下已转传"""
+        record = self._taken_record()
+        with mock.patch.object(om, '_dlwz_order_images',
+                               return_value=self._images(('首图', 'https://x/1.png'))), \
+             mock.patch('API.apis.DaiLianTong.utils.upload_first_image',
+                        return_value=(True, {'code': 0})) as first, \
+             mock.patch('API.apis.DaiLianTong.utils.upload_end_image') as end:
+            lines = om._accept_cycle({'WZ1': {'tradeNo': 'WZ1', 'status': 3}})
+
+        record.refresh_from_db()
+        self.assertEqual(record.status, MigrationStatus.TAKEN)
+        self.assertEqual(record.dlwz_first_image, 'https://x/1.png')
+        self.assertEqual(record.dlt_first_image, 'https://x/1.png')
+        first.assert_called_once_with('A1', ['https://x/1.png'])
+        end.assert_not_called()
+        self.assertTrue(any('首图：已转传到代练通' in line for line in lines))
+
+    def test_unlabeled_first_image_still_forwarded(self):
+        """打手没标「首图」也能识别：取第一张转传代练通"""
+        record = self._taken_record()
+        with mock.patch.object(om, '_dlwz_order_images',
+                               return_value=self._images(('上号图', 'https://x/1.png'))), \
+             mock.patch('API.apis.DaiLianTong.utils.upload_first_image',
+                        return_value=(True, {'code': 0})) as first, \
+             mock.patch('API.apis.DaiLianTong.utils.upload_end_image') as end:
+            lines = om._accept_cycle({'WZ1': {'tradeNo': 'WZ1', 'status': 3}})
+
+        record.refresh_from_db()
+        self.assertEqual(record.dlt_first_image, 'https://x/1.png')
+        first.assert_called_once_with('A1', ['https://x/1.png'])
+        end.assert_not_called()
+        self.assertTrue(any('首图：已转传到代练通' in line for line in lines))
+
+    def test_remark_first_wins_over_list_order(self):
+        """列表里先出现完单图，但只要有标注「首图」的，就用那一张"""
+        record = self._taken_record()
+        with mock.patch.object(om, '_dlwz_order_images',
+                               return_value=self._images(('申请验收', 'https://x/2.png'),
+                                                         ('首图', 'https://x/1.png'))), \
+             mock.patch('API.apis.DaiLianTong.utils.upload_first_image',
+                        return_value=(True, {'code': 0})) as first, \
+             mock.patch('API.apis.DaiLianTong.utils.upload_end_image',
+                        return_value=(True, {'code': 0})):
+            om._accept_cycle({'WZ1': {'tradeNo': 'WZ1', 'status': 4}})
+
+        record.refresh_from_db()
+        self.assertEqual(record.dlt_first_image, 'https://x/1.png')   # 不是列表里更靠前的完单图
+        first.assert_called_once_with('A1', ['https://x/1.png'])
+
+    def test_first_image_not_forwarded_twice(self):
+        """同一张首图只传一次，避免每轮重复挂到代练通"""
+        self._taken_record(dlwz_first_image='https://x/1.png',
+                           dlt_first_image='https://x/1.png')
+        with mock.patch.object(om, '_dlwz_order_images',
+                               return_value=self._images(('首图', 'https://x/1.png'))), \
+             mock.patch('API.apis.DaiLianTong.utils.upload_first_image') as first:
+            om._accept_cycle({'WZ1': {'tradeNo': 'WZ1', 'status': 3}})
+        first.assert_not_called()
+
+    def test_first_image_forward_failure_retries_next_round(self):
+        record = self._taken_record()
+        with mock.patch.object(om, '_dlwz_order_images',
+                               return_value=self._images(('首图', 'https://x/1.png'))), \
+             mock.patch('API.apis.DaiLianTong.utils.upload_first_image',
+                        return_value=(True, {'code': 1, 'message': '订单状态已改变'})):
+            lines = om._accept_cycle({'WZ1': {'tradeNo': 'WZ1', 'status': 3}})
+
+        record.refresh_from_db()
+        self.assertEqual(record.dlt_first_image, '')          # 失败不记录 → 下轮重试
+        self.assertTrue(any('首图：转传代练通失败' in line for line in lines))
+
+    def test_wait_accept_forwards_end_image(self):
+        record = self._taken_record(dlt_first_image='https://x/1.png')
+        with mock.patch.object(om, '_dlwz_order_images',
+                               return_value=self._images(('首图', 'https://x/1.png'),
+                                                         ('申请验收', 'https://x/2.png'))), \
+             mock.patch('API.apis.DaiLianTong.utils.upload_first_image') as first, \
+             mock.patch('API.apis.DaiLianTong.utils.upload_end_image',
+                        return_value=(True, {'code': 0})) as end:
+            lines = om._accept_cycle({'WZ1': {'tradeNo': 'WZ1', 'status': 4}})
+
+        record.refresh_from_db()
+        self.assertEqual(record.status, MigrationStatus.WAITING_ACCEPT)
+        first.assert_not_called()                              # 首图已转过就不再传
+        end.assert_called_once_with('A1', ['https://x/2.png'])
+        self.assertTrue(any('等待验收中' in line for line in lines))
+
+    def test_wait_accept_without_end_image_keeps_status(self):
+        record = self._taken_record(dlt_first_image='https://x/1.png')
+        with mock.patch.object(om, '_dlwz_order_images',
+                               return_value=self._images(('首图', 'https://x/1.png'))), \
+             mock.patch('API.apis.DaiLianTong.utils.upload_first_image'), \
+             mock.patch('API.apis.DaiLianTong.utils.upload_end_image') as end:
+            lines = om._accept_cycle({'WZ1': {'tradeNo': 'WZ1', 'status': 4}})
+
+        record.refresh_from_db()
+        self.assertEqual(record.status, MigrationStatus.TAKEN)
+        end.assert_not_called()
+        self.assertTrue(any('未见完单图' in line for line in lines))
+
+    def test_forward_failure_keeps_status(self):
+        record = self._taken_record()
+        with mock.patch.object(om, '_dlwz_order_images',
+                               return_value=self._images(('申请验收', 'https://x/2.png'))), \
+             mock.patch('API.apis.DaiLianTong.utils.upload_first_image',
+                        return_value=(True, {'code': 0})), \
+             mock.patch('API.apis.DaiLianTong.utils.upload_end_image',
+                        return_value=(True, {'code': 1, 'message': '订单状态已改变'})):
+            lines = om._accept_cycle({'WZ1': {'tradeNo': 'WZ1', 'status': 4}})
+
+        record.refresh_from_db()
+        self.assertEqual(record.status, MigrationStatus.TAKEN)
+        self.assertTrue(any('转传失败' in line and '订单状态已改变' in line for line in lines))
+
+    def test_other_status_is_skipped(self):
+        record = self._taken_record()
+        with mock.patch.object(om, '_dlwz_order_images',
+                               return_value=self._images(('首图', 'https://x/1.png'))), \
+             mock.patch('API.apis.DaiLianTong.utils.upload_first_image',
+                        return_value=(True, {'code': 0})), \
+             mock.patch('API.apis.DaiLianTong.utils.upload_end_image') as end:
+            lines = om._accept_cycle({'WZ1': {'tradeNo': 'WZ1', 'status': 5}})
+
+        record.refresh_from_db()
+        self.assertEqual(record.status, MigrationStatus.TAKEN)
+        end.assert_not_called()
+        self.assertTrue(any('丸子状态 5' in line for line in lines))
+
+
+class NotifyBoosterCancelTests(TestCase):
+    """打手申请退单：置状态 + 双通道通知管理员（Server酱 + QQBot），幂等"""
+
+    def _record(self, **overrides):
+        fields = dict(dlt_serial_no='A1', dlt_title='t', dlt_price=29, dlt_zone='安卓QQ',
+                      dlt_time_limit=3, dlwz_trade_no='WZ1', amount=22.4,
+                      security_deposit=22.4, efficiency_deposit=22.4, dlt_ensure=60.0,
+                      booster_qq='12345', status=MigrationStatus.TAKEN)
+        fields.update(overrides)
+        return OrderMigration.objects.create(**fields)
+
+    @mock.patch('API.apis.push.qqbot.utils.send', return_value=(True, {'message_id': 'm1'}))
+    @mock.patch('API.apis.push.serverchan.utils.send', return_value=(True, {'pushid': 'p1'}))
+    def test_notifies_both_channels_and_sets_status(self, push, qq):
+        record = self._record()
+        self.assertTrue(om.notify_booster_cancel(record, reason='测试退单', booster_name='打手A'))
+
+        record.refresh_from_db()
+        self.assertEqual(record.status, MigrationStatus.BOOSTER_CANCEL)
+        self.assertTrue(record.booster_cancel_notified)
+        self.assertIn('测试退单', record.message)
+
+        push.assert_called_once()
+        qq.assert_called_once()
+        self.assertEqual(qq.call_args.args[1], 'private')          # 私聊
+        self.assertEqual(qq.call_args.args[2], '3091995257')       # 默认管理员 QQ
+
+        body = push.call_args.args[1]
+        self.assertIn('A1', body)
+        self.assertIn('WZ1', body)
+        self.assertIn('12345', body)                               # 打手 QQ
+        self.assertIn('打手A', body)                               # 打手昵称
+
+    @mock.patch('API.apis.push.qqbot.utils.send', return_value=(True, {'message_id': 'm1'}))
+    @mock.patch('API.apis.push.serverchan.utils.send', return_value=(True, {'pushid': 'p1'}))
+    def test_idempotent(self, push, qq):
+        record = self._record()
+        self.assertTrue(om.notify_booster_cancel(record, reason='x'))
+        self.assertFalse(om.notify_booster_cancel(record, reason='x'))    # 第二次不重复轰炸
+        push.assert_called_once()
+        qq.assert_called_once()
+
+    @mock.patch('API.apis.push.qqbot.utils.send', return_value=(True, {'message_id': 'm1'}))
+    @mock.patch('API.apis.push.serverchan.utils.send', return_value=(True, {'pushid': 'p1'}))
+    def test_owner_info_missing_is_stated(self, push, qq):
+        """还没在代练通接单（没号主信息）也要通知，且明说取不到"""
+        record = self._record()
+        om.notify_booster_cancel(record, reason='x')
+        self.assertIn('未取到', push.call_args.args[1])
+
+
+class CancelCycleTests(TestCase):
+    """退单巡检：丸子上出现「撤销中」(status=5) → 置「打手申请退单」+ 通知，幂等"""
+
+    def _record(self, status=MigrationStatus.TAKEN, **overrides):
+        fields = dict(dlt_serial_no='A1', dlt_title='t', dlt_price=29, dlt_zone='安卓QQ',
+                      dlt_time_limit=3, dlwz_trade_no='WZ1', status=status)
+        fields.update(overrides)
+        return OrderMigration.objects.create(**fields)
+
+    def test_no_records_is_quiet(self):
+        self.assertEqual(om._cancel_cycle({'WZ1': {'status': 5}}), [])
+
+    @mock.patch('API.apis.order_migration.utils.notify_booster_cancel')
+    def test_detects_cancelling_and_notifies(self, notify):
+        record = self._record()
+        lines = om._cancel_cycle({'WZ1': {'tradeNo': 'WZ1', 'status': 5, 'takerUsername': '打手X'}})
+
+        notify.assert_called_once()
+        self.assertEqual(notify.call_args.args[0], record)
+        self.assertIn('撤销中', notify.call_args.kwargs['reason'])
+        self.assertEqual(notify.call_args.kwargs['booster_name'], '打手X')
+        self.assertTrue(any('已置「打手申请退单」' in line for line in lines))
+
+    @mock.patch('API.apis.order_migration.utils.notify_booster_cancel')
+    def test_skips_non_cancelling(self, notify):
+        self._record()
+        lines = om._cancel_cycle({'WZ1': {'tradeNo': 'WZ1', 'status': 3}})
+        notify.assert_not_called()
+        self.assertEqual(lines, [])
+
+    @mock.patch('API.apis.order_migration.utils.notify_booster_cancel')
+    def test_already_notified_is_skipped(self, notify):
+        self._record(status=MigrationStatus.BOOSTER_CANCEL, booster_cancel_notified=True)
+        lines = om._cancel_cycle({'WZ1': {'tradeNo': 'WZ1', 'status': 5}})
+        notify.assert_not_called()
+        self.assertTrue(any('已通知过' in line for line in lines))
+
+    @mock.patch('API.apis.order_migration.utils.notify_booster_cancel')
+    def test_missing_order_is_skipped(self, notify):
+        self._record()
+        self.assertEqual(om._cancel_cycle({}), [])
+        notify.assert_not_called()
+
+    @mock.patch('API.apis.order_migration.utils.notify_booster_cancel')
+    def test_finished_record_is_ignored(self, notify):
+        """已结算 / 已撤单的老记录即便平台仍显示 5 也不该再触发退单告警"""
+        self._record(status=MigrationStatus.SETTLED)
+        self.assertEqual(om._cancel_cycle({'WZ1': {'tradeNo': 'WZ1', 'status': 5}}), [])
+        notify.assert_not_called()

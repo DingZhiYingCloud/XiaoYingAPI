@@ -2,10 +2,14 @@
 
 import base64
 import hashlib
+import hmac
 import random
 import json
 import os
+import string
 import time
+from datetime import datetime, timedelta
+
 import requests
 
 from dotenv import load_dotenv
@@ -25,6 +29,18 @@ API_URL = "https://server.dailiantong.com.cn/API/AppService.ashx"
 # 平台签名密钥从 .env 读取（DAILIAN_SIGN_KEY），禁止硬编码进代码库
 load_dotenv()
 SIGN_KEY = os.getenv("DAILIAN_SIGN_KEY", "") or ""
+
+# 图片存储：代练通前端把图片直传到阿里云 OSS（policy / signature 都在前端本地算，
+# 所以下面这些常量本就写在其前端 JS 里）。此处按同样算法复刻，供「上传首图」等场景转存图片。
+OSS_UPLOAD_URL = "https://dltfile01.oss-cn-hangzhou.aliyuncs.com"
+# OSS 直传凭据（写在代练通前端 JS 里的公开密钥）从 .env 读取，与其它凭据一致禁止硬编码：
+# 字面量形式会被 GitHub 密钥扫描识别为阿里云 AccessKey 并拦截推送。
+OSS_ACCESS_KEY_ID = os.getenv("DLT_OSS_ACCESS_KEY_ID", "") or ""
+OSS_ACCESS_KEY_SECRET = os.getenv("DLT_OSS_ACCESS_KEY_SECRET", "") or ""
+OSS_POLICY_TIMEOUT_HOURS = 87600        # policy 有效期（小时）
+OSS_MAX_SIZE = 134217728                # 单文件上限 128MB
+# 图片外链前缀：OSS 对象 key 拼到该域名下即为可访问地址
+IMG_SERVER_URL = "https://img001.dailiantong.com.cn"
 
 
 # ==================== 辅助函数 ====================
@@ -60,6 +76,51 @@ def base64_encrypt(content, encoding='utf-8'):
     if isinstance(content, str):
         content = content.encode(encoding)
     return base64.b64encode(content).decode(encoding)
+
+
+def oss_policy_and_signature():
+    """生成阿里云 OSS 直传所需的 policy 与 signature（算法与代练通前端一致）
+
+    policy    = base64({"expiration": "<UTC ISO8601>",
+                        "conditions": [["content-length-range", 0, 128MB]]})
+    signature = base64(HMAC-SHA1(policy, AccessKeySecret))
+    """
+    expire = datetime.utcnow() + timedelta(hours=OSS_POLICY_TIMEOUT_HOURS)
+    policy_json = json.dumps({
+        "expiration": expire.strftime('%Y-%m-%dT%H:%M:%S.000Z'),
+        "conditions": [["content-length-range", 0, OSS_MAX_SIZE]],
+    }, separators=(',', ':'))
+    policy = base64_encrypt(policy_json)
+    signature = base64_encrypt(
+        hmac.new(OSS_ACCESS_KEY_SECRET.encode('utf-8'), policy.encode('utf-8'), hashlib.sha1).digest())
+    return policy, signature
+
+
+def oss_object_key(ext: str = 'png') -> str:
+    """生成 OSS 对象 key（规则与代练通前端一致）
+
+    形如 Progress/<时><分><4位随机大写字母><4位随机数>.<扩展名>，例如 Progress/2033OXUI9787.png
+    """
+    now = datetime.now()
+    letters = ''.join(random.choice(string.ascii_uppercase) for _ in range(4))
+    return f'Progress/{now.hour}{now.minute}{letters}{random.randint(1000, 9999)}.{(ext or "png").lstrip(".").lower()}'
+
+
+def guess_image_ext(url: str, content_type: str = '') -> str:
+    """猜图片扩展名：优先取 URL 后缀，其次看 Content-Type，兜底 png"""
+    ext = os.path.splitext((url or '').split('?')[0])[1].lstrip('.').lower()
+    if ext in ('png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'):
+        return 'jpg' if ext == 'jpeg' else ext
+    return {'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif',
+            'image/bmp': 'bmp', 'image/webp': 'webp'}.get(
+        (content_type or '').split(';')[0].strip().lower(), 'png')
+
+
+def image_content_type(ext: str) -> str:
+    """图片扩展名转 Content-Type（上传时带上，否则存储会被标成 application/octet-stream）"""
+    return {'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'gif': 'image/gif',
+            'bmp': 'image/bmp', 'webp': 'image/webp'}.get((ext or '').lstrip('.').lower(),
+                                                          'image/png')
 
 
 def response_dict(code: int = 0, message: str = "", data: dict | list = None, is_return_response: bool = True):

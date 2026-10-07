@@ -18,7 +18,7 @@ from django.conf import settings
 from django.db.models import F
 from django.utils import timezone
 
-from API.apis.emails.v1.utils import send_email
+from API.apis.push.email.utils import send_email
 from API.models import ImageHostingToken
 
 logger = logging.getLogger(__name__)

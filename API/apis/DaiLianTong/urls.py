@@ -35,6 +35,8 @@ urlpatterns = [
     path('orders/my', request.my_orders_view, name='dlt_my_orders'),
     path('orders/owner-info', request.owner_info_view, name='dlt_owner_info'),
     path('orders/upload-image', request.upload_image_view, name='dlt_upload_image'),
+    path('orders/upload-first-image', request.upload_first_image_view, name='dlt_upload_first_image'),
+    path('orders/upload-end-image', request.upload_end_image_view, name='dlt_upload_end_image'),
 
     # 头像 (avatar)
     path('avatar/upload', request.upload_avatar_view, name='dlt_upload_avatar'),

@@ -2,7 +2,8 @@
 
 两条职责：
 1. **参数映射**：把「代练通」王者荣耀公开订单映射为「代练丸子」商家版发单参数。
-2. **流水线编排**：抓单 → 发单（丸子）→ 监控「被接单」→ 代练通接单取账号 → 失败兜底撤单。
+2. **流水线编排**：抓单 → 发单（丸子）→ 监控「被接单」→ 代练通接单取账号
+   → 验收巡检（转传完单图）→ 失败兜底撤单。
 
 映射口径（与需求约定一致）：
     - 代练丸子固定发「王者荣耀 / 排位」
@@ -141,6 +142,8 @@ DLT_GAME_ID = 107
 
 # 代练通订单状态：只有「未接手」才表示我们还能接；其它（12 正在代练 / 16 撤销中 / 17 已结算…）都不行
 DLT_STATUS_WAITING = 11
+# 代练通「已结算」：发单方验收通过、钱已结算给我们 → 该去丸子同意验收、给打手结账了
+DLT_STATUS_SETTLED = 17
 
 # 代练通状态展示名（监控日志用，只列常见几种）
 DLT_STATUS_TEXT = {
@@ -152,6 +155,16 @@ DLT_STATUS_TEXT = {
 def dlt_status_text(status):
     """代练通状态的展示名（未知状态原样返回数字）"""
     return DLT_STATUS_TEXT.get(status, f'状态{status}')
+
+
+# 代练丸子订单状态（取自商家端前端文案映射）
+DLWZ_STATUS_TRAINING = 3       # 代练中
+DLWZ_STATUS_WAIT_ACCEPT = 4    # 待验收（打手已提交「申请验收」）
+DLWZ_STATUS_CANCELLING = 5     # 撤销中（打手在平台申请了撤销，等对方同意）
+
+# 丸子订单图片的 remark 语义
+IMG_REMARK_FIRST = '首图'       # 接单后打手先传的首图
+IMG_REMARK_END = '申请验收'      # 打手申请验收时上传的完单图
 
 
 # 运行配置：以后台「代练搬单」页面的设置为准，.env 仅作兜底默认
@@ -587,36 +600,24 @@ def _take_on_dlt(record):
     record.status = MigrationStatus.TAKEN
     record.message = '代练通接单成功' if account_text else '代练通接单成功（未取到账号详情）'
     record.save()
-    alert(f'{record.dlt_serial_no} 代练通接单成功，请通过 QQ 将账号交给丸子打手')
+    alert(f'{record.dlt_serial_no} 代练通接单成功')
     return True
 
 
-# ==================== 被接单通知（邮件） ====================
+# ==================== 被接单通知（手机推送 + 邮件） ====================
 
 def notify_taken(record):
-    """代练丸子被接单时发邮件通知
+    """代练丸子被接单时的通知：Server酱手机推送 + 邮件
 
     「声音提醒」不走服务端：服务器（尤其 Linux 云主机）没有扬声器，
-    改由后台页面用浏览器语音播报（见 console 页的轮询脚本），故此处只发邮件。
+    改由后台页面用浏览器语音播报（见 console 页的轮询脚本），故服务端只推手机 + 发邮件。
     """
     from django.conf import settings
 
-    setting = _setting()
-    if not setting.notify_mail:
-        return
-
-    # 收件人：页面配置优先，留空回落 .env 的发件邮箱（QQ_MAIL_ACCOUNT）
-    recipient = (setting.notify_mail_to
-                 or getattr(settings, 'EMAIL_HOST_USER', '') or '').strip()
-    if not recipient:
-        alert('被接单邮件未发送：通知邮箱未填，且 .env 无 QQ_MAIL_ACCOUNT')
-        return
-
-    from API.apis.emails.v1.utils import send_email
-
-    subject = f'【代练搬单】丸子订单已被接单 {record.dlwz_trade_no}'
+    title = f'【代练搬单】丸子被接单 {record.dlwz_trade_no}'
     body = '\n'.join([
-        '代练丸子的搬单订单已被打手接单，请及时通过 QQ 把号主账号交给打手。',
+        '代练丸子的搬单订单已被打手接单。',
+        '等他加我们 QQ 报出丸子订单号后，系统会自动去代练通接单并把号主信息发给他。',
         '',
         f'丸子订单号：{record.dlwz_trade_no}',
         f'代练通订单号：{record.dlt_serial_no}',
@@ -624,15 +625,126 @@ def notify_taken(record):
         f'发布价：{record.amount} 元',
         f'状态：{record.get_status_display()}',
     ])
-    ok, message = send_email(subject, body, [recipient])
+
+    # ① 手机推送（Server酱；未配置 SendKey 时只记日志，不影响邮件）
+    from API.apis.push.serverchan.utils import send as push_send
+
+    ok_push, push_res = push_send(f'丸子被接单 {record.dlwz_trade_no}'[:32], body)
+    if ok_push:
+        logger.info('被接单手机推送已发送 %s', record.dlwz_trade_no)
+    else:
+        alert(f'被接单手机推送失败 {record.dlwz_trade_no}: {push_res.get("message")}')
+
+    # ② 邮件（保持原有开关与收件人口径）
+    setting = _setting()
+    if not setting.notify_mail:
+        return
+
+    recipient = (setting.notify_mail_to
+                 or getattr(settings, 'EMAIL_HOST_USER', '') or '').strip()
+    if not recipient:
+        alert('被接单邮件未发送：通知邮箱未填，且 .env 无 QQ_MAIL_ACCOUNT')
+        return
+
+    from API.apis.push.email.utils import send_email
+
+    ok, message = send_email(title, body, [recipient])
     if ok:
         logger.info('被接单通知邮件已发送 %s → %s', record.dlwz_trade_no, recipient)
     else:
         alert(f'被接单通知邮件发送失败 {record.dlwz_trade_no}: {message}')
 
 
+def notify_booster_cancel(record, reason='', booster_name=''):
+    """打手中途退单：置「打手申请退单」+ 双通道通知管理员，等人工去平台处理
+
+    触发有两条路，都收敛到这里：
+        ① 打手在 QQ 上提出退单、并二次确认（见 `qq_flow`）；
+        ② 巡检发现丸子上这笔已进入「撤销中」(status=5)——他可能压根没跟我说，直接点了撤销。
+    这里**只改本地记录、只发通知**，绝不去平台执行撤销：退单涉及罚款/赔付的沟通，必须人工定夺。
+
+    幂等：已经通知过就不重复轰炸，返回 False。
+
+    :return: True=本次真的置了状态并通知；False=之前已通知过，跳过
+    """
+    from API.models import MigrationStatus
+
+    if record.booster_cancel_notified and record.status == MigrationStatus.BOOSTER_CANCEL:
+        return False
+
+    body = '\n'.join([
+        '⚠️ 打手中途要退单，需要你人工处理（撤销平台订单 / 协商赔付）。',
+        '系统不会自动去平台撤销；处理完请在后台把这条记录的状态改成最终结果。',
+        '',
+        f'触发原因：{reason or "打手提出退单"}',
+        '',
+        '—— 订单信息 ——',
+        f'代练通订单号：{record.dlt_serial_no}',
+        f'丸子订单号：{record.dlwz_trade_no or "(无)"}',
+        f'标题：{record.dlt_title}',
+        f'代练通金额：{record.dlt_price} 元｜丸子发布价：{record.amount} 元',
+        f'丸子双金：安全 {record.security_deposit} + 效率 {record.efficiency_deposit} 元',
+        f'代练通双金：{record.dlt_ensure} 元',
+        f'代练通时限：{record.dlt_time_limit} 小时｜大区：{record.dlt_zone}',
+        f'当前状态：{record.get_status_display()}',
+        '',
+        '—— 打手信息 ——',
+        f'打手 QQ：{record.booster_qq or "未知（他还没在 QQ 上报过单号）"}',
+        f'打手昵称：{booster_name or "未知"}',
+        '',
+        '—— 老板信息 ——',
+        _owner_lines(record),
+    ])
+
+    record.status = MigrationStatus.BOOSTER_CANCEL
+    record.message = f'打手申请退单：{reason}'[:500]
+    record.booster_cancel_notified = True
+    record.save()
+
+    # ① 手机推送（Server酱）
+    from API.apis.push.serverchan.utils import send as push_send
+
+    ok_push, push_res = push_send(f'打手要退单 {record.dlwz_trade_no or record.dlt_serial_no}'[:32], body)
+    if not ok_push:
+        alert(f'退单手机推送失败 {record.dlt_serial_no}: {push_res.get("message")}')
+
+    # ② QQBot 私聊管理员（后台可配，默认 3091995257）
+    notify_qq = (_setting().notify_qq or '').strip()
+    if notify_qq:
+        from API.apis.push.qqbot.utils import send as qq_send
+
+        qq_ok, qq_res = qq_send(body, 'private', notify_qq)
+        if not qq_ok:
+            alert(f'退单 QQ 通知失败 {record.dlt_serial_no}: {qq_res.get("message")}')
+    else:
+        logger.info('退单 QQ 通知未发送：后台未配置「管理员QQ」')
+
+    logger.info('打手申请退单已通知：%s（%s）', record.dlt_serial_no, reason)
+    return True
+
+
+def _owner_lines(record):
+    """把该单的老板信息排成几行文本（取不到就说取不到，别留空让人猜）"""
+    raw = (record.account_info or '').strip()
+    if not raw:
+        return '游戏账号/密码：未取到（该单还没在代练通接单，或接单前就已退单）'
+    try:
+        info = json.loads(raw)
+    except (TypeError, ValueError):
+        return raw
+    return '\n'.join([
+        f"游戏账号：{info.get('GameAcc') or '-'}",
+        f"游戏密码：{info.get('GamePass') or '-'}",
+        f"角色名：{info.get('GameRole') or '-'}",
+        f"大区/服务器：{info.get('Zone') or '-'} / {info.get('Server') or '-'}",
+    ])
+
+
 def taken_feed(after):
-    """取「已被接单」且更新时间晚于 after 的记录，供后台页面轮询后播放语音提醒
+    """取「丸子刚被接单」且更新时间晚于 after 的记录，供后台页面轮询后播放语音提醒
+
+    只在「丸子被接单」那一刻响一次：记录一置成 `taker_joined` 就播报；
+    之后无论它怎么流转（代练通接单 / 转传首图 / 申请完单）都不会再响。
 
     :param after: datetime；None 表示「从此刻开始」——不回放历史记录
     :return: (游标 ISO 时间, [{'trade_no', 'serial', 'time'}, ...])
@@ -644,7 +756,7 @@ def taken_feed(after):
     now = timezone.now()
     if after is None:
         return now.isoformat(), []
-    rows = (OrderMigration.objects.filter(status=MigrationStatus.TAKEN,
+    rows = (OrderMigration.objects.filter(status=MigrationStatus.TAKER_JOINED,
                                           updated_time__gt=after)
             .order_by('updated_time')
             .values('dlwz_trade_no', 'dlt_serial_no', 'updated_time'))
@@ -675,15 +787,17 @@ def dlwz_balance():
 
 
 def reserved_dlt_deposit():
-    """已发布/发单中记录占用的代练通双金合计（跨轮占用）
+    """已发布 / 发单中 / 丸子已接单（等打手报单号）记录占用的代练通双金合计（跨轮占用）
 
     这些单尚未在代练通接单，但迟早要押双金，必须先从可用余额里占住，避免跨轮超发。
-    「发单中」也计入：其丸子单可能已存在，保守占用更安全。
+    「发单中」也计入：其丸子单可能已存在，保守占用更安全；
+    「待报单号」同样计入：那笔随时可能被认领去代练通接单。
     """
     from API.models import MigrationStatus, OrderMigration
 
     rows = (OrderMigration.objects.filter(
-        status__in=(MigrationStatus.PUBLISHED, MigrationStatus.PUBLISHING))
+        status__in=(MigrationStatus.PUBLISHED, MigrationStatus.PUBLISHING,
+                    MigrationStatus.TAKER_JOINED))
         .values_list('dlt_ensure', flat=True))
     return round(sum(float(value or 0) for value in rows), 2)
 
@@ -760,6 +874,251 @@ def reconcile_on_startup():
     return result
 
 
+def _dlwz_order_images(trade_no):
+    """取丸子订单的图片列表（含打手首图 / 申请验收的完单图）
+
+    :return: (True, [{'url','remark','initiator'}...]) 或 (False, 原因说明)
+    """
+    from API.apis.DaiLianWanZi import utils as dlwz_utils
+
+    ok, res = dlwz_utils.get_order_images(trade_no)
+    if not ok:
+        return False, _brief(res)
+    if not isinstance(res, dict) or res.get('code') != 0:
+        return False, _brief(res)
+    return True, (_dig(res, 'imagesList') or [])
+
+
+def _pick_image(images, remark):
+    """按 remark 取第一张图片地址（没有则返回空串）"""
+    for image in images or []:
+        if str(image.get('remark') or '').strip() == remark:
+            url = str(image.get('url') or '').strip()
+            if url:
+                return url
+    return ''
+
+
+def _first_image(images, exclude_remarks=()):
+    """取图片列表里的第一张（不论 remark），可排除指定 remark
+
+    打手上传的首图**不一定标注「首图」**（可能写「上号图」之类，甚至不写），
+    所以识别首图时用「标注首图的那张，否则第一张（排除完单图）」的兜底口径。
+
+    :param exclude_remarks: 要跳过的 remark（如完单图的「申请验收」）
+    """
+    for image in images or []:
+        if str(image.get('remark') or '').strip() in exclude_remarks:
+            continue
+        url = str(image.get('url') or '').strip()
+        if url:
+            return url
+    return ''
+
+
+def _monitor_published(records, orders, orders_ok, summary):
+    """监控「已发丸子 / 丸子已接单」记录：逐笔先核代练通原单，再查丸子
+
+    丸子被接单 → 记录转「丸子已接单（待报单号）」并通知（手机推送 + 邮件）；
+    **不再自动去代练通接单** —— 由打手在 QQ 里报出丸子单号后触发（见 `qq_flow`）。
+    代练通原单若已被抢走 / 被撤销 / 不存在，则立刻回滚丸子那笔。
+    """
+    from API.models import MigrationStatus
+
+    monitor = summary['monitor']
+    for record in records:
+        label = (f'{record.dlt_serial_no} → {record.dlwz_trade_no or "(无丸子单号)"}'
+                 f'｜{record.dlt_title[:18]}｜{record.amount} 元')
+
+        # ① 代练通原单：等打手报单号的这段时间同样要盯着，否则原单被别人抢走还不知道
+        state_ok, info = dlt_order_state(record.dlt_serial_no)
+        if not state_ok:
+            # 查询失败可能只是网络抖动，这轮不动它，避免误撤
+            monitor.append(f'{label}｜代练通核对失败：{info["reason"]} → 本轮跳过')
+            summary['errors'].append(f'代练通状态查询失败 {record.dlt_serial_no}: {info["reason"]}')
+            continue
+        if not info['available']:
+            _rollback_and_fail(record, f'代练通{info["reason"]}，丸子上这笔无需再等')
+            monitor.append(f'{label}｜代练通：{info["reason"]} → 已回滚撤单')
+            summary['rollback'] += 1
+            continue
+
+        head = f'{label}｜代练通：{info["reason"]}'
+        # ② 已被打手接单、正等他在 QQ 报单号：不重复查丸子、不重复通知
+        if record.status == MigrationStatus.TAKER_JOINED:
+            monitor.append(f'{head}｜丸子：已被打手接单，等其加 QQ 报单号')
+            continue
+
+        # ③ 还挂着「待接单」的：查丸子是否被接单
+        if not orders_ok:
+            monitor.append(f'{head}｜丸子：本轮查询失败，未核对')
+            continue
+        order = orders.get(record.dlwz_trade_no)
+        if not order:
+            monitor.append(f'{head}｜丸子：未找到该单（可能已撤 / 已结束）→ 跳过')
+            continue
+        record.dlwz_status = order.get('status')
+        record.save()
+        if not _is_taken(order):
+            monitor.append(f'{head}｜丸子：状态 {order.get("status")}（待接单），暂未被人接单')
+            continue
+
+        record.status = MigrationStatus.TAKER_JOINED
+        record.message = '丸子已被打手接单，等待其加 QQ 报单号'
+        record.save()
+        summary['taker_joined'] += 1
+        # 通知（手机推送 + 邮件）：每笔只通知一次（记录已离开 published 状态）
+        notify_taken(record)
+        monitor.append(f'{head}｜丸子：已被打手接单 → 已通知，等待其加 QQ 报单号')
+
+
+def _accept_cycle(orders):
+    """已接单巡检：把丸子上手传的图转传到代练通，并在其申请验收时替我们发起申请完单
+
+    只处理搬单记录里「代练通已接单(taken)」且已发丸子的记录，逐笔：
+        · 首图      → 丸子上手传了首图就**立刻转传到代练通**（代练通要求接单后限时上传首图）；
+                      识别顺序：标注「首图」的那张 → 第一张非完单图 → 实在没有才干用完单图兜底
+        · 丸子「代练中」(3) → 其余不动作，继续等打手代练
+        · 丸子「待验收」(4) → 取打手完单图第一张 → 代练通 upload-end-image
+                             → 成功则本记录状态置「等待验收中」
+        · 其它状态          → 本轮跳过
+    丸子侧的「同意验收」不自动点，由人工在丸子上操作。
+
+    :param orders: 丸子「我发布的」订单快照 {tradeNo: order}
+    :return: 监控明细文本列表
+    """
+    from API.apis.DaiLianTong import utils as dlt_utils
+    from API.models import MigrationStatus, OrderMigration
+
+    lines = []
+    records = list(OrderMigration.objects.filter(status=MigrationStatus.TAKEN))
+    if not records:
+        lines.append('验收巡检：本轮无「代练通已接单」记录')
+        return lines
+
+    for record in records:
+        label = f'{record.dlt_serial_no} → {record.dlwz_trade_no or "(无丸子单号)"}'
+        order = orders.get(record.dlwz_trade_no)
+        if not order:
+            lines.append(f'{label}｜验收：丸子未找到该单 → 跳过')
+            continue
+
+        img_ok, images = _dlwz_order_images(record.dlwz_trade_no)
+        if not img_ok:
+            lines.append(f'{label}｜验收：丸子图片列表查询失败（{images}）→ 跳过')
+            continue
+
+        # 首图：① 标注「首图」的那张 → ② 第一张非完单图 → ③ 实在没有,才用完单图兜底
+        first_image = (_pick_image(images, IMG_REMARK_FIRST)
+                       or _first_image(images, exclude_remarks=(IMG_REMARK_END,))
+                       or _first_image(images))
+        if first_image and record.dlwz_first_image != first_image:
+            record.dlwz_first_image = first_image
+            record.save(update_fields=['dlwz_first_image', 'updated_time'])
+
+        # 首图转传：代练通要求接单后限时上传首图，丸子上手传了就立刻搬过去（同一张只传一次）
+        if first_image and record.dlt_first_image != first_image:
+            ok, res = dlt_utils.upload_first_image(record.dlt_serial_no, [first_image])
+            if ok and isinstance(res, dict) and res.get('code') == 0:
+                record.dlt_first_image = first_image
+                record.save(update_fields=['dlt_first_image', 'updated_time'])
+                lines.append(f'{label}｜首图：已转传到代练通')
+            else:
+                lines.append(f'{label}｜首图：转传代练通失败（{_brief(res)}）→ 下轮重试')
+
+        status = order.get('status')
+        if status == DLWZ_STATUS_TRAINING:
+            lines.append(f'{label}｜验收：丸子代练中（首图'
+                         f'{"已转传" if record.dlt_first_image else "未上传"}）→ 暂不处理')
+            continue
+        if status != DLWZ_STATUS_WAIT_ACCEPT:
+            lines.append(f'{label}｜验收：丸子状态 {status} → 跳过')
+            continue
+
+        end_image = _pick_image(images, IMG_REMARK_END)
+        if not end_image:
+            lines.append(f'{label}｜验收：丸子待验收但未见完单图 → 下轮重试')
+            continue
+
+        ok, res = dlt_utils.upload_end_image(record.dlt_serial_no, [end_image])
+        if not ok or (isinstance(res, dict) and res.get('code') != 0):
+            lines.append(f'{label}｜验收：代练通完单图转传失败（{_brief(res)}）→ 下轮重试')
+            continue
+
+        record.status = MigrationStatus.WAITING_ACCEPT
+        record.save(update_fields=['status', 'updated_time'])
+        lines.append(f'{label}｜验收：完单图已转传代练通并申请完单 → 状态置「等待验收中」')
+    return lines
+
+
+def _cancel_cycle(orders):
+    """退单巡检：看平台上有没有「撤销中」的单
+
+    打手可能压根没跟我们说，直接在丸子上点了「申请撤销」——丸子 status=5 就是这种。
+    发现后置「打手申请退单」并通知管理员（Server酱 + QQBot）；已通知过的跳过，不重复轰炸。
+    这里**只改本地记录 + 发通知**，真正去平台撤销由人工做。
+
+    :param orders: 丸子「我发布的」订单快照 {tradeNo: order}
+    :return: 监控明细文本列表（没有需要处理的情况就不产生噪音）
+    """
+    from API.models import MigrationStatus, OrderMigration
+
+    lines = []
+    records = list(OrderMigration.objects.filter(
+        status__in=(MigrationStatus.PUBLISHED, MigrationStatus.TAKER_JOINED,
+                    MigrationStatus.TAKEN, MigrationStatus.WAITING_ACCEPT,
+                    MigrationStatus.BOOSTER_CANCEL)))
+    for record in records:
+        order = orders.get(record.dlwz_trade_no)
+        if not order or order.get('status') != DLWZ_STATUS_CANCELLING:
+            continue
+        label = f'{record.dlt_serial_no} → {record.dlwz_trade_no or "(无丸子单号)"}'
+        if record.booster_cancel_notified and record.status == MigrationStatus.BOOSTER_CANCEL:
+            lines.append(f'{label}｜退单：丸子撤销中（已通知过，等你人工处理）')
+            continue
+        notify_booster_cancel(record, reason='丸子上这笔已进入「撤销中」（打手在平台申请了撤销）',
+                              booster_name=str(order.get('takerUsername') or ''))
+        lines.append(f'{label}｜退单：丸子撤销中 → 已置「打手申请退单」并通知管理员')
+    return lines
+
+
+def _settle_cycle():
+    """结算巡检：代练通那边验收结算后，自动去代练丸子「同意验收」给打手结账
+
+    只处理跑完「等待验收中」的记录：代练通原单已结算(17) → 丸子 accept-completion
+    （支付密码取后台账号凭据里的 pay_password）→ 记录置「已结算」。
+    """
+    from API.apis.DaiLianWanZi import utils as dlwz_utils
+    from API.models import MigrationStatus, OrderMigration
+
+    lines = []
+    records = list(OrderMigration.objects.filter(status=MigrationStatus.WAITING_ACCEPT))
+    if not records:
+        lines.append('结算巡检：本轮无「等待验收中」记录')
+        return lines
+
+    for record in records:
+        label = f'{record.dlt_serial_no} → {record.dlwz_trade_no or "(无丸子单号)"}'
+        state_ok, info = dlt_order_state(record.dlt_serial_no)
+        if not state_ok:
+            lines.append(f'{label}｜结算：代练通状态查询失败（{info["reason"]}）→ 下轮重试')
+            continue
+        if info.get('status') != DLT_STATUS_SETTLED:
+            lines.append(f'{label}｜结算：代练通{info["reason"]}，继续等老板验收')
+            continue
+
+        ok, res = dlwz_utils.accept_completion(record.dlwz_trade_no)
+        if not ok or (isinstance(res, dict) and res.get('code') != 0):
+            lines.append(f'{label}｜结算：丸子同意验收失败（{_brief(res)}）→ 下轮重试')
+            continue
+
+        record.status = MigrationStatus.SETTLED
+        record.message = '代练通已结算，丸子已同意验收并给打手结账'
+        record.save(update_fields=['status', 'message', 'updated_time'])
+        lines.append(f'{label}｜结算：代练通已结算 → 丸子已同意验收，打手已结账')
+    return lines
+
+
 def run_cycle(publish_limit=1, dry_run=False):
     """执行一轮搬单流水线
 
@@ -774,10 +1133,12 @@ def run_cycle(publish_limit=1, dry_run=False):
     3) 随机抽取不超过 publish_limit 条，逐条判断「代练通双金」与「丸子发单成本」是否够，
        够就真发；余额不足 / 查询失败则该轮不再发单
     4) 监控：先查代练通原单是否还能接，再查丸子是否被接单 → 代练通接单取账号
+    5) 验收巡检：丸子打手申请验收后，把完单图转传到代练通并申请完单（记录转「等待验收中」）
+    6) 结算巡检：代练通验收结算后，自动去丸子「同意验收」给打手结账（记录转「已结算」）
 
-    :return: 汇总 dict（fetched / published / taken / rollback / errors / monitor）
+    :return: 汇总 dict（fetched / published / taker_joined / taken / rollback / errors / monitor）
     """
-    summary = {'fetched': 0, 'published': 0, 'taken': 0, 'rollback': 0,
+    summary = {'fetched': 0, 'published': 0, 'taker_joined': 0, 'taken': 0, 'rollback': 0,
                'errors': [], 'monitor': []}
 
     # 阶段 0：先取实时余额（代练通 / 丸子各一次）；任一失败则本轮不发单，只监控。
@@ -841,14 +1202,9 @@ def run_cycle(publish_limit=1, dry_run=False):
     from API.models import MigrationStatus, OrderMigration
 
     monitor = summary['monitor']
-    records = list(OrderMigration.objects.filter(status=MigrationStatus.PUBLISHED))
-    if not records:
-        monitor.append('本轮无「待接单」记录，无需监控')
-        return summary
 
-    monitor.append(f'开始监控 {len(records)} 笔待接单（逐笔：先核对代练通原单，再查丸子）')
-
-    # 先取一次丸子「我发布的」订单快照；失败也能继续核对代练通（丸子部分标为未核对）
+    # 先取一次丸子「我发布的」订单快照；失败也能继续核对代练通（丸子部分标为未核对）。
+    # 该快照同时给下面的「验收巡检」复用，避免一轮查两次。
     orders, orders_ok = {}, True
     ok3, orders_res = poll_dlwz_orders()
     if ok3:
@@ -857,45 +1213,27 @@ def run_cycle(publish_limit=1, dry_run=False):
         orders_ok = False
         summary['errors'].append(f'轮询丸子失败: {orders_res}')
 
-    for record in records:
-        label = (f'{record.dlt_serial_no} → {record.dlwz_trade_no or "(无丸子单号)"}'
-                 f'｜{record.dlt_title[:18]}｜{record.amount} 元')
+    # 待接单 + 已被打手接单（等其报单号）两类都要盯：前者等被接，后者防原单被抢
+    records = list(OrderMigration.objects.filter(
+        status__in=(MigrationStatus.PUBLISHED, MigrationStatus.TAKER_JOINED)))
+    if not records:
+        monitor.append('本轮无「待接单 / 待报单号」记录，无需监控')
+    else:
+        monitor.append(f'开始监控 {len(records)} 笔（待接单 + 待报单号；逐笔先核对代练通原单）')
+        _monitor_published(records, orders, orders_ok, summary)
 
-        # ① 代练通原单：已被接走 / 已撤销 / 原单不存在 → 丸子那笔就是白等，立刻回滚
-        state_ok, info = dlt_order_state(record.dlt_serial_no)
-        if not state_ok:
-            # 查询失败可能只是网络抖动，这轮不动它，避免误撤
-            monitor.append(f'{label}｜代练通核对失败：{info["reason"]} → 本轮跳过')
-            summary['errors'].append(f'代练通状态查询失败 {record.dlt_serial_no}: {info["reason"]}')
-            continue
-        if not info['available']:
-            _rollback_and_fail(record, f'代练通{info["reason"]}，丸子上这笔无需再等')
-            monitor.append(f'{label}｜代练通：{info["reason"]} → 已回滚撤单')
-            summary['rollback'] += 1
-            continue
+    # 阶段 6：已接单巡检（转传首图；丸子申请验收 → 转传完单图并申请完单）
+    if orders_ok:
+        monitor.extend(_accept_cycle(orders))
+    else:
+        monitor.append('验收巡检：丸子订单快照查询失败，本轮跳过')
 
-        head = f'{label}｜代练通：{info["reason"]}'
-        # ② 紧接着查丸子：被接单就回代练通接单取账号
-        if not orders_ok:
-            monitor.append(f'{head}｜丸子：本轮查询失败，未核对')
-            continue
-        order = orders.get(record.dlwz_trade_no)
-        if not order:
-            monitor.append(f'{head}｜丸子：未找到该单（可能已撤 / 已结束）→ 跳过')
-            continue
-        record.dlwz_status = order.get('status')
-        record.save()
-        if not _is_taken(order):
-            monitor.append(f'{head}｜丸子：状态 {order.get("status")}（待接单），暂未被人接单')
-            continue
-        if _take_on_dlt(record):
-            summary['taken'] += 1
-            monitor.append(f'{head}｜丸子：已被打手接单 → 代练通接单成功，账号已取到')
-        else:
-            summary['rollback'] += 1
-            monitor.append(f'{head}｜丸子：已被打手接单，但代练通接单失败 → 已回滚')
-        # 被接单通知（邮件）：每笔只通知一次（处理完 record 已离开 published 状态）
-        notify_taken(record)
+    # 阶段 7：退单巡检（丸子上出现「撤销中」→ 置「打手申请退单」+ 通知管理员，等人工处理）
+    if orders_ok:
+        monitor.extend(_cancel_cycle(orders))
+
+    # 阶段 8：结算巡检（代练通已结算 → 丸子自动同意验收、给打手结账）
+    monitor.extend(_settle_cycle())
     return summary
 
 
@@ -912,14 +1250,16 @@ def run_once(publish_count=None, dry_run=False):
         error = ''
     except Exception as exc:                    # noqa: BLE001 线程/页面入口需兜底，避免整个循环挂掉
         logger.exception('搬单流水线执行异常')
-        summary = {'fetched': 0, 'published': 0, 'taken': 0, 'rollback': 0, 'errors': [str(exc)]}
+        summary = {'fetched': 0, 'published': 0, 'taker_joined': 0, 'taken': 0, 'rollback': 0,
+                   'errors': [str(exc)]}
         error = str(exc)[:500]
 
     setting = OrderMigrationSetting.get_solo()
     setting.last_run_time = timezone.now()
     setting.last_run_summary = (
         f"抓取 {summary['fetched']} / 发布 {summary['published']} / "
-        f"接单 {summary['taken']} / 兜底 {summary['rollback']}")[:255]
+        f"丸子被接 {summary['taker_joined']} / 代练通接 {summary['taken']} / "
+        f"兜底 {summary['rollback']}")[:255]
     setting.last_error = (error or '；'.join(summary['errors']))[:500]
     setting.run_logs = _append_run_log(setting.run_logs, summary, setting.last_run_time)
     setting.save(update_fields=['last_run_time', 'last_run_summary', 'last_error',

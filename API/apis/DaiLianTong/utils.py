@@ -611,6 +611,31 @@ def upload_image_in_comment(token, user_id, image_path, order_id, msg='留言'):
                  user_id=user_id, image_path=image_path, order_id=order_id, msg=msg)
 
 
+def upload_first_image(serial, image_urls, user_id='', token=''):
+    """上传订单首图（接单后须在规定时间内上传；王者荣耀一般 2 张：好友天梯图 + 物品图）
+
+    :param serial: 订单号
+    :param image_urls: 图片地址列表（可访问的 http/https 链接）
+    服务端会先把图片转存到代练通图片存储，再逐张以「首图」留言挂到订单上。
+    """
+    user_id, token = _resolve_credentials(user_id, token)
+    return _call('upload_first_image', serial=serial, image_urls=image_urls,
+                 token=token, user_id=user_id)
+
+
+def upload_end_image(serial, image_urls, user_id='', token=''):
+    """上传订单完单图并申请完单（接单方上传完成凭证 → 订单进入「等待验收」）
+
+    :param serial: 订单号
+    :param image_urls: 图片地址列表（可访问的 http/https 链接）
+    服务端会先把图片转存到代练通图片存储，再逐张以「完单图」留言挂到订单上，
+    全部挂完后自动发起「申请完单」，之后发单方即可验收。
+    """
+    user_id, token = _resolve_credentials(user_id, token)
+    return _call('upload_end_image', serial=serial, image_urls=image_urls, token=token,
+                 user_id=user_id, uid=_resolve_uid(''))
+
+
 # ---------- 头像 ----------
 
 def upload_avatar(user_id, image_path):

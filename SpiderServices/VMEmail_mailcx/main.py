@@ -215,7 +215,7 @@ if __name__ == "__main__":
     print("发送邮件到该地址即可收到（本服务仅收信）。")
     print("注意: 小影 API 发信接口需要签名参数(见 API 文档)，示例:")
     print(
-        f"  POST http://127.0.0.1:8000/api/email/v1/send\n"
+        f"  POST http://127.0.0.1:8000/api/push/email/send\n"
         f"  app_id/timestamp/nonce/sign + subject/body/recipients={email_info['address']}"
     )
 

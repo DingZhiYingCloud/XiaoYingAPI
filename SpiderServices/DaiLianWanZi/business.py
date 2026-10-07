@@ -188,6 +188,15 @@ class DaiLianWanZiBusinessService:
             "tableType": table_type, "keyWord": keyword,
         }, authorization=authorization)
 
+    def get_order_images(self, authorization, trade_no):
+        """订单图片列表（商家侧查看打手 / 发单方上传的图）
+
+        每张图含 url / remark（如「首图」「申请验收」）/ initiator（1=发单方 2=接单方）。
+        返回统一响应字典，成功时图片在 data.data.imagesList。
+        """
+        return self._post("/order/user/imgList", {"tradeNo": trade_no, "userType": 1},
+                          authorization=authorization)
+
     def cancel_order(self, authorization, trade_no):
         """取消订单
 
@@ -303,6 +312,18 @@ class DaiLianWanZiBusinessService:
         return self._post("/order/action/applyArbitration", {
             "tradeNo": trade_no, "initiator": initiator, "deposit": deposit,
             "amount": amount, "reason": reason, "operaType": opera_type,
+        }, authorization=authorization)
+
+    # ==================== 验收 / 结算 ====================
+
+    def accept_completion(self, authorization, trade_no, pay_password):
+        """同意验收（发单方同意打手的完单申请 → 订单结算，款项放给打手）
+
+        :param pay_password: 支付密码（上游必填，明文下发，与接单一致）
+        返回统一响应字典，成功时 data 为上游完整响应对象。
+        """
+        return self._post("/order/action/acceptCompletion", {
+            "tradeNo": trade_no, "payPassword": pay_password,
         }, authorization=authorization)
 
     # ==================== 发单：选项查询 ====================

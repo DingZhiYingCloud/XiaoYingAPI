@@ -110,6 +110,21 @@ def _resolve_authorization(authorization):
     return authorization or _default_authorization()
 
 
+def _default_credential_dict():
+    """后台托管的默认代练丸子账号凭据 dict（无账号则空 dict）"""
+    account = platform_accounts.get_available_account(PLATFORM)
+    if account is None:
+        return {}
+    return _spider_utils.parse_credential(platform_accounts.credential_of(account))
+
+
+def _resolve_pay_password(pay_password):
+    """调用方未传支付密码时，回落到默认账号凭据里的 pay_password（同意验收结账用）"""
+    if pay_password:
+        return pay_password
+    return str(_default_credential_dict().get('pay_password') or '').strip()
+
+
 def _call_with(service_class, method_name, **kwargs):
     """通用爬虫调用包装
 
@@ -222,6 +237,12 @@ def cancel_order(trade_no, authorization=''):
                           trade_no=trade_no)
 
 
+def get_order_images(trade_no, authorization=''):
+    """获取商家版订单的图片列表（含打手「首图」/「申请验收」的完单图；未传 authorization 时用后台默认账号）"""
+    return _call_business('get_order_images', authorization=_resolve_authorization(authorization),
+                          trade_no=trade_no)
+
+
 # ---------- 商家版 · 接单大厅 ----------
 
 def search_orders(keyword='', game_id='', page=1, page_size=20, authorization=''):
@@ -285,6 +306,20 @@ def apply_arbitration(trade_no, initiator, reason, image_urls, amount=0, deposit
                           trade_no=trade_no, initiator=initiator, reason=reason,
                           image_urls=image_urls, amount=amount, deposit=deposit,
                           opera_type=opera_type)
+
+
+# ---------- 商家版 · 验收 / 结算 ----------
+
+def accept_completion(trade_no, pay_password='', authorization=''):
+    """同意验收并结账（发单方同意打手完单申请，款项放给打手）
+
+    :param pay_password: 支付密码；不传则回落到后台账号凭据里的 pay_password
+    """
+    pay_password = _resolve_pay_password(pay_password)
+    if not pay_password:
+        return False, '缺少支付密码：请传 pay_password，或在后台「账号管理」的丸子凭据里配置 pay_password'
+    return _call_business('accept_completion', authorization=_resolve_authorization(authorization),
+                          trade_no=trade_no, pay_password=pay_password)
 
 
 # ---------- 商家版 · 发单 ----------

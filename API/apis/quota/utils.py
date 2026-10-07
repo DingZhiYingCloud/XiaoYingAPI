@@ -19,7 +19,7 @@ import time
 from django.db import close_old_connections
 from django.utils import timezone
 
-from API.apis.emails.v1.utils import send_email
+from API.apis.push.email.utils import send_email
 from API.models import QuotaService, QuotaSetting
 
 from .services import SERVICES

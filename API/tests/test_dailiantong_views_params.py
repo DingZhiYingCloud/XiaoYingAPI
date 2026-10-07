@@ -61,6 +61,12 @@ _ENDPOINTS = [
     ('upload_image', 'post', '/api/dlt/orders/upload-image',
      dlt_request.upload_image_view, 'upload_image_in_comment',
      {'image_path': 'x', 'order_id': 'o'}),
+    ('upload_first_image', 'post', '/api/dlt/orders/upload-first-image',
+     dlt_request.upload_first_image_view, 'upload_first_image',
+     {'order_id': 'o', 'image_url_1': 'https://x/1.png'}),
+    ('upload_end_image', 'post', '/api/dlt/orders/upload-end-image',
+     dlt_request.upload_end_image_view, 'upload_end_image',
+     {'order_id': 'o', 'image_url_1': 'https://x/1.png'}),
     ('upload_avatar', 'post', '/api/dlt/avatar/upload',
      dlt_request.upload_avatar_view, 'upload_avatar', {'image_path': 'x'}),
 ]

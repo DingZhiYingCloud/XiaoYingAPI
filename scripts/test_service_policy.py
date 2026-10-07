@@ -20,14 +20,19 @@
     第 13 轮 线路多选：一条策略覆盖多条线路（extra_prefixes）全部生效；编辑可增删线路；
              线路被另一条策略接管时「让位」（部分让位保留其余、全部让位则删除）
     第 14 轮 批量删除：列表页勾选框 + 批量删除表单；未勾选被拒、只删勾选项、非法 id 忽略
-    第 15 轮 建议策略：清单与迁移写入的 9 条逐条一致、后台「一键新建建议策略」预览面板、
+    第 15 轮 建议策略：清单与迁移写入的 10 条逐条一致、后台「一键新建建议策略」预览面板、
              只补缺失 / 可反复执行 / 不覆盖已有、管理命令 --dry-run、stream 免签代码兜底
+    第 16 轮 仅专属管理员：admin_only 只对非超管隐藏文档（hidden 对所有人隐藏）；
+             文档目录 / 服务页 / 左侧菜单 / 官网首页卡片对非超管不展示；
+             在线调试非超管不可调试；超管凭时效令牌在在线调试里放行（20020 例外）
 
 隔离策略：测试数据用 MARK（xysvcpolicy<RUN>）标记，策略路径前缀一律包含 MARK，
-测试结束统一删除。另有两轮的例外，均不残留：
+测试结束统一删除。另有三轮的例外，均不残留：
 - 第 12 轮为了验证「文档隐藏」在真实文档页 / 在线调试上的效果，会临时给一个真实端点
   建策略（前置检查该前缀原本无策略，`finally` 里必删）；
-- 第 15 轮为了验证建议策略的新建 / 不覆盖语义，会在**事务里**改动真实策略，结束整体回滚。
+- 第 15 轮为了验证建议策略的新建 / 不覆盖语义，会在**事务里**改动真实策略，结束整体回滚；
+- 第 16 轮为了验证「仅专属管理员」对文档中心 / 官网首页的整项隐藏，会在**事务里**把一个
+  真实服务置为 admin_only，结束整体回滚。
 
 运行方式：
     .venv\\Scripts\\python.exe scripts\\test_service_policy.py
@@ -60,6 +65,7 @@ from API.common.middleware import (
     invalidate_api_service_policy_cache,
     is_admin_only,
     is_docs_hidden,
+    make_docs_debug_token,
     requires_auth,
     resolve_service_policy,
 )
@@ -880,6 +886,88 @@ def round15_service_presets(client):
     invalidate_api_service_policy_cache()
 
 
+# ───────────────── 第 16 轮：仅专属管理员（文档隐藏 / 超管在线调试放行） ─────────────────
+
+# 拿一个真实服务做「整服务级 admin_only」的验证对象（前缀原本无服务级策略，事务里改动并回滚）
+_AO_SERVICE_PREFIX = '/api/seo/'
+_AO_SERVICE_SLUG = 'seo'
+_AO_ENDPOINT = '/api/seo/friend_links'
+
+
+def round16_admin_only(client):
+    section('第 16 轮 仅专属管理员（文档对非超管隐藏 / 超管在线调试放行）')
+    anon = Client()
+
+    # 整段在事务里改动真实策略，结束一律回滚 —— 不落任何真实改动
+    with transaction.atomic():
+        ApiServicePolicy.objects.filter(path_prefix=_AO_SERVICE_PREFIX).delete()
+        ApiServicePolicy.objects.filter(path_prefix=_AO_ENDPOINT).delete()
+        _mk_policy(name=f'AoSvc {MARK}', level='service', path_prefix=_AO_SERVICE_PREFIX,
+                   audience='admin_only')
+        invalidate_api_service_policy_cache()
+
+        # 16.1 判定口径：admin_only 只对非超管隐藏；docs_visible=hidden 对所有人隐藏
+        check('admin_only：非超管判定为文档隐藏', is_docs_hidden(_AO_SERVICE_PREFIX) is True)
+        check('admin_only：超管判定为可见',
+              is_docs_hidden(_AO_SERVICE_PREFIX, True) is False)
+        _mk_policy(name=f'HidSvc {MARK}', level='service', path_prefix=f'{BASE}hid/',
+                   docs_visible='hidden')
+        invalidate_api_service_policy_cache()
+        check('docs_visible=hidden：超管同样隐藏', is_docs_hidden(f'{BASE}hid/x', True) is True)
+
+        # 16.2 中间件：admin_only 一律 20020，唯「超管在线调试令牌」放行
+        resp = anon.get(_AO_ENDPOINT)
+        check('admin_only：匿名无令牌仍 20020',
+              _code(resp) == StatusCode.FORBIDDEN, f'code={_code(resp)}')
+        resp = anon.get(_AO_ENDPOINT, HTTP_X_XY_DOCS_DEBUG='forged-token')
+        check('admin_only：伪造令牌仍 20020',
+              _code(resp) == StatusCode.FORBIDDEN, f'code={_code(resp)}')
+        resp = anon.get(_AO_ENDPOINT, HTTP_X_XY_DOCS_DEBUG=make_docs_debug_token())
+        check('admin_only：有效令牌不再 20020（放行交给后续签名校验）',
+              _code(resp) != StatusCode.FORBIDDEN, f'code={_code(resp)}')
+        resp = client.get(_AO_ENDPOINT)
+        check('admin_only：超管直连（无令牌）仍 20020（放行仅限在线调试）',
+              _code(resp) == StatusCode.FORBIDDEN, f'code={_code(resp)}')
+
+        # 16.3 文档中心：目录页 / 服务页 / 左侧菜单
+        body = anon.get(reverse('website:docs_index')).content.decode()
+        check('文档目录：非超管看不到该服务', f'/docs/{_AO_SERVICE_SLUG}/' not in body)
+        body = client.get(reverse('website:docs_index')).content.decode()
+        check('文档目录：超管能看到该服务', f'/docs/{_AO_SERVICE_SLUG}/' in body)
+
+        resp = anon.get(reverse('website:docs_service', args=[_AO_SERVICE_SLUG]))
+        check('服务文档页：非超管返回 404', resp.status_code == 404, f'status={resp.status_code}')
+        resp = client.get(reverse('website:docs_service', args=[_AO_SERVICE_SLUG]))
+        check('服务文档页：超管可访问且含端点',
+              resp.status_code == 200 and _AO_ENDPOINT in resp.content.decode(),
+              f'status={resp.status_code}')
+
+        non_admin_menu = [node['url_prefix'] for node in build_docs_menu()]
+        admin_menu = [node['url_prefix'] for node in build_docs_menu(superadmin=True)]
+        check('左侧菜单：非超管不含该服务', _AO_SERVICE_PREFIX not in non_admin_menu)
+        check('左侧菜单：超管含该服务', _AO_SERVICE_PREFIX in admin_menu)
+
+        # 16.4 官网首页服务卡片
+        body = anon.get(reverse('website:index')).content.decode()
+        check('官网首页：非超管不展示该服务卡片', _AO_SERVICE_PREFIX not in body)
+        body = client.get(reverse('website:index')).content.decode()
+        check('官网首页：超管展示该服务卡片', _AO_SERVICE_PREFIX in body)
+
+        # 16.5 在线调试：非超管不可调试该端点；超管可（不再被 20020 拦）
+        payload = {'path': _AO_ENDPOINT, 'method': 'GET'}
+        got = _json(anon.post(reverse('website:docs_call'), data=json.dumps(payload),
+                              content_type='application/json'))
+        check('在线调试：非超管被拒（404 不允许调试）',
+              got.get('http_status') == 404, f'payload={got}')
+        got = _json(client.post(reverse('website:docs_call'), data=json.dumps(payload),
+                                content_type='application/json'))
+        check('在线调试：超管不再被 20020 拦（请求已进入业务链路）',
+              (got.get('json') or {}).get('code') != StatusCode.FORBIDDEN, f'payload={got}')
+
+        transaction.set_rollback(True)
+    invalidate_api_service_policy_cache()
+
+
 def main():
     print('\nAPI 服务策略回归测试开始')
     print(f'标记：{MARK}（策略前缀统一含该标记，测试后自动清理）')
@@ -899,6 +987,7 @@ def main():
         round13_multi_channel(client)
         round14_bulk_delete(client)
         round15_service_presets(client)
+        round16_admin_only(client)
     finally:
         cleanup()
         if created_admin:

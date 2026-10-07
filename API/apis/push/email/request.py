@@ -1,14 +1,17 @@
-"""邮箱服务请求处理视图
+"""消息推送 push · 邮件线路 视图层
 
-提供发送邮件的 API,接收 POST 表单数据。
+`POST /api/push/email/send`：把一条消息以邮件形式推送出去。
+参数与响应沿用原「邮箱服务」的发送邮件接口（subject / body / recipients），
+老路由 `/api/email/v1/send` 也委托到这里（见 API/apis/emails/v1/request.py），行为完全一致。
 """
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-from django.core.validators import validate_email
-from django.core.exceptions import ValidationError
 
 from API.common import StatusCode
-from .utils import send_email
+
+from . import utils
 
 
 def _json_response(code, data=None, msg=None):
@@ -26,7 +29,7 @@ def _json_response(code, data=None, msg=None):
 
 
 @require_http_methods(['POST'])  # 仅允许 POST 请求,其他方法返回 405
-def send_email_view(request):
+def send_view(request):
     """
     发送邮件 API
 
@@ -83,7 +86,8 @@ def send_email_view(request):
         )
 
     # ---------- 3. 发送邮件 ----------
-    success, message = send_email(subject, body, recipients)
+    app_id = getattr(getattr(request, 'auth_app', None), 'app_id', '')
+    success, message = utils.send_email(subject, body, recipients, app_id=app_id or '')
     if not success:
         # 发送失败归为外部服务错误
         return _json_response(StatusCode.EXTERNAL_API_FAILED, msg=message)

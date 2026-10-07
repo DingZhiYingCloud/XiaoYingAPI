@@ -9,6 +9,7 @@ import time
 import uuid
 
 from django.conf import settings
+from django.core import signing
 from django.http import JsonResponse
 from django.middleware.csrf import CsrfViewMiddleware
 
@@ -131,13 +132,21 @@ def requires_auth(path):
     return resolve_service_policy(path)['auth_mode'] != 'open'
 
 
-def is_docs_hidden(path):
-    """该路径是否对官网文档中心隐藏（唯一口径，供文档页 / 在线调试过滤用）
+def is_docs_hidden(path, viewer_is_superadmin=False):
+    """该路径的文档是否对「当前查看者」隐藏（唯一口径，供文档页 / 在线调试过滤用）
 
-    「文档隐藏」同时作用于：/docs/ 文档页的端点列表、服务目录与左侧菜单、
-    以及 /docs/_call/ 在线调试白名单（该调试页是公开的，隐藏的接口不得可调试）。
+    两种来源，语义不同：
+    - ``docs_visible=hidden``：「文档隐藏」对**所有人**隐藏（含超管，彻底隐身）；
+    - ``audience=admin_only``：「仅专属管理员」只对**非超管**隐藏 —— 超管登录后仍能在
+      文档中心看到该接口。
+
+    「文档隐藏」同时作用于：/docs/ 文档页的端点列表、服务目录与左侧菜单、官网首页
+    服务卡片，以及 /docs/_call/ 在线调试白名单（该调试页是公开的，隐藏的接口不得可调试）。
     """
-    return resolve_service_policy(path)['docs_visible'] == 'hidden'
+    effective = resolve_service_policy(path)
+    if effective['docs_visible'] == 'hidden':
+        return True
+    return effective['audience'] == 'admin_only' and not viewer_is_superadmin
 
 
 def is_admin_only(path):
@@ -262,6 +271,35 @@ PUBLIC_PATHS = (
 )
 
 
+# ==================== 超管在线调试放行令牌 ====================
+# 「仅专属管理员」的接口对外一律 20020，但超管需要在文档中心的**在线调试面板**里调通
+# 它们。/docs/_call/ 是进程内转发（django.test.Client），内层请求不带登录态，中间件
+# 无从判断调用者是谁，故由 /docs/_call/ 在**确认外层是超管**后签发一枚短时效令牌放进
+# 请求头，中间件验签通过才放行该拦截。
+# 令牌用 Django signing 签发（密钥即 SECRET_KEY）：外部拿不到密钥，无法伪造此头；
+# 且时效极短，即便头被中途截获也很快失效。
+DOCS_DEBUG_SALT = 'docs.debug.superadmin'
+DOCS_DEBUG_HEADER = 'HTTP_X_XY_DOCS_DEBUG'   # 对应请求头 X-XY-Docs-Debug
+DOCS_DEBUG_MAX_AGE = 120                      # 秒
+
+
+def make_docs_debug_token():
+    """签发「超管在线调试」放行令牌（仅供 /docs/_call/ 在确认超管身份后调用）"""
+    return signing.dumps({'p': 'docs-debug'}, salt=DOCS_DEBUG_SALT, compress=True)
+
+
+def _docs_debug_pass(request):
+    """请求是否携带有效的超管在线调试令牌（缺失 / 伪造 / 过期一律 False）"""
+    raw = request.META.get(DOCS_DEBUG_HEADER) or ''
+    if not raw:
+        return False
+    try:
+        signing.loads(raw, salt=DOCS_DEBUG_SALT, max_age=DOCS_DEBUG_MAX_AGE)
+    except signing.BadSignature:      # 含签名错误与过期（SignatureExpired 是其子类）
+        return False
+    return True
+
+
 # 会直接拦截请求的策略状态 -> 返回的业务码（命中即拦，不做签名校验）
 # 口径：**只有 normal（正常）可调用**；dev / maintenance / offline 一律硬拦截，
 # 各自返回一个业务码，便于调用方分辨是「开发中」「维护中」还是「已下线」。
@@ -282,7 +320,9 @@ class ApiAuthMiddleware:
        时直接返回对应业务码，且**不做签名校验**（匿名请求同样收到）。
        即：想让某个接口可调用，必须把生效状态配成「正常」。
     2. **专属管理员拦截**：生效 audience=admin_only 的接口仅供后台内部使用，
-       对外一律返回 20020（无权限），不区分是否带签名。
+       对外一律返回 20020（无权限），不区分是否带签名。唯一例外是超管在文档中心
+       在线调试时由 /docs/_call/ 代签发的时效令牌（见 DOCS_DEBUG_HEADER）——
+       令牌本身即「调用者为超管」的凭据，验签通过才放行，签名校验照旧。
     3. **认证判定**：由 requires_auth() 统一给出（基于 resolve_service_policy()）。
        · 需要签名：校验签名（app_id/timestamp/nonce/sign），通过后把项目对象挂到
          request.auth_app 供视图直接使用；失败返回统一 20011
@@ -308,8 +348,9 @@ class ApiAuthMiddleware:
                     'msg': StatusCode.get_message(block_code),
                     'data': None,
                 })
-            # 2) 「仅专属管理员」的接口仅供后台内部使用：对外一律拒绝（不区分是否带签名）
-            if effective['audience'] == 'admin_only':
+            # 2) 「仅专属管理员」的接口仅供后台内部使用：对外一律拒绝（不区分是否带签名）。
+            #    例外：超管在文档中心在线调试（/docs/_call/ 代签发的时效令牌，防伪造）。
+            if effective['audience'] == 'admin_only' and not _docs_debug_pass(request):
                 return JsonResponse({
                     'code': StatusCode.FORBIDDEN,
                     'msg': '该接口仅限后台内部使用，不对外开放',

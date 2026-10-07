@@ -14,7 +14,14 @@ from utils import (
     response_dict,
     get_public_data,
     parse_response,
+    guess_image_ext,
+    image_content_type,
+    oss_object_key,
+    oss_policy_and_signature,
     API_URL,
+    IMG_SERVER_URL,
+    OSS_ACCESS_KEY_ID,
+    OSS_UPLOAD_URL,
     SIGN_KEY,
 )
 
@@ -536,6 +543,153 @@ class DaiLianTongService:
             return parse_response(response)
         except Exception as e:
             return response_dict(code=1, message=f"上传图片异常: {e}")
+
+    # 上传单张图片到代练通图片存储（阿里云 OSS 直传）
+    def upload_image_to_oss(self, image_bytes, ext='png'):
+        """把图片二进制直传到代练通用的阿里云 OSS，返回可访问的图片地址
+
+        参数:
+            image_bytes: 图片二进制内容
+            ext: 扩展名（png / jpg ...，不带点）
+        返回: response_dict，data = {'key': OSS 对象名, 'url': 可访问的完整地址}
+        """
+        try:
+            key = oss_object_key(ext)
+            policy, signature = oss_policy_and_signature()
+            response = requests.post(
+                OSS_UPLOAD_URL,
+                data={'key': key, 'policy': policy, 'OSSAccessKeyId': OSS_ACCESS_KEY_ID,
+                      'signature': signature, 'success_action_status': '200'},
+                files={'file': (key.rsplit('/', 1)[-1], image_bytes, image_content_type(ext))},
+                timeout=_REQUEST_TIMEOUT,
+            )
+            if response.status_code != 200:
+                return response_dict(code=1, message=f"上传图片失败（HTTP {response.status_code}）")
+            return response_dict(code=0, message="上传成功",
+                                 data={'key': key, 'url': f"{IMG_SERVER_URL}/{key}"})
+        except Exception as e:
+            return response_dict(code=1, message=f"上传图片异常: {e}")
+
+    # 订单图片挂单的公共流程：外链下载 → 转存 OSS → 逐张以 msg 挂到订单
+    def _attach_order_images(self, serial, image_urls, token, user_id, msg,
+                             tier='', order_win_txt=''):
+        """「首图 / 完单图」共用的挂图流程
+
+        参数集合与顺序必须与官方 H5 完全一致（Sign 依赖参数值拼接顺序）：
+            LevelOrderProgressAdd: ODSerialNo / Tier / Msg / Img / OrderWinTxt / UserID
+
+        返回: (images, results, error)
+            images  —— 已成功挂到订单上的图片地址
+            results —— 每张挂单的上游返回
+            error   —— None 表示全部成功；否则为已组装好的 response_dict，
+                       msg 会指明是第几张出错，已挂上的图片通过 data.images 透出
+        """
+        images, results = [], []
+        for index, url in enumerate(image_urls, start=1):
+            try:
+                resp = requests.get(url, timeout=_REQUEST_TIMEOUT)
+                resp.raise_for_status()
+            except Exception as e:
+                return images, results, response_dict(
+                    code=1, message=f"第 {index} 张图片下载失败: {e}",
+                    data={'images': images, 'results': results})
+
+            uploaded = self.upload_image_to_oss(
+                resp.content, ext=guess_image_ext(url, resp.headers.get('Content-Type', '')))
+            if uploaded.get('code') != 0:
+                return images, results, response_dict(
+                    code=1, message=f"第 {index} 张图片转存失败: {uploaded.get('message')}",
+                    data={'images': images, 'results': results})
+            image_url = uploaded['data']['url']
+
+            try:
+                data, params = get_public_data({
+                    'ODSerialNo': self._ensure_str(serial),
+                    'Tier': tier or '',
+                    'Msg': msg,
+                    'Img': image_url,
+                    'OrderWinTxt': order_win_txt or '',
+                    'UserID': self._ensure_str(user_id),
+                }, 'LevelOrderProgressAdd', sign_key=self.SignKey, token=token)
+                response = self.session.post(self.api_url, params=params, data=data,
+                                             timeout=_REQUEST_TIMEOUT)
+                one = parse_response(response)
+            except Exception as e:
+                return images, results, response_dict(
+                    code=1, message=f"第 {index} 张图片挂单异常: {e}",
+                    data={'images': images, 'results': results})
+            if one.get('code') != 0:
+                return images, results, response_dict(
+                    code=1, message=f"第 {index} 张图片挂单失败: {one.get('message')}",
+                    data={'images': images, 'results': results})
+            images.append(image_url)
+            results.append(one.get('data'))
+        return images, results, None
+
+    # 上传首图（接单后须在规定时间内上传；王者荣耀一般 2 张：好友天梯图 + 物品图）
+    def upload_first_image(self, serial, image_urls, token, user_id='', msg='首图'):
+        """把外链图片转存到代练通图片存储后，逐张以「首图」挂到订单上
+
+        参数:
+            serial: 订单号（ODSerialNo）
+            image_urls: 图片地址列表（可访问的 http/https 链接）
+            token: 登录令牌
+            user_id: 用户ID（官方 H5 的 web_query 会自动补 UserID，缺了会「参数错误」）
+            msg: 留言文案，默认「首图」
+        返回: response_dict，data = {'images': [已挂到订单上的图片地址...],
+                                    'results': [每张挂单的上游返回...]}
+        """
+        images, results, error = self._attach_order_images(
+            serial, image_urls, token, user_id, msg)
+        if error:
+            return error
+        return response_dict(code=0, message=f"首图上传成功（{len(images)} 张）",
+                             data={'images': images, 'results': results})
+
+    # 上传完单图并申请完单（接单方上传完成凭证，成功后订单进入「等待验收」）
+    def upload_end_image(self, serial, image_urls, token, user_id='', uid='',
+                         msg='完单图', tier='', order_win_txt='', is_share_trends=1):
+        """把外链图片转存到代练通图片存储后，逐张以「完单图」挂到订单上，最后申请完单
+
+        参数:
+            serial: 订单号（ODSerialNo）
+            image_urls: 图片地址列表（可访问的 http/https 链接）
+            token: 登录令牌
+            user_id: 用户ID（官方 web_query 会自动补 UserID）
+            uid: 账号 UID（USR 开头，支付密码哈希用）
+            msg: 留言文案，默认「完单图」
+            tier: 段位（官方 H5 的 nowlevel，默认空）
+            order_win_txt: 胜场文本（仅 107 且 LevelType2∈{10,13} 的优质单才有值，默认空）
+            is_share_trends: 是否同步到动态（1 是 / 0 否，默认 1）
+        返回: response_dict，data = {'images': [...], 'results': [...], 'over': 申请完单返回}
+        说明：LevelOrderOver 参数顺序 ODSerialNo / Flag / PayPass / IsShareTrends / UserID；
+              PayPass 传空密码哈希（完单不涉及支付），与官方 H5 一致。
+        """
+        images, results, error = self._attach_order_images(
+            serial, image_urls, token, user_id, msg, tier=tier, order_win_txt=order_win_txt)
+        if error:
+            return error
+
+        try:
+            data, params = get_public_data({
+                'ODSerialNo': self._ensure_str(serial),
+                'Flag': '0',
+                'PayPass': md5_encrypt(md5_encrypt('') + uid),
+                'IsShareTrends': str(is_share_trends),
+                'UserID': self._ensure_str(user_id),
+            }, 'LevelOrderOver', sign_key=self.SignKey, token=token)
+            response = self.session.post(self.api_url, params=params, data=data,
+                                         timeout=_REQUEST_TIMEOUT)
+            over = parse_response(response)
+        except Exception as e:
+            return response_dict(code=1, message=f"图片已上传，但申请完单异常: {e}",
+                                 data={'images': images, 'results': results})
+
+        if over.get('code') != 0:
+            return response_dict(code=1, message=f"图片已上传，但申请完单失败: {over.get('message')}",
+                                 data={'images': images, 'results': results, 'over': over.get('data')})
+        return response_dict(code=0, message=f"完单图上传成功（{len(images)} 张），已申请完单",
+                             data={'images': images, 'results': results, 'over': over.get('data')})
 
     # 上传自己的头像
     def upload_own_avatar(self, user_id, image_path):

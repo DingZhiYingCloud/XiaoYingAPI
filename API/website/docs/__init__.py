@@ -107,11 +107,31 @@ def _ai_model_options():
     return options
 
 
+def _qqbot_group_options():
+    """QQBot 线路「目标号码」下拉：机器人已加入的群（调 NapCat /get_group_list）
+
+    取不到（未配置 / 连不上 / 未加任何群）时只返回一条提示项 —— 用户可切到「手动输入」面板
+    直接填群号或好友 QQ 号（下拉只为「发群」提供便利，不阻塞私聊与未列出的目标）。
+    文档页每次渲染会实时取一次，故用较短超时，避免上游不可达时拖慢页面。
+    """
+    from API.apis.push.qqbot import utils as qqbot_utils
+
+    options = [{'value': '', 'label': _('（请选择群聊，或切到「手动输入」）')}]
+    ok, groups = qqbot_utils.list_groups(timeout=3)
+    if not ok:
+        return [{'value': '', 'label': _('（未取到群列表：请在控制台「QQBot」页检查配置，或切到「手动输入」）')}]
+    options += [{'value': str(g.get('group_id')),
+                 'label': f"{g.get('group_name') or _('未命名群')}（{g.get('group_id')}）"}
+                for g in groups if g.get('group_id')]
+    return options
+
+
 # 动态下拉选项提供者：ParamSpec.dynamic_options 里写的名字 -> 取选项的函数
 # （用于「选项来自运行期数据」的场景；静态选项请直接写在 ParamSpec.options 里）
 OPTION_LOADERS = {
     'ai_models': _ai_model_options,
     'dlt_games': _dlt._dlt_game_options,
+    'qqbot_groups': _qqbot_group_options,
 }
 
 

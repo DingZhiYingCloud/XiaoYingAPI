@@ -16,8 +16,12 @@ class DocsMenuMiddleware:
 
     def __call__(self, request):
         if request.path.startswith('/docs/'):
-            # 每次构建开销极小（数据源为常量），不做缓存以保证新增服务即时可见
-            request.docs_menu = build_docs_menu()
+            # 每次构建开销极小（数据源为常量），不做缓存以保证新增服务即时可见。
+            # 需按查看者身份过滤「仅专属管理员」的服务 / 端点，故本中间件必须排在
+            # AuthenticationMiddleware 之后（见 settings.MIDDLEWARE）。
+            from .admin_auth import is_superadmin
+            request.docs_menu = build_docs_menu(
+                superadmin=is_superadmin(getattr(request, 'user', None)))
         return self.get_response(request)
 
 

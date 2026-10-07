@@ -75,10 +75,14 @@
         <td class="whitespace-nowrap text-xs" {% if log.app_id %}title="{{ log.app_id }}"{% endif %}>
           {{ log.app_label|default:"—" }}
         </td>
+        {# 消息列：加密推送的密文 / 多个收件人都没有空格，必须 break-all 换行并限行，否则会撑破单元格挤进后面的列 #}
         <td class="max-w-xs text-sm">
-          <div class="font-medium">{{ log.title }}</div>
+          <div class="break-all font-medium">{{ log.title }}</div>
           {% if log.content %}
-          <div class="text-xs text-base-content/60">{{ log.content|truncatechars:80 }}</div>
+          <div class="break-all line-clamp-2 text-xs text-base-content/60">{{ log.content|truncatechars:80 }}</div>
+          {% endif %}
+          {% if log.recipients %}
+          <div class="break-all line-clamp-2 text-xs text-base-content/60">{% trans "收件人" %}：{{ log.recipients }}</div>
           {% endif %}
         </td>
         <td class="whitespace-nowrap">
@@ -92,7 +96,7 @@
           {% if log.code is not None %}{{ log.code }}{% else %}—{% endif %}
         </td>
         <td class="whitespace-nowrap text-xs font-mono">{{ log.pushid|default:"—" }}</td>
-        <td class="max-w-md text-xs">{{ log.message|default:"—" }}</td>
+        <td class="max-w-md break-all text-xs">{{ log.message|default:"—" }}</td>
       </tr>
       {% empty %}
       <tr>

@@ -29,6 +29,16 @@ class ApiConfig(AppConfig):
     verbose_name = 'API服务'
 
     def ready(self):
+        # 开发服务器补丁：NapCat 事件上报用 Transfer-Encoding: chunked 发请求体，而 Django 自带的
+        # runserver 只按 Content-Length 读 body —— 不打这个补丁，回调进来永远是空 body、事件被静默丢弃。
+        # 只在 runserver 进程里打（其它管理命令与生产服务器都不需要，见 API/common/devserver.py）
+        import sys
+
+        if 'runserver' in sys.argv:
+            from API.common.devserver import install as install_chunked_support
+
+            install_chunked_support()
+
         # 服务策略查询缓存失效钩子：后台保存 / 删除 ApiServicePolicy 后立即失效，
         # 改动即时生效、无需等 TTL
         from API.common.middleware import invalidate_api_service_policy_cache

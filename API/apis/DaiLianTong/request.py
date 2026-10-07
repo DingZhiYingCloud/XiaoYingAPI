@@ -21,6 +21,7 @@
     POST /api/dlt/orders/delete           删除订单
     GET  /api/dlt/orders/my               获取我的订单
     POST /api/dlt/orders/upload-image     订单留言上传图片
+    POST /api/dlt/orders/upload-first-image 上传订单首图
     POST /api/dlt/avatar/upload           上传头像
 """
 import json
@@ -541,8 +542,72 @@ def upload_image_view(request):
     return _spider_result(data)
 
 
-# ==================== 号主信息 ====================
+@require_http_methods(["POST"])
+def upload_first_image_view(request):
+    """上传订单首图（接单后须在规定时间内上传，王者荣耀一般 2 张：好友天梯图 + 物品图）
 
+    参数:
+        order_id    (必填): 订单ID
+        image_url_1 (必填): 第 1 张图片地址（王者荣耀：好友天梯图）
+        image_url_2 (选填): 第 2 张图片地址（王者荣耀：物品图）
+        user_id     (选填): 用户ID；不传则用后台「账号管理」的默认代练通账号
+        token       (选填): 登录令牌；不传则用后台默认账号的令牌
+
+    说明：服务端会先把图片转存到代练通图片存储，再逐张以「首图」留言挂到订单上（每张调一次上游）。
+          失败时 msg 会指明是第几张出错，此前已挂上的图片仍然有效。
+    """
+    order_id = request.POST.get("order_id", "").strip()
+    image_url_1 = request.POST.get("image_url_1", "").strip()
+    image_url_2 = request.POST.get("image_url_2", "").strip()
+
+    if not order_id:
+        return _json_response(StatusCode.PARAM_MISSING, msg="参数缺失: order_id(订单ID)")
+    if not image_url_1:
+        return _json_response(StatusCode.PARAM_MISSING, msg="参数缺失: image_url_1(第1张图片地址)")
+
+    ok, data = utils.upload_first_image(
+        order_id, [u for u in (image_url_1, image_url_2) if u],
+        user_id=request.POST.get("user_id", "").strip(),
+        token=request.POST.get("token", "").strip())
+    if not ok:
+        return _json_response(StatusCode.EXTERNAL_API_FAILED, msg=data)
+    return _spider_result(data)
+
+
+@require_http_methods(["POST"])
+def upload_end_image_view(request):
+    """上传订单完单图并申请完单（接单方上传完成后 → 发单方即可验收）
+
+    参数:
+        order_id    (必填): 订单ID
+        image_url_1 (必填): 第 1 张完单图地址
+        image_url_2 (选填): 第 2 张完单图地址
+        user_id     (选填): 用户ID；不传则用后台「账号管理」的默认代练通账号
+        token       (选填): 登录令牌；不传则用后台默认账号的令牌
+
+    说明：服务端会先把图片转存到代练通图片存储，再逐张以「完单图」留言挂到订单上（每张调一次上游），
+          全部挂完后自动发起「申请完单」，订单随即进入「等待验收」。
+          失败时 msg 会指明是第几张出错，此前已挂上的图片仍然有效。
+    """
+    order_id = request.POST.get("order_id", "").strip()
+    image_url_1 = request.POST.get("image_url_1", "").strip()
+    image_url_2 = request.POST.get("image_url_2", "").strip()
+
+    if not order_id:
+        return _json_response(StatusCode.PARAM_MISSING, msg="参数缺失: order_id(订单ID)")
+    if not image_url_1:
+        return _json_response(StatusCode.PARAM_MISSING, msg="参数缺失: image_url_1(第1张图片地址)")
+
+    ok, data = utils.upload_end_image(
+        order_id, [u for u in (image_url_1, image_url_2) if u],
+        user_id=request.POST.get("user_id", "").strip(),
+        token=request.POST.get("token", "").strip())
+    if not ok:
+        return _json_response(StatusCode.EXTERNAL_API_FAILED, msg=data)
+    return _spider_result(data)
+
+
+# ==================== 号主信息 ====================
 
 @require_http_methods(["GET"])
 def owner_info_view(request):

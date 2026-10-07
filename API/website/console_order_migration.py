@@ -9,6 +9,7 @@
                                      / clear_logs（清空运行日志）
                                      / cancel_all（一键撤销全部待接单 + 关自动运行）
                                      / owner_info（号主信息查询）
+                                     / edit（编辑记录：改状态 + 备注，仅本地）
                                      / blacklist_add, blacklist_delete（标题黑名单增删）
     GET  /console/order-migration/feed/   搬单页实时数据轮询（记录 / 统计 / 运行日志 / 语音，JSON）
 
@@ -40,7 +41,11 @@ PAGE_SIZE = 20
 # 记录列表可筛选的状态（可多选，如「待接单 + 失败」）
 FILTER_STATUSES = (
     (MigrationStatus.PUBLISHED.value, '待接单'),
+    (MigrationStatus.TAKER_JOINED.value, '待报单号'),
     (MigrationStatus.TAKEN.value, '已接单'),
+    (MigrationStatus.WAITING_ACCEPT.value, '等待验收'),
+    (MigrationStatus.SETTLED.value, '已结算'),
+    (MigrationStatus.BOOSTER_CANCEL.value, '打手申请退单'),
     (MigrationStatus.FAILED.value, '失败'),
     (MigrationStatus.CANCELLED.value, '已撤单'),
     (MigrationStatus.PUBLISHING.value, '发单中'),
@@ -91,6 +96,8 @@ def order_migration_view(request):
             return _cancel_all(request)
         if action == 'owner_info':
             return _owner_info(request)
+        if action == 'edit':
+            return _edit(request)
         if action == 'blacklist_add':
             return _blacklist_add(request)
         if action == 'blacklist_delete':
@@ -153,6 +160,7 @@ def _persist(request):
     setting.notify_mail_to = (request.POST.get('notify_mail_to') or '').strip()[:254]
     setting.notify_sound = request.POST.get('notify_sound') == 'on'
     setting.notify_sound_text = (request.POST.get('notify_sound_text') or '').strip()[:100]
+    setting.notify_qq = (request.POST.get('notify_qq') or '').strip()[:32]
     setting.auto_run = request.POST.get('auto_run') == 'on'
     setting.save()
     return True
@@ -226,6 +234,7 @@ def feed_view(request):
     paginator = Paginator(listed, PAGE_SIZE)
     page = paginator.get_page(request.GET.get('page'))
     records = [{
+        'id': str(r.pk),
         'serial': r.dlt_serial_no,
         'trade_no': r.dlwz_trade_no,
         'title': r.dlt_title,
@@ -264,7 +273,11 @@ def feed_view(request):
         'stats': {
             'total': all_records.count(),
             'published': all_records.filter(status=MigrationStatus.PUBLISHED).count(),
+            'taker_joined': all_records.filter(status=MigrationStatus.TAKER_JOINED).count(),
             'taken': all_records.filter(status=MigrationStatus.TAKEN).count(),
+            'waiting_accept': all_records.filter(status=MigrationStatus.WAITING_ACCEPT).count(),
+            'settled': all_records.filter(status=MigrationStatus.SETTLED).count(),
+            'booster_cancel': all_records.filter(status=MigrationStatus.BOOSTER_CANCEL).count(),
             'failed': all_records.filter(status=MigrationStatus.FAILED).count(),
         },
         'run': {
@@ -364,6 +377,36 @@ def _owner_info(request):
     return _render(request, owner={'order': raw, 'serial': serial, 'trade': trade, 'info': data})
 
 
+def _edit(request):
+    """编辑一条搬单记录：改状态 + 备注（**只改本地记录**，平台动作需人工做）
+
+    退单等需要人工定夺的场景下，管理员处理完平台后回来把本地状态改成最终结果即可；
+    本操作不发任何平台请求，避免误触发资金动作。
+    """
+    from django.core.exceptions import ValidationError
+
+    record_id = (request.POST.get('record_id') or '').strip()
+    try:
+        record = OrderMigration.objects.filter(pk=record_id).first()
+    except (ValidationError, ValueError):
+        record = None
+    if record is None:
+        messages.error(request, _('未找到该搬单记录'))
+        return redirect(REDIRECT_URL)
+
+    status = (request.POST.get('status') or '').strip()
+    if status not in MigrationStatus.values:
+        messages.error(request, _('状态不合法'))
+        return redirect(REDIRECT_URL)
+
+    record.status = status
+    record.message = (request.POST.get('message') or '').strip()[:500]
+    record.save(update_fields=['status', 'message', 'updated_time'])
+    notify_success(request, _('已更新记录：%(no)s')
+                   % {'no': record.dlwz_trade_no or record.dlt_serial_no})
+    return redirect(REDIRECT_URL)
+
+
 def _render(request, preview=None, owner=None):
     setting = OrderMigrationSetting.get_solo()
     selected = _selected_statuses(request)
@@ -382,10 +425,15 @@ def _render(request, preview=None, owner=None):
         'blacklist': OrderMigrationBlacklist.objects.all(),
         'status_filters': _status_filters(selected),
         'status_filter_active': bool(selected),
+        'status_choices': MigrationStatus.choices,
         'stats': {
             'total': all_records.count(),
             'published': all_records.filter(status=MigrationStatus.PUBLISHED).count(),
+            'taker_joined': all_records.filter(status=MigrationStatus.TAKER_JOINED).count(),
             'taken': all_records.filter(status=MigrationStatus.TAKEN).count(),
+            'waiting_accept': all_records.filter(status=MigrationStatus.WAITING_ACCEPT).count(),
+            'settled': all_records.filter(status=MigrationStatus.SETTLED).count(),
+            'booster_cancel': all_records.filter(status=MigrationStatus.BOOSTER_CANCEL).count(),
             'failed': all_records.filter(status=MigrationStatus.FAILED).count(),
         },
     })

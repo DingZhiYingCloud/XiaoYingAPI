@@ -223,11 +223,16 @@ def index(request):
     （不可用的服务 slug 置空，模板据它决定是链接还是灰卡片）；并给出接口总数，
     供首页指标条展示（口径与文档中心一致，避免两处对不上）。
     """
-    from API.common.middleware import is_docs_hidden
+    from API.common.middleware import is_admin_only, is_docs_hidden
+    from .admin_auth import is_superadmin
     from .docs import ALL_ENDPOINTS, all_docs as _all_docs
-    by_prefix = {d.prefix: d for d in _all_docs() if not is_docs_hidden(d.prefix)}
+    viewer = is_superadmin(getattr(request, 'user', None))
+    by_prefix = {d.prefix: d for d in _all_docs() if not is_docs_hidden(d.prefix, viewer)}
     services = []
     for svc in _annotate_service_status(localize(SERVICES), lambda p: p in by_prefix):
+        # 「仅专属管理员」的服务对非超管整项不展示（与文档中心口径一致）
+        if is_admin_only(svc['url_prefix']) and not viewer:
+            continue
         doc = by_prefix.get(svc['url_prefix'])
         linkable = doc is not None and svc['status'] not in ('offline', 'dev')
         services.append({**svc, 'slug': doc.slug if linkable else ''})

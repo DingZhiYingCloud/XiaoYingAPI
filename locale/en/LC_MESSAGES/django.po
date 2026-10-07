@@ -1129,8 +1129,8 @@ msgstr "General-purpose file upload with unified integration and secure response
 msgid "邮件发送"
 msgstr "Email Sending"
 
-msgid "邮箱发送与虚拟邮箱收发（VMEmail），覆盖验证邮件、收发场景。"
-msgstr "Email sending and virtual mailbox send/receive (VMEmail), covering verification emails and messaging scenarios."
+msgid "邮箱 v1（发送邮件，**已并入「消息推送服务」**，本路由作为兼容入口保留）与虚拟邮箱收发（VMEmail）。"
+msgstr "Email v1 (send email, **now merged into the Message Push Service**; this route is kept as a compatible entry) and virtual mailbox (VMEmail)."
 
 msgid "邮箱服务"
 msgstr "Email Service"
@@ -1220,17 +1220,14 @@ msgstr "The three channels differ in authentication: the VMEmail channel is open
 msgid "上游为长轮询：无新邮件时会挂起约 25 秒后返回空列表，客户端 HTTP 超时应大于 35 秒。"
 msgstr "The upstream uses long polling: with no new mail it hangs for about 25 seconds before returning an empty list, so the client HTTP timeout should exceed 35 seconds."
 
-msgid "临时邮箱API,虚拟邮箱接口,邮箱验证码API,邮件发送接口"
-msgstr "Temporary Email API,Virtual Mailbox API,Email Verification Code API,Email Sending API"
+msgid "临时邮箱API,虚拟邮箱接口,一次性邮箱,接收邮件接口"
+msgstr "Temporary Email API,Virtual Mailbox API,Disposable Email,Inbox Reading API"
 
 msgid "临时邮箱的收件是长轮询：没有新邮件时请求会挂起约 25 秒后返回空列表，属正常行为，请不要按短超时判定为失败；邮件有留存期限，重要内容请及时取回。"
 msgstr "Temporary mailbox polling is long-polling: when there is no new mail the request hangs for about 25 seconds before returning an empty list. This is expected, so do not treat it as a failure based on a short timeout. Mail is retained for a limited time, so retrieve anything important promptly."
 
 msgid "发送一封邮件，可指定多个收件人。"
 msgstr "Send an email to one or more recipients."
-
-msgid "发送文本/HTML 邮件，支持多个收件人。需项目签名调用。"
-msgstr "Send text/HTML emails to multiple recipients. Signature Required."
 
 msgid "发送邮件"
 msgstr "Send Email"
@@ -1367,8 +1364,31 @@ msgstr "Mail ID"
 msgid "邮件不存在（或已过期，保留约 1 小时）返回 20030。"
 msgstr "Returns 20030 when the mail does not exist (or has expired, since mail is kept for about 1 hour)."
 
-msgid "邮件发送与虚拟邮箱收发能力。当前接入 2 条线路，后续可继续扩展更多平台/线路。"
-msgstr "Email sending plus virtual mailbox send/receive capabilities. 2 channels are currently integrated; more platforms/channels can be added later."
+msgid "虚拟邮箱（临时邮箱）能力：随机生成一个邮箱地址并接收来信，常用于注册验证、接口联调与自动化测试。"
+msgstr "Virtual mailbox (disposable email): generate a random address to receive mail, handy for sign-up verification, integration testing and automation."
+
+msgid "邮箱服务提供**虚拟邮箱（临时邮箱）**能力：本地随机生成一个邮箱地址、无需注册，该地址即可接收来信，适合注册验证、接口联调、自动化测试等需要一次性邮箱的场合。（原「发送邮件」能力已并入**消息推送服务**：`POST /api/push/email/send`。）"
+msgstr "The Email Service provides a **virtual (disposable) mailbox**: a random local address with no sign-up needed that can receive mail — handy for sign-up verification, integration testing and automation. (The former \"send email\" feature is now merged into the **Message Push Service**: `POST /api/push/email/send`.)"
+
+msgid "本服务需项目签名调用。"
+msgstr "This service requires a project signature."
+
+# --- 首页服务清单（website/services.py）：邮箱服务 ---
+msgid "虚拟邮箱（临时邮箱）：本地随机生成地址收信（仅收信），适合注册验证与接口联调；原「发送邮件」已并入「消息推送服务」。"
+msgstr "Virtual (disposable) mailbox: generate a local address that can only receive mail — handy for sign-up verification and integration testing; the former \"send email\" feature is now merged into the Message Push Service."
+
+msgid "虚拟邮箱"
+msgstr "Virtual Mailbox"
+
+msgid "临时邮箱"
+msgstr "Temporary Email"
+
+msgid "收信"
+msgstr "Receive"
+
+# --- 控制台推送日志（console/push_logs.html）：邮件收件人 ---
+msgid "收件人"
+msgstr "Recipients"
 
 msgid "邮件发送与虚拟邮箱收发能力。当前接入 3 条线路，后续可继续扩展更多平台/线路。"
 msgstr "Mail sending plus virtual mailbox send/receive. 3 channels are currently available, with more platforms/channels to come."
@@ -13594,6 +13614,12 @@ msgstr "Leave blank to use QQ_MAIL_ACCOUNT from .env"
 msgid "留空则发到 .env 里配置的 QQ_MAIL_ACCOUNT。"
 msgstr "Leave blank to send to QQ_MAIL_ACCOUNT configured in .env."
 
+msgid "管理员QQ（退单通知）"
+msgstr "Admin QQ (cancellation notices)"
+
+msgid "打手申请退单等需要人工处理的事件，用 QQBot 私聊通知这个 QQ。"
+msgstr "Events needing manual handling (e.g. a booster requests cancellation) are sent to this QQ via QQBot private message."
+
 msgid "被接单声音提醒"
 msgstr "Sound alert when taken"
 
@@ -13639,6 +13665,33 @@ msgstr "Pending"
 msgid "已接单"
 msgstr "Taken"
 
+msgid "等待验收"
+msgstr "Await acceptance"
+
+msgid "等待验收中"
+msgstr "Awaiting acceptance"
+
+msgid "待报单号"
+msgstr "Await order no."
+
+msgid "已结算"
+msgstr "Settled"
+
+msgid "打手申请退单"
+msgstr "Booster requests cancellation"
+
+msgid "丸子已接单（待报单号）"
+msgstr "Wanzi taken (awaiting order no.)"
+
+msgid "被接单时同时用 Server酱 推送到手机；SendKey 在「账号管理」里以 platform=serverchan 的账号维护。"
+msgstr "A ServerChan push is also sent to your phone on take; keep the SendKey as a platform=serverchan account in Account management."
+
+msgid "打手 QQ 自动接待"
+msgstr "Auto-reception on QQ"
+
+msgid "丸子订单被接单后：打手加我们 QQ 时由 AI 自动索要丸子订单号；他报出单号后自动去代练通接单并把号主信息发给他。接单失败会自动在丸子撤销并告知他。"
+msgstr "After a Wanzi order is taken: when the booster adds our QQ, AI asks for the Wanzi order no.; once reported, it takes the order on DaiLianTong and sends the owner info to him. If taking fails, it revokes on Wanzi and tells him."
+
 msgid "自动刷新中"
 msgstr "Auto-refreshing"
 
@@ -13659,6 +13712,21 @@ msgstr "View account"
 
 msgid "暂无搬单记录"
 msgstr "No migration records"
+
+msgid "编辑搬单记录"
+msgstr "Edit migration record"
+
+msgid "此操作只改本地记录，不会联动两个平台；平台上的撤销 / 结账等动作需你手动完成。"
+msgstr "This only updates the local record and does not affect either platform; perform revocation / settlement actions on the platforms manually."
+
+msgid "未找到该搬单记录"
+msgstr "Migration record not found"
+
+msgid "状态不合法"
+msgstr "Invalid status"
+
+msgid "已更新记录：%(no)s"
+msgstr "Record updated: %(no)s"
 
 msgid "代练通已接单"
 msgstr "Taken on DaiLianTong"
@@ -13737,8 +13805,8 @@ msgstr "Search servers…"
 msgid "消息推送"
 msgstr "Message Push"
 
-msgid "把消息推送到手机的通知服务：当前接入 Server酱（sct.ftqq.com）一条线路，适合服务器告警、任务完成、定时任务结果等场景；SendKey 由后台「账号管理」统一托管。"
-msgstr "A notification service that pushes messages to your phone. It currently has one channel: ServerChan (sct.ftqq.com), ideal for server alerts, task completion and scheduled-job results; the SendKey is managed centrally in the console's Account Management."
+msgid "把消息推送到手机、邮箱或 QQ 的通知服务：当前接入 Server酱（微信推送）、邮件与 QQBot 3 条线路，适合服务器告警、任务完成、定时任务结果等场景；SendKey 与 QQBot 地址 / token 均由后台托管。"
+msgstr "A notification service that pushes messages to your phone, mailbox or QQ: three channels (ServerChan for WeChat push, Email, and QQBot), ideal for server alerts, task completion and scheduled-job results; the SendKey and the QQBot address/token are managed centrally in the console."
 
 msgid "微信推送"
 msgstr "WeChat push"
@@ -13753,14 +13821,14 @@ msgstr "ServerChan"
 msgid "消息推送服务"
 msgstr "Message Push Service"
 
-msgid "把消息推送到手机的通知服务。当前接入 Server酱 1 条线路，后续可继续扩展更多推送平台/线路。"
-msgstr "A notification service that pushes messages to your phone. One channel (ServerChan) is available now; more push platforms/channels can be added later."
+msgid "把消息推送到手机、邮箱或 QQ 的通知服务。当前接入 Server酱（微信推送）、邮件与 QQBot 3 条线路，后续可继续扩展更多推送平台/线路。"
+msgstr "A notification service that pushes messages to your phone, mailbox or QQ. Three channels are available now: ServerChan (WeChat push), Email and QQBot; more push platforms/channels can be added later."
 
-msgid "消息推送API,微信推送接口,Server酱API,ServerChan,服务器告警推送,通知接口"
-msgstr "message push API,WeChat push API,ServerChan API,ServerChan,server alert push,notification API"
+msgid "消息推送API,微信推送接口,Server酱API,ServerChan,邮件发送接口,QQ推送接口,QQ机器人推送,NapCat,通知接口"
+msgstr "message push API,WeChat push API,ServerChan API,ServerChan,email sending API,QQ push API,QQ bot push,NapCat,notification API"
 
-msgid "消息推送服务把「服务器 / 脚本 / 设备上发生的事」发送到手机，适合告警、任务完成通知、定时任务结果汇总等场景。当前接入 Server酱（sct.ftqq.com）一条线路：调用本服务的发送接口，消息经由 Server酱 推送到你手机。"
-msgstr "The message push service sends what happens on your server / scripts / devices to your phone — ideal for alerts, task-completion notices and scheduled-job summaries. One channel is available now: ServerChan (sct.ftqq.com). Call this service's send endpoint and the message is delivered to your phone through ServerChan."
+msgid "消息推送服务把「服务器 / 脚本 / 设备上发生的事」发送到手机、邮箱或 QQ，适合告警、任务完成通知、定时任务结果汇总等场景。当前有 3 条线路：**Server酱**（微信推送）、**邮件** 与 **QQBot**。"
+msgstr "The message push service sends what happens on your server / scripts / devices to your phone, mailbox or QQ — ideal for alerts, task-completion notices and scheduled-job summaries. Three channels are available now: **ServerChan** (WeChat push), **Email** and **QQBot**."
 
 msgid "**消息实际推送到哪个通道**（微信服务号、企业微信应用消息、企业微信/钉钉/飞书群机器人、Bark、PushDeer 或自定义 Webhook）由 Server酱 后台的通道配置决定 —— 换通道不用改调用代码。"
 msgstr "**Which channel the message actually reaches** (WeChat service account, WeCom app message, WeCom/DingTalk/Feishu group bot, Bark, PushDeer or a custom webhook) is decided by the channel configuration in the ServerChan console — switching channels requires no code change."
@@ -13768,8 +13836,85 @@ msgstr "**Which channel the message actually reaches** (WeChat service account, 
 msgid "**SendKey 由服务端托管**：在超管控制台「账号管理」里新增一个平台为「Server酱」的账号，把 SendKey 填进「登录凭据」字段即可（凭据加密落库、页面不回显）。调用方无需、也不应传递 SendKey。"
 msgstr "**The SendKey is hosted server-side**: add an account whose platform is \"ServerChan\" in the superadmin console's Account Management, and put the SendKey in the credential field (stored encrypted, never shown on pages). Callers neither need to nor should pass a SendKey."
 
+msgid "**邮件线路**由原「邮箱服务」的发送邮件并入：`POST /api/push/email/send` 与原 `/api/email/v1/send` 是同一实现、同一参数与响应，老路由继续可用。"
+msgstr "**The email channel** comes from the former Email Service's send feature: `POST /api/push/email/send` and the old `/api/email/v1/send` share one implementation with identical parameters and response, and the old route keeps working."
+
+msgid "**QQBot 线路**通过 NapCat（OneBot 11 HTTP）把消息发到 QQ 群 / 好友；NapCat 的 HTTP 地址与 token 在超管控制台「QQBot」页维护，调用方只传目标与内容。"
+msgstr "**The QQBot channel** sends messages to QQ groups / friends through NapCat (OneBot 11 HTTP); the NapCat HTTP address and token are maintained on the superadmin console's QQBot page, and callers only pass the target and the content."
+
 msgid "本服务接口需项目签名调用；每次推送都会在控制台「推送日志」留痕（成功与失败都记）。"
 msgstr "These endpoints require a project signature; every push leaves a record in the console's Push Logs (both successes and failures)."
+
+# --- QQBot 线路（docs/push.py · qqbot channel） ---
+msgid "QQBot（NapCat / OneBot 11 HTTP）"
+msgstr "QQBot (NapCat / OneBot 11 HTTP)"
+
+msgid "通过 NapCat 的 OneBot 11 HTTP 接口把消息发到 QQ 群 / 好友；NapCat 的 HTTP 地址与 token 由服务端托管（控制台「QQBot」），调用方只传目标与内容。需项目签名调用。"
+msgstr "Send messages to QQ groups / friends via NapCat's OneBot 11 HTTP API; the NapCat HTTP address and token are hosted server-side (console QQBot page) and callers only pass the target and content. Project signature required."
+
+msgid "发送 QQ 消息"
+msgstr "Send QQ Message"
+
+msgid "发送一条纯文本消息到指定的 QQ 群或好友。"
+msgstr "Send a plain-text message to a QQ group or friend."
+
+msgid "目标类型"
+msgstr "Target type"
+
+msgid "必填：group=发到群聊，private=发到好友私聊"
+msgstr "Required: group = send to a group chat, private = send to a friend"
+
+msgid "群聊"
+msgstr "Group chat"
+
+msgid "私聊"
+msgstr "Private chat"
+
+msgid "目标号码"
+msgstr "Target ID"
+
+msgid "群号或好友 QQ 号，如 123456789"
+msgstr "Group number or friend QQ number, e.g. 123456789"
+
+msgid "必填：群号（target_type=group）或好友 QQ 号（target_type=private），纯数字"
+msgstr "Required: group number (target_type=group) or friend QQ number (target_type=private), digits only"
+
+msgid "消息内容"
+msgstr "Message"
+
+msgid "要发送的纯文本内容"
+msgstr "The plain-text content to send"
+
+msgid "必填：消息正文，按纯文本原样发送（不会解析 CQ 码）"
+msgstr "Required: message body, sent as plain text (CQ codes are not parsed)"
+
+msgid "消息以**纯文本**发送（服务端 auto_escape=true）：`[CQ:xxx]` 会作为普通文字发出，不会被解析成图片 / @ / 表情。"
+msgstr "The message is sent as **plain text** (server sets auto_escape=true): `[CQ:xxx]` goes out as literal text and is never parsed into images / mentions / faces."
+
+msgid "QQBot（NapCat）的 HTTP 地址与 token 在控制台「QQBot」页维护，调用方不传。"
+msgstr "The QQBot (NapCat) HTTP address and token are maintained on the console's QQBot page; callers do not pass them."
+
+msgid "QQ 侧有风控：请低频调用、避免重复发送相同内容。"
+msgstr "QQ applies anti-spam controls: call at a low rate and avoid sending identical content repeatedly."
+
+msgid "上游 retcode 非 0 时，本接口返回 40001，msg 即上游给的原因。"
+msgstr "When the upstream retcode is non-zero, this API returns 40001 with the upstream reason in msg."
+
+msgid "上游返回的消息 ID"
+msgstr "Message ID returned by the upstream"
+
+msgid "群列表"
+msgstr "Group list"
+
+# --- 邮件线路（docs/push.py · email channel） ---
+msgid "站内邮件（Django 邮件后端 / SMTP）"
+msgstr "Built-in email (Django email backend / SMTP)"
+
+msgid "把消息以邮件形式发送出去（原「邮箱服务」的发送邮件能力，已并入本服务）；与 `/api/email/v1/send` 是同一实现，参数与响应完全一致。需项目签名调用。"
+msgstr "Send the message as an email (the former Email Service's send feature, now merged into this service); it shares one implementation with `/api/email/v1/send`, with identical parameters and response. Project signature required."
+
+msgid "老入口 `/api/email/v1/send` 仍可用，与本端点等价（同一实现）。"
+msgstr "The old entry `/api/email/v1/send` still works and is equivalent to this endpoint (same implementation)."
 
 msgid "Server酱（sct.ftqq.com）微信推送"
 msgstr "ServerChan (sct.ftqq.com) WeChat push"
@@ -13946,11 +14091,447 @@ msgstr "data is the upstream push-detail JSON; wxstatus is the raw WeChat API re
 msgid "推送日志"
 msgstr "Push Logs"
 
-msgid "消息推送服务（当前接入 Server酱）每次推送的记录：标题 / 正文摘要、发起项目、成功或失败、上游返回码与推送ID，便于回看与排错。SendKey 在「账号管理」维护。"
-msgstr "Records of every push made by the message push service (currently ServerChan): title / content summary, calling project, success or failure, upstream code and pushid — handy for review and troubleshooting. The SendKey is managed in Account Management."
+msgid "消息推送服务（Server酱 / 邮件 / QQBot）每次推送的记录：标题与正文摘要、发起项目、成功或失败、上游返回码与推送ID，便于回看与排错。"
+msgstr "Records of every push made by the message push service (ServerChan / Email / QQBot): title and content summary, calling project, success or failure, upstream code and pushid — handy for review and troubleshooting."
 
 msgid "推送日志 - 超级管理员 - 小影API"
 msgstr "Push Logs - Superadmin - XiaoYingAPI"
+
+# --- 控制台 QQBot 操作台（console_menu.py / console_qqbot.py / console/qqbot.html） ---
+msgid "QQBot"
+msgstr "QQBot"
+
+msgid "QQBot（NapCat）操作台：连接配置（HTTP 地址 / token / 超时 / 机器人 QQ / 安装目录）、一键部署（自动下载 / 配置 / 启动 / 回填，含实时日志）与好友消息（好友私聊消息经 NapCat 事件上报落库，会话列表 + 对话流，可直接回复）。"
+msgstr "QQBot (NapCat) console: connection settings (HTTP address / token / timeout / bot QQ / install directory), one-click deployment (auto download / configure / start / fill back, with a live log) and friend messages (friend private messages stored via NapCat event reporting, with a conversation list + thread and direct replies)."
+
+msgid "QQBot - 超级管理员 - 小影API"
+msgstr "QQBot - Superadmin - XiaoYingAPI"
+
+msgid "超级管理员,QQBot,NapCat,好友消息,消息推送"
+msgstr "superadmin,QQBot,NapCat,friend messages,message push"
+
+msgid "小影API 超级管理员：QQBot（NapCat）操作台，含连接配置、一键部署与好友消息实时接收。"
+msgstr "XiaoYingAPI superadmin: QQBot (NapCat) console with connection settings, one-click deployment and real-time friend messages."
+
+msgid "QQBot（NapCat）的运行配置、一键部署与好友消息都在这一页。凭据加密落库、页面不回显，编辑时留空 = 保持原值。"
+msgstr "QQBot (NapCat) runtime configuration, one-click deployment and friend messages all live on this page. Credentials are stored encrypted and never shown — leaving a field empty keeps its current value."
+
+msgid "QQBot 通过 NapCat 的 OneBot 11 HTTP 接口发送消息，实际请求的是「HTTP 地址」+ /send_msg。"
+msgstr "QQBot sends messages through NapCat's OneBot 11 HTTP API; the actual request goes to the configured HTTP address plus /send_msg."
+
+msgid "连接配置"
+msgstr "Connection settings"
+
+msgid "保存配置"
+msgstr "Save Settings"
+
+msgid "QQBot 配置已保存"
+msgstr "QQBot settings saved"
+
+msgid "事件回调基址"
+msgstr "Event callback base URL"
+
+msgid "如 https://api.example.com（留空则一键启动时自动取当前访问域名）"
+msgstr "e.g. https://api.example.com (leave empty to auto-use the domain you are visiting on One-Click Start)"
+
+msgid "NapCat 把好友消息等事件 POST 回来的站点基址。留空时点「一键启动」会自动取当前访问本页的域名。"
+msgstr "Site base URL that NapCat posts events (such as friend messages) back to. If left empty, One-Click Start automatically uses the domain you are visiting this page with."
+
+msgid "事件回调基址必须以 http:// 或 https:// 开头"
+msgstr "Event callback base URL must start with http:// or https://"
+
+msgid "事件上报（实时接收好友消息）"
+msgstr "Event reporting (real-time friend messages)"
+
+msgid "OneBot 没有「拉取新消息」的接口，好友消息只能由 NapCat 主动推：它把 message 事件 POST 到下面这个地址，由本系统落库后在下方「好友消息」里实时显示。"
+msgstr "OneBot has no \"fetch new messages\" API, so friend messages can only be pushed by NapCat: it POSTs message events to the address below, and this system stores them and shows them live under Friend Messages."
+
+msgid "回调地址"
+msgstr "Callback URL"
+
+msgid "尚未确定 —— 点上方「一键启动」会自动用当前访问域名写入；也可在上方「事件回调基址」手动填写。"
+msgstr "Not determined yet — One-Click Start will automatically write it using the domain you are visiting; you can also fill in the Event callback base URL above manually."
+
+msgid "一键启动会把该地址写进 NapCat 配置并重启 NapCat 使其生效；启用之前收到的消息无法补录。"
+msgstr "One-Click Start writes this address into NapCat's config and restarts NapCat to apply it; messages received before it was enabled cannot be backfilled."
+
+msgid "HTTP 地址"
+msgstr "HTTP address"
+
+msgid "如 http://127.0.0.1:3000"
+msgstr "e.g. http://127.0.0.1:3000"
+
+msgid "NapCat HTTP 服务端的地址（不含 /send_msg）；留空则该线路不可用。"
+msgstr "Address of the NapCat HTTP server (without /send_msg); leave empty to disable this channel."
+
+msgid "请求超时(秒)"
+msgstr "Timeout (seconds)"
+
+msgid "调用 NapCat 接口的超时，最小 1 秒。"
+msgstr "Timeout for calling the NapCat API, minimum 1 second."
+
+msgid "已配置，留空则保持原值"
+msgstr "Configured; leave empty to keep it"
+
+msgid "NapCat 未配置 token 时留空"
+msgstr "Leave empty if NapCat has no token configured"
+
+msgid "对应 NapCat HTTP 服务端的 token，按 Authorization: Bearer 发送；加密落库、页面不回显。"
+msgstr "The token of the NapCat HTTP server, sent as Authorization: Bearer; stored encrypted and never shown on pages."
+
+msgid "测试连接"
+msgstr "Test Connection"
+
+msgid "「测试连接」按已保存的配置调用 NapCat 的 /get_login_info；改了配置请先保存再测。"
+msgstr "Test Connection calls NapCat's /get_login_info using the saved configuration; save your changes before testing."
+
+msgid "连接成功：当前登录的 QQ 为 %(nick)s（%(qq)s）"
+msgstr "Connected: currently logged in as %(nick)s (%(qq)s)"
+
+msgid "连接失败：%(msg)s"
+msgstr "Connection failed: %(msg)s"
+
+# --- QQBot 目标号码下拉（website/docs/__init__.py · docs/push.py） ---
+msgid "手动输入"
+msgstr "Manual input"
+
+msgid "必填：群号（target_type=group）或好友 QQ 号（target_type=private），纯数字。主面板是机器人已加入的群（实时取自 NapCat）；发私聊或群不在列表里时，点「手动输入」直接填号码。"
+msgstr "Required: group number (target_type=group) or friend QQ number (target_type=private), digits only. The main panel lists the groups the bot has joined (fetched live from NapCat); for a private chat, or a group that is not listed, switch to Manual input and type the number."
+
+msgid "（请选择群聊，或切到「手动输入」）"
+msgstr "(Pick a group chat, or switch to Manual input)"
+
+msgid "（未取到群列表：请在控制台「QQBot」页检查配置，或切到「手动输入」）"
+msgstr "(Could not load the group list: check the configuration on the console's QQBot page, or switch to Manual input)"
+
+msgid "未命名群"
+msgstr "Unnamed group"
+
+# --- QQBot 一键部署（console/qqbot.html） ---
+msgid "不想手动装 NapCat？用下方的「一键启动」：会自动下载、写好 HTTP 服务端与事件上报配置、启动（必要时自动重启），并把地址与 token 回填到这里。"
+msgstr "Prefer not to install NapCat by hand? Use One-Click Start below: it downloads, writes the HTTP server and event-reporting config, starts it (restarting it if needed), and fills the address and token back here."
+
+msgid "唯一需要你亲自动手的一步：打开 WebUI，用手机 QQ 扫码登录机器人账号。"
+msgstr "The only manual step: open the WebUI and scan the QR code with the QQ app to log in the bot account."
+
+msgid "已安装"
+msgstr "Installed"
+
+msgid "未安装（可用一键启动）"
+msgstr "Not installed (use One-Click Start)"
+
+msgid "服务在运行"
+msgstr "Service running"
+
+msgid "服务未运行"
+msgstr "Service stopped"
+
+msgid "机器人 QQ 号"
+msgstr "Bot QQ number"
+
+msgid "NapCat 要登录的 QQ 号"
+msgstr "QQ number for NapCat to log in"
+
+msgid "一键启动时用它快速登录；首次仍需扫码。"
+msgstr "Used for quick login on One-Click Start; the first login still needs a QR scan."
+
+msgid "NapCat 安装目录"
+msgstr "NapCat install directory"
+
+msgid "留空则用项目下的 napcat/ 目录。"
+msgstr "Leave empty to use the napcat/ folder under the project."
+
+msgid "对应 NapCat HTTP 服务端的 token，按 Authorization: Bearer 发送；加密落库、页面不回显。一键启动会自动生成并回填。"
+msgstr "The NapCat HTTP server token, sent as Authorization: Bearer; stored encrypted and never shown. One-Click Start generates and fills it automatically."
+
+msgid "一键部署"
+msgstr "One-Click Deployment"
+
+msgid "进行中"
+msgstr "Running"
+
+msgid "空闲"
+msgstr "Idle"
+
+msgid "一键启动"
+msgstr "One-Click Start"
+
+msgid "确认停止 NapCat？停止后 QQBot 推送会失败，直到再次启动。"
+msgstr "Stop NapCat? QQBot pushes will fail until it is started again."
+
+msgid "打开 WebUI 扫码登录"
+msgstr "Open WebUI to scan and log in"
+
+msgid "启动前配置（点开查看：会自动做什么、需要你做什么）"
+msgstr "Pre-flight setup (click to see what happens automatically and what you need to do)"
+
+msgid "运行环境"
+msgstr "Environment"
+
+msgid "安装目录"
+msgstr "Install directory"
+
+msgid "未安装（一键启动会下载）"
+msgstr "Not installed (One-Click Start will download it)"
+
+msgid "本机 QQ"
+msgstr "Local QQ"
+
+msgid "不适用（Linux）"
+msgstr "Not applicable (Linux)"
+
+msgid "未安装（将自动改用 OneKey 包，由官方安装器下载 QQ）"
+msgstr "Not installed (falls back to the OneKey package; the official installer downloads QQ)"
+
+msgid "HTTP 端口"
+msgstr "HTTP port"
+
+msgid "端口监听"
+msgstr "Port listening"
+
+msgid "已监听（服务在运行）"
+msgstr "Listening (service running)"
+
+msgid "未监听"
+msgstr "Not listening"
+
+msgid "可用（Linux 将优先用官方镜像）"
+msgstr "Available (Linux will prefer the official image)"
+
+msgid "不可用（将给出官方安装命令）"
+msgstr "Unavailable (the official install command will be shown)"
+
+msgid "探测环境（系统 / 目录 / 本机 QQ / 端口）——自动"
+msgstr "Detect environment (system / directory / local QQ / port) — automatic"
+
+msgid "下载 NapCat（国内镜像优先，失败自动回退官方）——自动"
+msgstr "Download NapCat (China mirror first, falls back to official) — automatic"
+
+msgid "解压到安装目录——自动"
+msgstr "Extract into the install directory — automatic"
+
+msgid "生成 token、写入 HTTP 服务端与事件上报配置（回调地址）——自动"
+msgstr "Generate a token and write the HTTP server and event-reporting config (callback URL) — automatic"
+
+msgid "启动 NapCat 进程（已在运行则自动重启以应用新配置；脱离本站进程，重启不受影响）——自动"
+msgstr "Start the NapCat process (restart it automatically if already running, to apply the new config; detached from this site, survives restarts) — automatic"
+
+msgid "等待 HTTP 服务端就绪——自动"
+msgstr "Wait until the HTTP server is ready — automatic"
+
+msgid "把地址与 token 回填到上面的配置——自动"
+msgstr "Fill the address and token back into the config above — automatic"
+
+msgid "打开 WebUI，用手机 QQ 扫码登录机器人账号——需要你操作（唯一人工步骤）"
+msgstr "Open the WebUI and scan with the QQ app to log in the bot — your action (the only manual step)"
+
+msgid "回到本页点「测试连接」确认打通——一键"
+msgstr "Return here and click Test Connection to confirm — one click"
+
+msgid "（若本机没装 QQ）运行官方安装器下载 QQ 与 NapCat——自动，进度实时显示在下方日志"
+msgstr "(If QQ is not installed) run the official installer to fetch QQ and NapCat — automatic, progress shown in the live log below"
+
+msgid "本机没装 QQ 时：会自动改用 OneKey 包，并由官方安装器自动下载 QQ 与 NapCat（约 300MB，进度实时显示在下方日志里），跑完自动继续，无需再点一次。"
+msgstr "If QQ is not installed: it switches to the OneKey package, whose official installer fetches QQ and NapCat (about 300 MB, progress shown in the live log below) and continues automatically — no second click needed."
+
+msgid "Linux 上没有 docker 时：安装需要 root 权限，本站无法代你执行，会在日志里给出官方一键安装命令。"
+msgstr "On Linux without docker: installation needs root, which this site cannot run for you; the official one-line install command is printed in the log."
+
+msgid "NapCat 已在运行时：为让事件上报等新配置生效，会自动先停止再启动一次（登录态保留，无需重新扫码）。"
+msgstr "If NapCat is already running: it is stopped and started once automatically so that new config (such as event reporting) takes effect (the login session is kept, no re-scan needed)."
+
+msgid "WebUI（扫码登录 QQ 的入口，用浏览器打开）"
+msgstr "WebUI (where you scan the QR to log in QQ — open it in a browser)"
+
+msgid "NapCat / QQ 会额外弹出一个它自己的窗口，里面的乱码是它用 GBK 控制台打印 UTF-8 文本造成的（上游行为），不影响使用 —— 看本页日志即可。"
+msgstr "NapCat / QQ also opens its own extra window whose garbled text comes from printing UTF-8 into a GBK console (upstream behavior); it does not affect anything — just use this page's log."
+
+msgid "若扫码后 HTTP 端口仍未就绪：请填上上面的「机器人 QQ 号」再点一次「一键启动」（NapCat 按账号保存配置，填了 QQ 号才能把 HTTP 服务端写进该账号）。"
+msgstr "If the HTTP port is still not ready after scanning: fill in the Bot QQ number above and click One-Click Start again (NapCat stores config per account, so the QQ number is needed to write the HTTP server into that account's config)."
+
+msgid "流程结束后日志会保留，刷新页面仍可回看。"
+msgstr "The log is kept after the run ends, so you can revisit it after refreshing."
+
+msgid "机器人 QQ 号必须是数字"
+msgstr "The bot QQ number must be digits"
+
+msgid "已开始一键部署，下方「实时日志」会显示每一步进度"
+msgstr "One-click deployment started; the live log below shows each step"
+
+# --- 控制台 QQBot · 实时日志工具栏 & 好友消息（console/qqbot.html） ---
+msgid "自动滚底"
+msgstr "Auto-scroll"
+
+msgid "警告及以上"
+msgstr "Warnings and above"
+
+msgid "仅错误"
+msgstr "Errors only"
+
+msgid "清屏"
+msgstr "Clear"
+
+msgid "清空部署日志？清空后页面与已保存的日志都会被清掉。"
+msgstr "Clear the deployment log? Both the page and the saved log will be cleared."
+
+msgid "复制"
+msgstr "Copy"
+
+msgid "已复制"
+msgstr "Copied"
+
+msgid "好友消息"
+msgstr "Friend Messages"
+
+msgid "实时接收中"
+msgstr "Receiving live"
+
+msgid "有未读消息"
+msgstr "Unread messages"
+
+msgid "加载会话失败，请刷新页面重试"
+msgstr "Failed to load the conversation — please refresh and try again"
+
+msgid "发送失败，请重试"
+msgstr "Send failed, please try again"
+
+msgid "会话不合法"
+msgstr "Invalid conversation"
+
+msgid "好友私聊机器人的消息会实时出现在这里（来自 NapCat 事件上报），可直接回复。"
+msgstr "Private messages friends send to the bot appear here in real time (via NapCat event reporting), and you can reply directly."
+
+msgid "AI 自动回复"
+msgstr "AI auto-reply"
+
+msgid "AI 人格"
+msgstr "AI persona"
+
+msgid "AI 人格取值非法，请从内置的三种里选择"
+msgstr "Invalid AI persona; pick one of the three built-in options"
+
+msgid "AI 会先判断这条消息值不值得回，不值得就静默跳过；关闭时对现有功能零影响。"
+msgstr "The AI first decides whether the message is worth answering and skips it silently if not; turning this off has zero impact on existing features."
+
+msgid "AI 判断这条不需要回复"
+msgstr "The AI decided this message needs no reply"
+
+msgid "AI 返回了空内容"
+msgstr "The AI returned empty content"
+
+msgid "AI 调用失败: %(err)s"
+msgstr "AI call failed: %(err)s"
+
+msgid "开启后，好友私聊消息自动交给 AI 回复"
+msgstr "When enabled, private messages from friends are handed to the AI for automatic replies"
+
+msgid "尖酸刻薄"
+msgstr "Sarcastic"
+
+msgid "幽默搞笑"
+msgstr "Humorous"
+
+msgid "回复发送失败: %(err)s"
+msgstr "Failed to send the reply: %(err)s"
+
+msgid "温柔善良聪明可爱"
+msgstr "Gentle and cute"
+
+msgid "没有可用的对话内容"
+msgstr "No conversation content available"
+
+msgid "用后台设为默认的 AI 模型，并带上与该好友最近的往来做上下文；表情 / 图片 / 语音等非文本消息不触发。AI 的回复会像手动回复一样出现在下方「好友消息」里。"
+msgstr "Uses the AI model set as default in the console, and includes the recent back-and-forth with that friend as context; non-text messages (faces, images, voice, etc.) do not trigger it. AI replies appear in the \"Friend messages\" panel below, just like manual replies."
+
+msgid "构建对话失败: %(err)s"
+msgstr "Failed to build the conversation: %(err)s"
+
+msgid "我"
+msgstr "Me"
+
+msgid "我："
+msgstr "Me: "
+
+msgid "这个会话还没有消息。"
+msgstr "No messages in this conversation yet."
+
+msgid "从左侧选择一个好友，即可查看对话并直接回复。"
+msgstr "Pick a friend on the left to view the conversation and reply."
+
+msgid "回复该好友（Shift+回车换行）"
+msgstr "Reply to this friend (Shift+Enter for a new line)"
+
+msgid "发送"
+msgstr "Send"
+
+msgid "请先选择要回复的好友"
+msgstr "Pick a friend to reply to first"
+
+msgid "请输入要发送的内容"
+msgstr "Enter the content to send"
+
+msgid "已发送给 QQ %(qq)s"
+msgstr "Sent to QQ %(qq)s"
+
+msgid "发送失败：%(msg)s"
+msgstr "Send failed: %(msg)s"
+
+msgid "暂无好友私聊消息。启用事件上报并重启 NapCat 后，好友发给机器人的消息就会实时出现在这里。"
+msgstr "No friend private messages yet. Once event reporting is enabled and NapCat is restarted, messages friends send to the bot will appear here in real time."
+
+msgid "仅显示最近 %(max)s 条；更早的记录已落库保存。"
+msgstr "Showing the latest %(max)s; older records are stored in the database."
+
+msgid "只看星标"
+msgstr "Starred only"
+
+msgid "有星标消息"
+msgstr "Has starred messages"
+
+msgid "星标"
+msgstr "Star"
+
+msgid "撤回（QQ 侧，超时可能失败）"
+msgstr "Recall (on QQ; may fail after the time limit)"
+
+msgid "删除本地记录"
+msgstr "Delete local record"
+
+msgid "也可直接写 CQ 码：[CQ:face,id=1]、[CQ:image,file=图片链接]"
+msgstr "Or write CQ codes directly: [CQ:face,id=1], [CQ:image,file=IMAGE URL]"
+
+msgid "表情"
+msgstr "Emoji"
+
+msgid "选择图片"
+msgstr "Pick images"
+
+msgid "移除这张图片"
+msgstr "Remove this image"
+
+msgid "撤回这条消息？会同时在对方 QQ 里撤回（超时可能失败）。"
+msgstr "Recall this message? It will also be recalled in their QQ (may fail after the time limit)."
+
+msgid "删除这条本地记录？对方 QQ 里的消息不受影响。"
+msgstr "Delete this local record? The message in their QQ is unaffected."
+
+msgid "一次最多发送 %(n)s 张图片"
+msgstr "At most %(n)s images per message"
+
+msgid "图片格式不正确（只支持浏览器读取的 data:image/…）"
+msgstr "Unsupported image format (only data:image/… read by the browser is accepted)"
+
+msgid "这条消息没有上游消息ID，无法撤回（只能删除本地记录）"
+msgstr "This message has no upstream message ID, so it cannot be recalled (only deleted locally)"
+
+msgid "消息不存在，可能已被清理"
+msgstr "The message no longer exists (it may have been pruned)"
+
+msgid "只能撤回自己发出的消息"
+msgstr "Only messages you sent can be recalled"
+
+msgid "撤回失败：%(msg)s"
+msgstr "Recall failed: %(msg)s"
 
 msgid "超级管理员,推送日志,消息推送,Server酱"
 msgstr "superadmin,push logs,message push,ServerChan"

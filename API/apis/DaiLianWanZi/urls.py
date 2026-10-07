@@ -51,6 +51,10 @@ urlpatterns = [
     path('business/orders/arbitrate', request.business_apply_arbitration_view,
          name='dlwz_business_apply_arbitration'),
 
+    # 商家版 · 验收 / 结算 (business acceptance)
+    path('business/orders/accept-completion', request.business_accept_completion_view,
+         name='dlwz_business_accept_completion'),
+
     # 打手版 (player)：尚未接入，保留前缀并返回「服务建设中」，调用方不会拿到 404
     path('player', service_building_view, name='dlwz_player'),
     path('player/<path:rest>', service_building_view, name='dlwz_player_rest'),

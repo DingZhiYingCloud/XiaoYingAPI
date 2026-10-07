@@ -51,11 +51,13 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware', # 生产模式静态文件服务（Django 5.1+ 的 serve() 视图在 DEBUG=False 时返回 400，WhiteNoise 为官方推荐替代）
     'django.contrib.sessions.middleware.SessionMiddleware', # 实现 Django 会话（Session）机制，维护用户服务端状态。
     'django.middleware.locale.LocaleMiddleware', # 国际化：按 URL 参数/Cookie 激活当前语言（必须在 Session 之后、Common 之前）
-    'API.website.docs_menu.DocsMenuMiddleware', # 文档中心：/docs/* 请求自动生成左侧服务菜单（注入 request.docs_menu）
     'corsheaders.middleware.CorsMiddleware', # 跨域请求中间件
     'django.middleware.common.CommonMiddleware', # 用来处理如日志记录、请求计数等通用任务的中间件
     'API.common.middleware.ApiCsrfExemptMiddleware', # CSRF 防护（S-07 整改）：/admin/ 等非 API 页面恢复校验，/api/ 前缀豁免（走签名认证）
     'django.contrib.auth.middleware.AuthenticationMiddleware', # 认证中间件,用来处理用户认证相关的请求和响应
+    # 文档中心：/docs/* 请求自动生成左侧服务菜单（注入 request.docs_menu）。
+    # 必须排在 AuthenticationMiddleware 之后：菜单需按查看者身份过滤「仅专属管理员」的服务 / 端点。
+    'API.website.docs_menu.DocsMenuMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware', # 消息中间件,用来处理消息相关的请求和响应
     'django.middleware.clickjacking.XFrameOptionsMiddleware', # 用来处理点击劫持攻击的中间件
     'API.common.middleware.ApiRequestLogMiddleware', # 请求日志（A-05）+ 调用统计（A-03）：必须在认证中间件之前，认证被拒的请求也要记录

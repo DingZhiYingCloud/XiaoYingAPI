@@ -134,7 +134,7 @@ def _resolved_route(path):
 
 
 def service_of(path):
-    """由请求路径解析服务前缀：取 /api/ 后的第 1 段，如 /api/email/v1/send -> /api/email/"""
+    """由请求路径解析服务前缀：取 /api/ 后的第 1 段，如 /api/push/serverchan/send -> /api/push/"""
     parts = path.split('/')
     if len(parts) >= 3 and parts[1] == 'api' and parts[2]:
         return f'/api/{parts[2]}/'

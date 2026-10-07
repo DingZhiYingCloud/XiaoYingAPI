@@ -61,6 +61,9 @@ class OrderMigrationSetting(BaseModel):
     notify_sound_text = models.CharField(
         '声音文本', max_length=100, blank=True, default=DEFAULT_NOTIFY_SOUND_TEXT,
         help_text='浏览器语音播报的内容')
+    notify_qq = models.CharField(
+        '管理员QQ', max_length=32, blank=True, default='3091995257',
+        help_text='打手申请退单等需要人工处理的事件，用 QQBot 私聊通知这个 QQ')
     auto_run = models.BooleanField(
         '自动运行', default=False,
         help_text='开启后后台线程按间隔自动执行搬单流水线（会真实发单 / 接单，谨慎开启）')

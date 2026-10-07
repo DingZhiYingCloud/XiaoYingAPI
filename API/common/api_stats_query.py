@@ -186,7 +186,7 @@ def daily_trend(days, service=None, app_id=None):
 
 
 def service_ranking(days, limit=None, service=None, app_id=None, order='calls', min_calls=0):
-    """按服务维度汇总（如 /api/email/）
+    """按服务维度汇总（如 /api/push/）
 
     :param service: 只看某个服务（用于看板筛选后服务表同步收敛）
     """

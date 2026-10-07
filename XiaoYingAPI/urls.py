@@ -8,6 +8,9 @@ from django.views.generic import RedirectView
 from django.views.static import serve
 
 from API.common.views import handler404 as _web404_view
+# QQBot 事件上报（NapCat HTTP 客户端把 message 事件 POST 回来）：必须挂在 /api/ 之外，
+# 上游带不了我们的项目签名；来源可信度由回调地址里的随机密钥自证（见 hook.py 说明）
+from API.apis.push.qqbot.hook import hook_view as qqbot_hook_view
 
 # 危险可渲染类型扩展名：/media/ 下此类文件强制附件下载，禁止内联渲染（S-02 整改）
 DANGEROUS_MEDIA_EXTS = {'.svg', '.html', '.htm', '.xhtml', '.xml', '.js',
@@ -33,6 +36,7 @@ def _media_serve(request, path, document_root):
 urlpatterns = [
     # Django 原生后台已移除（前台 /login/ 统一登录 + 超管页面接管管理功能）
     path('api/', include('API.apis.urls')), # API路由
+    path('hook/qqbot/<str:secret>/', qqbot_hook_view, name='qqbot_hook'),  # NapCat 事件上报回调（免签名）
     path('', include('API.website.urls')), # 官网前台路由（首页/登录/注册/文档/控制台）
 ]
 

@@ -610,6 +610,30 @@ def business_apply_arbitration_view(request):
     return _spider_result(data)
 
 
+# ==================== 商家版 · 验收 / 结算 ====================
+
+
+@require_http_methods(["POST"])
+def business_accept_completion_view(request):
+    """同意验收并结账（商家版；同意打手的完单申请，订单结算、款项放给打手）
+
+    参数:
+        trade_no      (必填): 订单号
+        pay_password  (选填): 支付密码；不传则用后台「账号管理」丸子凭据里的 pay_password
+        authorization (选填): 平台登录令牌；不传则用后台默认账号
+    """
+    trade_no, err = _trade_no_or_error(request)
+    if err:
+        return err
+
+    ok, data = utils.accept_completion(
+        trade_no, pay_password=request.POST.get("pay_password", "").strip(),
+        authorization=request.POST.get("authorization", "").strip())
+    if not ok:
+        return _json_response(StatusCode.EXTERNAL_API_FAILED, msg=data)
+    return _spider_result(data)
+
+
 # ==================== 商家版 · 发单 ====================
 
 
