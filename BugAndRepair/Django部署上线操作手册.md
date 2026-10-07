@@ -22,6 +22,8 @@
 | Java | **Linux 服务器要装 JDK 17** 并设 `HONGGUO_JAVA_BIN`（仓库内置 `jre/` 是 Windows 版，Linux 用不了） | __________ |
 | ffmpeg | 需在 PATH 上；**仅**红果短剧线路「第 4 集及以后」解密用（不部署该线路可忽略） | __________ |
 | Node.js | **要装 Node.js（≥ 18）**：海角社区的视频播放列表要调 `node derive_key.js` 还原真密钥，抖音评论发布也要 node；内置脚本无 npm 依赖，装个 node 二进制即可，装在非默认位置时设 `HAIJIAO_NODE_BIN` | __________ |
+| NapCat WebUI 子域名 | `napcat.{DEPLOY_DOMAIN}`（仅用于扫码，见第九节） | __________ |
+| NapCat 事件回调中转端口 | `18080`（**只监听 127.0.0.1**，见第九节） | __________ |
 
 > 后续命令默认在**项目根目录**下执行：`cd {PROJECT_ROOT}`
 > 为简洁，用变量 `$PY` 代表 Python 路径，执行前先设：
@@ -58,6 +60,8 @@
 | 13 | 配置 SSL 证书 | 强制 HTTPS | ☐ |
 | 14 | 上线验证 | 官网页面 + 语言切换 + 接口签名 | ☐ |
 | 15 | 配置数据库自动备份 | 加一条 cron 跑 `scripts/backup_db.py`；**必须用 `www` 用户执行**；详见第八节 | ☐ |
+| 16 | 部署 QQBot（NapCat，按需） | 用 docker，容器名固定 `napcat`；**已有同名容器就复用、绝不再 `docker run`**（会因名字冲突返回 **125**，且重建会丢 QQ 登录态）；推荐 `--network host` + 只绑回环；**必须配本机 Nginx 中转解 chunked**，否则消息一条都收不到；详见第九节 | ☐ |
+| 17 | 依赖 QQBot 的功能自检（按需） | `/console/qqbot/`「测试连接」通 + 私聊一句能落库；**代练搬单的 QQ 接待复用同一个 NapCat 实例**，务必先走通再开搬单「自动运行」 | ☐ |
 
 ---
 
@@ -515,6 +519,9 @@ proxy_set_header Host $host;
 | 短剧点播第 4 集报「找不到可用的 Java」 | Linux 线上没装 JDK 17，或 `.env` 没设 `HONGGUO_JAVA_BIN`（代码会先找内置 `jre/bin/java`，而那是 Windows 版） | `apt/dnf install` JDK 17，`.env` 设 `HONGGUO_JAVA_BIN=/usr/bin/java`，**完全重启 uwsgi** |
 | 海角「视频播放列表」报 `视频密钥派生失败（node 调用异常）: [Errno 13] Permission denied: 'node'` | **服务器压根没装 node**，不是权限问题 —— PATH 里混着当前用户不可访问的目录（root 启动 uwsgi 会带上 `/root/bin`）时，Linux 把「文件不存在」误报成 `Permission denied`，照这条信息去 chmod 会查错方向 | 装 Node.js（官方静态包即可），或 `.env` 设 `HAIJIAO_NODE_BIN=/usr/local/bin/node`，**完全重启 uwsgi**。验证：`runuser -u www -- node -v` 能打印版本 |
 | 短剧点播**长时间**停在「正在生成播放地址，请稍候重试」 | ① 确实在转（软编一集 30~40 秒，机器没有硬件编码器时更慢）；② **部署重启 uwsgi 打断转码留下的僵尸锁**；③ 上游取流卡住 | 先 `ps -ef | grep ffmpeg` + `tail logs/app.log \| grep hongguo`：**没有 ffmpeg 却一直 running = 状态卡死**。再看 `cache/dramas/hongguo_stream/*/*/*.lock` 里的属主 pid 是否还在（`ps -p <pid>`）——不在就删掉该锁，下一次点播自动重转（修复后此判断已内置，无需人工） |
+| 控制台「一键部署」报 `docker: Error response from daemon: Conflict. The container name "napcat" is already in use`，紧随 `部署失败：命令返回码 125` | 机器上**已有同名容器**（服务器重启后它按 `--restart unless-stopped` 自动拉起了），而旧版脚本仍无条件 `docker run --name napcat` | **不要删容器重建**（QQ 登录态在容器里，重建必须重新扫码）。直接复用：先 `docker ps -a --filter name=^napcat$` 确认，再 `docker start napcat`。代码已内置探测（`API/apis/push/qqbot/setup.py` 的 `_pipeline_linux()` 命中即走复用分支），升级到该版本后「一键部署」可反复点 |
+| QQBot **好友消息一条都不落库**：NapCat 显示已上报、我们回 200，但 `qq_private_message` 没有新记录；日志 `QQBot 事件上报体为空（Transfer-Encoding=chunked）` | NapCat 用 **chunked** 发请求体，而 **uwsgi 不解 chunked** —— 上报地址直连 uwsgi 时 Django 拿到的 `request.body` 是空的 | 让上报**绕本机 Nginx**（`proxy_request_buffering on` + `proxy_set_header Transfer-Encoding ""`），地址填 `http://127.0.0.1:18080/hook/qqbot/{hook_secret}/`；详见第九节第 3 步 |
+| QQBot 的 HTTP 服务端端口（默认 `3000`）没在监听、`/console/qqbot/` 的「测试连接」连不上 | NapCat **还没扫码登录 QQ**（未登录时它不起 OneBot 服务）；或容器被重建 / 重启过导致登录态丢失 | 打开 NapCat WebUI 扫码。注意**登录态跟着容器走**：`docker rm` 重建必丢，实测某些版本连 `docker restart` 也丢 —— 见第九节第 4 步 |
 
 ---
 
@@ -533,6 +540,9 @@ proxy_set_header Host $host;
 11. **第三方二进制 `git pull` 拉不到**：红果签名器的 `sign/unidbg-sign.jar` 与 `capture/` 不入库，换机器 / 首次部署必须手工补齐；且内置 `jre/` 是 **Windows 版**，Linux 线上要另装 JDK 17 —— 文档里「Java 无需安装」只对 Windows 成立。**验证方式**：真跑一集第 4 集的转码（签 `app_api.get_episode_vids()` 能返回集数即说明签名通了）。
 12. **`[Errno 13] Permission denied: '<命令>'` 未必是权限问题**：`subprocess` 调一个 PATH 里**根本不存在**的命令时，只要 PATH 里还混着当前用户**不可访问的目录**（root 启动 uwsgi 就会把 `/root/bin` 带进进程 PATH，见 `uwsgi.ini` 的启动方式），Linux 会把「文件不存在(ENOENT)」报成「权限不足(EACCES)」—— glibc 的 `execvp` 在有 EACCES 时优先报 EACCES。于是「服务器没装 node」被写成 `Permission denied: 'node'`，照它去 chmod 会查错方向（线上真踩过，见变更记录）。**排查口诀：先 `runuser -u www -- which <命令>`，确认文件到底在不在。**
 13. **跑调试脚本要用运行用户**：以 root 跑探针 / 调试脚本会把 `cache/**`、`media/**` 下的文件写成 **root 属主**，而 Django 的文件缓存文件是 **0600** —— `www` 的 worker 立刻读不了，线上表现为接口随机 500（日志里是 `PermissionError: ... .djcache`）。统一用 `runuser -u www -- $PY <脚本>`；万一写脏了：`chown -R www:www cache media`。
+14. **QQBot 的 NapCat 容器「已存在就复用」，绝不 `docker run` 第二次、更不删容器重建**：容器名固定 `napcat`，服务器重启后它按 `--restart unless-stopped` 自动拉起；此时再 `docker run --name napcat` 会因**名字冲突返回 125**（控制台表现为「一键部署」直接失败）。而**删掉重建更糟** —— **QQ 登录态存在容器里**，重建会被 NapCat 判为新设备、必须重新扫码。正确姿势：`docker ps -a --filter name=^napcat$` 先探测，存在就只 `docker start`。代码已内置该判断（`_pipeline_linux()`），复用时不回填本次新生成的 token，只同步容器自身的 `NAPCAT_TOKEN`（避免把能用的配置改坏）。**顺带**：`--filter name=` 是**包含**匹配，必须锚定成 `^napcat$`，否则 `napcat-old` 这类名字会被误判。
+15. **NapCat 的事件上报必须过一层本机 Nginx**：它用 `Transfer-Encoding: chunked` 发请求体，而 **uwsgi 不解 chunked** —— 直连的结果是「NapCat 显示推了、我们回 200、但一条都没落库」（日志 `QQBot 事件上报体为空（Transfer-Encoding=chunked）`）。用一个只监听 `127.0.0.1:18080` 的 vhost 打开 `proxy_request_buffering` 并清掉 `Transfer-Encoding` 头即可。另：`/hook/qqbot/` **必须挂在 `/api/` 之外** —— 项目签名中间件只放行 `/api/`，而 NapCat 带不了我们的签名，来源可信度靠回调地址里的随机密钥（`PushSetting.hook_secret`）自证。
+16. **QQ 登录态跟着容器走，别为了「干净重装」去 `docker rm`**：实测该版本**连 `docker restart` 都会丢**登录态，换网络模式重建（bridge → host 之类）同样会丢。所以容器要 `--restart unless-stopped`，而**能不停就不停**；真需要重建，就先准备好重新扫码。
 
 ---
 
@@ -662,3 +672,158 @@ openssl enc -aes-256-cbc -pbkdf2 -in backups/db-xxx.sqlite3.gz -out db-xxx.sqlit
 | 恢复演练 | 随便挑一份备份按第 5 节恢复到一个**临时目录**下的库，`PRAGMA integrity_check` 返回 `ok` |
 | cron 生效 | 等到下一个 03:30（或临时把时间改成 1 分钟后）看 `logs/backup.log` 是否新增一行 |
 | 轮转 | 连续跑几次后 `ls backups/` 的份数不超过 `--keep` |
+
+---
+
+## 九、QQBot（NapCat）部署与坑位
+
+> **只在需要 QQ 机器人时部署**（消息推送 `/api/push/qqbot/send`、好友消息落库与 AI 自动回复、代练搬单的「打手 QQ 接待」）；不部署不影响主站。
+> 控制台入口 `/console/qqbot/`（超管专属）。页面上的**「一键部署」按钮只负责「首次安装」**：机器上已经有 NapCat 时，请看第 2 条。
+
+### 1. 前置：docker
+
+NapCat 官方只提供 docker 镜像与 Windows 安装包，Linux 一律走 docker。
+
+```bash
+docker info                     # 确认已装且守护进程在跑
+usermod -aG docker www          # 让运行用户也能操作；改完需重新登录生效
+```
+
+### 2. 起容器：**已有同名容器就复用，绝不再 `docker run`**
+
+容器名固定 `napcat`。**首次**部署：
+
+```bash
+docker run -d --name napcat --restart unless-stopped \
+  --network host \
+  -e NAPCAT_TOKEN={自己生成一串随机串，须与「QQBot」页里填的一致} \
+  mlikiowa/napcat-docker:latest
+```
+
+两个必须坚持的口径：
+
+| 口径 | 为什么 |
+| --- | --- |
+| **`--network host` + 让 NapCat 只监听 `127.0.0.1`** | 与主站同一条安全原则（S-11：对外一律经本机 Nginx）。**不要用 `-p 3000:3000 -p 6099:6099`** —— docker 发布端口是直接往 iptables 的 `DOCKER` 链插 DNAT 规则，**早于 ufw / firewalld 的规则生效**，也就是说主机防火墙对这些端口形同虚设（云厂商的安全组在网络层仍然拦得住，但别指望主机防火墙）。一旦漏配安全组，等于把 NapCat 的 OneBot API（仅一个 token 保护）挂到公网 |
+| **`--restart unless-stopped`** | 服务器重启后容器自动拉起，机器人不用人工恢复（**且登录态保留**，见第 4 条） |
+
+**⚠️ 机器上已经有 `napcat` 容器时，不要再执行上面的 `docker run`。** 它会因**名字冲突**直接失败：
+
+```
+docker: Error response from daemon: Conflict. The container name "napcat" is already in use
+部署失败：命令返回码 125
+```
+
+这正是控制台点「一键部署」会看到的那条报错。**更不能「先删掉再重建」** —— QQ 登录态存在容器里，重建会被 NapCat 判定为新设备、**必须重新扫码**。
+
+正确做法是先探测、再决定：
+
+```bash
+docker ps -a --filter name=^napcat$ --format '{{.Names}} {{.Status}}'   # 必须用 ^ ... $ 锚定
+docker start napcat                                                     # 已存在但没在跑 → 只启动
+```
+
+> 代码已内置这个判断：`API/apis/push/qqbot/setup.py` 的 `_pipeline_linux()` 会先探测同名容器，命中就走**复用分支**（不新建、也不回填本次新生成的 token，只把容器自身的 `NAPCAT_TOKEN` 同步回「QQBot」页）。**所以「一键部署」可以反复点，不会再破坏已配好的环境。**
+>
+> 另需留意：界面上的「一键部署」在 Linux 下用的是 `-p 3000:3000 -p 6099:6099` 的**桥接**方式（会发布到所有网卡），与上面推荐的 `--network host` 回环口径**不一致**。若在公网机器上用它，**务必在云安全组 / 防火墙确认 3000、6099 不对公网开放**；否则直接按上面的命令手工建容器。
+
+### 3. 事件回调：必须过一层本机 Nginx 解 chunked（否则一条消息都收不到）
+
+NapCat 上报事件用的是 `Transfer-Encoding: chunked`，而 **uwsgi 不解 chunked**。让 NapCat 直连 uwsgi 的结果是：NapCat 显示上报成功、我们回 200，但 Django 拿到的 `request.body` 是空的，好友消息**一条都不落库**（日志 `QQBot 事件上报体为空（Transfer-Encoding=chunked）`）。
+
+所以在**本机**起一个只监听回环的中转，由 Nginx 把请求体读完整再转发：
+
+```nginx
+# /www/server/panel/vhost/nginx/hook_local_{项目名}.conf
+server {
+    listen 127.0.0.1:18080;                 # 只回环，公网不可达
+    server_name _;
+    access_log /www/wwwlogs/{项目名}.hook.log;
+    client_max_body_size 20m;
+
+    location /hook/qqbot/ {
+        proxy_pass http://127.0.0.1:{uwsgi端口};
+        proxy_http_version 1.1;
+        proxy_request_buffering on;             # 关键：先把 chunked 读完整
+        proxy_set_header Transfer-Encoding "";  # 关键：去掉 chunked 头，改按 Content-Length 转发
+        proxy_set_header Host {DEPLOY_DOMAIN};
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto http;
+    }
+    location / { return 404; }
+}
+```
+
+再把这段地址填进 NapCat 的「HTTP 客户端 / 事件上报」：
+
+```
+http://127.0.0.1:18080/hook/qqbot/{hook_secret}/
+```
+
+`{hook_secret}` 取自 `/console/qqbot/` 页（即 `PushSetting.hook_secret`，只写进 NapCat 配置、不对外暴露）。改完 Nginx 记得 `nginx -t && nginx -s reload`。
+
+> **为什么 `/hook/qqbot/` 不放在 `/api/` 下**：项目签名中间件只对 `/api/` 放行，而 NapCat 带不了我们的项目签名 —— 来源可信度靠回调地址里的随机密钥自证。
+
+### 4. 扫码登录（唯一的人工步骤）
+
+```bash
+docker logs --tail 40 napcat         # 终端里会打印二维码 / 解码 URL
+```
+
+更省事的方式是把它的 WebUI 反代到一个子域名（同样只经本机回环访问容器端口）：
+
+```nginx
+# /www/server/panel/vhost/nginx/napcat.{DEPLOY_DOMAIN}.conf
+server {
+    listen 443 ssl http2;
+    server_name napcat.{DEPLOY_DOMAIN};
+
+    ssl_certificate     /www/server/panel/vhost/cert/{证书目录}/fullchain.pem;
+    ssl_certificate_key /www/server/panel/vhost/cert/{证书目录}/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:6099;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;      # WebUI 走 WebSocket
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_buffering off;
+    }
+}
+```
+
+浏览器打开 `https://napcat.{DEPLOY_DOMAIN}/webui/?token={webui.json 里的 token}` 扫码。
+
+**登录态是跟着容器走的**（实测口径）：
+
+| 操作 | 登录态 |
+| --- | --- |
+| 服务器重启（容器按 `--restart unless-stopped` 自动拉起） | **保留** |
+| `docker restart napcat` | **实测会丢**（该版本如此），需重新扫码 |
+| `docker rm` 后重建 | **必丢** |
+| `docker commit` 存快照后改用别的网络模式重建 | **会丢**（网络模式变了，NapCat 视作新设备） |
+
+> 结论：**能不停就不停，能不改网络模式就不改**。这也是第 2 条强调「已存在就复用」的根本原因。
+
+### 5. 回填配置与自检
+
+1. 到 `/console/qqbot/` 填：HTTP 地址 `http://127.0.0.1:3000`、token（与容器 `NAPCAT_TOKEN` 一致）、**机器人 QQ 号**；
+2. 点「测试连接」→ 应返回机器人昵称与 QQ 号；
+3. 私聊机器人一句，控制台「好友消息」面板应实时出现该条，且库里能查到：
+
+```bash
+runuser -u www -- sqlite3 db.sqlite3 \
+  "select id,direction,user_id,substr(content,1,30) from qq_private_message order by id desc limit 5;"
+```
+
+方向 `in` = 对方发来、`out` = 机器人（含 AI 自动回复）发出。**两条都在**，说明 `NapCat → 回环 Nginx → uwsgi → 落库 → 自动回复` 整条链路通了。
+
+> NapCat 是**按账号**保存配置的：扫码后若端口仍不通，回 `/console/qqbot/` **填上机器人 QQ 号**再点一次「一键部署」—— 它才能把 HTTP 服务端写进该账号的配置。
+> 扫码后 `3000` 端口才会开始监听（未登录时 NapCat 不起 OneBot 服务），这是「测试连接连不上」最常见的原因。
+
+### 6. 依赖 QQBot 的功能
+
+- **消息推送**：`/api/push/qqbot/send`（需签名），记录进「推送日志」`/console/push-logs/`。
+- **AI 自动回复**：`/console/qqbot/` 页开关 + 三种内置人格；只回「值得回」的私聊，回复同样落进「好友消息」。
+- **代练搬单的「打手 QQ 接待」**：复用同一个 NapCat 实例与 `/hook/qqbot/` 回调 —— **先把本节全部走通，再开搬单的「自动运行」**。搬单另有一条跨进程互斥要求（多 worker 下会重复发单），见 [变更记录.md](变更记录.md) 第 11 条与 `../API/apis/order_migration/utils.py`。
