@@ -62,6 +62,7 @@
 | 15 | 配置数据库自动备份 | 加一条 cron 跑 `scripts/backup_db.py`；**必须用 `www` 用户执行**；详见第八节 | ☐ |
 | 16 | 部署 QQBot（NapCat，按需） | 用 docker，容器名固定 `napcat`；**已有同名容器就复用、绝不再 `docker run`**（会因名字冲突返回 **125**，且重建会丢 QQ 登录态）；推荐 `--network host` + 只绑回环；**必须配本机 Nginx 中转解 chunked**，否则消息一条都收不到；详见第九节 | ☐ |
 | 17 | 依赖 QQBot 的功能自检（按需） | `/console/qqbot/`「测试连接」通 + 私聊一句能落库；**代练搬单的 QQ 接待复用同一个 NapCat 实例**，务必先走通再开搬单「自动运行」 | ☐ |
+| 18 | 部署代练搬单（按需） | `.env` 配 `DAILIAN_SIGN_KEY` + `DLT_OSS_*`；「账号管理」录入 `dlt` / `dlwz` 两个平台并校验；后台填**我们的 QQ 号**与**撤销凭证图 URL**；**先 `run_order_migration --once --dry-run` 再开「自动运行」**；多 worker 靠数据库锁互斥。详见第十节 | ☐ |
 
 ---
 
@@ -522,6 +523,9 @@ proxy_set_header Host $host;
 | 控制台「一键部署」报 `docker: Error response from daemon: Conflict. The container name "napcat" is already in use`，紧随 `部署失败：命令返回码 125` | 机器上**已有同名容器**（服务器重启后它按 `--restart unless-stopped` 自动拉起了），而旧版脚本仍无条件 `docker run --name napcat` | **不要删容器重建**（QQ 登录态在容器里，重建必须重新扫码）。直接复用：先 `docker ps -a --filter name=^napcat$` 确认，再 `docker start napcat`。代码已内置探测（`API/apis/push/qqbot/setup.py` 的 `_pipeline_linux()` 命中即走复用分支），升级到该版本后「一键部署」可反复点 |
 | QQBot **好友消息一条都不落库**：NapCat 显示已上报、我们回 200，但 `qq_private_message` 没有新记录；日志 `QQBot 事件上报体为空（Transfer-Encoding=chunked）` | NapCat 用 **chunked** 发请求体，而 **uwsgi 不解 chunked** —— 上报地址直连 uwsgi 时 Django 拿到的 `request.body` 是空的 | 让上报**绕本机 Nginx**（`proxy_request_buffering on` + `proxy_set_header Transfer-Encoding ""`），地址填 `http://127.0.0.1:18080/hook/qqbot/{hook_secret}/`；详见第九节第 3 步 |
 | QQBot 的 HTTP 服务端端口（默认 `3000`）没在监听、`/console/qqbot/` 的「测试连接」连不上 | NapCat **还没扫码登录 QQ**（未登录时它不起 OneBot 服务）；或容器被重建 / 重启过导致登录态丢失 | 打开 NapCat WebUI 扫码。注意**登录态跟着容器走**：`docker rm` 重建必丢，实测某些版本连 `docker restart` 也丢 —— 见第九节第 4 步 |
+| 代练搬单**一条都发不出去**；命令启动时打印 `警告：未配置 ORDER_MIGRATION_QQ` | 后台「代练搬单」页的**「我们的 QQ 号」为空** —— 发单时要把联系方式填进丸子订单，缺失则每单必失败 | 到 `/console/order-migration/` 填上我们的 QQ 号（页面优先于 `.env`，见第十节第 4 步） |
+| 代练通相关接口全部失败；「账号管理」校验凭据返回 `DAILIAN_SIGN_KEY 未配置，无法校验` | `.env` 没配代练通接口签名密钥 | 补 `.env` 的 `DAILIAN_SIGN_KEY`（以及 `DLT_OSS_ACCESS_KEY_ID` / `DLT_OSS_ACCESS_KEY_SECRET`），重启 uwsgi |
+| 代练通能发单，但**自动接单总是失败** | `dlt` 平台账号的凭据里缺 `pay_pass`（支付密码） | 重新登录代练通，把**含 `pay_pass` 的完整 JSON** 粘回「账号管理」并点校验（见第十节第 3 步） |
 
 ---
 
@@ -543,6 +547,7 @@ proxy_set_header Host $host;
 14. **QQBot 的 NapCat 容器「已存在就复用」，绝不 `docker run` 第二次、更不删容器重建**：容器名固定 `napcat`，服务器重启后它按 `--restart unless-stopped` 自动拉起；此时再 `docker run --name napcat` 会因**名字冲突返回 125**（控制台表现为「一键部署」直接失败）。而**删掉重建更糟** —— **QQ 登录态存在容器里**，重建会被 NapCat 判为新设备、必须重新扫码。正确姿势：`docker ps -a --filter name=^napcat$` 先探测，存在就只 `docker start`。代码已内置该判断（`_pipeline_linux()`），复用时不回填本次新生成的 token，只同步容器自身的 `NAPCAT_TOKEN`（避免把能用的配置改坏）。**顺带**：`--filter name=` 是**包含**匹配，必须锚定成 `^napcat$`，否则 `napcat-old` 这类名字会被误判。
 15. **NapCat 的事件上报必须过一层本机 Nginx**：它用 `Transfer-Encoding: chunked` 发请求体，而 **uwsgi 不解 chunked** —— 直连的结果是「NapCat 显示推了、我们回 200、但一条都没落库」（日志 `QQBot 事件上报体为空（Transfer-Encoding=chunked）`）。用一个只监听 `127.0.0.1:18080` 的 vhost 打开 `proxy_request_buffering` 并清掉 `Transfer-Encoding` 头即可。另：`/hook/qqbot/` **必须挂在 `/api/` 之外** —— 项目签名中间件只放行 `/api/`，而 NapCat 带不了我们的签名，来源可信度靠回调地址里的随机密钥（`PushSetting.hook_secret`）自证。
 16. **QQ 登录态跟着容器走，别为了「干净重装」去 `docker rm`**：实测该版本**连 `docker restart` 都会丢**登录态，换网络模式重建（bridge → host 之类）同样会丢。所以容器要 `--restart unless-stopped`，而**能不停就不停**；真需要重建，就先准备好重新扫码。
+17. **代练搬单在 `lazy-apps` 多 worker 下必须靠数据库互斥**：`AppConfig.ready()` 会在**每个 worker 里各起一份搬单线程**，且它们同步唤醒 —— 不加锁就会把**同一笔代练通订单重复发到丸子**（丸子余额重复扣、代练通双金重复冻结）。代码用「条件 UPDATE 抢本轮执行权」（`OrderMigrationSetting.run_lock_until`，占用最多 300 秒自动失效）解决，所以看到「**已有进程正在执行本轮**」的提示是**正常现象、不是故障**。同理：后台「自动运行」与常驻 `run_order_migration` 命令**不要同时开**。
 
 ---
 
@@ -725,7 +730,9 @@ docker start napcat                                                     # 已存
 
 > 代码已内置这个判断：`API/apis/push/qqbot/setup.py` 的 `_pipeline_linux()` 会先探测同名容器，命中就走**复用分支**（不新建、也不回填本次新生成的 token，只把容器自身的 `NAPCAT_TOKEN` 同步回「QQBot」页）。**所以「一键部署」可以反复点，不会再破坏已配好的环境。**
 >
-> 另需留意：界面上的「一键部署」在 Linux 下用的是 `-p 3000:3000 -p 6099:6099` 的**桥接**方式（会发布到所有网卡），与上面推荐的 `--network host` 回环口径**不一致**。若在公网机器上用它，**务必在云安全组 / 防火墙确认 3000、6099 不对公网开放**；否则直接按上面的命令手工建容器。
+> 界面上的「一键部署」在 Linux 下**执行的正是上面这条命令**（`--network host`、不再发布端口），口径已对齐 —— 首次安装可以直接用它。
+
+> 关于「只监听回环」怎么落地：`--network host` 解决了「docker 绕过主机防火墙」的问题（端口回到普通进程手上，ufw / firewalld 重新生效），但 **NapCat 自己的配置里还有 `host` 字段**（`webui.json` 与 `onebot11.json` 的 `httpServers`），默认可能是 `0.0.0.0`。生产口径是把它改成 `127.0.0.1`，即**主机防火墙 + 应用自身**两层都收在回环上：WebUI（`6099`）只有经本机 Nginx 反代才能访问，OneBot HTTP（`3000`）只给本机用。
 
 ### 3. 事件回调：必须过一层本机 Nginx 解 chunked（否则一条消息都收不到）
 
@@ -827,3 +834,113 @@ runuser -u www -- sqlite3 db.sqlite3 \
 - **消息推送**：`/api/push/qqbot/send`（需签名），记录进「推送日志」`/console/push-logs/`。
 - **AI 自动回复**：`/console/qqbot/` 页开关 + 三种内置人格；只回「值得回」的私聊，回复同样落进「好友消息」。
 - **代练搬单的「打手 QQ 接待」**：复用同一个 NapCat 实例与 `/hook/qqbot/` 回调 —— **先把本节全部走通，再开搬单的「自动运行」**。搬单另有一条跨进程互斥要求（多 worker 下会重复发单），见 [变更记录.md](变更记录.md) 第 11 条与 `../API/apis/order_migration/utils.py`。
+
+---
+
+## 十、代练搬单部署（代练通订单 → 代练丸子发单）
+
+> **只在需要搬单时部署**。它比主站多两层外部依赖（两个代练平台 + QQBot），**建议最后部署**，并且先 dry-run 观察再正式开跑。
+> 控制台入口 `/console/order-migration/`（超管专属）。后台线程由 `API/apps.py` 的 `AppConfig.ready()` 启动（只在「对外提供服务」的进程里），**但只有开启「自动运行」才会真正发单**。
+
+### 1. 它在干什么
+
+每轮顺序固定：**取实时余额 → 抓单 → 过滤 → 随机抽单 → 逐条「余额够才发」→ 监控**。
+
+| 阶段 | 说明 |
+| --- | --- |
+| 抓单 | 代练通王者公开池 + 搜索池，再映射成丸子可发的形态 |
+| 发单 | 按「代练通双金 / 丸子发单成本」判断余额是否够，够才发；**任一余额不足即中断本轮发单**（已发的保留），避免「代练通已停接、丸子还在收单」的无效等待 |
+| 监控 | 先查代练通原单还能不能接，再查丸子是否被接单 → 回到代练通接单取账号 |
+| 验收巡检 | 丸子打手申请验收后，把完单图转传到代练通并申请完单 |
+| 结算巡检 | 代练通验收结算后，自动去丸子「同意验收」给打手结账 |
+
+### 2. 前置依赖
+
+1. **QQBot 必须先走通**（第九节）：打手加好友后的「自动接待、索要丸子订单号」复用同一个 NapCat 实例与 `/hook/qqbot/` 回调。QQBot 不通 → 打手联系不上你，整条链路白跑。
+2. **代练通相关 `.env`**（缺了接口直接失败）：
+
+```bash
+DAILIAN_SIGN_KEY=            # 代练通接口签名密钥；缺失时凭据校验直接返回「DAILIAN_SIGN_KEY 未配置」
+DLT_OSS_ACCESS_KEY_ID=       # 代练通 OSS 直传凭据（「上传首图」等转存图片用）
+DLT_OSS_ACCESS_KEY_SECRET=
+```
+
+3. **`.env` 的 `ORDER_MIGRATION_*` 只是兜底**：`ORDER_MIGRATION_QQ / INTERVAL / PRICE_MIN / PRICE_MAX` 都有对应的**后台页面配置**，且**页面优先、.env 回落**。新服务器可以只配页面。
+
+### 3. 录入两个平台账号（`dlt` / `dlwz`）
+
+搬单要同时登录代练通（进货）与代练丸子（出货），凭据都托管在「账号管理」`/console/accounts/`，**平台代码分别是 `dlt` 与 `dlwz`**。
+
+凭据怎么拿：调各自的登录接口 —— **`code_type=Password` 可以直接用密码登录**，返回的就是要粘贴的那段凭据。
+
+```bash
+# 代练通 → platform=dlt
+curl -X POST 'https://{DEPLOY_DOMAIN}/api/dlt/auth/login' \
+  -d 'phone={手机号}&code={密码}&code_type=Password'
+
+# 代练丸子 → platform=dlwz
+curl -X POST 'https://{DEPLOY_DOMAIN}/api/dlwz/auth/login' \
+  -d 'phone={手机号}&code={密码}&code_type=Password'
+```
+
+（需要短信验证码时用 `code_type=VerificationCode`，先调 `.../auth/send-code`。这两个接口需签名，实际调用见文档中心的在线调试。）
+
+把返回的凭据整段粘进「账号管理」对应平台，点「校验」确认状态变「有效」。两个平台的凭据格式：
+
+| 平台 | 凭据 | 备注 |
+| --- | --- | --- |
+| `dlt`（代练通） | JSON：`{"user_id": "...", "token": "...", "uid": "USR...", "pay_pass": "支付密码"}` | **`pay_pass` 不能少** —— 全自动「接单」要用它，缺了接单会失败 |
+| `dlwz`（代练丸子） | 登录返回的 `data`（含 `accessToken`） | 校验时读的是 `accessToken` |
+
+### 4. 后台设置（`/console/order-migration/`）
+
+| 项 | 要点 |
+| --- | --- |
+| **我们的 QQ 号** | **必配**。发单时把它填进丸子的账号 / 密码 / 角色名与联系方式，引导打手加好友后私下交接；**留空则发单全部失败**（命令启动时会直接警告） |
+| **撤销凭证图 URL** | 抢接失败要「申请撤销」时丸子强制至少一张图；**留空则撤销不了时只告警、不自动撤销** |
+| 双金倍数 | 丸子双金 = 发布价 × 该倍数，两项均分，默认 2 |
+| 价格区间 / 标题关键词 | 只搬该区间 / 含关键词的代练通订单；关键词最适合自测时「只搬自己发的单」 |
+| 严选发单 / 接单门槛 | 是否要求打手 Lv2+ |
+| 每轮发布上限 / 轮询间隔 | 间隔最小 5 秒，也是「被接单」检测的最坏延迟 |
+| 通知 | 被接单可发邮件 / 浏览器语音播报（页面需开着）/ 私聊管理员 QQ（走 QQBot） |
+
+### 5. 先 dry-run，再开自动运行
+
+```bash
+cd {PROJECT_ROOT}
+
+# 只抓单 + 映射，不联网查余额、不真实发单 / 接单 / 撤单
+runuser -u www -- $PY manage.py run_order_migration --once --dry-run
+
+# 真实跑一轮（仍不开常驻）
+runuser -u www -- $PY manage.py run_order_migration --once
+```
+
+确认抓单、映射、余额判断都正常，**最后**才回后台打开「自动运行」。
+
+### 6. 两种驱动别同时用
+
+| 驱动 | 开法 | 适用 |
+| --- | --- | --- |
+| 后台线程 | 后台页「自动运行」开关 | 常规方式；随服务起，跟着 uwsgi 走 |
+| 常驻命令 | `manage.py run_order_migration`（可选 `--interval` / `--publish-limit`） | 排查 / 临时托管 |
+
+**同时开会让同一批订单被两路抢**（第 7 条的锁虽能兜住，但没必要）。
+
+### 7. 多 worker 必须靠数据库互斥（重要）
+
+生产 uwsgi 是 `lazy-apps` + 多 worker，`AppConfig.ready()` 会在**每个 worker 里各起一份搬单线程**，而它们启动时刻几乎相同、循环又是「跑一轮 + 固定 sleep」，于是**同步唤醒**。不加锁的话，同一笔代练通订单会被多个 worker 同时发到丸子 —— **丸子余额重复扣、代练通双金重复冻结**。
+
+代码用**一次条件 UPDATE 抢「本轮执行权」**解决（与反馈中心 AI 审核同一手法）：抢不到的进程直接跳过本轮；进程被 kill 时占用标记最多留 `RUN_LOCK_TTL_SECONDS`（300 秒）即自动失效，不会把锁永久占死。
+
+所以看到「已有进程正在执行本轮，请稍后重试」的提示（或命令打印「已有进程在执行本轮，跳过」）**属正常现象，不是故障**。
+
+### 8. 自检
+
+```bash
+runuser -u www -- sqlite3 db.sqlite3 \
+  "select our_qq, price_min, price_max, auto_run, last_run_time, last_run_summary, last_error
+     from order_migration_setting;"
+```
+
+`last_error` 为空、`last_run_summary` 形如「抓取 N / 发布 N / 丸子被接 N / 代练通接 N / 兜底 N」即属正常。
