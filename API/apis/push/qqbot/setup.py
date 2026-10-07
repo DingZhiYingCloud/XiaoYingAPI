@@ -63,6 +63,8 @@ HEARTBEAT = 10
 
 # Linux：优先使用官方 docker 镜像（如官方更名，改这里）
 DOCKER_IMAGE = 'mlikiowa/napcat-docker:latest'
+# Linux 下的容器名（复用判定、docker start/stop 都认这一个名字）
+DOCKER_CONTAINER = 'napcat'
 # Linux 无 docker 时的官方一键安装脚本
 LINUX_INSTALL_CMD = ('curl -o napcat.sh https://nclatest.znin.net/NapNeko/'
                      'NapCat-Installer/main/script/install.sh && sudo bash napcat.sh')
@@ -155,6 +157,44 @@ def _docker_available() -> bool:
         return result.returncode == 0
     except (OSError, subprocess.SubprocessError):
         return False
+
+
+def _docker_container_state(name=DOCKER_CONTAINER) -> str:
+    """已存在同名容器时的状态（`running` / `exited` / `created` …）；不存在返回空串
+
+    注意 `--filter name=` 是**包含**匹配，必须用 `^…$` 锚定，否则 `napcat-old`
+    这类名字也会被误判成我们的容器。
+    """
+    try:
+        result = subprocess.run(
+            ['docker', 'ps', '-a', '--filter', f'name=^{name}$', '--format', '{{.State}}'],
+            capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return ''
+    if result.returncode != 0:
+        return ''
+    lines = [line.strip() for line in (result.stdout or '').splitlines() if line.strip()]
+    return lines[0] if lines else ''
+
+
+def _docker_container_token(name=DOCKER_CONTAINER) -> str:
+    """读现有容器创建时注入的 `NAPCAT_TOKEN`（没有则返回空串）
+
+    为什么要读：复用已有容器时**不能**把本次新生成的随机 token 回填到「QQBot」页 ——
+    那个 token 属于一个根本没建起来的容器，回填会把原本能用的配置改坏。
+    """
+    try:
+        result = subprocess.run(
+            ['docker', 'inspect', name, '--format', '{{range .Config.Env}}{{println .}}{{end}}'],
+            capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return ''
+    if result.returncode != 0:
+        return ''
+    for line in (result.stdout or '').splitlines():
+        if line.strip().startswith('NAPCAT_TOKEN='):
+            return line.strip().split('=', 1)[1].strip()
+    return ''
 
 
 def find_napcat_exe() -> Path | None:
@@ -425,13 +465,46 @@ def _pipeline_windows():
     _emit('info', '登录成功后回到本页点「测试连接」即可确认打通（NapCat 会常驻后台，无需重复启动）')
 
 
+def _reuse_linux_container(state):
+    """复用已存在的 napcat 容器（**只启动，不重建**）
+
+    为什么要单独一条路（两个真实踩过的坑）：
+    · 服务器重启后容器会按 `--restart unless-stopped` 自动拉起，此时再
+      `docker run --name napcat` 会因**名字冲突**返回 125，整个「一键部署」直接失败；
+    · 反过来「删掉重建」更糟 —— QQ 登录态存在容器里，重建会被 NapCat 判定为新设备、
+      必须重新扫码。所以已存在就只做「确保在运行」，其余交给下一步的就绪等待。
+    """
+    _emit('warn', f'已存在同名容器 {DOCKER_CONTAINER}（{state}），跳过创建、直接复用'
+                  '（重建会丢掉已扫码的登录态）')
+    if state != 'running':
+        _emit('info', '容器未在运行，正在启动 …')
+        _run_cmd(['docker', 'start', DOCKER_CONTAINER], timeout=180)
+
+    _emit('info', f'等待 HTTP 服务端就绪（最多 {READY_TIMEOUT} 秒）…')
+    if not _wait_ready():
+        raise RuntimeError('容器已启动但端口未就绪：请进容器 WebUI 扫码登录 QQ 后重试')
+
+    token = _docker_container_token()
+    if token:
+        _apply_setting(token)
+    else:
+        _emit('info', '未能从容器读出 token，保留「QQBot」页现有配置；若调用不通，'
+                      '请核对 token 与 NapCat 的 HTTP 服务端是否一致')
+    _emit('ok', f'HTTP 服务端已就绪：{_configured_base()}')
+    _emit('info', f'WebUI 控制台（扫码登录 QQ）：{webui_url()}')
+
+
 def _pipeline_linux():
     """Linux：优先 docker（官方镜像），没有 docker 时给出官方一键脚本命令"""
     if _docker_available():
         _emit('info', f'docker 可用，使用官方镜像 {DOCKER_IMAGE}')
+        state = _docker_container_state()
+        if state:
+            _reuse_linux_container(state)
+            return
         token = _random_token()
         port = _port_from_base(_configured_base())
-        cmd = ['docker', 'run', '-d', '--name', 'napcat', '--restart', 'unless-stopped',
+        cmd = ['docker', 'run', '-d', '--name', DOCKER_CONTAINER, '--restart', 'unless-stopped',
                '-p', f'{port}:3000', '-p', f'{DEFAULT_WEBUI_PORT}:6099',
                '-e', f'NAPCAT_TOKEN={token}', DOCKER_IMAGE]
         _emit('info', 'docker run：' + ' '.join(cmd))
@@ -801,7 +874,7 @@ def stop():
     ok, message = False, ''
     if os.name != 'nt' and _docker_available():
         try:
-            _run_cmd(['docker', 'stop', 'napcat'], timeout=60)
+            _run_cmd(['docker', 'stop', DOCKER_CONTAINER], timeout=60)
             return True, '已停止 NapCat 容器'
         except RuntimeError as exc:
             message = str(exc)

@@ -135,3 +135,73 @@ class ProbeTests(TestCase):
         self.assertEqual(info['napcat_qq'], '3766849790')
         self.assertFalse(info['installed'])                    # 空目录 → 未安装
         self.assertIn(str(qqbot_setup.DEFAULT_WEBUI_PORT), info['webui_url'])
+
+
+def _fake_run(stdout='', returncode=0, error=None):
+    """伪造 subprocess.run 的返回（只取 stdout / returncode）"""
+    result = mock.MagicMock()
+    result.stdout = stdout
+    result.returncode = returncode
+    if error is not None:
+        return mock.Mock(side_effect=error)
+    return mock.Mock(return_value=result)
+
+
+class DockerInspectTests(TestCase):
+    """容器名过滤与 token 提取（`--filter name=` 是包含匹配，必须锚定）"""
+
+    def test_container_state_anchors_name_filter(self):
+        with mock.patch('subprocess.run', _fake_run('running\n')) as run:
+            self.assertEqual(qqbot_setup._docker_container_state(), 'running')
+        self.assertIn('name=^napcat$', run.call_args[0][0])
+
+    def test_container_state_empty_when_absent(self):
+        with mock.patch('subprocess.run', _fake_run('  \n')):
+            self.assertEqual(qqbot_setup._docker_container_state(), '')
+
+    def test_container_token_reads_env(self):
+        env = 'PATH=/usr/bin\nNAPCAT_TOKEN=tok123\nHOME=/root\n'
+        with mock.patch('subprocess.run', _fake_run(env)):
+            self.assertEqual(qqbot_setup._docker_container_token(), 'tok123')
+
+    def test_container_token_empty_when_not_docker_run(self):
+        with mock.patch('subprocess.run', _fake_run('PATH=/usr/bin\n')):
+            self.assertEqual(qqbot_setup._docker_container_token(), '')
+
+
+class LinuxDockerReuseTests(TestCase):
+    """Linux 一键部署遇到已存在的 napcat 容器：只复用、不重建
+
+    线上真踩过：服务器重启后容器自动拉起，此时 `docker run --name napcat` 会因名字冲突
+    返回 125 让整个部署失败；而删掉重建又会让 NapCat 把 QQ 当新设备、必须重新扫码。
+    """
+
+    def _run_linux(self, state, token=''):
+        calls = []
+        with mock.patch.object(qqbot_setup, '_docker_available', return_value=True), \
+                mock.patch.object(qqbot_setup, '_docker_container_state', return_value=state), \
+                mock.patch.object(qqbot_setup, '_docker_container_token', return_value=token), \
+                mock.patch.object(qqbot_setup, '_run_cmd',
+                                  side_effect=lambda cmd, timeout=300: calls.append(cmd)), \
+                mock.patch.object(qqbot_setup, '_wait_ready', return_value=True), \
+                mock.patch.object(qqbot_setup, '_apply_setting') as apply_setting, \
+                mock.patch.object(qqbot_setup, '_persist', return_value=None):
+            qqbot_setup._pipeline_linux()
+        return calls, apply_setting
+
+    def test_reuses_running_container_without_recreating(self):
+        calls, apply_setting = self._run_linux('running', token='tok123')
+        self.assertEqual(calls, [])                            # 既不重建也不必启动
+        apply_setting.assert_called_once_with('tok123')
+
+    def test_starts_stopped_container_instead_of_recreating(self):
+        calls, apply_setting = self._run_linux('exited')
+        self.assertEqual(calls, [['docker', 'start', qqbot_setup.DOCKER_CONTAINER]])
+        apply_setting.assert_not_called()                      # 读不到 token 就不动现有配置
+
+    def test_creates_container_when_absent(self):
+        calls, apply_setting = self._run_linux('')
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][:4], ['docker', 'run', '-d', '--name'])
+        self.assertEqual(calls[0][4], qqbot_setup.DOCKER_CONTAINER)
+        apply_setting.assert_called_once()
