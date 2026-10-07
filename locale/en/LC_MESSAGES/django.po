@@ -13794,6 +13794,9 @@ msgstr "Clear the run log? (Migration records are not affected)"
 msgid "已清空运行日志"
 msgstr "Run log cleared"
 
+msgid "已有进程正在执行本轮，请稍后重试"
+msgstr "Another process is already running the current cycle; please try again later."
+
 
 # ==================== 接口文档（docs/service.html） ====================
 msgid "搜索区服…"

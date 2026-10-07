@@ -304,8 +304,15 @@ def _preview(request):
 
 
 def _run(request):
-    """执行一轮流水线（真实发单 / 接单 / 兜底撤单）"""
+    """执行一轮流水线（真实发单 / 接单 / 兜底撤单）
+
+    run_once 是跨进程互斥的：已有进程（多为后台自动线程）在执行本轮时返回 None，
+    这里只提示、不重复执行 —— 否则同一笔订单会被发两次。
+    """
     summary = om_utils.run_once()
+    if summary is None:
+        messages.warning(request, _('已有进程正在执行本轮，请稍后重试'))
+        return redirect(REDIRECT_URL)
     note = _('已执行一轮：抓取 %(f)s / 发布 %(p)s / 接单 %(t)s / 兜底 %(r)s') % {
         'f': summary['fetched'], 'p': summary['published'],
         't': summary['taken'], 'r': summary['rollback']}

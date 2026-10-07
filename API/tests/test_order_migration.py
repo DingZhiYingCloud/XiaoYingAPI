@@ -301,6 +301,92 @@ class RunLogTests(TestCase):
         self.assertEqual([log['fetched'] for log in logs], [3, 2, 1])
 
 
+class RunLockTests(TestCase):
+    """跨进程互斥：多 worker 下同一时刻只能有一个进程执行一轮（否则同一笔单会被重复发布）
+
+    生产是 uwsgi `lazy-apps` + 多 worker，`apps.ready()` 会在每个 worker 各起一份搬单
+    线程且同步唤醒，因此互斥必须落在**数据库的条件 UPDATE** 上（单机多进程可见），
+    不能用进程内的 threading 标记。这里覆盖「抢占 / 过期接管 / 释放 / 三种入口的跳过与兜底」。
+    """
+
+    def setUp(self):
+        self.setting = OrderMigrationSetting.get_solo()
+        self.setting.run_lock_until = None
+        self.setting.save()
+
+    def _hold_lock(self, seconds=60):
+        """模拟「另一个进程正在执行」：把占用标记写到未来"""
+        from datetime import timedelta
+        from django.utils import timezone
+        OrderMigrationSetting.objects.filter(
+            pk=OrderMigrationSetting.SINGLETON_PK).update(
+            run_lock_until=timezone.now() + timedelta(seconds=seconds))
+
+    def test_second_acquire_fails_while_held(self):
+        self.assertTrue(om_utils._acquire_run_lock())
+        self.assertFalse(om_utils._acquire_run_lock())
+
+    def test_release_allows_next_acquire(self):
+        self.assertTrue(om_utils._acquire_run_lock())
+        om_utils._release_run_lock()
+        self.assertTrue(om_utils._acquire_run_lock())
+
+    def test_expired_lock_can_be_taken_over(self):
+        """进程被 kill 留下的占用标记到期后必须能被接管，不能把锁永久占死"""
+        from datetime import timedelta
+        from django.utils import timezone
+        OrderMigrationSetting.objects.filter(
+            pk=OrderMigrationSetting.SINGLETON_PK).update(
+            run_lock_until=timezone.now() - timedelta(seconds=1))
+        self.assertTrue(om_utils._acquire_run_lock())
+
+    @patch('API.apis.order_migration.utils.run_cycle')
+    def test_run_once_skips_when_locked(self, run_cycle):
+        self._hold_lock()
+        self.assertIsNone(om_utils.run_once())
+        run_cycle.assert_not_called()
+
+    @patch('API.apis.order_migration.utils.run_cycle')
+    def test_run_once_releases_lock_after_success(self, run_cycle):
+        run_cycle.return_value = {'fetched': 1, 'published': 0, 'taker_joined': 0,
+                                  'taken': 0, 'rollback': 0, 'errors': []}
+        summary = om_utils.run_once()
+        self.assertIsNotNone(summary)
+        self.setting.refresh_from_db()
+        self.assertIsNone(self.setting.run_lock_until)
+
+    @patch('API.apis.order_migration.utils.run_cycle', side_effect=RuntimeError('boom'))
+    def test_run_once_releases_lock_on_error(self, run_cycle):
+        summary = om_utils.run_once()
+        self.assertIsNotNone(summary)                  # 异常被兜底成错误汇总，不向上抛
+        self.assertTrue(summary['errors'])
+        self.setting.refresh_from_db()
+        self.assertIsNone(self.setting.run_lock_until)
+
+    @patch('API.apis.order_migration.utils.run_cycle')
+    def test_console_run_reports_busy_instead_of_running(self, run_cycle):
+        """后台「执行一轮」撞上自动线程时应提示占用，而不是重复跑一轮"""
+        from django.contrib.auth import get_user_model
+        from django.test import Client
+        client = Client()
+        client.force_login(get_user_model().objects.create_superuser('admin7', 'a@b.com', 'pw'))
+        self._hold_lock()
+        resp = client.post('/console/order-migration/', {'action': 'run'})
+        self.assertEqual(resp.status_code, 302)
+        run_cycle.assert_not_called()
+
+    @patch('API.apis.order_migration.utils.run_cycle')
+    def test_command_skips_when_locked(self, run_cycle):
+        """管理命令 --once 撞上占用时应正常退出（打印跳过），不能抛异常"""
+        import io
+        from django.core.management import call_command
+        self._hold_lock()
+        out = io.StringIO()
+        call_command('run_order_migration', '--once', stdout=out)
+        self.assertIn('已有进程在执行本轮', out.getvalue())
+        run_cycle.assert_not_called()
+
+
 class FeedViewTests(TestCase):
     """实时刷新接口：返回记录 / 统计 / 运行状态 / 运行日志"""
 

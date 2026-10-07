@@ -73,6 +73,12 @@ class OrderMigrationSetting(BaseModel):
     run_logs = models.TextField(
         '运行日志', blank=True, default='',
         help_text='最近若干轮运行结果的滚动日志（JSON 文本），供后台页实时展示')
+    run_lock_until = models.DateTimeField(
+        '本轮执行占用到期', null=True, blank=True,
+        help_text='跨进程互斥：某进程正在执行一轮时写为「now + 占用时长」，结束时清空。'
+                  '生产是多 worker（uwsgi lazy-apps），每个 worker 各有一份搬单线程且同步唤醒，'
+                  '不加锁会把同一笔订单重复发到丸子；进程被 kill 时该值到期自动失效，'
+                  '不会把锁永久占死（见 order_migration.utils 的 RUN_LOCK_TTL_SECONDS）')
 
     class Meta:
         db_table = 'order_migration_setting'

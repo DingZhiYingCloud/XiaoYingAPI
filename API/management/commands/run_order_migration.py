@@ -45,11 +45,15 @@ class Command(BaseCommand):
 
         while True:
             summary = om_utils.run_once(publish_count=limit, dry_run=dry_run)
-            self.stdout.write(
-                f"[一轮] 抓取 {summary['fetched']} 条，发布 {summary['published']} 条，"
-                f"代练通接单 {summary['taken']} 条，兜底撤单 {summary['rollback']} 条")
-            for err in summary['errors']:
-                self.stderr.write(f"  错误: {err}")
+            if summary is None:
+                # 跨进程互斥：另一进程（如 uwsgi 里的后台线程）正在执行本轮
+                self.stdout.write('[一轮] 已有进程在执行本轮，跳过')
+            else:
+                self.stdout.write(
+                    f"[一轮] 抓取 {summary['fetched']} 条，发布 {summary['published']} 条，"
+                    f"代练通接单 {summary['taken']} 条，兜底撤单 {summary['rollback']} 条")
+                for err in summary['errors']:
+                    self.stderr.write(f"  错误: {err}")
             if options['once']:
                 break
             time.sleep(interval)

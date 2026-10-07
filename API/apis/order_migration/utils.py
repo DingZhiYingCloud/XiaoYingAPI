@@ -43,6 +43,11 @@ PROFIT_RATIO = 0.8
 DEPOSIT_RATIO_MIN, DEPOSIT_RATIO_MAX = 0, 5
 DEFAULT_DEPOSIT_RATIO = 2
 
+# 单轮执行权的占用上限（秒）：进程被 kill 时留下的占用标记最多留这么久即自动失效，
+# 下一轮可被接管（与反馈中心 AI 审核的「审核中但已超时」同一手法）。正常路径在
+# run_once() 结束时主动清空，不会等这么久；取值需明显大于一轮的实际耗时。
+RUN_LOCK_TTL_SECONDS = 300
+
 
 def dlt_cost(price) -> int:
     """代练通王者·代练区·公共频道手续费（元）
@@ -1237,38 +1242,85 @@ def run_cycle(publish_limit=1, dry_run=False):
     return summary
 
 
+def _acquire_run_lock() -> bool:
+    """跨进程抢「本轮执行权」；抢到返回 True
+
+    **为什么需要**：生产是 uwsgi `lazy-apps` + 多 worker，`AppConfig.ready()` 会在
+    **每个 worker 里各起一份搬单线程**，且它们同步起跑 / 同步唤醒。若不加锁，同一笔
+    代练通订单会被并发发到丸子（丸子余额重复扣、代练通双金重复冻结）。
+
+    用一次**条件 UPDATE** 抢占（与反馈中心 AI 审核抢「待审」同手法）：同一时刻只有一个
+    进程能把这行从「空 / 已过期」改成功，抢不到的进程直接跳过本轮。抢到后被 kill，
+    `run_lock_until` 到期自动失效，不会把锁永久占死。
+    """
+    from datetime import timedelta
+
+    from django.db.models import Q
+    from django.utils import timezone
+
+    from API.models import OrderMigrationSetting
+
+    # 先确保单例行存在（首次调用会建行），否则条件 UPDATE 会命中 0 行、永远抢不到
+    OrderMigrationSetting.get_solo()
+    now = timezone.now()
+    return bool(OrderMigrationSetting.objects
+                .filter(pk=OrderMigrationSetting.SINGLETON_PK)
+                .filter(Q(run_lock_until__isnull=True) | Q(run_lock_until__lte=now))
+                .update(run_lock_until=now + timedelta(seconds=RUN_LOCK_TTL_SECONDS)))
+
+
+def _release_run_lock():
+    """释放「本轮执行权」（调用方需放在 finally 里，异常也不能把锁留着）"""
+    from API.models import OrderMigrationSetting
+
+    OrderMigrationSetting.objects.filter(
+        pk=OrderMigrationSetting.SINGLETON_PK).update(run_lock_until=None)
+
+
 def run_once(publish_count=None, dry_run=False):
-    """执行一轮并把运行时间 / 结果写回设置（供后台线程 / 控制台 / 命令调用）"""
+    """执行一轮并把运行时间 / 结果写回设置（供后台线程 / 控制台 / 命令调用）
+
+    **跨进程互斥**：同一时刻只允许一个进程执行一轮（见 `_acquire_run_lock`），
+    抢不到执行权的进程**直接返回 None**，调用方跳过本轮即可。
+
+    :return: 汇总 dict；已有别的进程在执行时返回 None
+    """
     from django.utils import timezone
 
     from API.models import OrderMigrationSetting
 
     if publish_count is None:
         publish_count = cycle_publish_limit()
+    if not _acquire_run_lock():
+        logger.info('搬单：已有进程在执行本轮，本轮跳过')
+        return None
     try:
-        summary = run_cycle(publish_limit=publish_count, dry_run=dry_run)
-        error = ''
-    except Exception as exc:                    # noqa: BLE001 线程/页面入口需兜底，避免整个循环挂掉
-        logger.exception('搬单流水线执行异常')
-        summary = {'fetched': 0, 'published': 0, 'taker_joined': 0, 'taken': 0, 'rollback': 0,
-                   'errors': [str(exc)]}
-        error = str(exc)[:500]
+        try:
+            summary = run_cycle(publish_limit=publish_count, dry_run=dry_run)
+            error = ''
+        except Exception as exc:                # noqa: BLE001 线程/页面入口需兜底，避免整个循环挂掉
+            logger.exception('搬单流水线执行异常')
+            summary = {'fetched': 0, 'published': 0, 'taker_joined': 0, 'taken': 0,
+                       'rollback': 0, 'errors': [str(exc)]}
+            error = str(exc)[:500]
 
-    setting = OrderMigrationSetting.get_solo()
-    setting.last_run_time = timezone.now()
-    setting.last_run_summary = (
-        f"抓取 {summary['fetched']} / 发布 {summary['published']} / "
-        f"丸子被接 {summary['taker_joined']} / 代练通接 {summary['taken']} / "
-        f"兜底 {summary['rollback']}")[:255]
-    setting.last_error = (error or '；'.join(summary['errors']))[:500]
-    setting.run_logs = _append_run_log(setting.run_logs, summary, setting.last_run_time)
-    setting.save(update_fields=['last_run_time', 'last_run_summary', 'last_error',
-                                'run_logs', 'updated_time'])
+        setting = OrderMigrationSetting.get_solo()
+        setting.last_run_time = timezone.now()
+        setting.last_run_summary = (
+            f"抓取 {summary['fetched']} / 发布 {summary['published']} / "
+            f"丸子被接 {summary['taker_joined']} / 代练通接 {summary['taken']} / "
+            f"兜底 {summary['rollback']}")[:255]
+        setting.last_error = (error or '；'.join(summary['errors']))[:500]
+        setting.run_logs = _append_run_log(setting.run_logs, summary, setting.last_run_time)
+        setting.save(update_fields=['last_run_time', 'last_run_summary', 'last_error',
+                                    'run_logs', 'updated_time'])
 
-    # 监控明细同时打印到服务日志（终端 / uwsgi 日志），便于实时观察
-    for line in summary.get('monitor', []):
-        logger.info('[代练搬单·监控] %s', line)
-    return summary
+        # 监控明细同时打印到服务日志（终端 / uwsgi 日志），便于实时观察
+        for line in summary.get('monitor', []):
+            logger.info('[代练搬单·监控] %s', line)
+        return summary
+    finally:
+        _release_run_lock()
 
 
 # ==================== 运行日志（供后台页实时展示） ====================
