@@ -503,9 +503,12 @@ def _pipeline_linux():
             _reuse_linux_container(state)
             return
         token = _random_token()
-        port = _port_from_base(_configured_base())
+        # 用 --network host 而不用 `-p 端口:端口`：docker 发布端口是往 iptables 的 DOCKER 链插
+        # DNAT 规则，早于 ufw / firewalld 生效 —— 一旦云安全组漏配，NapCat 的 OneBot API
+        # （只有一个 token 保护）就被挂到公网。host 网络下端口由普通进程持有，主机防火墙重新
+        # 生效，与生产实例、与主站「只监听回环」（S-11）的口径也一致。
         cmd = ['docker', 'run', '-d', '--name', DOCKER_CONTAINER, '--restart', 'unless-stopped',
-               '-p', f'{port}:3000', '-p', f'{DEFAULT_WEBUI_PORT}:6099',
+               '--network', 'host',
                '-e', f'NAPCAT_TOKEN={token}', DOCKER_IMAGE]
         _emit('info', 'docker run：' + ' '.join(cmd))
         _run_cmd(cmd, timeout=600)

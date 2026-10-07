@@ -202,6 +202,10 @@ class LinuxDockerReuseTests(TestCase):
     def test_creates_container_when_absent(self):
         calls, apply_setting = self._run_linux('')
         self.assertEqual(len(calls), 1)
-        self.assertEqual(calls[0][:4], ['docker', 'run', '-d', '--name'])
-        self.assertEqual(calls[0][4], qqbot_setup.DOCKER_CONTAINER)
+        cmd = calls[0]
+        self.assertEqual(cmd[:4], ['docker', 'run', '-d', '--name'])
+        self.assertEqual(cmd[4], qqbot_setup.DOCKER_CONTAINER)
+        # 必须走 host 网络：用 `-p` 发布端口是往 iptables 的 DOCKER 链插 DNAT，绕开主机防火墙
+        self.assertEqual(cmd[cmd.index('--network') + 1], 'host')
+        self.assertNotIn('-p', cmd)
         apply_setting.assert_called_once()
