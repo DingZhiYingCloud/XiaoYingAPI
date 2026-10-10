@@ -9,6 +9,8 @@
   5. 释放锁只删自己的锁（已被别人接管时不许误删）
   6. 产物已就绪时一律 ready（锁的内容不再影响判定）
   7. 同一进程内并发调用 ensure() 只启动一次转码
+  8. 全局并发上限：同时在转的集数不超过 _MAX_CONCURRENT，溢出请求不启动；
+     槽位在转码结束 / 失败后归还，释放后后续请求可在轮询中补上
 
 隔离：把 transcode._STREAM_DIR 指向临时目录、把 transcode._transcode 换成桩，
 因此不碰真实缓存、不联网、不起 ffmpeg，秒级跑完。
@@ -220,6 +222,59 @@ def round_single_flight():
     cleanup(ep)
 
 
+def round_global_concurrency():
+    print('===== 第 8 轮 全局并发上限 =====')
+    real_max = transcode._MAX_CONCURRENT
+    transcode._MAX_CONCURRENT = 2
+    eps = [201, 202, 203, 204, 205]
+    try:
+        for ep in eps:
+            cleanup(ep)
+        started = []
+        block = threading.Event()
+
+        def stub(series_id, ep, width):
+            started.append(ep)
+            block.wait(5)                     # 卡住，模拟「正在转」，直到放行
+            path = transcode.stream_path(series_id, ep, width)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, 'wb') as fh:
+                fh.write(b'x' * 4096)
+            transcode._release_lock_file(transcode._lock_path(series_id, ep, width))
+
+        transcode._transcode = stub
+        threads = [threading.Thread(target=transcode.ensure, args=(SERIES, ep, WIDTH))
+                   for ep in eps]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        deadline = time.time() + 3           # 等两个 worker 线程真正跑起来
+        while time.time() < deadline and len(started) < 2:
+            time.sleep(0.02)
+        check('同时在转不超过上限（2）', len(started) == 2, started)
+
+        block.set()
+        deadline = time.time() + 8
+        while time.time() < deadline and not all(transcode.is_ready(SERIES, ep, WIDTH) for ep in eps):
+            for ep in eps:                    # 模拟前端轮询：槽位空出后再接着转
+                transcode.ensure(SERIES, ep, WIDTH)
+            time.sleep(0.05)
+        check('轮询补上后 5 集全部转完', all(transcode.is_ready(SERIES, ep, WIDTH) for ep in eps))
+
+        deadline = time.time() + 3
+        while time.time() < deadline and any(os.path.exists(transcode._slot_path(i))
+                                             for i in range(transcode._MAX_CONCURRENT)):
+            time.sleep(0.05)
+        check('全部完成后槽位已归还',
+              not any(os.path.exists(transcode._slot_path(i))
+                      for i in range(transcode._MAX_CONCURRENT)))
+    finally:
+        transcode._MAX_CONCURRENT = real_max
+        for ep in eps:
+            cleanup(ep)
+
+
 def main():
     print('短剧转码锁语义回归测试开始')
     print(f'（隔离目录 {TMP_ROOT}；不联网、不启 ffmpeg）\n')
@@ -235,6 +290,7 @@ def main():
         round_failure()
         round_release_ownership()
         round_single_flight()
+        round_global_concurrency()
     finally:
         transcode._transcode = real_transcode
         transcode._STREAM_DIR = real_stream_dir

@@ -296,6 +296,11 @@ def stream_view(request):
         503  转码失败，响应体 JSON 里有失败原因（此前误用 200 返回，会把失败态误判成可播）
         200 / 206  产物就绪，响应体是 video/* 二进制（206 支持 Range 拖动）
     """
+    # 总开关：后台把本线路状态改为维护中 / 已下线后，这里绝不触发转码、也不拉起离线签名服务。
+    # 中间件本就会拦截该请求，这里是代码层兜底 —— 保证关闭红果后后台不再主动消耗 CPU。
+    if not utils.is_service_enabled():
+        return _json_response(StatusCode.SERVICE_MAINTENANCE, msg='服务维护中')
+
     payload, error = utils.parse_stream_token((request.GET.get('token') or '').strip())
     if payload is None:
         return JsonResponse({'code': StatusCode.FORBIDDEN, 'msg': error, 'data': None},

@@ -15,9 +15,15 @@
     「准备中」状态去轮询，不会重复消耗算力。**锁文件同时是「是否正在转」的唯一真相**
     （内容是属主 pid，mtime 是开工时间）：多 worker 各读同一份文件，状态天然一致；
     属主进程已死（部署重启留下的僵尸锁）会被下一次点播立刻接管，不会把某集永久卡住。
+
+    另外设**全局并发上限**（`HONGGUO_STREAM_MAX_CONCURRENT`，默认 2）：只限「同一集」不够
+    —— 多个不同剧集被同时点播时，每个都会起一个 ffmpeg（各吃满多核），把整机 CPU 打满、
+    load 冲到 20+（线上事故）。槽位同样用锁文件原语做**跨进程**计数，超出的请求返回
+    「准备中」交给前端轮询，等有槽位再转。
 """
 import logging
 import os
+import shutil
 import subprocess
 import threading
 import time
@@ -38,6 +44,15 @@ _X264_CRF = int(getattr(settings, 'HONGGUO_STREAM_X264_CRF', 20))
 _TRANSCODE_TIMEOUT = int(getattr(settings, 'HONGGUO_STREAM_TIMEOUT', 900))
 # 锁文件超过该秒数视为陈旧锁（进程被杀留下的），自动接管
 _STALE_LOCK_SECONDS = 1800
+# 全局并发上限：同时最多允许这么多集在转（跨进程计数，默认 1）。
+# 每集 ffmpeg 默认会把多核吃满，不设上限时多集被同时点播即可把整机 CPU 打满（线上事故）；
+# 故默认只放 1 集转，超出的请求按「准备中」交给前端轮询。机器核多、负载低时可调大（如 2~4）。
+_MAX_CONCURRENT = max(1, int(getattr(settings, 'HONGGUO_STREAM_MAX_CONCURRENT', 1)))
+# 单次 ffmpeg 的最大线程数（限制转码把整机 CPU 吃满，给同机其它服务留余量）
+_FFMPEG_THREADS = max(1, int(getattr(settings, 'HONGGUO_STREAM_FFMPEG_THREADS',
+                                    max(1, (os.cpu_count() or 2) // 2))))
+# 非 Windows 上给转码降优先级（nice 10）：同机还跑着别的站点，别让转码抢满 CPU
+_NICE = ['nice', '-n', '10'] if (os.name != 'nt' and shutil.which('nice')) else []
 
 # ============ 画质档位 ============
 # key = 输出**宽度**上限（短剧是竖屏 1080×1920，日常说的「1080p / 720p」就指宽度），
@@ -222,10 +237,29 @@ def _acquire_lock_file(path):
     return True
 
 
+def _slot_path(index):
+    """全局转码槽位锁文件路径（放在产物根目录内的 .slots/，随缓存目录一起不入库）"""
+    return os.path.join(_STREAM_DIR, '.slots', f'slot{index}')
+
+
+def _acquire_slot():
+    """占一个空闲的全局转码槽位；全部占满返回 None
+
+    跨进程一致：槽位就是一组锁文件，抢占 / 陈旧接管复用每集锁的**同一套原语**
+    （内容写属主 pid；属主进程死了的槽位会被下一次请求自动回收），不引入新机制。
+    """
+    os.makedirs(os.path.dirname(_slot_path(0)), exist_ok=True)
+    for index in range(_MAX_CONCURRENT):
+        path = _slot_path(index)
+        if _acquire_lock_file(path):
+            return path
+    return None
+
+
 def ensure(series_id, ep, width):
     """确保该集该画质有可播产物。
 
-    :return: True = 已就绪可直接出流；False = 正在转码 / 已失败（看 job_status）
+    :return: True = 已就绪可直接出流；False = 正在转码 / 排队中 / 已失败（看 job_status）
     """
     if is_ready(series_id, ep, width):
         return True
@@ -234,14 +268,18 @@ def ensure(series_id, ep, width):
         if is_ready(series_id, ep, width):   # 等锁期间可能已被转完
             return True
         os.makedirs(os.path.dirname(stream_path(series_id, ep, width)), exist_ok=True)
+        slot = _acquire_slot()
+        if slot is None:
+            return False                     # 全局并发已满：稍后重试（状态见 job_status）
         if not _acquire_lock_file(_lock_path(series_id, ep, width)):
+            _release_lock_file(slot)         # 同一集已有属主在转，让出槽位
             return False                     # 有活着的属主在转（状态见 job_status）
-        _start(series_id, ep, width, key)
+        _start(series_id, ep, width, key, slot)
         return False
 
 
-def _start(series_id, ep, width, key):
-    """启动后台转码线程"""
+def _start(series_id, ep, width, key, slot):
+    """启动后台转码线程（转码结束/失败都在 finally 里释放占用的全局槽位）"""
     def worker():
         try:
             _transcode(series_id, ep, width)
@@ -250,6 +288,8 @@ def _start(series_id, ep, width, key):
         except Exception as exc:  # noqa: BLE001 - 失败要落到状态里给前端看
             with _JOBS_LOCK:
                 _JOBS[key] = {'state': 'failed', 'error': str(exc)[:300]}
+        finally:
+            _release_lock_file(slot)
 
     threading.Thread(target=worker, name=f'hongguo-transcode-{key}',
                      daemon=True).start()
@@ -286,14 +326,15 @@ def _encoder_candidates(width):
 
 def _run_ffmpeg(enc, opts, key, source, out_path, width, user_agent=None):
     """跑一次「解密 + 转码」；source 可为远端 URL 或本地密文文件"""
-    cmd = [_FFMPEG, '-y', '-loglevel', 'error']
+    cmd = [*_NICE, _FFMPEG, '-y', '-loglevel', 'error']
     if source.startswith(('http://', 'https://')) and user_agent:
         cmd += ['-user_agent', user_agent]
     cmd += ['-decryption_key', key,
             '-i', source,
             # 按**宽度**封顶（短剧是竖屏，宽度才是观感瓶颈）；源更小则不放大
             '-vf', f'scale=min({int(width)}\\,iw):-2',
-            '-c:v', enc, *opts,
+            # -threads 限制编码线程数，避免单集转码把整机 CPU 吃满（见 _FFMPEG_THREADS）
+            '-c:v', enc, '-threads', str(_FFMPEG_THREADS), *opts,
             '-c:a', 'aac', '-b:a', '96k',
             '-movflags', '+faststart',
             '-f', 'mp4', out_path]

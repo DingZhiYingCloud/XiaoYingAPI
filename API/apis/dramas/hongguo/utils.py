@@ -24,7 +24,9 @@ from SpiderServices.dramas.hongguo.utils import (
 # 「网页直出」播放地址的时效令牌：<video> 标签没法带项目签名，故用 Django 签名令牌自证，
 # 令牌里只放 series_id / ep / 画质，过期时间由 max_age 控制（见 settings.HONGGUO_STREAM_TOKEN_TTL）。
 STREAM_TOKEN_SALT = 'hongguo.stream'
-STREAM_PATH = '/api/dramas/hongguo/stream'
+# 本线路的服务前缀：服务策略按它判定「总开关」（见 is_service_enabled）
+SERVICE_PREFIX = '/api/dramas/hongguo/'
+STREAM_PATH = f'{SERVICE_PREFIX}stream'
 
 # 「网页直出」可选画质：值 = 输出**宽度**上限（短剧是竖屏 1080×1920，日常说的 1080p / 720p
 # 就指宽度），档位与源站轨道一一对应。转码侧的码率上限表在
@@ -47,6 +49,20 @@ PLAY_ERROR = 'error'                 # 取数失败
 # 「尚未上架」时的提示文案
 NOT_LISTED_MSG = ('该集暂未上架：暂无可用播放地址。我们正在扩展存储空间，'
                   '后续会上架更多短剧，敬请期待。')
+
+
+def is_service_enabled() -> bool:
+    """红果短剧总开关：服务策略里本线路的生效状态为「正常」才启用。
+
+    与 ApiAuthMiddleware 同一口径（resolve_service_policy）：后台在 /console/services/
+    把 `/api/dramas/hongguo/` 的状态改成维护中 / 已下线即视为停用。
+
+    停用后后端**不再主动做红果相关的事**：不下发网页直出地址、不触发转码、不拉起离线签名
+    服务（见 request.stream_view 的兜底）。中间件本就会拦截 HTTP 请求，这里是代码层兜底
+    —— 即便策略表被误删 / 缓存异常，也不会让后台继续消耗转码算力。
+    """
+    from API.common.middleware import resolve_service_policy
+    return resolve_service_policy(SERVICE_PREFIX)['status'] == 'normal'
 
 
 def parse_quality(raw):
@@ -158,9 +174,10 @@ def get_detail(series_id):
     if not ok or data is None:
         return ok, data
 
-    # 本站「网页直出」是否可用。settings 里 HONGGUO_STREAM_DIR 有默认值，正常部署恒为可用；
-    # 取不到目录（如测试环境显式清空）时不下发 stream，免得承诺一个给不出的地址。
-    stream_enabled = bool(getattr(settings, 'HONGGUO_STREAM_DIR', ''))
+    # 本站「网页直出」是否可用：产物目录已配置（正常部署恒为可用；测试环境显式清空时不下发
+    # stream，免得承诺一个给不出的地址）且服务开关为「正常」（关闭红果后不再承诺直出）
+    stream_enabled = (bool(getattr(settings, 'HONGGUO_STREAM_DIR', ''))
+                      and is_service_enabled())
 
     # 重新构造而不是就地改：爬虫的返回值来自缓存，就地改可能把结果写回缓存对象
     episodes = []
@@ -206,7 +223,7 @@ def get_play(series_id, ep, quality=None):
     # 第 4 集及以后：源站只给 DRM 加密的 H.265，走服务端「网页直出」
     #（按需解密 + 转 H.264，产物永久复用）
     from SpiderServices.dramas.hongguo import transcode
-    if not getattr(settings, 'HONGGUO_STREAM_DIR', ''):
+    if not getattr(settings, 'HONGGUO_STREAM_DIR', '') or not is_service_enabled():
         return PLAY_NOT_LISTED, NOT_LISTED_MSG
     token = make_stream_token(series_id, ep, width)
     return PLAY_OK, {

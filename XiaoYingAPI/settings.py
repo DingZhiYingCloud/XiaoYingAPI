@@ -320,6 +320,13 @@ HONGGUO_STREAM_X264_PRESET = os.getenv('HONGGUO_STREAM_X264_PRESET', 'veryfast')
 HONGGUO_STREAM_X264_CRF = int(os.getenv('HONGGUO_STREAM_X264_CRF', '20'))
 # 单集转码最长耗时（秒），超时判失败，默认 900
 HONGGUO_STREAM_TIMEOUT = int(os.getenv('HONGGUO_STREAM_TIMEOUT', '900'))
+# 网页直出：全局并发转码上限（同时最多几集在转）。每集 ffmpeg 默认会把多核吃满，不设上限时
+# 多集被同时点播即可把整机 CPU 打满（线上事故），故默认 1（串行转码）；机器核多、负载低时可调大。
+HONGGUO_STREAM_MAX_CONCURRENT = int(os.getenv('HONGGUO_STREAM_MAX_CONCURRENT', '1'))
+# 网页直出：单次 ffmpeg 转码可用的最大线程数。默认取「CPU 核数的一半」（8 核 → 4），
+# 给同机其它服务留余量；可用 .env 覆盖。
+HONGGUO_STREAM_FFMPEG_THREADS = int(os.getenv(
+    'HONGGUO_STREAM_FFMPEG_THREADS', str(max(1, (os.cpu_count() or 2) // 2))))
 # 播放地址时效令牌有效期（秒），过期需重新调 play 接口换新地址
 HONGGUO_STREAM_TOKEN_TTL = int(os.getenv('HONGGUO_STREAM_TOKEN_TTL', '7200'))
 
