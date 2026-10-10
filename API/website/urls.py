@@ -4,9 +4,9 @@ from django.views.generic import TemplateView
 from django.views.i18n import JavaScriptCatalog
 
 from . import (console, console_accounts, console_ai, console_announcements,
-               console_appearance, console_audit, console_feedback, console_haijiao,
-               console_ip_bans, console_order_migration, console_pay, console_push,
-               console_qqbot, console_quota, console_security, console_users, docs_views,
+               console_appearance, console_audit, console_email_tasks, console_feedback,
+               console_haijiao, console_ip_bans, console_pay, console_push,
+               console_quota, console_security, console_users, docs_views,
                feedback_views, my_wallet, programs_views, views)
 # 第三方支付的异步通知：必须挂在 /api/ 之外（平台回调带不了我们的项目签名，靠平台公钥验签）
 from API.apis.pay.notify import notify_view as pay_notify_view
@@ -117,34 +117,8 @@ urlpatterns = [
          name='console_haijiao_register_stream'),                                # 自动注册进度流（SSE）
     # 服务余量（超管专属）：上游服务账号余量监控 + 低量邮件告警配置
     path('console/quotas/', console_quota.quotas_view, name='console_quotas'),
-    # 代练搬单（超管专属）：代练通订单 → 代练丸子发单的设置与记录，可手动执行一轮
-    path('console/order-migration/', console_order_migration.order_migration_view,
-         name='console_order_migration'),
-    # 搬单页实时数据轮询：记录 / 统计 / 运行日志 + 被接单语音（页面免刷新）
-    path('console/order-migration/feed/', console_order_migration.feed_view,
-         name='console_order_migration_feed'),
     # 推送日志（超管专属）：消息推送服务每次推送的记录（成功 / 失败）
     path('console/push-logs/', console_push.push_logs_view, name='console_push_logs'),
-    # QQBot 操作台（超管专属）：连接配置 + 一键部署 + 好友消息，QQBot 相关操作都在这一页
-    path('console/qqbot/', console_qqbot.qqbot_view, name='console_qqbot'),
-    # QQBot 一键部署的实时日志流（SSE，超管专属）
-    path('console/qqbot/stream/', console_qqbot.qqbot_stream_view, name='console_qqbot_stream'),
-    # QQBot 好友消息实时流（SSE，超管专属）：按主键增量推送新收到的私聊消息
-    path('console/qqbot/messages/stream/', console_qqbot.qqbot_messages_stream_view,
-         name='console_qqbot_messages_stream'),
-    # 切换会话（无刷新）：返回该会话对话流并标记已读（GET，不进操作审计）
-    path('console/qqbot/messages/thread/', console_qqbot.qqbot_messages_thread_view,
-         name='console_qqbot_messages_thread'),
-    # 发送回复（无刷新）：JSON 进出，POST 会进操作审计
-    path('console/qqbot/messages/reply/', console_qqbot.qqbot_messages_reply_view,
-         name='console_qqbot_messages_reply'),
-    # 星标 / 取消星标（无刷新）
-    path('console/qqbot/messages/star/', console_qqbot.qqbot_messages_star_view,
-         name='console_qqbot_messages_star'),
-    # 删除本地记录 / 撤回（无刷新）
-    path('console/qqbot/messages/delete/', console_qqbot.qqbot_messages_delete_view,
-         name='console_qqbot_messages_delete'),
-    # 旧「推送设置」地址（QQBot 配置已并入 QQBot 操作台）：保留跳转，兼容书签与历史链接
-    path('console/push-settings/', console_qqbot.legacy_settings_redirect,
-         name='console_push_settings_legacy'),
+    # 邮件定时推送（超管专属）：管理各接入项目的邮件定时推送任务（新增 / 编辑 / 启停 / 删除）
+    path('console/email-tasks/', console_email_tasks.email_tasks_view, name='console_email_tasks'),
 ]

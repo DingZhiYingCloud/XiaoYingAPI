@@ -1,6 +1,6 @@
 """代练丸子 DaiLianWanZi API 请求处理视图
 
-提供 23 个接口，对应爬虫的对外方法:
+提供 25 个接口，对应爬虫的对外方法:
     POST /api/dlwz/auth/send-code         发送验证码
     POST /api/dlwz/auth/login              登录
     GET  /api/dlwz/user/info               获取用户信息
@@ -11,6 +11,7 @@
     GET  /api/dlwz/user/balance            获取我的余额
     GET  /api/dlwz/business/order-tabs     获取订单分类（商家版）
     GET  /api/dlwz/business/orders         获取我的订单（商家版）
+    GET  /api/dlwz/business/orders/images  获取订单图片列表（首图/完单图）
     POST /api/dlwz/business/orders/cancel  取消订单（商家版）
     GET  /api/dlwz/business/games          获取全部游戏（商家版发单用）
     GET  /api/dlwz/business/order-options  获取发单选项（区服 / 代练类型 / 字段）
@@ -24,6 +25,7 @@
     POST /api/dlwz/business/orders/revoke/agree  同意撤销
     POST /api/dlwz/business/orders/revoke/cancel 取消撤销
     POST /api/dlwz/business/orders/arbitrate     申请平台仲裁
+    POST /api/dlwz/business/orders/accept-completion 同意验收并结账
 
 认证口径（与代练通一致）：除「发送验证码 / 登录」外的接口，authorization 均为**选填** ——
 不传时自动回落到后台「账号管理」(/console/accounts/) 里代练丸子（platform=dlwz）的托管账号。
@@ -276,6 +278,27 @@ def business_orders_view(request):
 
     ok, data = utils.get_my_orders(auth, table_type=table_type, keyword=keyword,
                                    page=page, page_size=page_size)
+    if not ok:
+        return _json_response(StatusCode.EXTERNAL_API_FAILED, msg=data)
+    return _spider_result(data)
+
+
+@require_http_methods(["GET"])
+def business_order_images_view(request):
+    """获取订单图片列表（商家版；含打手「首图」/「申请验收」的完单图）
+
+    参数:
+        trade_no      (必填, query): 订单号
+        authorization (选填, query): 平台登录令牌；不传则用后台默认账号
+
+    返回 data 为上游完整响应对象（图片数组在上游 data.imagesList，每项含 url / remark / initiator 等）。
+    """
+    trade_no = request.GET.get("trade_no", "").strip()
+    if not trade_no:
+        return _json_response(StatusCode.PARAM_MISSING, msg="参数缺失: trade_no(订单号)")
+
+    ok, data = utils.get_order_images(
+        trade_no, authorization=request.GET.get("authorization", "").strip())
     if not ok:
         return _json_response(StatusCode.EXTERNAL_API_FAILED, msg=data)
     return _spider_result(data)

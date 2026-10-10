@@ -17,6 +17,7 @@ urlpatterns = [
     path('user/change-password', request.change_password_view, name='dlt_change_password'),
     path('user/sign-in', request.sign_in_view, name='dlt_sign_in'),
     path('user/real-name-info', request.real_name_info_view, name='dlt_real_name_info'),
+    path('user/balance', request.balance_view, name='dlt_balance'),
 
     # 游戏 (games)
     path('games', request.games_view, name='dlt_games'),
@@ -28,11 +29,14 @@ urlpatterns = [
 
     # 订单 (orders)
     path('orders/receive', request.receive_order_view, name='dlt_receive_order'),
+    path('orders/receive-default', request.receive_order_default_view,
+         name='dlt_receive_order_default'),
     path('orders/publish', request.publish_order_view, name='dlt_publish_order'),
     path('orders/apply-cancel', request.apply_cancel_view, name='dlt_apply_cancel_order'),
     path('orders/handle-cancel', request.handle_cancel_view, name='dlt_handle_cancel_order'),
     path('orders/delete', request.delete_order_view, name='dlt_delete_order'),
     path('orders/my', request.my_orders_view, name='dlt_my_orders'),
+    path('orders/detail', request.order_detail_view, name='dlt_order_detail'),
     path('orders/owner-info', request.owner_info_view, name='dlt_owner_info'),
     path('orders/upload-image', request.upload_image_view, name='dlt_upload_image'),
     path('orders/upload-first-image', request.upload_first_image_view, name='dlt_upload_first_image'),

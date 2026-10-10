@@ -109,8 +109,6 @@ XiaoYingAPI/
 - `Security/`：`setting.py` 安全设置单例（`SecuritySetting`，后台入口隐身等开关）+ `audit.py` 超管操作审计（`ConsoleAuditLog`）
 - `Quota/`：服务余量监控——`service.py` 逐项余量（`QuotaService`）+ `setting.py` 通知设置单例（`QuotaSetting`）
 - `Push/log.py`：消息推送记录（`PushLog`，每次推送的渠道 / 项目 / 标题 / 正文 / 收件人 / 成败 / 上游码 / pushid；SendKey 由「账号管理」托管，不落本表）
-- `Push/setting.py`：消息推送设置单例（`PushSetting`，QQBot / NapCat 的 HTTP 地址与 **密文 token**、超时、事件回调基址与密钥、**AI 自动回复开关与人格**；控制台 `/console/qqbot/` 维护）
-- `Push/message.py`：QQBot 好友私聊消息（`QQPrivateMessage`：收到 / 后台回复发出、已读、星标；NapCat 事件上报落库，供控制台「好友消息」实时展示与回复）
 - `Payment/`：第三方支付——`setting.py` 全局支付设置单例（开关 / 最低金额 / 人工退款告知天数）、`provider.py` 支付渠道配置（商户ID + 私钥与平台公钥**密文落库**）、`order.py` 支付订单 `PayOrder` + 回调留痕 `PayNotifyLog` + 退款申请 `PayRefundRequest`、`ledger.py` 用户余额流水 `UserBalanceLedger`（`User.balance` 单位「元」；发货 = 给订单指定的用户加钱，与接口调用无关）
 - 服务对外状态不再单独建表：已并入「服务策略」表的 `status` 字段（见第七章第 3 节）
 
@@ -146,7 +144,7 @@ XiaoYingAPI/
 | 图形验证    | `/api/captcha_auth/`        | 图形验证码集成（阿里云）                 |
 | 自研图形验证码 | `/api/captcha_self/`        | 自研字符图片 / 算术验证码（本地绘制，一次性校验）   |
 | 调用统计    | `/api/statistics/`          | 公开查询 API 调用量（仅调用次数，免签名）      |
-| 消息推送    | `/api/push/`                | 把消息推送到手机、邮箱或 QQ：Server酱（`/serverchan/send` 发送、`/serverchan/status` 查送达状态，SendKey 由「账号管理」托管）+ 邮件（`/email/send`，原邮箱服务已并入）+ QQBot（`/qqbot/send`，走 NapCat / OneBot 11 HTTP，地址与 token 在「QQBot」页维护）；三条线路都记入「推送日志」，需签名 |
+| 消息推送    | `/api/push/`                | 把消息推送到手机或邮箱：Server酱（`/serverchan/send` 发送、`/serverchan/status` 查送达状态，SendKey 由「账号管理」托管）+ 邮件（`/email/send`，原邮箱服务已并入）+ 邮件定时推送（`/email_task/create|list|detail|update|delete`，可只发一次或每 N 分钟重复，由站内常驻线程 24 小时调度、停机重启自动补发）；三条线路都记入「推送日志」，需签名 |
 
 ### 抖音服务（唯一需要 Node.js 运行时的服务）
 
@@ -191,7 +189,7 @@ XiaoYingAPI/
 >
 > **画质说明**：源站 1080p 本体码率仅约 540 kbps，转码的意义是「别在二次编码时再掉一层」而非「加细节」，因此各档码率上限按档位分别设定（见 `SpiderServices/dramas/hongguo/transcode.py` 的 `_RATE_BY_WIDTH`）。此前默认档是 `HONGGUO_STREAM_HEIGHT=720`（按**高度**缩，竖屏宽度只剩 408px），观感明显发虚，故改为按**宽度**计档、默认 1080。
 
-**网页直出相关配置**（详见 `.env.example`）：`HONGGUO_STREAM_DIR` / `HONGGUO_STREAM_QUALITY`（默认出流画质 = 输出宽度上限，默认 1080）/ `HONGGUO_STREAM_HW_ENCODERS` / `HONGGUO_STREAM_X264_PRESET` / `HONGGUO_STREAM_X264_CRF` / `HONGGUO_STREAM_TOKEN_TTL`（默认 7200 秒）；各画质档的码率上限在 `SpiderServices/dramas/hongguo/transcode.py` 的 `_RATE_BY_WIDTH` 里按档位设定。
+**网页直出相关配置**（详见 `.env.example`）：`HONGGUO_STREAM_DIR` / `HONGGUO_STREAM_QUALITY`（默认出流画质 = 输出宽度上限，默认 1080）/ `HONGGUO_STREAM_HW_ENCODERS` / `HONGGUO_STREAM_X264_PRESET` / `HONGGUO_STREAM_X264_CRF` / `HONGGUO_STREAM_MAX_CONCURRENT`（全局并发转码上限，默认 2）/ `HONGGUO_STREAM_TOKEN_TTL`（默认 7200 秒）；各画质档的码率上限在 `SpiderServices/dramas/hongguo/transcode.py` 的 `_RATE_BY_WIDTH` 里按档位设定。
 
 > API 文档中心的「播放地址」接口自带**在线播放器**：发送请求成功后会自动加载并播放返回的地址（m3u8 走 hls.js，mp4 直链直接交给 `<video>`），可直接用来验收。
 
@@ -265,7 +263,6 @@ python manage.py runserver 0.0.0.0:10000
 > **Node.js 仅在用到抖音评论接口或海角视频播放时才需要**（`node -v` 确认 ≥ 18）；其余服务不依赖。⚠️ **Linux 服务器默认不带 node**，要靠海角取流或抖音评论就必须自行安装（官方静态包即可，脚本无 npm 依赖），装在非默认位置时用 `.env` 的 `HAIJIAO_NODE_BIN` 指定 —— 少了它的报错长得像权限问题（`[Errno 13] Permission denied: 'node'`），其实是「没装」，详见部署手册第五节第 12 条。
 > **红果短剧不需要安装 Java**（取流签名器用项目内置的裁剪版 JRE，随代码入库）；但需要 **ffmpeg** 在 PATH 上（或由 `HONGGUO_FFMPEG_BIN` 指定），第 4 集及以后的网页直出靠它解密与转码。
 > 前端样式产物 `API/static/css/output.css` 与多语言词条 `locale/**/*.mo` 均**随代码入库**，拉到代码直接跑即可；只有新增 daisyUI / Tailwind 类名或改动 `.po` 词条时才需本机重新编译（命令见第八章第 4 节）。
-> **NapCat 的事件上报用 `Transfer-Encoding: chunked` 发请求体**，而 Django 自带的开发服务器只按 `Content-Length` 读 body（没有它就按 0 字节算）——所以 `runserver` 启动时会自动打一个小补丁（`API/common/devserver.py`：先把 chunked 请求体解出来再交给 WSGI），否则 `/hook/qqbot/` 收到的永远是空 body、事件被静默丢弃（现象：NapCat 显示已上报、我们回 200 但什么都没落库，日志里还会出现 `"c2" 400` 这类把分块长度当成新请求的记录）。生产用 gunicorn / uvicorn 或前置 nginx 都会自行解开 chunked，无需关心。
 
 启动后：
 
@@ -828,7 +825,6 @@ curl -s "https://<你的域名>/api/xxx/internal_yyy"
 | `/console/stats/app/<APPID>/`               | 项目调用统计详情   | 单个接入项目的指标、时段分布与服务 / 接口排行（超管专属）                         |
 | `/console/quotas/`                          | 服务余量       | 监控上游服务账号余量（51代理余额、超级鹰题分），逐项设最低数量阈值，低于阈值发邮件（超管专属，见第 7 节第 10 小节） |
 | `/console/push-logs/`                       | 推送日志       | 消息推送服务每次推送的记录（渠道 / 项目 / 标题与正文摘要 / 成功失败 / 上游返回码 / 推送ID），可按结果筛选与关键词搜索（超管专属） |
-| `/console/qqbot/`                           | QQBot          | QQBot（NapCat）操作台：连接配置（HTTP 地址、token、超时、机器人 QQ 与安装目录、事件回调基址；token **加密落库、页面不回显**，留空 = 保持原值）、**一键部署**（自动探测环境 → 下载（国内镜像优先、失败回退官方）→ 解压 → 生成 token 并写 HTTP 服务端 + 事件上报配置 → 拉起进程（已在运行则自动重启；Linux 下容器已存在则**直接复用、不重建**，以免丢掉已扫码的登录态）→ 等端口就绪 → 回填配置，全程**实时日志（SSE + 落库，带时间戳 / 级别过滤 / 长行折叠 / 清屏 · 复制 · 下载 · 自动滚底）**）、以及**好友消息**（好友私聊机器人的消息经 NapCat 事件上报落库；左侧会话列表带未读红点、右侧对话流实时追加，**全程无刷新**：切会话 / 发送都不刷新页面；每条气泡带头像（对方在左、自己在右）；回复支持 **CQ 码（表情选择器，点「表情」才展开）与本地图片**（转 base64 图源直发，不落盘）；未读总数显示在浏览器标签标题上。**AI 自动回复**：开关 + 三种内置人格（尖酸刻薄 / 温柔善良聪明可爱 / 幽默搞笑），好友私聊由 AI 判断「值不值得回」，值得就自动回一句（带最近往来做上下文、用后台默认模型、跑在后台线程不阻塞事件回调，回复照常落库到「好友消息」）。历史消息用 `python manage.py prune_qq_messages` 定期清理（默认保留最新 5000 条 / 最近 30 天）。仅人工步骤是扫码登录 QQ（超管专属，见第 7 节） |
 | `/console/users/`                           | 用户管理       | 用户搜索 / 筛选 / 分页，行内封禁解封；建号、编辑、重置密码、删除（超管专属）              |
 | `/console/users/<用户ID>/`                     | 用户详情       | 资料、注册信息、按项目登录明细（次数 / 最后登录 / 登录态剩余天数）、Token 明细、验证记录（超管专属）  |
 | `/console/contacts/`                        | 联系方式       | 联系方式平台字典（渠道、填写项名称、跳转链接模板）与各接入项目的具体值，`?capp=` 切换项目（超管专属，见第 9 节） |
@@ -1034,7 +1030,7 @@ proxy_set_header Host $host;
 | `test_service_policy.py`               | 服务策略回归测试（fail-closed、开放节点、服务/线路/端点三级继承、状态拦截（只有正常可调用：开发中 30006 / 维护中 30004 / 已下线 30005）、前缀边界、缓存即时失效、控制台三级联动增删改与三语、服务树枚举自证、前台状态图标（服务级 / 线路级 / 线路 Tab）、文档可见性与使用范围（hidden 从文档页/菜单/在线调试消失、admin_only 对外 20020、状态拦截优先）、线路多选（一条策略覆盖多条线路、接管让位）、批量删除与弹窗版面、建议策略（清单与迁移写入的 10 条逐条一致、前缀可在服务树反查、一键新建预览面板、只补缺失 / 可反复执行 / 不覆盖已有、`seed_service_policies --dry-run`、stream 免签代码兜底）、仅专属管理员（admin_only 对非超管的文档隐藏：目录/服务页/左侧菜单/首页卡片不展示、在线调试不可调试；hidden 对超管同样隐藏；超管在线调试凭时效令牌放行 20020）。原「额度与单价继承」一轮已随计费体系下线移除 |
 | `test_hongguo_drama.py`                | 短剧（红果线路）「详情 / 播放 口径一致」回归测试（字段契约 episode_cnt / playable_cnt / listed_cnt、episodes[].playable 与 source（origin/stream）与 play 结论一致、直出可用时全量集数可播、playable_cnt 口径不变、不污染爬虫缓存、签名 HTTP 返回体；另含**不依赖源站**的出流 HTTP 契约（202 正在生成 / 503 失败 / 无令牌 403，失败响应不得是 `video/*`）；结束清理测试数据） |
 | `test_hongguo_catalog.py`              | 短剧「分类树 + 榜单」回归测试（两级分类：4 个一级 + 40 个二级题材，取值唯一且可拼出分类页 URL；文档页下拉与后端白名单一致；4 个榜单均能抓取且**不得混入面包屑脏条目**；签名 HTTP 下二级取值与漫剧榜被接受、非法取值被拒）。分类树形状与文档一致性为**离线**断言，联网断言在源站不可达时整段 SKIP |
-| `test_hongguo_stream_lock.py`          | 短剧「网页直出」转码状态的锁语义回归测试（僵尸锁立刻接管而非干等 30 分钟、属主存活时不重复转码、elapsed 由锁文件推算、失败落状态并释放锁、释放锁只删自己的、并发只转一次）。**离线、秒级**：产物目录指向临时目录、转码函数换成桩，不联网也不起 ffmpeg |
+| `test_hongguo_stream_lock.py`          | 短剧「网页直出」转码状态的锁语义回归测试（僵尸锁立刻接管而非干等 30 分钟、属主存活时不重复转码、elapsed 由锁文件推算、失败落状态并释放锁、释放锁只删自己的、并发只转一次、**全局并发上限生效**）。**离线、秒级**：产物目录指向临时目录、转码函数换成桩，不联网也不起 ffmpeg |
 | `test_feedback.py`                     | 问题反馈与追加评论测试                                  |
 | `test_captcha_auth.py`                 | 图形验证集成测试                                     |
 | `test_chaojiying.py`                   | 超级鹰验证码识别回归测试（视图参数校验 / err_no 映射 / md5 防篡改校验；真实上游组**按题分计费**，用本站验证码引擎生成图片做端到端识别并报准确率，未配 `CHAOJIYING_USER/PASS` 时 SKIP） |

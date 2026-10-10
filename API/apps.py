@@ -29,16 +29,6 @@ class ApiConfig(AppConfig):
     verbose_name = 'API服务'
 
     def ready(self):
-        # 开发服务器补丁：NapCat 事件上报用 Transfer-Encoding: chunked 发请求体，而 Django 自带的
-        # runserver 只按 Content-Length 读 body —— 不打这个补丁，回调进来永远是空 body、事件被静默丢弃。
-        # 只在 runserver 进程里打（其它管理命令与生产服务器都不需要，见 API/common/devserver.py）
-        import sys
-
-        if 'runserver' in sys.argv:
-            from API.common.devserver import install as install_chunked_support
-
-            install_chunked_support()
-
         # 服务策略查询缓存失效钩子：后台保存 / 删除 ApiServicePolicy 后立即失效，
         # 改动即时生效、无需等 TTL
         from API.common.middleware import invalidate_api_service_policy_cache
@@ -81,12 +71,13 @@ class ApiConfig(AppConfig):
         if is_serving_process():
             start_quota_worker()
 
-        # 代练搬单监控线程：同样只在「对外提供服务」的进程里启动；仅当后台「代练搬单」
-        # 页开启「自动运行」时才真正执行一轮（默认关闭，避免未配置就自动发单 / 接单）
-        from API.apis.order_migration.utils import start_worker as start_order_migration_worker
+        # 邮件定时推送线程：同样只在「对外提供服务」的进程里启动，按间隔扫描到期的
+        # EmailTask 并发送；多 worker 靠行级抢占保证同一任务同一时刻只发一次
+        # （见 API/apis/push/email_task/utils.py）
+        from API.apis.push.email_task.utils import start_worker as start_email_task_worker
 
         if is_serving_process():
-            start_order_migration_worker()
+            start_email_task_worker()
 
         # collectstatic：把「前端编译源码与工具」排除在收集之外 —— 它们只服务编译期，不是运行时资源：
         #   - css/input.css 第 1 行的 @import "tailwindcss" 会被 Manifest 存储当成待解析的 URL，直接报错；

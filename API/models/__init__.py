@@ -35,12 +35,8 @@ from API.models.Payment.ledger import UserBalanceLedger
 from API.models.Payment.order import PayNotifyLog, PayOrder, PayRefundRequest
 from API.models.Payment.provider import PayProvider
 from API.models.Payment.setting import PaySetting
-from API.models.OrderMigration.blacklist import DEFAULT_BLACKLIST_WORDS, OrderMigrationBlacklist
-from API.models.OrderMigration.order_migration import MigrationStatus, OrderMigration
-from API.models.OrderMigration.setting import OrderMigrationSetting
+from API.models.Push.email_task import EmailTask
 from API.models.Push.log import PushLog
-from API.models.Push.message import QQPrivateMessage
-from API.models.Push.setting import PushSetting
 
 __all__ = [
     'BaseModel',
@@ -90,12 +86,6 @@ __all__ = [
     'PayNotifyLog',
     'PayRefundRequest',
     'UserBalanceLedger',
-    'OrderMigration',
-    'MigrationStatus',
-    'OrderMigrationSetting',
-    'OrderMigrationBlacklist',
-    'DEFAULT_BLACKLIST_WORDS',
     'PushLog',
-    'PushSetting',
-    'QQPrivateMessage',
+    'EmailTask',
 ]

@@ -222,6 +222,7 @@
                  {% if p.games %}data-show-games="{{ p.games|join:' ' }}"{% endif %}>
               <label class="fieldset-label" for="param-{{ channel.slug }}-{{ ep.slug }}-{{ p.name }}">
                 {{ p.label }}
+                <span class="badge badge-ghost badge-sm font-mono">{{ p.name }}</span>
                 {% if p.required %}<span class="text-error">*</span>{% endif %}
               </label>
 
@@ -523,7 +524,9 @@
         </div>
         {% for p in local_params %}
         <label class="fieldset-label" for="local-cred-{{ p.name }}">
-          {{ p.label }}{% if p.required %}<span class="text-error">*</span>{% endif %}
+          {{ p.label }}
+          <span class="badge badge-ghost badge-sm font-mono">{{ p.name }}</span>
+          {% if p.required %}<span class="text-error">*</span>{% endif %}
         </label>
         {% if p.kind == 'textarea' %}
         <textarea id="local-cred-{{ p.name }}" data-local-cred-name="{{ p.name }}"

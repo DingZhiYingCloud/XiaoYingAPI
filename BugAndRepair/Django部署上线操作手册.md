@@ -22,8 +22,6 @@
 | Java | **Linux 服务器要装 JDK 17** 并设 `HONGGUO_JAVA_BIN`（仓库内置 `jre/` 是 Windows 版，Linux 用不了） | __________ |
 | ffmpeg | 需在 PATH 上；**仅**红果短剧线路「第 4 集及以后」解密用（不部署该线路可忽略） | __________ |
 | Node.js | **要装 Node.js（≥ 18）**：海角社区的视频播放列表要调 `node derive_key.js` 还原真密钥，抖音评论发布也要 node；内置脚本无 npm 依赖，装个 node 二进制即可，装在非默认位置时设 `HAIJIAO_NODE_BIN` | __________ |
-| NapCat WebUI 子域名 | `napcat.{DEPLOY_DOMAIN}`（仅用于扫码，见第九节） | __________ |
-| NapCat 事件回调中转端口 | `18080`（**只监听 127.0.0.1**，见第九节） | __________ |
 
 > 后续命令默认在**项目根目录**下执行：`cd {PROJECT_ROOT}`
 > 为简洁，用变量 `$PY` 代表 Python 路径，执行前先设：
@@ -60,9 +58,7 @@
 | 13 | 配置 SSL 证书 | 强制 HTTPS | ☐ |
 | 14 | 上线验证 | 官网页面 + 语言切换 + 接口签名 | ☐ |
 | 15 | 配置数据库自动备份 | 加一条 cron 跑 `scripts/backup_db.py`；**必须用 `www` 用户执行**；详见第八节 | ☐ |
-| 16 | 部署 QQBot（NapCat，按需） | 用 docker，容器名固定 `napcat`；**已有同名容器就复用、绝不再 `docker run`**（会因名字冲突返回 **125**，且重建会丢 QQ 登录态）；推荐 `--network host` + 只绑回环；**必须配本机 Nginx 中转解 chunked**，否则消息一条都收不到；详见第九节 | ☐ |
-| 17 | 依赖 QQBot 的功能自检（按需） | `/console/qqbot/`「测试连接」通 + 私聊一句能落库；**代练搬单的 QQ 接待复用同一个 NapCat 实例**，务必先走通再开搬单「自动运行」 | ☐ |
-| 18 | 部署代练搬单（按需） | `.env` 配 `DAILIAN_SIGN_KEY` + `DLT_OSS_*`；「账号管理」录入 `dlt` / `dlwz` 两个平台并校验；后台填**我们的 QQ 号**与**撤销凭证图 URL**；**先 `run_order_migration --once --dry-run` 再开「自动运行」**；多 worker 靠数据库锁互斥。详见第十节 | ☐ |
+| 16 | 部署代练搬单系统（按需，**独立项目**） | 搬单已从小影API 拆出为**独立 Django 项目 `X:\BanDan`**：小影只保留底层能力（代练通 / 代练丸子 / 邮件推送），搬单编排、记录、设置都在新系统。新系统部署与「4 个新增接口」说明见第九节 | ☐ |
 
 ---
 
@@ -520,12 +516,9 @@ proxy_set_header Host $host;
 | 短剧点播第 4 集报「找不到可用的 Java」 | Linux 线上没装 JDK 17，或 `.env` 没设 `HONGGUO_JAVA_BIN`（代码会先找内置 `jre/bin/java`，而那是 Windows 版） | `apt/dnf install` JDK 17，`.env` 设 `HONGGUO_JAVA_BIN=/usr/bin/java`，**完全重启 uwsgi** |
 | 海角「视频播放列表」报 `视频密钥派生失败（node 调用异常）: [Errno 13] Permission denied: 'node'` | **服务器压根没装 node**，不是权限问题 —— PATH 里混着当前用户不可访问的目录（root 启动 uwsgi 会带上 `/root/bin`）时，Linux 把「文件不存在」误报成 `Permission denied`，照这条信息去 chmod 会查错方向 | 装 Node.js（官方静态包即可），或 `.env` 设 `HAIJIAO_NODE_BIN=/usr/local/bin/node`，**完全重启 uwsgi**。验证：`runuser -u www -- node -v` 能打印版本 |
 | 短剧点播**长时间**停在「正在生成播放地址，请稍候重试」 | ① 确实在转（软编一集 30~40 秒，机器没有硬件编码器时更慢）；② **部署重启 uwsgi 打断转码留下的僵尸锁**；③ 上游取流卡住 | 先 `ps -ef | grep ffmpeg` + `tail logs/app.log \| grep hongguo`：**没有 ffmpeg 却一直 running = 状态卡死**。再看 `cache/dramas/hongguo_stream/*/*/*.lock` 里的属主 pid 是否还在（`ps -p <pid>`）——不在就删掉该锁，下一次点播自动重转（修复后此判断已内置，无需人工） |
-| 控制台「一键部署」报 `docker: Error response from daemon: Conflict. The container name "napcat" is already in use`，紧随 `部署失败：命令返回码 125` | 机器上**已有同名容器**（服务器重启后它按 `--restart unless-stopped` 自动拉起了），而旧版脚本仍无条件 `docker run --name napcat` | **不要删容器重建**（QQ 登录态在容器里，重建必须重新扫码）。直接复用：先 `docker ps -a --filter name=^napcat$` 确认，再 `docker start napcat`。代码已内置探测（`API/apis/push/qqbot/setup.py` 的 `_pipeline_linux()` 命中即走复用分支），升级到该版本后「一键部署」可反复点 |
-| QQBot **好友消息一条都不落库**：NapCat 显示已上报、我们回 200，但 `qq_private_message` 没有新记录；日志 `QQBot 事件上报体为空（Transfer-Encoding=chunked）` | NapCat 用 **chunked** 发请求体，而 **uwsgi 不解 chunked** —— 上报地址直连 uwsgi 时 Django 拿到的 `request.body` 是空的 | 让上报**绕本机 Nginx**（`proxy_request_buffering on` + `proxy_set_header Transfer-Encoding ""`），地址填 `http://127.0.0.1:18080/hook/qqbot/{hook_secret}/`；详见第九节第 3 步 |
-| QQBot 的 HTTP 服务端端口（默认 `3000`）没在监听、`/console/qqbot/` 的「测试连接」连不上 | NapCat **还没扫码登录 QQ**（未登录时它不起 OneBot 服务）；或容器被重建 / 重启过导致登录态丢失 | 打开 NapCat WebUI 扫码。注意**登录态跟着容器走**：`docker rm` 重建必丢，实测某些版本连 `docker restart` 也丢 —— 见第九节第 4 步 |
-| 代练搬单**一条都发不出去**；命令启动时打印 `警告：未配置 ORDER_MIGRATION_QQ` | 后台「代练搬单」页的**「我们的 QQ 号」为空** —— 发单时要把联系方式填进丸子订单，缺失则每单必失败 | 到 `/console/order-migration/` 填上我们的 QQ 号（页面优先于 `.env`，见第十节第 4 步） |
+| 代练搬单系统**一条都发不出去**；命令启动时打印 `警告：未配置 ORDER_MIGRATION_QQ` | 「我们的 QQ 号」为空 —— 发单时要把联系方式填进丸子订单，缺失则每单必失败（**该项现属独立项目 `X:\BanDan`，不在小影后台**） | 调 `POST /api/order_migration/settings` 设置 `our_qq`（或改新系统库 `order_migration_setting`），见第九节 |
 | 代练通相关接口全部失败；「账号管理」校验凭据返回 `DAILIAN_SIGN_KEY 未配置，无法校验` | `.env` 没配代练通接口签名密钥 | 补 `.env` 的 `DAILIAN_SIGN_KEY`（以及 `DLT_OSS_ACCESS_KEY_ID` / `DLT_OSS_ACCESS_KEY_SECRET`），重启 uwsgi |
-| 代练通能发单，但**自动接单总是失败** | `dlt` 平台账号的凭据里缺 `pay_pass`（支付密码） | 重新登录代练通，把**含 `pay_pass` 的完整 JSON** 粘回「账号管理」并点校验（见第十节第 3 步） |
+| 代练搬单系统里**自动接单总是失败** | 「账号管理」里 `dlt` 平台账号的凭据缺 `pay_pass`（支付密码） | 重新登录代练通，把**含 `pay_pass` 的完整 JSON** 粘回小影「账号管理」并点校验（见第九节第 3 步） |
 
 ---
 
@@ -544,10 +537,7 @@ proxy_set_header Host $host;
 11. **第三方二进制 `git pull` 拉不到**：红果签名器的 `sign/unidbg-sign.jar` 与 `capture/` 不入库，换机器 / 首次部署必须手工补齐；且内置 `jre/` 是 **Windows 版**，Linux 线上要另装 JDK 17 —— 文档里「Java 无需安装」只对 Windows 成立。**验证方式**：真跑一集第 4 集的转码（签 `app_api.get_episode_vids()` 能返回集数即说明签名通了）。
 12. **`[Errno 13] Permission denied: '<命令>'` 未必是权限问题**：`subprocess` 调一个 PATH 里**根本不存在**的命令时，只要 PATH 里还混着当前用户**不可访问的目录**（root 启动 uwsgi 就会把 `/root/bin` 带进进程 PATH，见 `uwsgi.ini` 的启动方式），Linux 会把「文件不存在(ENOENT)」报成「权限不足(EACCES)」—— glibc 的 `execvp` 在有 EACCES 时优先报 EACCES。于是「服务器没装 node」被写成 `Permission denied: 'node'`，照它去 chmod 会查错方向（线上真踩过，见变更记录）。**排查口诀：先 `runuser -u www -- which <命令>`，确认文件到底在不在。**
 13. **跑调试脚本要用运行用户**：以 root 跑探针 / 调试脚本会把 `cache/**`、`media/**` 下的文件写成 **root 属主**，而 Django 的文件缓存文件是 **0600** —— `www` 的 worker 立刻读不了，线上表现为接口随机 500（日志里是 `PermissionError: ... .djcache`）。统一用 `runuser -u www -- $PY <脚本>`；万一写脏了：`chown -R www:www cache media`。
-14. **QQBot 的 NapCat 容器「已存在就复用」，绝不 `docker run` 第二次、更不删容器重建**：容器名固定 `napcat`，服务器重启后它按 `--restart unless-stopped` 自动拉起；此时再 `docker run --name napcat` 会因**名字冲突返回 125**（控制台表现为「一键部署」直接失败）。而**删掉重建更糟** —— **QQ 登录态存在容器里**，重建会被 NapCat 判为新设备、必须重新扫码。正确姿势：`docker ps -a --filter name=^napcat$` 先探测，存在就只 `docker start`。代码已内置该判断（`_pipeline_linux()`），复用时不回填本次新生成的 token，只同步容器自身的 `NAPCAT_TOKEN`（避免把能用的配置改坏）。**顺带**：`--filter name=` 是**包含**匹配，必须锚定成 `^napcat$`，否则 `napcat-old` 这类名字会被误判。
-15. **NapCat 的事件上报必须过一层本机 Nginx**：它用 `Transfer-Encoding: chunked` 发请求体，而 **uwsgi 不解 chunked** —— 直连的结果是「NapCat 显示推了、我们回 200、但一条都没落库」（日志 `QQBot 事件上报体为空（Transfer-Encoding=chunked）`）。用一个只监听 `127.0.0.1:18080` 的 vhost 打开 `proxy_request_buffering` 并清掉 `Transfer-Encoding` 头即可。另：`/hook/qqbot/` **必须挂在 `/api/` 之外** —— 项目签名中间件只放行 `/api/`，而 NapCat 带不了我们的签名，来源可信度靠回调地址里的随机密钥（`PushSetting.hook_secret`）自证。
-16. **QQ 登录态跟着容器走，别为了「干净重装」去 `docker rm`**：实测该版本**连 `docker restart` 都会丢**登录态，换网络模式重建（bridge → host 之类）同样会丢。所以容器要 `--restart unless-stopped`，而**能不停就不停**；真需要重建，就先准备好重新扫码。
-17. **代练搬单在 `lazy-apps` 多 worker 下必须靠数据库互斥**：`AppConfig.ready()` 会在**每个 worker 里各起一份搬单线程**，且它们同步唤醒 —— 不加锁就会把**同一笔代练通订单重复发到丸子**（丸子余额重复扣、代练通双金重复冻结）。代码用「条件 UPDATE 抢本轮执行权」（`OrderMigrationSetting.run_lock_until`，占用最多 300 秒自动失效）解决，所以看到「**已有进程正在执行本轮**」的提示是**正常现象、不是故障**。同理：后台「自动运行」与常驻 `run_order_migration` 命令**不要同时开**。
+14. **代练搬单在多 worker 下必须靠数据库互斥**（**已迁出为独立项目 `X:\BanDan`，不在小影内**）：每个 worker 各有一份搬单线程，且它们同步唤醒 —— 不加锁就会把**同一笔代练通订单重复发到丸子**（丸子余额重复扣、代练通双金重复冻结）。新系统沿用「条件 UPDATE 抢本轮执行权」（`OrderMigrationSetting.run_lock_until`，占用最多 300 秒自动失效）解决，所以看到「**已有进程正在执行本轮**」的提示是**正常现象、不是故障**。同理：设置里的「自动运行」与常驻 `run_order_migration` 命令**不要同时开**。
 
 ---
 
@@ -680,265 +670,111 @@ openssl enc -aes-256-cbc -pbkdf2 -in backups/db-xxx.sqlite3.gz -out db-xxx.sqlit
 
 ---
 
-## 九、QQBot（NapCat）部署与坑位
+## 九、代练搬单系统部署（独立项目 `X:\BanDan`）
 
-> **只在需要 QQ 机器人时部署**（消息推送 `/api/push/qqbot/send`、好友消息落库与 AI 自动回复、代练搬单的「打手 QQ 接待」）；不部署不影响主站。
-> 控制台入口 `/console/qqbot/`（超管专属）。页面上的**「一键部署」按钮只负责「首次安装」**：机器上已经有 NapCat 时，请看第 2 条。
+> **代练搬单已从小影API 拆出为独立 Django 项目 `X:\BanDan`**：小影只保留底层能力（代练通 / 代练丸子 / 邮件推送），搬单的编排、记录、设置都在新系统。新系统通过 **HTTP + 项目签名**调用小影API（不再直接引用小影代码），自身也不接 QQBot / AI，通知仅走邮件。
+> **只在需要搬单时部署**，且建议先 dry-run 观察再正式开跑。新系统**没有 Web 控制台**，对外只有 HTTP API + 管理命令。
 
-### 1. 前置：docker
+### 0. 架构与前置
 
-NapCat 官方只提供 docker 镜像与 Windows 安装包，Linux 一律走 docker。
-
-```bash
-docker info                     # 确认已装且守护进程在跑
-usermod -aG docker www          # 让运行用户也能操作；改完需重新登录生效
-```
-
-### 2. 起容器：**已有同名容器就复用，绝不再 `docker run`**
-
-容器名固定 `napcat`。**首次**部署：
-
-```bash
-docker run -d --name napcat --restart unless-stopped \
-  --network host \
-  -e NAPCAT_TOKEN={自己生成一串随机串，须与「QQBot」页里填的一致} \
-  mlikiowa/napcat-docker:latest
-```
-
-两个必须坚持的口径：
-
-| 口径 | 为什么 |
-| --- | --- |
-| **`--network host` + 让 NapCat 只监听 `127.0.0.1`** | 与主站同一条安全原则（S-11：对外一律经本机 Nginx）。**不要用 `-p 3000:3000 -p 6099:6099`** —— docker 发布端口是直接往 iptables 的 `DOCKER` 链插 DNAT 规则，**早于 ufw / firewalld 的规则生效**，也就是说主机防火墙对这些端口形同虚设（云厂商的安全组在网络层仍然拦得住，但别指望主机防火墙）。一旦漏配安全组，等于把 NapCat 的 OneBot API（仅一个 token 保护）挂到公网 |
-| **`--restart unless-stopped`** | 服务器重启后容器自动拉起，机器人不用人工恢复（**且登录态保留**，见第 4 条） |
-
-**⚠️ 机器上已经有 `napcat` 容器时，不要再执行上面的 `docker run`。** 它会因**名字冲突**直接失败：
-
-```
-docker: Error response from daemon: Conflict. The container name "napcat" is already in use
-部署失败：命令返回码 125
-```
-
-这正是控制台点「一键部署」会看到的那条报错。**更不能「先删掉再重建」** —— QQ 登录态存在容器里，重建会被 NapCat 判定为新设备、**必须重新扫码**。
-
-正确做法是先探测、再决定：
-
-```bash
-docker ps -a --filter name=^napcat$ --format '{{.Names}} {{.Status}}'   # 必须用 ^ ... $ 锚定
-docker start napcat                                                     # 已存在但没在跑 → 只启动
-```
-
-> 代码已内置这个判断：`API/apis/push/qqbot/setup.py` 的 `_pipeline_linux()` 会先探测同名容器，命中就走**复用分支**（不新建、也不回填本次新生成的 token，只把容器自身的 `NAPCAT_TOKEN` 同步回「QQBot」页）。**所以「一键部署」可以反复点，不会再破坏已配好的环境。**
->
-> 界面上的「一键部署」在 Linux 下**执行的正是上面这条命令**（`--network host`、不再发布端口），口径已对齐 —— 首次安装可以直接用它。
-
-> 关于「只监听回环」怎么落地：`--network host` 解决了「docker 绕过主机防火墙」的问题（端口回到普通进程手上，ufw / firewalld 重新生效），但 **NapCat 自己的配置里还有 `host` 字段**（`webui.json` 与 `onebot11.json` 的 `httpServers`），默认可能是 `0.0.0.0`。生产口径是把它改成 `127.0.0.1`，即**主机防火墙 + 应用自身**两层都收在回环上：WebUI（`6099`）只有经本机 Nginx 反代才能访问，OneBot HTTP（`3000`）只给本机用。
-
-### 3. 事件回调：必须过一层本机 Nginx 解 chunked（否则一条消息都收不到）
-
-NapCat 上报事件用的是 `Transfer-Encoding: chunked`，而 **uwsgi 不解 chunked**。让 NapCat 直连 uwsgi 的结果是：NapCat 显示上报成功、我们回 200，但 Django 拿到的 `request.body` 是空的，好友消息**一条都不落库**（日志 `QQBot 事件上报体为空（Transfer-Encoding=chunked）`）。
-
-所以在**本机**起一个只监听回环的中转，由 Nginx 把请求体读完整再转发：
-
-```nginx
-# /www/server/panel/vhost/nginx/hook_local_{项目名}.conf
-server {
-    listen 127.0.0.1:18080;                 # 只回环，公网不可达
-    server_name _;
-    access_log /www/wwwlogs/{项目名}.hook.log;
-    client_max_body_size 20m;
-
-    location /hook/qqbot/ {
-        proxy_pass http://127.0.0.1:{uwsgi端口};
-        proxy_http_version 1.1;
-        proxy_request_buffering on;             # 关键：先把 chunked 读完整
-        proxy_set_header Transfer-Encoding "";  # 关键：去掉 chunked 头，改按 Content-Length 转发
-        proxy_set_header Host {DEPLOY_DOMAIN};
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto http;
-    }
-    location / { return 404; }
-}
-```
-
-再把这段地址填进 NapCat 的「HTTP 客户端 / 事件上报」：
-
-```
-http://127.0.0.1:18080/hook/qqbot/{hook_secret}/
-```
-
-`{hook_secret}` 取自 `/console/qqbot/` 页（即 `PushSetting.hook_secret`，只写进 NapCat 配置、不对外暴露）。改完 Nginx 记得 `nginx -t && nginx -s reload`。
-
-> **为什么 `/hook/qqbot/` 不放在 `/api/` 下**：项目签名中间件只对 `/api/` 放行，而 NapCat 带不了我们的项目签名 —— 来源可信度靠回调地址里的随机密钥自证。
-
-### 4. 扫码登录（唯一的人工步骤）
-
-```bash
-docker logs --tail 40 napcat         # 终端里会打印二维码 / 解码 URL
-```
-
-更省事的方式是把它的 WebUI 反代到一个子域名（同样只经本机回环访问容器端口）：
-
-```nginx
-# /www/server/panel/vhost/nginx/napcat.{DEPLOY_DOMAIN}.conf
-server {
-    listen 443 ssl http2;
-    server_name napcat.{DEPLOY_DOMAIN};
-
-    ssl_certificate     /www/server/panel/vhost/cert/{证书目录}/fullchain.pem;
-    ssl_certificate_key /www/server/panel/vhost/cert/{证书目录}/privkey.pem;
-
-    location / {
-        proxy_pass http://127.0.0.1:6099;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;      # WebUI 走 WebSocket
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_buffering off;
-    }
-}
-```
-
-浏览器打开 `https://napcat.{DEPLOY_DOMAIN}/webui/?token={webui.json 里的 token}` 扫码。
-
-**登录态是跟着容器走的**（实测口径）：
-
-| 操作 | 登录态 |
-| --- | --- |
-| 服务器重启（容器按 `--restart unless-stopped` 自动拉起） | **保留** |
-| `docker restart napcat` | **实测会丢**（该版本如此），需重新扫码 |
-| `docker rm` 后重建 | **必丢** |
-| `docker commit` 存快照后改用别的网络模式重建 | **会丢**（网络模式变了，NapCat 视作新设备） |
-
-> 结论：**能不停就不停，能不改网络模式就不改**。这也是第 2 条强调「已存在就复用」的根本原因。
-
-### 5. 回填配置与自检
-
-1. 到 `/console/qqbot/` 填：HTTP 地址 `http://127.0.0.1:3000`、token（与容器 `NAPCAT_TOKEN` 一致）、**机器人 QQ 号**；
-2. 点「测试连接」→ 应返回机器人昵称与 QQ 号；
-3. 私聊机器人一句，控制台「好友消息」面板应实时出现该条，且库里能查到：
-
-```bash
-runuser -u www -- sqlite3 db.sqlite3 \
-  "select id,direction,user_id,substr(content,1,30) from qq_private_message order by id desc limit 5;"
-```
-
-方向 `in` = 对方发来、`out` = 机器人（含 AI 自动回复）发出。**两条都在**，说明 `NapCat → 回环 Nginx → uwsgi → 落库 → 自动回复` 整条链路通了。
-
-> NapCat 是**按账号**保存配置的：扫码后若端口仍不通，回 `/console/qqbot/` **填上机器人 QQ 号**再点一次「一键部署」—— 它才能把 HTTP 服务端写进该账号的配置。
-> 扫码后 `3000` 端口才会开始监听（未登录时 NapCat 不起 OneBot 服务），这是「测试连接连不上」最常见的原因。
-
-### 6. 依赖 QQBot 的功能
-
-- **消息推送**：`/api/push/qqbot/send`（需签名），记录进「推送日志」`/console/push-logs/`。
-- **AI 自动回复**：`/console/qqbot/` 页开关 + 三种内置人格；只回「值得回」的私聊，回复同样落进「好友消息」。
-- **代练搬单的「打手 QQ 接待」**：复用同一个 NapCat 实例与 `/hook/qqbot/` 回调 —— **先把本节全部走通，再开搬单的「自动运行」**。搬单另有一条跨进程互斥要求（多 worker 下会重复发单），见 [变更记录.md](变更记录.md) 第 11 条与 `../API/apis/order_migration/utils.py`。
-
----
-
-## 十、代练搬单部署（代练通订单 → 代练丸子发单）
-
-> **只在需要搬单时部署**。它比主站多两层外部依赖（两个代练平台 + QQBot），**建议最后部署**，并且先 dry-run 观察再正式开跑。
-> 控制台入口 `/console/order-migration/`（超管专属）。后台线程由 `API/apps.py` 的 `AppConfig.ready()` 启动（只在「对外提供服务」的进程里），**但只有开启「自动运行」才会真正发单**。
+- 新系统 → 小影API：`/api/dlt/*`、`/api/dlwz/*`、`/api/push/email/send`（均需项目签名）。
+- 为此小影API 侧新增了 4 个通用接口（搬单管道要用）：`GET /api/dlt/user/balance`、`GET /api/dlt/orders/detail`、`POST /api/dlt/orders/receive-default`、`GET /api/dlwz/business/orders/images`（已在文档中心列出）。
+- 小影侧仍需配好两个平台账号（见第三节 `dlt` / `dlwz`）与 `.env` 的 `DAILIAN_SIGN_KEY` / `DLT_OSS_*` —— 底层调用与小影自身的文档调试共用同一套账号。
+- 新系统调用小影需一个「接入项目」：小影后台「接入项目」创建后拿到 `app_id` / `app_secret`（本机已自动创建名为「代练搬单系统」的项目）。
 
 ### 1. 它在干什么
 
-每轮顺序固定：**取实时余额 → 抓单 → 过滤 → 随机抽单 → 逐条「余额够才发」→ 监控**。
+每轮顺序固定：**取实时余额 → 抓单 → 过滤 → 随机抽单 → 逐条「余额够才发」→ 监控 → 已接单巡检 → 退单巡检 → 结算巡检**。
 
 | 阶段 | 说明 |
 | --- | --- |
 | 抓单 | 代练通王者公开池 + 搜索池，再映射成丸子可发的形态 |
-| 发单 | 按「代练通双金 / 丸子发单成本」判断余额是否够，够才发；**任一余额不足即中断本轮发单**（已发的保留），避免「代练通已停接、丸子还在收单」的无效等待 |
-| 监控 | 先查代练通原单还能不能接，再查丸子是否被接单 → 回到代练通接单取账号 |
+| 发单 | 按「代练通双金 / 丸子发单成本」判断余额是否够，够才发；**任一余额不足即中断本轮发单**（已发的保留） |
+| 监控 | 先查代练通原单还能不能接，再查丸子是否被接单；丸子被接单后**自动去代练通接单并落号主账号** |
 | 验收巡检 | 丸子打手申请验收后，把完单图转传到代练通并申请完单 |
+| 退单巡检 | 丸子上出现「撤销中」→ 置「打手申请退单」并邮件通知管理员，等人工处理 |
 | 结算巡检 | 代练通验收结算后，自动去丸子「同意验收」给打手结账 |
 
-### 2. 前置依赖
-
-1. **QQBot 必须先走通**（第九节）：打手加好友后的「自动接待、索要丸子订单号」复用同一个 NapCat 实例与 `/hook/qqbot/` 回调。QQBot 不通 → 打手联系不上你，整条链路白跑。
-2. **代练通相关 `.env`**（缺了接口直接失败）：
+### 2. 部署新系统
 
 ```bash
-DAILIAN_SIGN_KEY=            # 代练通接口签名密钥；缺失时凭据校验直接返回「DAILIAN_SIGN_KEY 未配置」
-DLT_OSS_ACCESS_KEY_ID=       # 代练通 OSS 直传凭据（「上传首图」等转存图片用）
-DLT_OSS_ACCESS_KEY_SECRET=
+# 1) 代码与虚拟环境（Windows：X:\BanDan；Linux 换对应路径）
+cd X:/BanDan
+python -m venv .venv
+.venv/Scripts/python -m pip install -r requirements.txt      # Linux: .venv/bin/python
+
+# 2) 配置 .env（复制 .env.example）
+SECRET_KEY=<50+ 位随机串>            # 除 Django 外还用于号主账号 AES 加密，上线后不可再改
+DEBUG=False
+ALLOWED_HOSTS=你的域名,IP
+XIAOYING_BASE_URL=http://127.0.0.1:10000   # 小影API 地址
+XIAOYING_APP_ID=app_xxx
+XIAOYING_APP_SECRET=sk_xxx
+BANDAN_API_TOKEN=<内部调用令牌>      # 设置后所有 /api/ 需带请求头 X-Api-Token
+
+# 3) 建库（迁移文件随代码入库，线上只 migrate，禁止线上 makemigrations）
+.venv/Scripts/python manage.py migrate
 ```
 
-3. **`.env` 的 `ORDER_MIGRATION_*` 只是兜底**：`ORDER_MIGRATION_QQ / INTERVAL / PRICE_MIN / PRICE_MAX` 都有对应的**后台页面配置**，且**页面优先、.env 回落**。新服务器可以只配页面。
+### 3. 小影侧需一并就绪（底层能力）
 
-### 3. 录入两个平台账号（`dlt` / `dlwz`）
+- `.env`：`DAILIAN_SIGN_KEY`、`DLT_OSS_ACCESS_KEY_ID` / `DLT_OSS_ACCESS_KEY_SECRET`（缺了代练通接口直接失败）。
+- 「账号管理」`/console/accounts/` 录入两个平台（拿凭据方式见第三节）：
+  - `dlt`（代练通）：JSON `{"user_id","token","uid","pay_pass"}` —— **`pay_pass` 不能少**（自动接单要用）。
+  - `dlwz`（代练丸子）：登录返回的 `data`（含 `accessToken`）。
+- 「接入项目」里确认「代练搬单系统」的 `app_id` / `app_secret` 已写入新系统 `.env`（重置密钥需同步更新）。
 
-搬单要同时登录代练通（进货）与代练丸子（出货），凭据都托管在「账号管理」`/console/accounts/`，**平台代码分别是 `dlt` 与 `dlwz`**。
-
-凭据怎么拿：调各自的登录接口 —— **`code_type=Password` 可以直接用密码登录**，返回的就是要粘贴的那段凭据。
+### 4. 启动与对外接口
 
 ```bash
-# 代练通 → platform=dlt
-curl -X POST 'https://{DEPLOY_DOMAIN}/api/dlt/auth/login' \
-  -d 'phone={手机号}&code={密码}&code_type=Password'
-
-# 代练丸子 → platform=dlwz
-curl -X POST 'https://{DEPLOY_DOMAIN}/api/dlwz/auth/login' \
-  -d 'phone={手机号}&code={密码}&code_type=Password'
+# 本地调试：runserver；生产：uwsgi/gunicorn 指向 bandan.wsgi:application
+cd X:/BanDan
+.venv/Scripts/python manage.py runserver 127.0.0.1:18000
 ```
 
-（需要短信验证码时用 `code_type=VerificationCode`，先调 `.../auth/send-code`。这两个接口需签名，实际调用见文档中心的在线调试。）
+接口前缀 `/api/order_migration/`（设置 `BANDAN_API_TOKEN` 后需带 `X-Api-Token`）：
 
-把返回的凭据整段粘进「账号管理」对应平台，点「校验」确认状态变「有效」。两个平台的凭据格式：
-
-| 平台 | 凭据 | 备注 |
+| 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| `dlt`（代练通） | JSON：`{"user_id": "...", "token": "...", "uid": "USR...", "pay_pass": "支付密码"}` | **`pay_pass` 不能少** —— 全自动「接单」要用它，缺了接单会失败 |
-| `dlwz`（代练丸子） | 登录返回的 `data`（含 `accessToken`） | 校验时读的是 `accessToken` |
-
-### 4. 后台设置（`/console/order-migration/`）
-
-| 项 | 要点 |
-| --- | --- |
-| **我们的 QQ 号** | **必配**。发单时把它填进丸子的账号 / 密码 / 角色名与联系方式，引导打手加好友后私下交接；**留空则发单全部失败**（命令启动时会直接警告） |
-| **撤销凭证图 URL** | 抢接失败要「申请撤销」时丸子强制至少一张图；**留空则撤销不了时只告警、不自动撤销** |
-| 双金倍数 | 丸子双金 = 发布价 × 该倍数，两项均分，默认 2 |
-| 价格区间 / 标题关键词 | 只搬该区间 / 含关键词的代练通订单；关键词最适合自测时「只搬自己发的单」 |
-| 严选发单 / 接单门槛 | 是否要求打手 Lv2+ |
-| 每轮发布上限 / 轮询间隔 | 间隔最小 5 秒，也是「被接单」检测的最坏延迟 |
-| 通知 | 被接单可发邮件 / 浏览器语音播报（页面需开着）/ 私聊管理员 QQ（走 QQBot） |
+| GET | `/health` | 存活探针 |
+| POST | `/preview` | 抓单预览（只映射、不发布） |
+| POST | `/run` | 执行一轮（`dry_run=1` 只抓单映射） |
+| POST | `/cancel-all` | 一键撤销全部待接单，并关闭自动运行 |
+| GET | `/status` | 最近一轮结果 + 各状态计数 + 运行日志 |
+| GET | `/records` | 记录列表（`status` 多选 / 分页） |
+| GET | `/records/<id>/owner-info` | 查看某单号主账号信息（敏感） |
+| GET/POST | `/settings` | 读取 / 修改搬单设置 |
+| GET/POST | `/blacklist` | 标题黑名单列表 / 增删（`action=add/delete`） |
 
 ### 5. 先 dry-run，再开自动运行
 
 ```bash
-cd {PROJECT_ROOT}
-
-# 只抓单 + 映射，不联网查余额、不真实发单 / 接单 / 撤单
-runuser -u www -- $PY manage.py run_order_migration --once --dry-run
-
-# 真实跑一轮（仍不开常驻）
-runuser -u www -- $PY manage.py run_order_migration --once
+cd X:/BanDan
+.venv/Scripts/python manage.py run_order_migration --once --dry-run   # 只抓单 + 映射
+.venv/Scripts/python manage.py run_order_migration --once             # 真实跑一轮
 ```
 
-确认抓单、映射、余额判断都正常，**最后**才回后台打开「自动运行」。
+确认抓单、映射、余额判断都正常后，**最后**再调 `POST /api/order_migration/settings` 把 `auto_run` 置 1（或直接改库 `order_migration_setting.auto_run=1`）。
 
 ### 6. 两种驱动别同时用
 
 | 驱动 | 开法 | 适用 |
 | --- | --- | --- |
-| 后台线程 | 后台页「自动运行」开关 | 常规方式；随服务起，跟着 uwsgi 走 |
+| 后台线程 | 设置里 `auto_run` 开关 | 常规方式；随服务起（`AppConfig.ready()`，仅「对外提供服务」的进程里启动） |
 | 常驻命令 | `manage.py run_order_migration`（可选 `--interval` / `--publish-limit`） | 排查 / 临时托管 |
-
-**同时开会让同一批订单被两路抢**（第 7 条的锁虽能兜住，但没必要）。
 
 ### 7. 多 worker 必须靠数据库互斥（重要）
 
-生产 uwsgi 是 `lazy-apps` + 多 worker，`AppConfig.ready()` 会在**每个 worker 里各起一份搬单线程**，而它们启动时刻几乎相同、循环又是「跑一轮 + 固定 sleep」，于是**同步唤醒**。不加锁的话，同一笔代练通订单会被多个 worker 同时发到丸子 —— **丸子余额重复扣、代练通双金重复冻结**。
-
-代码用**一次条件 UPDATE 抢「本轮执行权」**解决（与反馈中心 AI 审核同一手法）：抢不到的进程直接跳过本轮；进程被 kill 时占用标记最多留 `RUN_LOCK_TTL_SECONDS`（300 秒）即自动失效，不会把锁永久占死。
-
-所以看到「已有进程正在执行本轮，请稍后重试」的提示（或命令打印「已有进程在执行本轮，跳过」）**属正常现象，不是故障**。
+生产多 worker 时每个 worker 各有一份搬单线程且同步唤醒，不加锁会把同一笔订单重复发到丸子。新系统沿用旧设计：用**一次条件 UPDATE 抢「本轮执行权」**（`OrderMigrationSetting.run_lock_until`，占用最多 `RUN_LOCK_TTL_SECONDS`（300 秒）自动失效）。看到「已有进程正在执行本轮」属正常现象。**「自动运行」与常驻命令不要同时开。**
 
 ### 8. 自检
 
 ```bash
-runuser -u www -- sqlite3 db.sqlite3 \
+# 运行状态（含最近一轮结果与运行日志）
+curl -H 'X-Api-Token: <token>' http://127.0.0.1:18000/api/order_migration/status
+
+# 直接查库
+sqlite3 X:/BanDan/db.sqlite3 \
   "select our_qq, price_min, price_max, auto_run, last_run_time, last_run_summary, last_error
      from order_migration_setting;"
 ```

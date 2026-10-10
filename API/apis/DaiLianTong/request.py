@@ -1,6 +1,6 @@
 """代练通 DaiLianTong API 请求处理视图
 
-提供 21 个接口，对应爬虫的对外方法:
+提供 25 个接口，对应爬虫的对外方法:
     POST /api/dlt/auth/send-code         发送验证码
     POST /api/dlt/auth/register           注册
     POST /api/dlt/auth/login              登录
@@ -10,18 +10,22 @@
     POST /api/dlt/user/change-password    修改密码
     POST /api/dlt/user/sign-in            签到
     GET  /api/dlt/user/real-name-info     获取实名认证信息
+    GET  /api/dlt/user/balance            获取账户可用余额
     GET  /api/dlt/games                   获取全部游戏
     GET  /api/dlt/games/orders            按游戏获取订单列表
     GET  /api/dlt/search/orders           按关键词搜索订单（高度自定义）
     GET  /api/dlt/search/hot-words        获取某游戏热门搜索词
     POST /api/dlt/orders/receive          接收订单
+    POST /api/dlt/orders/receive-default  接收订单（用后台默认账号，免传支付密码/UID）
     POST /api/dlt/orders/publish          发布订单（自定义发布）
     POST /api/dlt/orders/apply-cancel     申请撤销订单
     POST /api/dlt/orders/handle-cancel    处理撤销申请（同意/取消/申请平台介入）
     POST /api/dlt/orders/delete           删除订单
     GET  /api/dlt/orders/my               获取我的订单
+    GET  /api/dlt/orders/detail           获取订单详情（按订单号）
     POST /api/dlt/orders/upload-image     订单留言上传图片
     POST /api/dlt/orders/upload-first-image 上传订单首图
+    POST /api/dlt/orders/upload-end-image 上传订单完单图并申请完单
     POST /api/dlt/avatar/upload           上传头像
 """
 import json
@@ -277,6 +281,23 @@ def real_name_info_view(request):
     return _spider_result(data)
 
 
+@require_http_methods(["GET"])
+def balance_view(request):
+    """获取代练通账户可用余额
+
+    参数:
+        user_id (选填): 用户ID；不传则用后台默认账号
+        token   (选填): 登录令牌；不传则用后台默认账号的令牌
+
+    返回 data: {'available', 'sum', 'freeze'}（可用 / 总资金 / 冻结），单位元。
+    """
+    ok, data = utils.get_balance(request.GET.get("user_id", "").strip(),
+                                 request.GET.get("token", "").strip())
+    if not ok:
+        return _json_response(StatusCode.EXTERNAL_API_FAILED, msg=data)
+    return _json_response(StatusCode.SUCCESS, data=data)
+
+
 # ==================== 订单模块 ====================
 
 
@@ -305,6 +326,52 @@ def receive_order_view(request):
         return _json_response(StatusCode.PARAM_MISSING, msg="参数缺失: uid")
 
     ok, data = utils.receive_order(order_id, pay_pass, uid, token, user_id)
+    if not ok:
+        return _json_response(StatusCode.EXTERNAL_API_FAILED, msg=data)
+    return _spider_result(data)
+
+
+@require_http_methods(["POST"])
+def receive_order_default_view(request):
+    """接收订单（用后台「账号管理」的默认代练通账号，免传支付密码 / UID）
+
+    参数:
+        order_id (必填): 订单ID
+
+    说明：支付密码 / UID / 登录令牌均取后台默认代练通账号凭据，供自动化流程调用方无需持有账号即可接单。
+    """
+    order_id = request.POST.get("order_id", "").strip()
+    if not order_id:
+        return _json_response(StatusCode.PARAM_MISSING, msg="参数缺失: order_id(订单ID)")
+
+    ok, data = utils.receive_order(order_id=order_id)
+    if not ok:
+        return _json_response(StatusCode.EXTERNAL_API_FAILED, msg=data)
+    return _spider_result(data)
+
+
+@require_http_methods(["GET"])
+def order_detail_view(request):
+    """获取订单详情（按订单号）
+
+    参数:
+        order_id   (必填): 订单ID
+        is_publish (选填): 视角，'0'=接单方（返回号主账号 GameAcc/GamePass/Actor，默认）/
+                           '1'/'2'=公开（账号字段为空，但可读到 Status / CancelStatus）
+        user_id    (选填): 用户ID；不传则用后台默认账号
+        token      (选填): 登录令牌；不传则用后台默认账号的令牌
+
+    返回 data 为上游订单详情对象（原样透传）。
+    """
+    order_id = request.GET.get("order_id", "").strip()
+    if not order_id:
+        return _json_response(StatusCode.PARAM_MISSING, msg="参数缺失: order_id(订单ID)")
+
+    ok, data = utils.get_order_detail(
+        order_id,
+        request.GET.get("user_id", "").strip(),
+        request.GET.get("token", "").strip(),
+        is_publish=(request.GET.get("is_publish", "").strip() or "0"))
     if not ok:
         return _json_response(StatusCode.EXTERNAL_API_FAILED, msg=data)
     return _spider_result(data)

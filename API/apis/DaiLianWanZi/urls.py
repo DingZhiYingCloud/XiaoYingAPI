@@ -24,6 +24,8 @@ urlpatterns = [
     # 商家版 · 我的订单 (business)
     path('business/order-tabs', request.order_tabs_view, name='dlwz_business_order_tabs'),
     path('business/orders', request.business_orders_view, name='dlwz_business_orders'),
+    path('business/orders/images', request.business_order_images_view,
+         name='dlwz_business_order_images'),
     path('business/orders/cancel', request.cancel_order_view, name='dlwz_business_cancel_order'),
 
     # 商家版 · 发单 (business publish)

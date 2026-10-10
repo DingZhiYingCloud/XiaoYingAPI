@@ -199,6 +199,18 @@ SERVICE = ServiceSpec(
                              response_note='data 为上游完整响应对象（原样透传）：分页在上游 data.page'
                                            '（pageNo / pageSize / totalPage / totalCount），'
                                            '订单数组在上游 data.ordersList。'),
+                EndpointSpec('business_order_images', '订单图片列表', 'GET',
+                             '/api/dlwz/business/orders/images',
+                             summary='获取商家版订单的图片列表（含打手「首图」与「申请验收」的完单图）。',
+                             notes=['【用途】取丸子上手上传的首图 / 完单图（含 url 与 remark），'
+                                    '供转传到代练通首图 / 完单图使用。'],
+                             params=[
+                                 ParamSpec('trade_no', '订单号', kind='text', required=True,
+                                           desc='必填：订单号（「发布订单」返回的 trade_no）'),
+                                 _auth(),
+                             ],
+                             response_note='data 为上游完整响应对象（原样透传）：图片数组在上游 data.imagesList，'
+                                           '每项含 url / remark（如「首图」「申请验收」）/ initiator 等。'),
                 EndpointSpec('business_orders_cancel', '取消订单', 'POST', '/api/dlwz/business/orders/cancel',
                              summary='商家版取消已发布的订单（待付待接等可取消状态）。',
                              notes=['【会真实改变订单状态】仅「待付待接」等可取消状态可取消；'

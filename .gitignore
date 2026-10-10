@@ -54,9 +54,6 @@ toekns.txt
 *.log
 logs/
 
-# QQBot（NapCat）一键部署的安装目录（体积大、含可执行文件，禁止入库）
-/napcat/
-
 # 爬虫运行时产物（结果/缓存/待处理队列，随抓取不断变化）
 SpiderServices/*/output/
 

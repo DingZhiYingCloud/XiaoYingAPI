@@ -3,6 +3,7 @@
 数据与 API/apis/push/serverchan/ 实际实现对齐：POST /api/push/serverchan/send（默认需签名）。
 """
 from .schema import ChannelSpec, EndpointSpec, ParamSpec, ResponseFieldSpec, ServiceSpec
+from API.apis.push.email_task import utils as email_task_utils
 
 # Server酱 channel 参数取值（来源：登录 Server酱 后「Key&API」页的「API 详细说明」）
 # 空值 = 不指定，使用 Server酱 后台「通道配置」页设置的默认通道。
@@ -20,23 +21,47 @@ CHANNEL_OPTIONS = [
     {'value': '88', 'label': '自定义 Webhook'},
 ]
 
+
+def _task_response_fields():
+    """「邮件定时推送」任务对象的响应字段表（create / detail / update 共用）
+
+    每次返回新列表：多个端点不共享同一批 ResponseFieldSpec 对象
+    （渲染时会写入 indent，共享会互相干扰）。
+    """
+    return [
+        ResponseFieldSpec('id', 'string', '任务 ID（UUID）'),
+        ResponseFieldSpec('recipients', 'array', '收件人邮箱列表'),
+        ResponseFieldSpec('subject', 'string', '邮件标题'),
+        ResponseFieldSpec('body', 'string', '邮件正文'),
+        ResponseFieldSpec('repeat', 'bool', '是否重复发送（由 interval_minutes 推导）'),
+        ResponseFieldSpec('interval_minutes', 'int', '发送间隔（分钟）；0 表示只发一次'),
+        ResponseFieldSpec('enabled', 'bool', '是否启用（停用后不再调度）'),
+        ResponseFieldSpec('next_run_at', 'string', '下次发送时间；为空表示不再调度'),
+        ResponseFieldSpec('last_sent_at', 'string', '上次发送时间'),
+        ResponseFieldSpec('sent_count', 'int', '累计发送次数'),
+        ResponseFieldSpec('last_ok', 'bool', '上次是否发送成功（从未发送时为空）'),
+        ResponseFieldSpec('last_message', 'string', '上次结果说明'),
+        ResponseFieldSpec('create_time', 'string', '创建时间'),
+        ResponseFieldSpec('updated_time', 'string', '更新时间'),
+    ]
+
 SERVICE = ServiceSpec(
     slug='push',
     name='消息推送服务',
     prefix='/api/push/',
-    summary='把消息推送到手机、邮箱或 QQ 的通知服务。当前接入 Server酱（微信推送）、邮件与 QQBot 3 条线路，后续可继续扩展更多推送平台/线路。',
-    keywords='消息推送API,微信推送接口,Server酱API,ServerChan,邮件发送接口,QQ推送接口,QQ机器人推送,NapCat,通知接口',
+    summary='把消息推送到手机或邮箱的通知服务。当前接入 Server酱（微信推送）、邮件、邮件定时推送 3 条线路，后续可继续扩展更多推送平台/线路。',
+    keywords='消息推送API,微信推送接口,Server酱API,ServerChan,邮件发送接口,通知接口,定时邮件,循环发邮件,邮件定时任务',
     intro=[
-        '消息推送服务把「服务器 / 脚本 / 设备上发生的事」发送到手机、邮箱或 QQ，适合告警、任务完成通知、'
-        '定时任务结果汇总等场景。当前有 3 条线路：**Server酱**（微信推送）、**邮件** 与 **QQBot**。',
+        '消息推送服务把「服务器 / 脚本 / 设备上发生的事」发送到手机或邮箱，适合告警、任务完成通知、'
+        '定时任务结果汇总等场景。当前有 3 条线路：**Server酱**（微信推送）、**邮件** 与 **邮件定时推送**。',
         '**消息实际推送到哪个通道**（微信服务号、企业微信应用消息、企业微信/钉钉/飞书群机器人、Bark、'
         'PushDeer 或自定义 Webhook）由 Server酱 后台的通道配置决定 —— 换通道不用改调用代码。',
         '**SendKey 由服务端托管**：在超管控制台「账号管理」里新增一个平台为「Server酱」的账号，'
         '把 SendKey 填进「登录凭据」字段即可（凭据加密落库、页面不回显）。调用方无需、也不应传递 SendKey。',
         '**邮件线路**由原「邮箱服务」的发送邮件并入：`POST /api/push/email/send` 与原 `/api/email/v1/send` '
         '是同一实现、同一参数与响应，老路由继续可用。',
-        '**QQBot 线路**通过 NapCat（OneBot 11 HTTP）把消息发到 QQ 群 / 好友；NapCat 的 HTTP 地址与 token '
-        '在超管控制台「QQBot」页维护，调用方只传目标与内容。',
+        '**邮件定时推送线路**用于「不守着也要按时发」的场景：创建一份推送计划，由站内常驻调度线程到点自动发送 —— '
+        '可只发一次，也可每 N 分钟重复发送；停机后再启动会自动补发，不会漏发。任务按接入项目隔离。',
         '本服务接口需项目签名调用；每次推送都会在控制台「推送日志」留痕（成功与失败都记）。',
     ],
     channels=[
@@ -163,46 +188,154 @@ SERVICE = ServiceSpec(
             ],
         ),
         ChannelSpec(
-            slug='qqbot',
-            name='QQBot',
-            provider='QQBot（NapCat / OneBot 11 HTTP）',
+            slug='email_task',
+            name='邮件定时推送',
+            provider='站内邮件（Django 邮件后端 / SMTP）+ 站内常驻调度',
             auth_note='auth',
-            note='通过 NapCat 的 OneBot 11 HTTP 接口把消息发到 QQ 群 / 好友；'
-                 'NapCat 的 HTTP 地址与 token 由服务端托管（控制台「QQBot」），调用方只传目标与内容。需项目签名调用。',
+            note='创建一份邮件推送计划：可「只发一次」或「每 N 分钟重复发送」，由站内常驻调度线程'
+                 '到点自动发送，调用方无需保持在线。任务按接入项目隔离，仅能操作本项目的任务。需项目签名调用。',
             endpoints=[
                 EndpointSpec(
-                    slug='send',
-                    name='发送 QQ 消息',
+                    slug='create',
+                    name='新建任务',
                     method='POST',
-                    path='/api/push/qqbot/send',
-                    summary='发送一条纯文本消息到指定的 QQ 群或好友。',
+                    path='/api/push/email_task/create',
+                    summary='创建一个邮件定时推送任务（只发一次或按间隔重复发送）。',
                     params=[
-                        ParamSpec('target_type', '目标类型', kind='select', required=True, default='group',
-                                  desc='必填：group=发到群聊，private=发到好友私聊',
-                                  options=[{'value': 'group', 'label': '群聊'},
-                                           {'value': 'private', 'label': '私聊'}]),
-                        ParamSpec('target_id', '目标号码', kind='select', required=True, default='',
-                                  placeholder='群号或好友 QQ 号，如 123456789',
-                                  dynamic_options='qqbot_groups',
-                                  alt_kind='text', alt_label='手动输入', primary_label='群列表',
-                                  desc='必填：群号（target_type=group）或好友 QQ 号（target_type=private），纯数字。'
-                                       '主面板是机器人已加入的群（实时取自 NapCat）；'
-                                       '发私聊或群不在列表里时，点「手动输入」直接填号码。'),
-                        ParamSpec('message', '消息内容', kind='textarea', required=True,
-                                  placeholder='要发送的纯文本内容',
-                                  desc='必填：消息正文，按纯文本原样发送（不会解析 CQ 码）'),
+                        ParamSpec('recipients', '收件人邮箱', kind='textarea', required=True,
+                                  repeatable=True,
+                                  repeat_hint='多个邮箱用逗号或换行分隔，也可通过同一字段多次传递',
+                                  placeholder='a@example.com\nb@example.com',
+                                  desc=f'收件人邮箱（必填，最多 {email_task_utils.MAX_RECIPIENTS} 个）'),
+                        ParamSpec('subject', '邮件标题', kind='text', required=True,
+                                  placeholder='邮件标题', desc='邮件标题（必填，最长 255 个字符）'),
+                        ParamSpec('body', '邮件正文', kind='textarea', required=True,
+                                  placeholder='邮件正文内容', desc='邮件正文（必填）'),
+                        ParamSpec('repeat', '是否重复', kind='select', required=False, default='',
+                                  desc='是否重复发送。选「仅发送一次」时 interval_minutes 必须为 0；'
+                                       '选「重复发送」时 interval_minutes 必须 ≥ 1。不指定则由 interval_minutes 推导（>0 即重复）。',
+                                  options=[{'value': '', 'label': '不指定（按间隔推导）'},
+                                           {'value': 'false', 'label': '仅发送一次'},
+                                           {'value': 'true', 'label': '重复发送'}]),
+                        ParamSpec('interval_minutes', '发送间隔(分钟)', kind='number', required=False,
+                                  placeholder='如 30；只发一次填 0',
+                                  desc=f'发送间隔，单位分钟。0（或不填）= 只发一次；大于 0 = 每隔该分钟数重复发送'
+                                       f'（范围 1-{email_task_utils.MAX_INTERVAL_MINUTES}）。'),
+                        ParamSpec('first_send_at', '首次发送时间', kind='text', required=False,
+                                  placeholder='如 2026-10-09 15:30（不填=立即）',
+                                  desc='首次发送时间，格式 2026-10-09 15:30 或 2026-10-09 15:30:00（按站点时区）。'
+                                       '不填则创建后立即进入调度（下一个调度周期即发送）。'),
                     ],
                     notes=[
-                        '消息以**纯文本**发送（服务端 auto_escape=true）：`[CQ:xxx]` 会作为普通文字发出，'
-                        '不会被解析成图片 / @ / 表情。',
-                        'QQBot（NapCat）的 HTTP 地址与 token 在控制台「QQBot」页维护，调用方不传。',
-                        'QQ 侧有风控：请低频调用、避免重复发送相同内容。',
-                        '上游 retcode 非 0 时，本接口返回 40001，msg 即上游给的原因。',
+                        '「只发一次」= repeat 选 false 或 interval_minutes 为 0，发送完成后任务自动停用。',
+                        '「重复发送」= interval_minutes ≥ 1，会一直按间隔发送，直到调用「修改任务」停用或「删除任务」删除。',
+                        '任务不需要调用方保持在线：由站内常驻调度线程到点自动发送。',
+                        '停机 / 重启后会自动补发：发现已逾期即补发一次，并把下一次按「当前时间 + 间隔」重排'
+                        '（**只补发一次**，不会把停机期间欠的多个周期一次性补齐）。',
+                        '发送失败**不自动重试**：重复任务等下一周期、一次性任务就此结束；失败原因可在响应字段'
+                        ' last_message 或控制台「推送日志」查看。',
+                        '任务按接入项目（APPID）隔离，只能查看 / 操作自己创建的任务。',
                     ],
+                    response_fields=_task_response_fields(),
+                    response_example='{"id": "3f0c...", "recipients": ["a@example.com"], "subject": "日报",'
+                                     ' "repeat": true, "interval_minutes": 30, "enabled": true,'
+                                     ' "next_run_at": "2026-10-09 15:30:00", "sent_count": 0, "last_ok": null}',
+                ),
+                EndpointSpec(
+                    slug='list',
+                    name='任务列表',
+                    method='GET',
+                    path='/api/push/email_task/list',
+                    summary='分页列出本项目创建的邮件定时推送任务。',
+                    params=[
+                        ParamSpec('page', '页码', kind='number', required=False, default='1',
+                                  desc='页码，从 1 开始，默认 1'),
+                        ParamSpec('page_size', '每页数量', kind='number', required=False, default='20',
+                                  desc='每页数量，默认 20，范围 1-100'),
+                        ParamSpec('enabled', '启用状态', kind='select', required=False, default='',
+                                  desc='筛选任务启用状态；不指定则返回全部。',
+                                  options=[{'value': '', 'label': '全部'},
+                                           {'value': 'true', 'label': '仅启用的任务'},
+                                           {'value': 'false', 'label': '仅停用的任务'}]),
+                    ],
+                    notes=[
+                        '仅返回本项目的任务（按 APPID 隔离）。',
+                        '按创建时间倒序返回。',
+                    ],
+                    response_note='data 为分页对象：total（总数）/ page / page_size / total_pages / '
+                                  'items（任务对象数组，字段同「新建任务」的响应）。',
+                    response_example='{"total": 1, "page": 1, "page_size": 20, "total_pages": 1,'
+                                     ' "items": [{"id": "3f0c...", "subject": "日报", "repeat": true, "interval_minutes": 30}]}',
+                ),
+                EndpointSpec(
+                    slug='detail',
+                    name='任务详情',
+                    method='GET',
+                    path='/api/push/email_task/detail',
+                    summary='查询单个任务的完整信息。',
+                    params=[
+                        ParamSpec('id', '任务 ID', kind='text', required=True,
+                                  placeholder='任务 ID（UUID）', desc='必填：任务 ID'),
+                    ],
+                    notes=['只能查询本项目的任务；他人的任务与不存在的 ID 同样返回「资源不存在」。'],
+                    response_fields=_task_response_fields(),
+                ),
+                EndpointSpec(
+                    slug='update',
+                    name='修改任务',
+                    method='POST',
+                    path='/api/push/email_task/update',
+                    summary='修改任务（只改传入的字段，未传的保持不变），可用于启停。',
+                    params=[
+                        ParamSpec('id', '任务 ID', kind='text', required=True,
+                                  placeholder='任务 ID（UUID）', desc='必填：要修改的任务 ID'),
+                        ParamSpec('recipients', '收件人邮箱', kind='textarea', required=False,
+                                  repeatable=True,
+                                  repeat_hint='多个邮箱用逗号或换行分隔',
+                                  placeholder='留空则不改',
+                                  desc='新的收件人邮箱（选填，最多 20 个）'),
+                        ParamSpec('subject', '邮件标题', kind='text', required=False,
+                                  placeholder='留空则不改', desc='新的邮件标题（选填）'),
+                        ParamSpec('body', '邮件正文', kind='textarea', required=False,
+                                  placeholder='留空则不改', desc='新的邮件正文（选填）'),
+                        ParamSpec('repeat', '是否重复', kind='select', required=False, default='',
+                                  desc='修改发送方式（与 interval_minutes 配套，规则同「新建任务」）；不指定则不修改。',
+                                  options=[{'value': '', 'label': '不修改'},
+                                           {'value': 'false', 'label': '仅发送一次'},
+                                           {'value': 'true', 'label': '重复发送'}]),
+                        ParamSpec('interval_minutes', '发送间隔(分钟)', kind='number', required=False,
+                                  placeholder='留空则不改',
+                                  desc=f'新的发送间隔（分钟，1-{email_task_utils.MAX_INTERVAL_MINUTES}）；'
+                                       '修改后会按当前时间重排下一次发送。'),
+                        ParamSpec('enabled', '启用状态', kind='select', required=False, default='',
+                                  desc='启用 / 停用任务；不指定则不修改。',
+                                  options=[{'value': '', 'label': '不修改'},
+                                           {'value': 'true', 'label': '启用'},
+                                           {'value': 'false', 'label': '停用'}]),
+                    ],
+                    notes=[
+                        '至少提供一个要修改的字段。',
+                        '修改 interval_minutes 会按「当前时间 + 新间隔」重排下一次发送，不会沿用旧节奏。',
+                        '重新启用一个已结束的一次性任务，会立即重新进入调度。',
+                    ],
+                    response_fields=_task_response_fields(),
+                ),
+                EndpointSpec(
+                    slug='delete',
+                    name='删除任务',
+                    method='POST',
+                    path='/api/push/email_task/delete',
+                    summary='删除任务（支持一次删除多个）。',
+                    params=[
+                        ParamSpec('id', '任务 ID', kind='text', required=True, repeatable=True,
+                                  repeat_hint='多个 ID 用逗号分隔，或用同一字段多次传递',
+                                  placeholder='任务 ID（UUID）', desc='必填：要删除的任务 ID（支持多个）'),
+                    ],
+                    notes=['只能删除本项目的任务；返回 data.deleted 为实际删除的条数。'],
                     response_fields=[
-                        ResponseFieldSpec('message_id', 'int', '上游返回的消息 ID'),
+                        ResponseFieldSpec('deleted', 'int', '实际删除的任务条数'),
                     ],
-                    response_example='{"message_id": 123456}',
+                    response_example='{"deleted": 2}',
                 ),
             ],
         ),

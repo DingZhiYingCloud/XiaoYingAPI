@@ -141,27 +141,18 @@ MENU = [
                         '打码没打对时自动向超级鹰报错返分并换图重试，进度实时推送（注册中请勿关闭页面）。',
             },
             {
-                'key': 'console_order_migration', 'name': '代练搬单',
-                'url': 'website:console_order_migration',
-                'icon': 'repeat',
-                'desc': '把代练通王者荣耀订单自动搬运到代练丸子发单：标题照搬、默认排位、区服按代练通大区，'
-                        '发布价 =（代练通价 − 手续费）× 80%；监控丸子「被接单」后回代练通接单取账号，'
-                        '抢接失败自动撤单并告警。可手动执行一轮或开启后台自动运行。',
-            },
-            {
-                'key': 'console_qqbot', 'name': 'QQBot',
-                'url': 'website:console_qqbot',
-                'icon': 'bot',
-                'desc': 'QQBot（NapCat）操作台：连接配置（HTTP 地址 / token / 超时 / 机器人 QQ / 安装目录）、'
-                        '一键部署（自动下载 / 配置 / 启动 / 回填，含实时日志）与好友消息'
-                        '（好友私聊消息经 NapCat 事件上报落库，会话列表 + 对话流，可直接回复）。',
-            },
-            {
                 'key': 'console_push_logs', 'name': '推送日志',
                 'url': 'website:console_push_logs',
                 'icon': 'send',
-                'desc': '消息推送服务（Server酱 / 邮件 / QQBot）每次推送的记录：标题与正文摘要、发起项目、'
+                'desc': '消息推送服务（Server酱 / 邮件）每次推送的记录：标题与正文摘要、发起项目、'
                         '成功或失败、上游返回码与推送ID，便于回看与排错。',
+            },
+            {
+                'key': 'console_email_tasks', 'name': '邮件定时推送',
+                'url': 'website:console_email_tasks',
+                'icon': 'alarm-clock',
+                'desc': '管理各接入项目的邮件定时推送任务：可只发一次或每 N 分钟重复，'
+                        '由站内常驻线程按点自动发送；支持查看、新增、编辑、启停与删除。',
             },
         ],
     },

@@ -28,7 +28,6 @@ urlpatterns = [
     path('zhihu/', include('API.apis.zhihu.urls')), # 知乎服务路由（热榜）
     path('weibo/', include('API.apis.weibo.urls')), # 微博服务路由（频道分类 / 按频道取内容）
     path('pay/', include('API.apis.pay.urls')), # 第三方支付服务路由（统一下单 / 查单 / 退款）
-    path('order_migration/', include('API.apis.order_migration.urls')), # 代练搬单服务路由（代练通订单 → 代练丸子发单映射）
     path('push/', include('API.apis.push.urls')), # 消息推送服务路由（Server酱等）
 ]
 

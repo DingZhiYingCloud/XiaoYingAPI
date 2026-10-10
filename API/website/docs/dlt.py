@@ -180,6 +180,15 @@ SERVICE = ServiceSpec(
                 EndpointSpec('user_real_name_info', '实名认证信息', 'GET', '/api/dlt/user/real-name-info',
                              summary='查询账号实名认证信息。', params=[_t_uid()],
                              response_note='data 为上游实名认证接口 Result 字段的内容（数组或对象，原样透传），字段由上游定义。'),
+                EndpointSpec('user_balance', '获取账户余额', 'GET', '/api/dlt/user/balance',
+                             summary='查询代练通账号可用余额（= 总资金 − 冻结资金）。',
+                             params=[_t_uid(), _t_token()],
+                             response_note='data 为余额对象（单位：元）。',
+                             response_fields=[
+                                 ResponseFieldSpec('available', 'float', '可用余额（= 总资金 − 冻结资金）'),
+                                 ResponseFieldSpec('sum', 'float', '总资金'),
+                                 ResponseFieldSpec('freeze', 'float', '冻结资金'),
+                             ]),
                 # ---------- 游戏 ----------
                 EndpointSpec('games', '获取全部游戏', 'GET', '/api/dlt/games',
                              summary='列出当前有公开订单的游戏及各自的订单数量（按订单数降序）。',
@@ -360,6 +369,14 @@ SERVICE = ServiceSpec(
                                  ParamSpec('uid', 'UID', kind='text', required=True),
                                  _t_token(), _t_uid(),
                              ],
+                             response_note='data 为代练通接收订单接口返回的原始 JSON 对象（原样透传），字段由上游定义。'),
+                EndpointSpec('orders_receive_default', '接收订单（默认账号）', 'POST',
+                             '/api/dlt/orders/receive-default',
+                             summary='接收（抢）一笔订单；免传支付密码与 UID，直接用后台默认代练通账号凭据。',
+                             notes=['供自动化流程调用：支付密码 / UID / 登录令牌均取后台「账号管理」的默认代练通账号，'
+                                    '调用方无需持有账号凭据。',
+                                    '会真实接单并冻结该单双金，请谨慎调用。'],
+                             params=[ParamSpec('order_id', '订单ID', kind='text', required=True)],
                              response_note='data 为代练通接收订单接口返回的原始 JSON 对象（原样透传），字段由上游定义。'),
                 # ---------- 发布 ----------
                 EndpointSpec('orders_publish', '发布订单', 'POST', '/api/dlt/orders/publish',
@@ -585,6 +602,19 @@ SERVICE = ServiceSpec(
                                  ResponseFieldSpec('page_size', 'int', '每页数量'),
                                  ResponseFieldSpec('total_pages', 'int', '总页数'),
                              ]),
+                EndpointSpec('orders_detail', '订单详情', 'GET', '/api/dlt/orders/detail',
+                             summary='按订单号获取订单详情（原样透传上游订单对象）。',
+                             notes=['is_publish 视角：0=接单方（返回号主账号 GameAcc/GamePass/Actor，默认）；'
+                                    '1、2=公开（账号字段为空，但可读到 Status / CancelStatus，用于判断原单是否还能接）。'],
+                             params=[
+                                 ParamSpec('order_id', '订单ID', kind='text', required=True),
+                                 ParamSpec('is_publish', '视角', kind='select', default='0',
+                                           desc='0=接单方（默认，可取号主账号）/ 1=公开（取订单状态）',
+                                           options=[{'value': '0', 'label': '0=接单方（默认）'},
+                                                    {'value': '1', 'label': '1=公开'}]),
+                                 _t_uid(), _t_token(),
+                             ],
+                             response_note='data 为上游订单详情对象（原样透传），字段由上游定义。'),
                 EndpointSpec('orders_owner_info', '号主信息', 'GET', '/api/dlt/orders/owner-info',
                              summary='获取订单的号主信息（游戏名称 / 客户端 / 游戏账号 / 密码 / 角色名 / 号主联系方式 / 剩余时间）。',
                              notes=['【前提】账号 / 密码 / 角色名只有**接单方**可见，需先在代练通接单后再调用；'

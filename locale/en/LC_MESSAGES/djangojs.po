@@ -1007,3 +1007,11 @@ msgstr "Default (auto-located)"
 msgid "搜索区服（共 %(n)s 个）"
 msgstr "Search servers (%(n)s total)"
 
+
+# ==================== 控制台「邮件定时推送」（console/email_tasks.html · 弹窗标题） ====================
+msgid "新增任务"
+msgstr "New task"
+
+msgid "编辑任务"
+msgstr "Edit task"
+

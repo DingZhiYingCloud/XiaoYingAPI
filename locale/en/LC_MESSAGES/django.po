@@ -14565,3 +14565,95 @@ msgstr "No push records yet."
 
 msgid "共 %(total)s 条推送记录；成功与失败都会留痕，失败原因见「说明」列。"
 msgstr "%(total)s push record(s); both successes and failures are logged — see the \"Note\" column for failure reasons."
+
+
+# ==================== 控制台「邮件定时推送」（console/email_tasks.html） ====================
+msgid "邮件定时推送 - 超级管理员 - 小影API"
+msgstr "Scheduled Email - Superadmin - XiaoYing API"
+
+msgid "超级管理员,邮件定时推送,定时邮件任务"
+msgstr "superadmin,scheduled email,scheduled email task"
+
+msgid "小影API 超级管理员：管理各接入项目的邮件定时推送任务，支持查看、新增、编辑、启停与删除。"
+msgstr "XiaoYing API superadmin: manage the scheduled email tasks of all integrated projects — view, create, edit, enable/disable and delete."
+
+msgid "管理各接入项目的邮件定时推送任务：可只发一次或每 N 分钟重复，发送由站内常驻线程按点完成。"
+msgstr "Manage the scheduled email tasks of all integrated projects: send once or repeat every N minutes; sending is performed on schedule by an in-process background thread."
+
+msgid "这里管理的是「邮件定时推送服务」的任务（同一张表）：调用方通过 /api/push/email_task/ 自助管理自己的任务，超管在本页可查看并代所有项目维护。"
+msgstr "This page manages the tasks of the Scheduled Email service (the same table): callers manage their own tasks via /api/push/email_task/, while the superadmin can view and maintain tasks for all projects here."
+
+msgid "发送间隔 0 表示只发送一次；大于 0 表示每 N 分钟重复，直到停用或删除。"
+msgstr "An interval of 0 means send once; greater than 0 means repeat every N minutes until disabled or deleted."
+
+msgid "停机重启后会自动补发：发现逾期即补发一次，并把下一次按当前时间重排，不会漏发。"
+msgstr "Overdue tasks are caught up automatically after a restart: one catch-up send is made and the next run is rescheduled from the current time, so nothing is missed."
+
+msgid "邮件标题 / 收件人 / APPID"
+msgstr "Subject / recipient / APPID"
+
+msgid "归属项目"
+msgstr "Project"
+
+msgid "任务列表"
+msgstr "Task list"
+
+msgid "新增任务"
+msgstr "New task"
+
+msgid "发送方式"
+msgstr "Schedule"
+
+msgid "下次发送"
+msgstr "Next send"
+
+msgid "已发次数"
+msgstr "Sent"
+
+msgid "最后结果"
+msgstr "Last result"
+
+msgid "内部"
+msgstr "Internal"
+
+msgid "仅一次"
+msgstr "Once"
+
+msgid "已结束"
+msgstr "Finished"
+
+msgid "确认删除该任务？删除后不再发送。"
+msgstr "Delete this task? It will no longer be sent."
+
+msgid "还没有邮件定时任务，点右上角「新增任务」建一个。"
+msgstr "No scheduled email tasks yet — click New task at the top right to create one."
+
+msgid "内部（不归属任何项目）"
+msgstr "Internal (not owned by any project)"
+
+msgid "收件人邮箱 *"
+msgstr "Recipient email *"
+
+msgid "多个邮箱用逗号或换行分隔"
+msgstr "Separate multiple emails with commas or newlines"
+
+msgid "邮件标题 *"
+msgstr "Subject *"
+
+msgid "发送间隔（分钟）"
+msgstr "Interval (minutes)"
+
+msgid "邮件正文 *"
+msgstr "Body *"
+
+msgid "首次发送时间（可选）"
+msgstr "First send time (optional)"
+
+msgid "如 2026-10-09 15:30，留空=立即"
+msgstr "e.g. 2026-10-09 15:30; blank = send immediately"
+
+msgid "发送间隔填 0 = 只发送一次；大于 0 = 每 N 分钟重复发送。编辑时留空「首次发送时间」表示不改动下一次发送时间。"
+msgstr "Interval 0 = send once; greater than 0 = repeat every N minutes. When editing, leaving First send time blank keeps the next send time unchanged."
+
+msgid "每 %(n)s 分钟"
+msgstr "Every %(n)s min"

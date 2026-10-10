@@ -1,0 +1,236 @@
+{% extends 'console/base.html' %}
+{% load static i18n %}
+
+{% block title %}{% trans "邮件定时推送 - 超级管理员 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,邮件定时推送,定时邮件任务" %}{% endblock %}
+{% block description %}{% trans "小影API 超级管理员：管理各接入项目的邮件定时推送任务，支持查看、新增、编辑、启停与删除。" %}{% endblock %}
+
+{% block console_content %}
+{% trans "管理各接入项目的邮件定时推送任务：可只发一次或每 N 分钟重复，发送由站内常驻线程按点完成。" as ph_desc %}
+{% include 'console/_page_header.html' with icon='alarm-clock' title='邮件定时推送' desc=ph_desc %}
+
+{% include 'console/_messages.html' %}
+
+<div role="alert" class="alert alert-soft bg-base-200 mt-4 items-start py-3 text-sm">
+  <div class="space-y-1">
+    <p>{% trans "这里管理的是「邮件定时推送服务」的任务（同一张表）：调用方通过 /api/push/email_task/ 自助管理自己的任务，超管在本页可查看并代所有项目维护。" %}</p>
+    <p class="text-xs opacity-80">{% trans "发送间隔 0 表示只发送一次；大于 0 表示每 N 分钟重复，直到停用或删除。" %}</p>
+    <p class="text-xs opacity-80">{% trans "停机重启后会自动补发：发现逾期即补发一次，并把下一次按当前时间重排，不会漏发。" %}</p>
+  </div>
+</div>
+
+{# ==================== 筛选 ==================== #}
+<form method="get" class="con-toolbar mt-4">
+  <label class="con-field">
+    <span class="con-field-label">{% trans "关键词" %}</span>
+    <input type="search" name="q" value="{{ keyword }}" class="input input-sm input-bordered w-full"
+           placeholder="{% trans '邮件标题 / 收件人 / APPID' %}" />
+  </label>
+  <label class="con-field">
+    <span class="con-field-label">{% trans "状态" %}</span>
+    <select name="enabled" class="select select-sm w-full">
+      <option value=""{% if not enabled_filter %} selected{% endif %}>{% trans "全部" %}</option>
+      <option value="1"{% if enabled_filter == '1' %} selected{% endif %}>{% trans "启用" %}</option>
+      <option value="0"{% if enabled_filter == '0' %} selected{% endif %}>{% trans "停用" %}</option>
+    </select>
+  </label>
+  <label class="con-field">
+    <span class="con-field-label">{% trans "归属项目" %}</span>
+    <select name="app_id" class="select select-sm w-full">
+      <option value=""{% if not app_filter %} selected{% endif %}>{% trans "全部项目" %}</option>
+      {% for app in apps %}
+      <option value="{{ app.app_id }}"{% if app_filter == app.app_id %} selected{% endif %}>{{ app.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <button type="submit" class="btn btn-primary btn-sm gap-1.5">
+    <i data-lucide="search" class="h-4 w-4"></i>{% trans "筛选" %}
+  </button>
+</form>
+
+{# ==================== 任务列表 ==================== #}
+<div class="con-panel mt-4">
+  <div class="con-panel-head">
+    <span class="con-panel-icon"><i data-lucide="alarm-clock" class="h-4 w-4"></i></span>
+    <h2 class="text-sm font-semibold">{% trans "任务列表" %}</h2>
+    <span class="badge badge-soft badge-primary badge-sm">
+      {% blocktrans with n=total %}共 {{ n }} 个{% endblocktrans %}
+    </span>
+    <button type="button" class="btn btn-primary btn-sm ml-auto" id="task-create">
+      <i data-lucide="plus" class="h-4 w-4"></i>{% trans "新增任务" %}
+    </button>
+  </div>
+
+  <div class="con-panel-body">
+    {% if rows %}
+    <div class="con-table-wrap">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th class="whitespace-nowrap">{% trans "归属项目" %}</th>
+            <th class="whitespace-nowrap">{% trans "收件人" %}</th>
+            <th class="whitespace-nowrap">{% trans "邮件标题" %}</th>
+            <th class="whitespace-nowrap">{% trans "发送方式" %}</th>
+            <th class="whitespace-nowrap">{% trans "状态" %}</th>
+            <th class="whitespace-nowrap">{% trans "下次发送" %}</th>
+            <th class="whitespace-nowrap">{% trans "已发次数" %}</th>
+            <th class="whitespace-nowrap">{% trans "最后结果" %}</th>
+            <th class="whitespace-nowrap">{% trans "操作" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr>
+            <td class="whitespace-nowrap text-xs">
+              {% if row.app_id %}{{ row.app_name|default:row.app_id }}{% else %}<span class="text-base-content/50">{% trans "内部" %}</span>{% endif %}
+            </td>
+            <td class="text-xs">
+              <span class="block max-w-xs truncate" title="{{ row.recipients }}">{{ row.recipients }}</span>
+            </td>
+            <td class="text-sm">
+              <span class="block max-w-xs truncate" title="{{ row.subject }}">{{ row.subject }}</span>
+            </td>
+            <td class="whitespace-nowrap text-xs">
+              {% if row.repeat %}{% blocktrans with n=row.interval_minutes %}每 {{ n }} 分钟{% endblocktrans %}{% else %}{% trans "仅一次" %}{% endif %}
+            </td>
+            <td class="whitespace-nowrap">
+              {% if row.enabled %}
+              <span class="badge badge-soft badge-success badge-sm">{% trans "启用" %}</span>
+              {% else %}
+              <span class="badge badge-soft badge-ghost badge-sm">{% trans "停用" %}</span>
+              {% endif %}
+            </td>
+            <td class="whitespace-nowrap text-xs text-base-content/70">
+              {% if row.next_run_at %}{{ row.next_run_at|date:"Y-m-d H:i" }}{% else %}{% trans "已结束" %}{% endif %}
+            </td>
+            <td class="whitespace-nowrap font-mono text-xs">{{ row.sent_count }}</td>
+            <td class="text-xs text-base-content/70">
+              <span class="block max-w-xs truncate" title="{{ row.last_message }}">
+                {% if not row.last_sent_at %}—{% elif row.last_ok %}{% trans "成功" %}{% else %}{% trans "失败" %}{% endif %}
+              </span>
+            </td>
+            <td class="whitespace-nowrap">
+              <div class="flex flex-wrap items-center gap-1">
+                <button type="button" class="btn btn-ghost btn-xs" data-task-edit="1"
+                        data-id="{{ row.pk }}" data-app-id="{{ row.app_id }}"
+                        data-recipients="{{ row.recipients }}" data-subject="{{ row.subject }}"
+                        data-body="{{ row.body }}" data-interval-minutes="{{ row.interval_minutes }}"
+                        data-enabled="{{ row.enabled|yesno:'1,0' }}">{% trans "编辑" %}</button>
+                <form method="post" class="inline">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="task_toggle" />
+                  <input type="hidden" name="id" value="{{ row.pk }}" />
+                  <button type="submit" class="btn btn-ghost btn-xs">{% if row.enabled %}{% trans "停用" %}{% else %}{% trans "启用" %}{% endif %}</button>
+                </form>
+                <form method="post" class="inline"
+                      data-confirm="{% trans '确认删除该任务？删除后不再发送。' %}"
+                      data-confirm-danger="1">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="task_delete" />
+                  <input type="hidden" name="id" value="{{ row.pk }}" />
+                  <button type="submit" class="btn btn-ghost btn-xs text-error">{% trans "删除" %}</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="con-empty">
+      <i data-lucide="alarm-clock" class="h-5 w-5 opacity-50"></i>
+      {% trans "还没有邮件定时任务，点右上角「新增任务」建一个。" %}
+    </div>
+    {% endif %}
+
+    {% include 'console/_pagination.html' %}
+  </div>
+</div>
+
+{# ==================== 新增 / 编辑弹窗 ==================== #}
+<dialog id="task-modal" class="modal">
+  <div class="modal-box max-w-lg">
+    <h3 class="text-base font-bold" id="task-modal-title">{% trans "新增任务" %}</h3>
+    <form method="post" id="task-form" class="mt-3 flex flex-col gap-3">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="task_create" />
+      <input type="hidden" name="id" value="" />
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/70">{% trans "归属项目" %}</span>
+        <select name="app_id" class="select select-sm select-bordered w-full">
+          <option value="">{% trans "内部（不归属任何项目）" %}</option>
+          {% for app in apps %}
+          <option value="{{ app.app_id }}">{{ app.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/70">{% trans "收件人邮箱 *" %}</span>
+        <textarea name="recipients" rows="2" class="textarea textarea-bordered w-full" required
+                  placeholder="{% trans '多个邮箱用逗号或换行分隔' %}"></textarea>
+      </label>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <label class="flex flex-col gap-1">
+          <span class="text-xs text-base-content/70">{% trans "邮件标题 *" %}</span>
+          <input type="text" name="subject" maxlength="255" class="input input-sm input-bordered" required />
+        </label>
+        <label class="flex flex-col gap-1">
+          <span class="text-xs text-base-content/70">{% trans "发送间隔（分钟）" %}</span>
+          <input type="number" name="interval_minutes" min="0" value="0" class="input input-sm input-bordered" />
+        </label>
+      </div>
+      <label class="flex flex-col gap-1">
+        <span class="text-xs text-base-content/70">{% trans "邮件正文 *" %}</span>
+        <textarea name="body" rows="4" class="textarea textarea-bordered w-full" required></textarea>
+      </label>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <label class="flex flex-col gap-1">
+          <span class="text-xs text-base-content/70">{% trans "首次发送时间（可选）" %}</span>
+          <input type="text" name="first_send_at" class="input input-sm input-bordered"
+                 placeholder="{% trans '如 2026-10-09 15:30，留空=立即' %}" />
+        </label>
+        <label class="flex cursor-pointer items-center gap-2 self-end pb-2">
+          <input type="checkbox" name="enabled" value="1" class="toggle toggle-sm" checked />
+          <span class="text-sm">{% trans "启用" %}</span>
+        </label>
+      </div>
+      <p class="text-xs text-base-content/50">
+        {% trans "发送间隔填 0 = 只发送一次；大于 0 = 每 N 分钟重复发送。编辑时留空「首次发送时间」表示不改动下一次发送时间。" %}
+      </p>
+      <div class="modal-action">
+        <button type="button" class="btn btn-ghost btn-sm" data-modal-close="task-modal">{% trans "取消" %}</button>
+        <button type="submit" class="btn btn-primary btn-sm">{% trans "保存" %}</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>{% trans "关闭" %}</button></form>
+</dialog>
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'js/site/console_forms.js' %}?v=20260930b"></script>
+<script>
+(function () {
+  'use strict';
+  /* 新增 / 编辑共用一个弹窗：由 console_forms.js 的 XYConsoleForm 负责开关与回填 */
+  var OPEN = {
+    modalId: 'task-modal', formId: 'task-form', titleId: 'task-modal-title',
+    fields: ['app_id', 'recipients', 'subject', 'interval_minutes', 'body', 'first_send_at'],
+    prefix: 'task',
+    createTitle: gettext('新增任务'), editTitle: gettext('编辑任务')
+  };
+  var create = document.getElementById('task-create');
+  if (create) {
+    create.addEventListener('click', function () {
+      XYConsoleForm.open(Object.assign({}, OPEN, { source: null }));
+    });
+    document.querySelectorAll('[data-task-edit]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        XYConsoleForm.open(Object.assign({}, OPEN, { source: btn }));
+      });
+    });
+  }
+})();
+</script>
+{% endblock %}

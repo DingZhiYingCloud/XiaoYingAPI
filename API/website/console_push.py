@@ -14,8 +14,6 @@
 「项目」列把 app_id 翻成项目名（复用统计页的 `_app_names` / `_app_label`；项目已删除时显示「已删除项目」），
 悬停仍可看到原始 app_id。
 筛选与分页与其它控制台列表页同一套骨架（复用 `console_users._page_prefix` 与 `_pagination.html`）。
-
-QQBot 的运行配置与好友申请在「QQBot」页（`console_qqbot.py`）。
 """
 from django.core.paginator import Paginator
 from django.db.models import Q
@@ -34,7 +32,6 @@ PAGE_SIZE = 50
 CHANNEL_LABELS = {
     'serverchan': 'Server酱',
     'email': '邮件',
-    'qqbot': 'QQBot',
 }
 
 #: 结果筛选档位
