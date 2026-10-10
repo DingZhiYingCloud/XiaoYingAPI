@@ -8,6 +8,11 @@ from django.conf import settings
 #: 金额统一小数位（元）
 MONEY_PLACES = Decimal('0.01')
 
+#: 金额绝对值上限（元）：与 DecimalField(max_digits=14, decimal_places=2) 可表示范围对齐
+#: （12 位整数 + 2 位小数）。超过该范围的值一旦写库，Django 从 SQLite 读回时会在
+#: decimal.quantize 处抛 InvalidOperation，导致查询该表的页面整页 500 —— 故在入口处拦掉。
+MAX_MONEY = Decimal('999999999999.99')
+
 
 def format_money(value) -> str:
     """把金额统一成「元、两位小数字符串」——传给支付平台与签名都用这个形态
@@ -18,11 +23,12 @@ def format_money(value) -> str:
 
 
 def parse_money(text):
-    """把外部传入的金额字符串解析成 Decimal（非法返回 None）"""
+    """把外部传入的金额字符串解析成 Decimal（非法或超出可存储范围返回 None）"""
     try:
-        return Decimal(str(text)).quantize(MONEY_PLACES)
+        money = Decimal(str(text)).quantize(MONEY_PLACES)
     except (InvalidOperation, TypeError, ValueError):
         return None
+    return money if abs(money) <= MAX_MONEY else None
 
 
 def gen_out_trade_no(prefix: str = 'XY') -> str:
