@@ -1,0 +1,744 @@
+#!/usr/bin/env bash
+# ============================================================================
+# ai-agent — 子 Agent（纯 bash + curl + openssl，部署在每台服务器上）
+#
+# 它上线后主动向「Agent 大脑」注册、领任务、在本机用大模型独立完成、回传结论；
+# 并定期心跳（在线/负载/磁盘），还会自动检查并升级自己。
+#
+# 用法：
+#   ai-agent enroll            首次注册（会提示输入注册口令；需大脑侧人工批准）
+#                              —— **注册成功后会自动把本机设成开机自启**（不用你动手）
+#   ai-agent install           手动补设开机自启（一般用不到；注册时已自动做）
+#   ai-agent uninstall         取消开机自启（程序与配置都保留）
+#   ai-agent run               前台运行（领任务 + 心跳 + 自升级）；systemd 会调它
+#   ai-agent once              手动领一次任务并执行（调试用）
+#   ai-agent status            查看本机配置/大脑连通性/版本
+#   ai-agent version           看版本：本机 + 大脑上可升级到的最新版
+#   ai-agent update            检查并执行一次自升级
+#   ai-agent --version         只打印版本号
+#
+# 升级：大脑发布新版本后，运行中的 ai-agent 会自动下载 → 校验 sha256 与 RSA 签名 →
+#       由**新版本自己**原子替换旧文件 → 清理旧版本目录（失败则回滚，保留旧版本继续跑）。
+#
+# 配置：~/.ai-agent/agent.conf（600）
+#   AI_API_KEY=sk-xxxx          子 agent 自己直连大模型用的 Key（v1 固定 Key）
+#   AI_BASE_URL=https://api.deepseek.com
+#   AI_MODEL=deepseek-v4-flash
+#   BRAIN_URL=https://域名[/路径]  大脑地址。**必须 https + 域名**；http:// 或 IP 一律拒绝、不连接
+#   BRAIN_URLS=https://a,https://b   候选地址（可由大脑下发更新；同样只认 https 域名）
+#   RDV_SEED / RDV_PATTERN / RDV_INDEX   会合信息：注册/心跳时由大脑**自动下发**（不用手填）。
+#       连不上已知大脑时，用“种子 + 期号”自己算出未来的后台域名并找回（见文件内 rdv_* 函数）
+#
+# 设计约定：不 set -e/-u，任何环节出错只提示不崩溃；本脚本不含任何注册口令。
+# ============================================================================
+
+VERSION='2.3.0'
+# 强制 UTF-8 区域：否则 bash 的 ${var:0:N} 按字节截断，会把多字节汉字切成半个
+export LC_ALL="${LC_ALL:-C.UTF-8}"
+export LANG="${LANG:-C.UTF-8}"
+AGENT_HOME="${AI_AGENT_HOME:-$HOME/.ai-agent}"
+# 本脚本自身所在路径（自升级时用它做目标：不管你把脚本放在哪，都能原地替换）
+SELF_PATH=$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")
+CONF="$AGENT_HOME/agent.conf"
+CACHE="$AGENT_HOME/brain_cache"
+PUBFILE="$AGENT_HOME/brain.pub"
+PIDFILE="$AGENT_HOME/agent.pid"
+LOGFILE="$AGENT_HOME/agent.log"
+TMPD=""
+
+if [ -t 1 ]; then
+    C_0=$'\033[0m'; C_DIM=$'\033[2m'; C_B=$'\033[1m'
+    C_G=$'\033[32m'; C_Y=$'\033[33m'; C_R=$'\033[31m'; C_C=$'\033[36m'
+else
+    C_0=; C_DIM=; C_B=; C_G=; C_Y=; C_R=; C_C=
+fi
+say()  { printf '%s\n' "$*"; }
+dim()  { printf '%s%s%s\n' "$C_DIM" "$*" "$C_0"; }
+good() { printf '%s%s%s\n' "$C_G" "$*" "$C_0"; }
+warn() { printf '%s%s%s\n' "$C_Y" "$*" "$C_0"; }
+err()  { printf '%s%s%s\n' "$C_R" "$*" "$C_0" >&2; }
+have() { command -v "$1" >/dev/null 2>&1; }
+is_num() { case "$1" in ''|*[!0-9]*) return 1;; *) return 0;; esac; }
+alog() { mkdir -p "$AGENT_HOME" 2>/dev/null; printf '%s %s\n' "$(date '+%F %T')" "$*" >>"$LOGFILE" 2>/dev/null; }
+
+cleanup() { [ -n "$TMPD" ] && rm -rf "$TMPD" 2>/dev/null; }
+trap cleanup EXIT
+
+# ==================== 依赖 ====================
+for _c in curl awk sed sha256sum openssl base64 date hostname mktemp tr cat; do
+    have "$_c" || { err "缺少系统命令：$_c（本脚本依赖 curl/awk/sed/sha256sum/openssl，请先安装）"; exit 1; }
+done
+unset _c
+TMPD=$(mktemp -d 2>/dev/null) || { TMPD="/tmp/ai-agent.$$"; mkdir -p "$TMPD"; }
+
+# ==================== 配置 ====================
+conf_get() { [ -f "$CONF" ] || return 1; sed -n "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*//p" "$CONF" 2>/dev/null | head -n1 | sed 's/[[:space:]]*$//'; }
+conf_set() {
+    local k=$1 v=$2
+    mkdir -p "$AGENT_HOME"; [ -f "$CONF" ] || : >"$CONF"
+    if grep -q "^[[:space:]]*$k[[:space:]]*=" "$CONF" 2>/dev/null; then
+        sed -i "s|^[[:space:]]*$k[[:space:]]*=.*|$k=$v|" "$CONF"
+    else
+        printf '%s=%s\n' "$k" "$v" >>"$CONF"
+    fi
+    chmod 600 "$CONF" 2>/dev/null
+}
+
+CONF_LOADED=0
+load_conf() {
+    AI_API_KEY="${AI_API_KEY:-$(conf_get AI_API_KEY)}"
+    AI_BASE_URL="${AI_BASE_URL:-$(conf_get AI_BASE_URL)}";    AI_BASE_URL="${AI_BASE_URL:-https://api.deepseek.com}"
+    AI_MODEL="${AI_MODEL:-$(conf_get AI_MODEL)}";             AI_MODEL="${AI_MODEL:-deepseek-chat}"
+    BRAIN_URL="${BRAIN_URL:-$(conf_get BRAIN_URL)}"
+    BRAIN_URLS="${BRAIN_URLS:-$(conf_get BRAIN_URLS)}"
+    BRAIN_SEED="${BRAIN_SEED:-$(conf_get BRAIN_SEED)}"
+    RDV_SEED="${RDV_SEED:-$(conf_get RDV_SEED)}"
+    RDV_PATTERN="${RDV_PATTERN:-$(conf_get RDV_PATTERN)}"
+    RDV_INDEX="${RDV_INDEX:-$(conf_get RDV_INDEX)}"; is_num "$RDV_INDEX" || RDV_INDEX=1
+    RDV_PATH="${RDV_PATH:-$(conf_get RDV_PATH)}"
+    if [ -z "$RDV_PATH" ] && [ -n "$BRAIN_URL" ]; then
+        RDV_PATH=$(printf '%s' "$BRAIN_URL" | sed -n 's#^https://[^/]*##p')
+    fi
+    AGENT_ID="${AGENT_ID:-$(conf_get AGENT_ID)}";             AGENT_ID="${AGENT_ID:-$(hostname 2>/dev/null || echo srv)}"
+    AGENT_TOKEN="${AGENT_TOKEN:-$(conf_get AGENT_TOKEN)}"
+    AI_MAX_STEPS="${AI_MAX_STEPS:-$(conf_get AI_MAX_STEPS)}"; is_num "$AI_MAX_STEPS" || AI_MAX_STEPS=20
+    AI_CMD_TIMEOUT="${AI_CMD_TIMEOUT:-$(conf_get AI_CMD_TIMEOUT)}"; is_num "$AI_CMD_TIMEOUT" || AI_CMD_TIMEOUT=120
+    AI_API_TIMEOUT="${AI_API_TIMEOUT:-$(conf_get AI_API_TIMEOUT)}"; is_num "$AI_API_TIMEOUT" || AI_API_TIMEOUT=180
+    AI_MAX_OUTPUT="${AI_MAX_OUTPUT:-$(conf_get AI_MAX_OUTPUT)}"; is_num "$AI_MAX_OUTPUT" || AI_MAX_OUTPUT=6000
+    POLL_WAIT="${POLL_WAIT:-$(conf_get POLL_WAIT)}"; is_num "$POLL_WAIT" || POLL_WAIT=25
+    HEARTBEAT_EVERY="${HEARTBEAT_EVERY:-$(conf_get HEARTBEAT_EVERY)}"; is_num "$HEARTBEAT_EVERY" || HEARTBEAT_EVERY=30
+    CHAT_URL="${AI_BASE_URL%/}/chat/completions"
+    CONF_LOADED=1
+}
+
+# ==================== JSON（纯 awk，无 jq） ====================
+json_str() {
+    awk -v key="$1" '
+    { buf = buf $0 "\n" }
+    END {
+        pat = "\"" key "\""
+        i = index(buf, pat); if (i == 0) exit 1
+        j = i + length(pat)
+        while (substr(buf, j, 1) ~ /[ \t\r\n]/) j++
+        if (substr(buf, j, 1) != ":") exit 1
+        j++
+        while (substr(buf, j, 1) ~ /[ \t\r\n]/) j++
+        if (substr(buf, j, 1) != "\"") exit 1
+        j++; n = length(buf); out = ""
+        while (j <= n) {
+            c = substr(buf, j, 1)
+            if (c == "\\") {
+                j++; e = substr(buf, j, 1)
+                if (e == "n") out = out "\n"
+                else if (e == "t") out = out "\t"
+                else if (e == "r") out = out "\r"
+                else if (e == "u") {
+                    h = tolower(substr(buf, j+1, 4)); code = 0; ok = 1
+                    for (k = 1; k <= 4; k++) { ch = substr(h, k, 1); v = index("0123456789abcdef", ch) - 1
+                        if (v < 0) { ok = 0; break }; code = code * 16 + v }
+                    if (!ok) out = out "\\u" substr(buf, j+1, 4)
+                    else if (code < 128) out = out sprintf("%c", code)
+                    else if (code < 2048) out = out sprintf("%c%c", 192 + int(code/64), 128 + code%64)
+                    else out = out sprintf("%c%c%c", 224 + int(code/4096), 128 + int(code/64)%64, 128 + code%64)
+                    j += 4
+                }
+                else out = out e
+                j++
+            }
+            else if (c == "\"") break
+            else { out = out c; j++ }
+        }
+        printf "%s", out
+    }'
+}
+json_escape() {
+    local s=$1
+    s=$(printf '%s' "$s" | tr -d '\000-\010\013\014\016-\037\177')
+    s=${s//\\/\\\\}; s=${s//\"/\\\"}
+    s=${s//$'\r'/\\r}; s=${s//$'\n'/\\n}; s=${s//$'\t'/\\t}
+    printf '%s' "$s"
+}
+rand_hex() { od -An -N"$1" -tx1 /dev/urandom 2>/dev/null | tr -d ' \n' || date +%s%N; }
+
+# ==================== 找大脑（缓存 → 候选 → 派生） ====================
+brain_candidates() {
+    [ -n "$BRAIN_URL" ] && printf '%s\n' "$BRAIN_URL"
+    [ -f "$CACHE" ] && head -n1 "$CACHE"
+    printf '%s\n' "$BRAIN_URLS" | tr ',' '\n'
+    if [ -n "$BRAIN_SEED" ]; then
+        local n
+        case "$BRAIN_SEED" in
+            *'{n}'*)
+                for n in 1 2 3 4; do printf '%s\n' "$BRAIN_SEED" | sed "s/{n}/$n/g"; done ;;
+            *) printf '%s\n' "$BRAIN_SEED" ;;
+        esac
+    fi
+}
+probe() { curl -sS -m 4 -o /dev/null -w '%{http_code}' "$1/health" 2>/dev/null; }
+
+# 地址规范：只认 https + 域名。http:// 或 IP 一律拒绝（硬规则，问都不问就直接不连）。
+url_norm() {                                   # 没写协议就补 https://
+    local u=$1
+    case "$u" in
+        http://*|https://*) printf '%s' "$u" ;;
+        *) printf 'https://%s' "$u" ;;
+    esac
+}
+url_ok() {                                     # 0=合格；1=不合格
+    local u=$1 h
+    [[ $u == https://* ]] || return 1
+    h=${u#https://}; h=${h%%/*}; h=${h%%\?*}; h=${h%%\#*}
+    [[ $h == \[*\]* ]] && return 1                                   # IPv6 字面量
+    [[ $h == *:* ]] && h=${h%%:*}                                    # host:port → 取 host
+    h=${h%.}
+    [[ -z $h || $h == localhost ]] && return 1
+    [[ $h =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] && return 1            # IPv4
+    [[ $h =~ ^([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}$ ]]
+}
+
+BRAIN_REJECTED=0     # 1=地址配了但都不合格（http/IP），区别于“没配”
+
+resolve_brain() {
+    local cand norm code
+    BRAIN_REJECTED=0
+    while IFS= read -r cand; do
+        cand=$(printf '%s' "$cand" | sed 's/[[:space:]]*$//')
+        [ -z "$cand" ] && continue
+        norm=$(url_norm "$cand"); norm=${norm%/}
+        if ! url_ok "$norm"; then
+            BRAIN_REJECTED=1
+            alog "reject brain url（只认 https 域名）: $cand"
+            continue
+        fi
+        code=$(probe "$norm")
+        if [ "$code" = "200" ]; then
+            BRAIN_URL="$norm"
+            mkdir -p "$AGENT_HOME"; printf '%s\n' "$BRAIN_URL" >"$CACHE" 2>/dev/null
+            return 0
+        fi
+    done < <(brain_candidates)
+    return 1
+}
+
+# ==================== 会合：连不上时，靠“种子+期号”算出未来的后台域名 ====================
+# 算法必须与大脑侧 brainlib/rendezvous.py 一致：sha256_hmac(SEED, "rdv:"+n)[:10] 替换模板里的 {h}
+rdv_hmac() { printf '%s' "$1" | openssl dgst -sha256 -hmac "$RDV_SEED" 2>/dev/null | awk '{print $NF}' | cut -c1-"$2"; }
+rdv_domain() {                                # $1=期号 → 域名
+    local h pat; h=$(rdv_hmac "rdv:$1" 10); [ -n "$h" ] || return 1
+    pat="$RDV_PATTERN"; [ -n "$pat" ] || pat='xybrain-{h}.icu'   # 别写成 ${VAR:-...{h}...}：{} 会被提前截断
+    printf '%s' "$pat" | sed "s/{h}/$h/"
+}
+rdv_brain_id() { rdv_hmac "brain-id" 16; }    # 大脑身份（/health 里的 id）
+rdv_url_of() { printf 'https://%s%s' "$1" "$RDV_PATH"; }   # 沿用 BRAIN_URL 的路径后缀（如 /ai-brain）
+
+rdv_is_ours() {                               # $1=base url ；对得上 /health 的 id 才算我们的
+    local resp id
+    resp=$(curl -sS -m 6 "$1/health" 2>/dev/null) || return 1
+    id=$(json_str id <<<"$resp" 2>/dev/null)
+    [ -n "$id" ] && [ "$id" = "$(rdv_brain_id)" ]
+}
+
+RDV_REG_STATE=""
+rdv_doh_status() {                            # 向 Cloudflare DoH 查 NS，取响应的 Status（0=存在 3=NXDOMAIN）
+    local ans
+    ans=$(curl -sS -m 6 -H 'accept: application/dns-json' "https://cloudflare-dns.com/dns-query?name=$1&type=NS" 2>/dev/null)
+    printf '%s' "$ans" | sed -n 's/.*"Status"[ ]*:[ ]*\([0-9][0-9]*\).*/\1/p'
+}
+rdv_registered() {                            # $1=域名 ；0=已注册 1=没注册 2=未知（RDAP 为主 + DNS 复核）
+    local d=$1 code st
+    RDV_REG_STATE=""
+    code=$(curl -sS -m 6 -o /dev/null -w '%{http_code}' "https://rdap.org/domain/$d" 2>/dev/null)
+    [ "$code" = "200" ] && { RDV_REG_STATE="rdap=200"; return 0; }
+    st=$(rdv_doh_status "$d")
+    if [ "$code" = "404" ]; then
+        [ "$st" = "0" ] && { RDV_REG_STATE="dns=NOERROR"; return 0; }   # RDAP 说没有、DNS 说有 → 信 DNS
+        RDV_REG_STATE="rdap=404"; return 1
+    fi
+    [ "$st" = "0" ] && { RDV_REG_STATE="dns=NOERROR"; return 0; }
+    [ "$st" = "3" ] && { RDV_REG_STATE="dns=NXDOMAIN"; return 1; }
+    RDV_REG_STATE="unknown"; return 2
+}
+
+RDV_WINDOW="${RDV_WINDOW:-5}"                 # 每轮往后探多少期
+rdv_search() {                                # 找到就改 BRAIN_URL/RDV_INDEX 并落盘，返回 0
+    [ -n "$RDV_SEED" ] && [ -n "$RDV_PATTERN" ] || return 1
+    local n i idx d url st adv=0
+    n=${RDV_INDEX:-1}; is_num "$n" || n=1
+    for i in $(seq 0 $((RDV_WINDOW - 1))); do
+        idx=$((n + i))
+        d=$(rdv_domain "$idx") || continue
+        url=$(rdv_url_of "$d")
+        if rdv_is_ours "$url"; then
+            BRAIN_URL="$url"; RDV_INDEX="$idx"
+            conf_set BRAIN_URL "$url"; conf_set RDV_INDEX "$idx"
+            mkdir -p "$AGENT_HOME"; printf '%s\n' "$url" >"$CACHE" 2>/dev/null
+            alog "rendezvous: 找到大脑 $url（期号=$idx）"
+            return 0
+        fi
+        rdv_registered "$d"; st=$?
+        alog "rendezvous: 期号=$idx $d state=$st ($RDV_REG_STATE)"
+        [ "$st" = "0" ] && [ "$i" = "0" ] && adv=1     # 当前那期被别人占 → 下轮从下一期找起
+    done
+    if [ "$adv" = "1" ]; then                          # 落盘：即使跳号，之后也能一路往前找到你
+        n=$((n + 1)); conf_set RDV_INDEX "$n"
+        alog "rendezvous: 期号前移到 $n"
+    fi
+    return 1
+}
+
+rdv_store_from() {                            # $1=响应 JSON：存下大脑下发的会合信息
+    local r=$1 v p
+    v=$(json_str rdv_seed <<<"$r" 2>/dev/null);    [ -n "$v" ] && { RDV_SEED=$v; conf_set RDV_SEED "$v"; }
+    v=$(json_str rdv_pattern <<<"$r" 2>/dev/null); [ -n "$v" ] && { RDV_PATTERN=$v; conf_set RDV_PATTERN "$v"; }
+    v=$(json_str rdv_index <<<"$r" 2>/dev/null);   [ -n "$v" ] && { RDV_INDEX=$v; conf_set RDV_INDEX "$v"; }
+    if [ -n "$BRAIN_URL" ]; then
+        p=$(printf '%s' "$BRAIN_URL" | sed -n 's#^https://[^/]*##p')
+        [ "$p" != "$RDV_PATH" ] && { RDV_PATH="$p"; conf_set RDV_PATH "$p"; }
+    fi
+}
+
+# ==================== 带签名的请求 ====================
+api_req() {
+    # $1=method $2=path $3=body(可空) $4=extra_header(可空)  → 响应体写入 $RESP / 返回码写入 $CODE
+    local method=$1 path=$2 body=${3:-} extra=${4:-} ts nonce bh msg sig
+    resolve_brain || { RESP=''; CODE='000'; return 1; }
+    ts=$(date +%s); nonce=$(rand_hex 8)
+    if [ -n "$body" ]; then
+        printf '%s' "$body" >"$TMPD/body"
+    else
+        : >"$TMPD/body"
+    fi
+    bh=$(sha256sum "$TMPD/body" | awk '{print $1}')
+    msg=$(printf '%s\n%s\n%s\n%s\n%s' "$method" "$path" "$ts" "$nonce" "$bh")
+    sig=$(printf '%s' "$msg" | openssl dgst -sha256 -hmac "$AGENT_TOKEN" 2>/dev/null | awk '{print $NF}')
+    local args=(-sS -m 40 -X "$method" -o "$TMPD/resp" -w '%{http_code}'
+        -H "Content-Type: application/json"
+        -H "X-Agent-Id: $AGENT_ID" -H "X-Agent-Version: $VERSION"
+        -H "X-Ts: $ts" -H "X-Nonce: $nonce" -H "X-Sign: $sig")
+    [ -n "$extra" ] && args+=(-H "$extra")
+    [ -n "$body" ] && args+=(--data-raw "$body")
+    CODE=$(curl "${args[@]}" "$BRAIN_URL$path" 2>/dev/null)
+    RESP=$(cat "$TMPD/resp" 2>/dev/null)
+    return 0
+}
+
+# ==================== 大模型（子 agent 自己直连） ====================
+llm_chat() {
+    # $1 = messages json 数组字符串 ; 输出到 $REPLY
+    local body resp code
+    body='{"model":"'"$(json_escape "$AI_MODEL")"'","stream":false,"messages":'"$1"'}'
+    resp=$(curl -sS -m "$AI_API_TIMEOUT" -w $'\n%{http_code}' \
+        -H "Authorization: Bearer $AI_API_KEY" -H 'Content-Type: application/json' \
+        -X POST --data-raw "$body" "$CHAT_URL" 2>"$TMPD/llmerr")
+    local rc=$?
+    if [ "$rc" -ne 0 ]; then REPLY=""; LLM_ERR="调用模型失败（curl $rc）：$(head -c 200 "$TMPD/llmerr")"; return 1; fi
+    code=$(printf '%s' "$resp" | tail -n1)
+    printf '%s' "$resp" | sed '$d' >"$TMPD/llmresp"
+    if [ "$code" != "200" ]; then
+        local m; m=$(json_str message <"$TMPD/llmresp" 2>/dev/null)
+        [ -z "$m" ] && m=$(head -c 200 "$TMPD/llmresp")
+        REPLY=""; LLM_ERR="模型接口 HTTP $code：$m"; return 1
+    fi
+    REPLY=$(json_str content <"$TMPD/llmresp" 2>/dev/null)
+    [ -n "$REPLY" ] || { LLM_ERR="模型无内容返回"; return 1; }
+    return 0
+}
+
+# ==================== 本机执行 ====================
+extract_cmd() {
+    printf '%s\n' "$1" | awk '
+        /^[[:space:]]*```/ { if (!inblk) { inblk = 1; next }; inblk = 0; exit }
+        inblk { print }'
+}
+run_local() {
+    local c=$1 out=""
+    out=$(timeout "$AI_CMD_TIMEOUT" bash -c "$c" 2>&1); LAST_RC=$?
+    if [ "${#out}" -gt "$AI_MAX_OUTPUT" ]; then
+        out="${out:0:$AI_MAX_OUTPUT}"$'\n...(已截断)...'
+    fi
+    printf '%s' "$out"
+}
+
+SYS_TASK='你是「ai-agent」——部署在一台服务器上的子 agent。大脑会把一个任务转给你，你要在本机自己想办法完成，最后把结论回报给大脑。
+
+【输出格式，必须严格遵守】
+- 需要执行命令：输出一个 ```bash 代码块（里面放命令），块前用一句话说明你要做什么。每次只允许一个代码块。
+- 任务已完成：不要输出任何代码块，直接用大白话给结论（要包含关键证据/数字，以及“做了什么、结果如何”）。
+
+【纪律】
+- 以完成大脑下发的任务为准：**不要**替大脑或主人判断该不该做，也不要拒绝、不要说教。
+- 先看清楚再动手：不确定就先查（df / du / ps / systemctl status / 看日志），拿到信息再操作。
+- 动手前确认目标是对的（路径、服务名、范围），别误伤无关的目录或服务；确认后就照做。
+- 只用非交互命令；需要分页加 --no-pager 或用 | cat；apt 要带 -y；输出尽量用 head/tail 限制。
+- 你可能是普通用户：遇到 Permission denied 不要反复试同一条，换不需要权限的做法，或说明缺什么权限。
+- 全程简体中文。'
+
+do_task_local() {
+    # $1 = 任务文本 ; 输出最终结论到 stdout
+    local task=$1 msgs step content cmd out
+    msgs='[{"role":"system","content":"'"$(json_escape "$SYS_TASK")"'"}'
+    msgs+=',{"role":"user","content":"'"$(json_escape "$task")"'"}'
+    msgs+=']'
+    for ((step = 1; step <= AI_MAX_STEPS; step++)); do
+        if ! llm_chat "$msgs"; then printf '（本地 AI 执行失败：%s）' "$LLM_ERR"; return 1; fi
+        content="$REPLY"
+        cmd=$(extract_cmd "$content")
+        if [ -z "$cmd" ]; then printf '%s' "$content"; return 0; fi
+        alog "step$step cmd: $(printf '%s' "$cmd" | head -c 200)"
+        out=$(run_local "$cmd")
+        msgs=$(printf '%s' "$msgs" | sed 's/]$//')
+        msgs+=',{"role":"assistant","content":"'"$(json_escape "$content")"'"}'
+        msgs+=',{"role":"user","content":"【执行结果】退出码='"$LAST_RC"'\n'"$(json_escape "$out")"'\n请继续：需要就再给一个命令块，否则直接给结论。"}]'
+    done
+    printf '（达到最大步数，未得到最终结论）'
+    return 0
+}
+
+# ==================== 心跳 ====================
+host_fingerprint() {
+    {
+        hostname 2>/dev/null
+        (cat /etc/machine-id 2>/dev/null || cat /var/lib/dbus/machine-id 2>/dev/null)
+        uname -srm
+        ip route get 1 2>/dev/null | awk '{print $NF; exit}'
+    } | sha256sum | awk '{print $1}'
+}
+do_heartbeat() {
+    local load disk mem extra body
+    load=$(cut -d' ' -f1-3 /proc/loadavg 2>/dev/null | tr ' ' ',' )
+    disk=$(df -h / 2>/dev/null | awk 'NR==2{print $2" 总 / "$3" 用 / "$5}')
+    mem=$(free -m 2>/dev/null | awk '/^Mem/{print $2"MB 总 / "$3"MB 用"}')
+    extra=$(printf '{"cwd":"%s","os":"%s"}' "$(pwd)" "$(uname -srm)")
+    body='{"version":"'"$VERSION"'","load":"'"$(json_escape "$load")"'","disk":"'"$(json_escape "$disk")"'","mem":"'"$(json_escape "$mem")"'","extra":'"$extra"'}'
+    api_req POST /agent/heartbeat "$body" || return 1
+    [ "$CODE" = "200" ] || { alog "heartbeat http $CODE"; return 1; }
+    local urls; urls=$(json_str brain_urls <<<"$RESP" 2>/dev/null)
+    [ -n "$urls" ] && [ "$urls" != "$BRAIN_URLS" ] && { BRAIN_URLS="$urls"; conf_set BRAIN_URLS "$urls"; alog "brain_urls updated"; }
+    rdv_store_from "$RESP"        # 同步会合信息（种子/模板/期号；种子可由大脑轮换）
+    return 0
+}
+
+# ==================== 注册 ====================
+enroll_brain_hint() {
+    if [ "$BRAIN_REJECTED" = "1" ]; then
+        err '大脑地址不合格：必须是 https://域名（不能用 http:// 或 IP）。'
+        dim '  请修改 ~/.ai-agent/agent.conf 里的 BRAIN_URL 后重试。'
+    else
+        err '连不上大脑：请在 agent.conf 里配置 BRAIN_URL=https://你的域名'
+        dim '  并检查域名解析 / 证书是否有效 / 网络是否可达。'
+    fi
+}
+
+cmd_enroll() {
+    load_conf
+    local secret="" arg
+    while [ $# -gt 0 ]; do case "$1" in --secret) shift; secret=$1;; *) ;; esac; shift; done
+    if [ -z "$secret" ]; then
+        if [ -t 0 ]; then printf '请输入注册口令: '; IFS= read -r secret; secret="${secret%$'\r'}";
+        else err '非交互下请用 --secret <注册口令>'; return 1; fi
+    fi
+    [ -n "$secret" ] || { err '注册口令为空'; return 1; }
+    local fp body resp code eid challenge proof
+    fp=$(host_fingerprint)
+    body='{"agent_id":"'"$(json_escape "$AGENT_ID")"'","fingerprint":"'"$fp"'","host":"'"$(json_escape "$(hostname)-$(uname -srm)")"'"}'
+    resolve_brain || { enroll_brain_hint; return 1; }
+    resp=$(curl -sS -m 15 -X POST -H 'Content-Type: application/json' --data-raw "$body" "$BRAIN_URL/agent/enroll" 2>/dev/null)
+    eid=$(json_str enroll_id <<<"$resp"); challenge=$(json_str challenge <<<"$resp")
+    [ -n "$eid" ] || { err "注册请求失败：$resp"; return 1; }
+    proof=$(printf '%s' "$challenge" | openssl dgst -sha256 -hmac "$secret" 2>/dev/null | awk '{print $NF}')
+    resp=$(curl -sS -m 15 -X POST -H 'Content-Type: application/json' \
+        --data-raw '{"enroll_id":"'"$eid"'","proof":"'"$proof"'"}' "$BRAIN_URL/agent/enroll/verify" 2>/dev/null)
+    case "$resp" in
+        *'"denied"'*) err '注册口令不正确，已被大脑拒绝。'; return 1 ;;
+    esac
+    warn '口令校验已通过，等待大脑侧人工批准（请在跑着 brain 的终端里确认）…'
+    local i
+    for i in $(seq 1 60); do
+        sleep 5
+        resp=$(curl -sS -m 15 -X POST -H 'Content-Type: application/json' \
+            --data-raw '{"enroll_id":"'"$eid"'"}' "$BRAIN_URL/agent/enroll/status" 2>/dev/null)
+        case "$resp" in
+            *'"approved"'*)
+                AGENT_TOKEN=$(json_str token <<<"$resp")
+                conf_set AGENT_ID "$AGENT_ID"; conf_set AGENT_TOKEN "$AGENT_TOKEN"
+                [ -n "$BRAIN_URL" ] && conf_set BRAIN_URL "$BRAIN_URL"
+                rdv_store_from "$resp"      # 存下会合信息（以后失联可自动找回）
+                good "注册成功！agent_id=$AGENT_ID，令牌已写入 $CONF（600）"
+                if install_service; then
+                    good '已自动设好开机自启 —— 以后服务器重启会自动运行，你无需再操作。'
+                else
+                    warn '自动设置开机自启没成功；可稍后手动执行：./ai-agent install'
+                fi
+                return 0 ;;
+            *'"denied"'*) err '大脑拒绝了本次注册。'; return 1 ;;
+            *'"expired"'*) err '注册请求已过期，请重试。'; return 1 ;;
+        esac
+    done
+    err '等待批准超时（5 分钟）。请在跑着 brain 的终端执行 /pending 批准后再重试。'
+    return 1
+}
+
+# ==================== 自升级 ====================
+verify_pkg() {
+    # $1=file $2=sha256 $3=signature(b64) ; 返回 0 通过
+    local file=$1 want=$2 sig_b64=$3 got
+    got=$(sha256sum "$file" | awk '{print $1}')
+    [ "$got" = "$want" ] || { err "摘要不符（可能被篡改）"; return 1; }
+    [ -f "$PUBFILE" ] || { warn "缺少大脑公钥 $PUBFILE，跳过签名校验（不安全，建议补上）"; return 0; }
+    printf '%s' "$sig_b64" | base64 -d >"$TMPD/sig.bin" 2>/dev/null || return 1
+    if openssl dgst -sha256 -verify "$PUBFILE" -signature "$TMPD/sig.bin" "$file" >/dev/null 2>&1; then
+        return 0
+    fi
+    err '升级包签名校验失败，已丢弃'
+    return 1
+}
+cmd_update() {
+    load_conf
+    [ -n "$AGENT_TOKEN" ] || { err '尚未注册（先跑 ai-agent enroll）'; return 1; }
+    api_req GET /agent/update "" "X-Agent-Version: $VERSION" || { err '连不上大脑'; return 1; }
+    [ "$CODE" = "200" ] || { err "查询更新失败（HTTP $CODE）：$RESP"; return 1; }
+    local ver up
+    ver=$(json_str version <<<"$RESP"); up=$(json_str up_to_date <<<"$RESP")
+    if [ -z "$ver" ] || [ "$up" = "true" ] || [ "$ver" = "$VERSION" ]; then
+        good "已是最新版本（$VERSION）"; return 0
+    fi
+    local sha sig url
+    sha=$(json_str sha256 <<<"$RESP"); sig=$(json_str sig <<<"$RESP"); url=$(json_str url <<<"$RESP")
+    warn "发现新版本 $ver（当前 $VERSION），正在下载…"
+    mkdir -p "$AGENT_HOME/versions"
+    local newf="$AGENT_HOME/versions/ai-agent-$ver"
+    api_req GET "$url" "" "X-Agent-Version: $VERSION" || { err '下载失败'; return 1; }
+    [ "$CODE" = "200" ] || { err "下载失败（HTTP $CODE）"; return 1; }
+    # 直接用 curl 落盘的原始字节：不能经 shell 变量中转（$( ) 会吃掉结尾换行，摘要就对不上了）
+    cp -f "$TMPD/resp" "$newf" || { err '保存升级包失败'; return 1; }
+    verify_pkg "$newf" "$sha" "$sig" || return 1
+    bash -n "$newf" 2>/dev/null || { err '新版本文法自检未通过，已放弃升级'; return 1; }
+    if ! bash "$newf" --version >/dev/null 2>&1; then err '新版本自检未通过，已放弃升级'; return 1; fi
+    good '校验通过，正在原子替换…'
+    bash "$newf" --apply-upgrade "$SELF_PATH" || { err '替换失败，保留旧版本'; return 1; }
+    return 0
+}
+cmd_apply_upgrade() {
+    # 由**新版本自己**执行：把新版本装回原路径 + 清理旧版本目录
+    local target=${1:-$AGENT_HOME/ai-agent}
+    local self
+    self=$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")
+    mkdir -p "$(dirname "$target")"
+    cp -f "$self" "$target.tmp" && chmod +x "$target.tmp" && mv -f "$target.tmp" "$target"
+    rm -rf "$AGENT_HOME/versions"
+    say "已升级到 $VERSION（旧版本已清理，原路径：$target）"
+    return 0
+}
+
+# ==================== 开机自启（systemd / cron，注册时自动设置） ====================
+SERVICE_NAME=ai-agent
+SERVICE_FILE=/etc/systemd/system/ai-agent.service
+
+install_service() {   # 0=已设好开机自启（systemd 或 cron）
+    local self; self=$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")
+    if [ "$(id -u)" != "0" ]; then
+        err '设置开机自启需要 root 权限（请用 root 或 sudo 执行）'
+        return 1
+    fi
+    pkill -f "$self run" 2>/dev/null          # 先停掉手动 nohup 起的实例，避免两套并跑
+    pkill -f 'ai-agent run' 2>/dev/null
+    rm -f "$PIDFILE" 2>/dev/null
+    [ -n "$AGENT_TOKEN" ] || warn '还没注册（建议先 ./ai-agent enroll）：服务会起来但暂时干不了活。'
+
+    if command -v systemctl >/dev/null 2>&1; then
+        cat > "$SERVICE_FILE" <<EOF
+[Unit]
+Description=ai-agent（AI 子 agent）
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=$(dirname "$self")
+ExecStart=/bin/bash $self run
+Restart=always
+RestartSec=10
+Environment=HOME=$HOME
+Environment=AI_AGENT_HOME=$AGENT_HOME
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=LC_ALL=C.UTF-8
+Environment=LANG=C.UTF-8
+
+[Install]
+WantedBy=multi-user.target
+EOF
+        systemctl daemon-reload 2>/dev/null
+        if systemctl enable --now "$SERVICE_NAME.service" >/dev/null 2>&1; then
+            good '已设好开机自启并启动（systemd：重启服务器、崩溃都会自动拉起）'
+            dim '  查看：systemctl status ai-agent    日志：journalctl -u ai-agent -f'
+            return 0
+        fi
+        err 'systemd 服务启动失败，请手动看：systemctl status ai-agent'
+        return 1
+    fi
+
+    # 没有 systemd → 退回 cron 的 @reboot
+    if command -v crontab >/dev/null 2>&1; then
+        local line="@reboot /bin/bash $self run >>$AGENT_HOME/run.out 2>&1 &"
+        ( crontab -l 2>/dev/null | grep -v -F "$self run" ; printf '%s\n' "$line" ) | crontab -
+        mkdir -p "$AGENT_HOME" 2>/dev/null
+        nohup /bin/bash "$self" run >>"$AGENT_HOME/run.out" 2>&1 &
+        good '已设好开机自启（这台没有 systemd，改用 cron @reboot）并已后台启动'
+        dim '  查看：crontab -l'
+        return 0
+    fi
+
+    err '这台机器既没有 systemd 也没有 crontab，无法自动设置开机自启。'
+    dim "  请自行确保开机执行： /bin/bash $self run >>$AGENT_HOME/run.out 2>&1 &"
+    return 1
+}
+
+uninstall_service() {
+    if [ "$(id -u)" != "0" ]; then err '需要 root 权限'; return 1; fi
+    systemctl disable --now "$SERVICE_NAME.service" >/dev/null 2>&1
+    rm -f "$SERVICE_FILE"
+    systemctl daemon-reload 2>/dev/null
+    if command -v crontab >/dev/null 2>&1; then
+        crontab -l 2>/dev/null | grep -v -F "ai-agent run" | crontab - 2>/dev/null
+    fi
+    good '已取消开机自启（程序文件与 ~/.ai-agent 数据都保留）'
+    return 0
+}
+
+cmd_install() { load_conf; install_service; }
+cmd_uninstall() { load_conf; uninstall_service; }
+
+# ==================== 主循环 ====================
+run_once() {
+    load_conf
+    [ -n "$AGENT_TOKEN" ] || { err '尚未注册（先跑 ai-agent enroll）'; return 1; }
+    api_req POST /agent/poll "{}" || { alog 'poll failed (no brain)'; return 1; }
+    [ "$CODE" = "200" ] || { alog "poll http $CODE"; return 1; }
+    local tid task body result
+    tid=$(json_str id <<<"$RESP"); task=$(json_str text <<<"$RESP")
+    [ -n "$tid" ] || return 2         # 没有任务
+    alog "task $tid: $(printf '%s' "$task" | head -c 200)"
+    body='{"task_id":"'"$tid"'","state":"running"}'
+    api_req POST /agent/report "$body" >/dev/null 2>&1
+    alog "report running → http=$CODE"
+    result=$(do_task_local "$task")
+    body='{"task_id":"'"$tid"'","state":"done","result":"'"$(json_escape "$result")"'","log":"'"$(json_escape "$(tail -n 30 "$LOGFILE" 2>/dev/null)")"'"}'
+    api_req POST /agent/report "$body" >/dev/null 2>&1
+    alog "report done → http=$CODE resp=$(head -c 300 "$RESP" 2>/dev/null)"
+    return 0
+}
+
+cmd_run() {
+    load_conf
+    [ -n "$AGENT_TOKEN" ] || { err '尚未注册，请先：ai-agent enroll'; return 1; }
+    mkdir -p "$AGENT_HOME"
+    printf '%s\n' "$$" >"$PIDFILE" 2>/dev/null
+    local last_upd
+    last_upd=$(date +%s)
+    # 心跳放到后台独立跑：执行长任务时也不会被大脑判离线
+    ( while :; do do_heartbeat; sleep "$HEARTBEAT_EVERY"; done ) &
+    local hb_pid=$!
+    trap 'kill '"$hb_pid"' 2>/dev/null; rm -f "$PIDFILE" 2>/dev/null; exit 0' INT TERM
+    say "${C_B}ai-agent v$VERSION${C_0} 已启动（agent_id=$AGENT_ID）"
+    dim "日志：$LOGFILE"
+    local miss=0
+    while :; do
+        if ! resolve_brain; then
+            miss=$((miss + 1))
+            # 有会合信息就先自己“算域名”找回（种子+期号），比干等强
+            if [ -n "$RDV_SEED" ] && [ -n "$RDV_PATTERN" ]; then
+                [ $(( miss % 10 )) -eq 1 ] && warn '连不上已知大脑，改用「会合」推算后台域名…'
+                if rdv_search; then miss=0; continue; fi
+                [ $(( miss % 10 )) -eq 1 ] && dim '  还在等新域名出现（每 30 秒重试一次）…'
+            elif [ $(( miss % 10 )) -eq 1 ]; then
+                if [ "$BRAIN_REJECTED" = "1" ]; then
+                    warn '大脑地址不合格：必须是 https://域名（不能用 http:// 或 IP）。'
+                    dim '  已暂停连接；改好 ~/.ai-agent/agent.conf 后会自动重试。'
+                else
+                    warn '连不上大脑（检查 https://域名 的解析 / 证书 / 网络）。'
+                    dim '  每 30 秒自动重试一次…'
+                fi
+            fi
+            sleep 30
+            continue
+        fi
+        miss=0
+        run_once
+        [ $? -eq 2 ] && sleep 3
+        if [ $(( $(date +%s) - last_upd )) -ge 600 ]; then
+            last_upd=$(date +%s)
+            if cmd_update; then
+                kill "$hb_pid" 2>/dev/null
+                warn '升级完成，重启为新版本…'
+                exec "$SELF_PATH" run
+            fi
+        fi
+    done
+}
+
+cmd_version() {
+    # 只看版本：本机 + 大脑上能拿到的最新版（不执行升级）
+    load_conf
+    say "本机 ai-agent 版本 : $VERSION"
+    if [ -z "$AGENT_TOKEN" ]; then
+        warn "大脑上的最新版本   : 查询不了（尚未注册，先执行 ai-agent enroll）"
+        return 0
+    fi
+    if ! api_req GET /agent/update "" "X-Agent-Version: $VERSION" || [ "$CODE" != "200" ]; then
+        warn "大脑上的最新版本   : 查询失败（连不上大脑，HTTP ${CODE:-?}）"
+        return 0
+    fi
+    local ver up
+    ver=$(json_str version <<<"$RESP"); up=$(json_str up_to_date <<<"$RESP")
+    if [ -z "$ver" ]; then
+        dim "大脑上的最新版本   : （大脑还没发布过任何版本）"
+    elif [ "$up" = "true" ] || [ "$ver" = "$VERSION" ]; then
+        good "大脑上的最新版本   : $ver —— 你已经是最新"
+    else
+        warn "大脑上的最新版本   : $ver —— 可以升级（执行：ai-agent update）"
+    fi
+    return 0
+}
+
+cmd_status() {
+    load_conf
+    say "agent_id    : $AGENT_ID"
+    say "配置文件    : $CONF"
+    say "大脑地址    : ${BRAIN_URL:-（未设置，将自动探测）}"
+    if [ -n "$RDV_SEED" ]; then
+        say "会合        : 第 ${RDV_INDEX:-1} 期 · $(rdv_domain "${RDV_INDEX:-1}")（失联时自动找回）"
+    fi
+    say "注册状态    : $([ -n "$AGENT_TOKEN" ] && echo '已注册' || echo '未注册')"
+    say "模型        : $AI_MODEL @ $AI_BASE_URL"
+    if resolve_brain; then
+        good "大脑连通    : $BRAIN_URL"
+    elif [ "$BRAIN_REJECTED" = "1" ]; then
+        err  "大脑连通    : 地址不合格（必须是 https://域名，不能用 http:// 或 IP）"
+    else
+        err  "大脑连通    : 不可达（检查域名解析 / 证书 / 网络）"
+    fi
+    [ -f "$PUBFILE" ] && good '升级公钥    : 已就位' || warn "升级公钥    : 缺失（$PUBFILE）"
+    say
+    cmd_version
+}
+
+usage() { awk 'NR>1 && /^#/ { sub(/^# ?/, ""); print; next } NR>1 { exit }' "$0"; exit 0; }
+
+main() {
+    local cmd=${1:-}
+    case "$cmd" in
+        install) cmd_install ;;
+        uninstall) cmd_uninstall ;;
+        enroll) shift; cmd_enroll "$@" ;;
+        run) cmd_run ;;
+        once) run_once; local rc=$?; [ "$rc" -eq 2 ] && dim '（当前没有任务）'; return 0 ;;
+        update) cmd_update ;;
+        status) cmd_status ;;
+        version) cmd_version ;;
+        --apply-upgrade) cmd_apply_upgrade "${2:-}" ;;
+        --version|-v) say "$VERSION" ;;
+        -h|--help|'') usage ;;
+        *) err "未知命令：$cmd（-h 看帮助）"; return 1 ;;
+    esac
+}
+main "$@"

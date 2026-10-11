@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""brain — Agent 大脑（入口，非常薄）
+
+真正的实现都在同目录的 brainlib/ 里，这里只做「解析参数 → 分发」。
+提示词/技能放在 prompts/ 目录的文本文件里，改提示词不用碰代码。
+
+常用：
+    brain init                  初始化（只需一次）
+    brain serve                 前台运行服务
+    brain                       进入对话
+    brain "一句话"               问一句（终端里问完继续留在对话）
+    brain -y "一句话"            自动确认（脚本化）
+    brain status                看服务与各服务器概况
+"""
+import os
+import sys
+import traceback
+
+_HERE = os.path.dirname(os.path.realpath(__file__))     # realpath：软链也能找到 brainlib
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+
+from brainlib import VERSION                            # noqa: E402
+from brainlib import admin, chat, explain, ui           # noqa: E402
+from brainlib import conf as confmod                     # noqa: E402
+
+ui.setup_stdio()                                        # 先把编解码兜住，后面才能安全打印/读输入
+
+USAGE = f"""brain v{VERSION} — Agent 大脑
+
+用法：
+  brain init                    初始化（生成管理令牌 / 注册口令 / 签名密钥对）
+  brain serve                   前台运行 HTTP 服务（子 agent 连它）
+  brain                         进入对话（服务没起会自动后台拉起）
+  brain "一句话"                 问一句（终端里问完继续留在对话；管道/脚本调用则问完退出）
+  brain -y "一句话"              自动确认下发/执行（脚本化用）
+  brain status                  查看服务与各服务器概况
+  brain version                 看版本：大脑 / 子agent（程序自带版、已发布最新版、各机实际版本）
+  brain files                   文件文档控制台：每个文件是干什么的、何时生成、能不能删
+  brain explain ["问题"]       让 AI 用大白话解读这些文件（可追问，如"删了会怎样"）
+  brain pending                 查看待批准的新机器
+  brain approve <enroll_id>     批准某台机器接入
+  brain deny <enroll_id>        拒绝某台机器接入
+  brain release <文件> --version 1.1.0 [--notes "说明"]
+                                发布一版子 agent 升级包（自动签名）
+  brain pubkey                  打印公钥（拷给子 agent）
+  brain stop                    停止后台服务
+  brain rendezvous [子命令]     会合：换服务器/域名后子 agent 靠种子+期号自动找回
+                                （看当前/下一期域名、set <n> 设期号、rotate 换主密钥）
+  brain -h | --help             本帮助
+
+配置与数据：默认在 ~/.ai-brain/（可用环境变量 BRAIN_HOME 换目录）
+提示词与技能：prompts/ 目录（可复制到 ~/.ai-brain/prompts/ 覆盖默认）
+对外地址：brain.conf 的 PUBLIC_URL **必须**是 https://域名（本机 CLI 与子 agent 都只认它；
+          http:// 或 IP 一律拒绝）。对外统一经 nginx + 域名 + HTTPS，大脑只监听本机。
+"""
+
+
+def main(argv) -> int:
+    conf = confmod.load()
+    ui.setup_stdio(conf.get('STDIO_ENCODING') or 'utf-8')   # 终端是 GBK 就在 conf 里改
+
+    # -y 只管本次；MODE=auto 是持久挡位（写在 brain.conf 里）
+    if any(a in ('-y', '--yes') for a in argv) or confmod.is_auto(conf):
+        ui.AUTO_YES = True
+    argv = [a for a in argv if a not in ('-y', '--yes')]
+    cmd = argv[0] if argv else ''
+
+    if cmd in ('-h', '--help', 'help'):
+        print(USAGE)
+        return 0
+    if cmd in ('--version', '-v'):
+        ui.say(VERSION)
+        return 0
+    if cmd == 'init':
+        return admin.cmd_init(conf)
+    if cmd == 'serve':
+        return admin.cmd_serve(conf)
+    if cmd == 'status':
+        return admin.cmd_status(conf)
+    if cmd == 'version':
+        return admin.cmd_version(conf)
+    if cmd == 'files':
+        return admin.cmd_files(conf)
+    if cmd == 'explain':
+        return explain.run(conf, ' '.join(argv[1:]).strip() or None)
+    if cmd == 'pending':
+        return admin.cmd_pending(conf)
+    if cmd == 'approve':
+        if len(argv) < 2:
+            ui.err('用法：brain approve <enroll_id>')
+            return 1
+        return admin.cmd_decide(conf, argv[1], True)
+    if cmd == 'deny':
+        if len(argv) < 2:
+            ui.err('用法：brain deny <enroll_id>')
+            return 1
+        return admin.cmd_decide(conf, argv[1], False)
+    if cmd == 'release':
+        return admin.cmd_release(conf, argv[1:])
+    if cmd == 'stop':
+        return admin.cmd_stop(conf)
+    if cmd == 'rendezvous':
+        return admin.cmd_rendezvous(conf, argv[1:])
+    if cmd in ('pubkey', 'show-pubkey'):
+        return admin.cmd_pubkey(conf)
+
+    # 其余都当成“跟大脑说话”
+    if not confmod.CONF.exists():
+        ui.err('还没初始化。请先执行：brain init')
+        return 1
+    return chat.run(conf, ' '.join(argv).strip() or None)
+
+
+if __name__ == '__main__':
+    try:
+        sys.exit(main(sys.argv[1:]))
+    except KeyboardInterrupt:
+        ui.say()
+        sys.exit(130)
+    except BrokenPipeError:                             # 输出被管道掐断（如 brain ... | head）
+        try:
+            sys.stdout.close()
+        except Exception:                               # noqa: BLE001
+            pass
+        sys.exit(0)
+    except Exception as exc:                            # noqa: BLE001
+        # 兜底：绝不把 Python traceback 直接喷给用户，写日志 + 一句人话
+        confmod.log_line('UNEXPECTED ' + traceback.format_exc())
+        ui.err(f'✗ 出现未预期的错误：{type(exc).__name__}: {exc}')
+        ui.dim(f'  已记录到 {confmod.LOG_PATH}（把它发给开发者即可定位）')
+        sys.exit(1)
