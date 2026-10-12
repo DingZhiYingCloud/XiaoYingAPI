@@ -100,3 +100,7 @@ Test/
 # 下载地址: https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-windows-x64.exe
 # 通配所有目录（源目录 API/static/css 与 collectstatic 产物目录 static/css 各有一份副本）
 tailwindcss.exe
+
+# Agent 打包口令（tools/pack-agent.sh 本地生成的密钥，绝不入库；
+# 打包产物 tools/dist/ 已由上面的 `dist` 规则覆盖）
+/scripts/agent/tools/pack.key

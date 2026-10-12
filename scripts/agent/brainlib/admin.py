@@ -9,6 +9,7 @@ import os
 import re
 import shutil
 import signal
+import sys
 import time
 from pathlib import Path
 
@@ -29,6 +30,9 @@ def cmd_init(conf) -> int:
         changed = True
     if not conf['ENROLL_SECRET']:
         conf['ENROLL_SECRET'] = new_id(48)
+        changed = True
+    if not conf.get('PACK_KEY'):
+        conf['PACK_KEY'] = new_id(48)          # 【生产版】解密口令（只留在大脑上）
         changed = True
     if not conf.get('RDV_SEED'):
         conf['RDV_SEED'] = new_id(48)
@@ -103,8 +107,11 @@ def cmd_status(conf) -> int:
         return 0
     ui.say(f'{"AGENT":<20}{"状态":<8}{"负载":<18}{"磁盘":<32}{"版本":<10}')
     for a in ov['agents']:
-        st = '在线' if a['online'] else '离线'
-        color = ui.C_G if a['online'] else ui.C_R
+        if a.get('blocked'):
+            st, color = ('已自毁' if a.get('wipe_done') else '已拉黑'), ui.C_R
+        else:
+            st = '在线' if a['online'] else '离线'
+            color = ui.C_G if a['online'] else ui.C_R
         load = str(a['load1'] or '-')[:16]
         disk = str(a['disk'] or '-')[:30]
         ui.say(f'{a["agent_id"]:<20}{color}{st}{ui.C_0}      {load:<18}{disk:<32}'
@@ -153,6 +160,16 @@ def cmd_release(conf, args) -> int:
     if not src.exists():
         ui.err('文件不存在：', src)
         return 1
+    # 护栏：别把「开发版」（明文）发出去 —— 那会让所有子 agent 从加密变明文
+    try:
+        head = src.read_text(encoding='utf-8', errors='replace')[:200000]
+    except OSError:
+        head = ''
+    if "SYS_TASK='" in head and '--force' not in args:
+        ui.err('这个文件看起来是【开发版（明文）】：直接发布会让全网子 agent 变成明文。')
+        ui.dim('  先打包成生产版：bash tools/pack-agent.sh <文件> --online --brain https://…')
+        ui.dim('  确实要发明文，就在命令后面加 --force。')
+        return 1
     if not re.match(r'^[\w.\-]{1,32}$', ver or ''):
         ui.err('必须用 --version 指定版本号（字母数字._-）')
         return 1
@@ -180,6 +197,184 @@ def cmd_release(conf, args) -> int:
     ui.say(f'  包路径 : {dst}')
     ui.dim('子 agent 最多 10 分钟内自动升级；也可在任意一台执行 ai-agent update 立刻升。')
     return 0
+
+
+# ==================== 拉黑（不可恢复：先三层确认） ====================
+def cmd_block(conf, args) -> int:
+    """brain block <agent_id> [--reason "原因"] —— 拉黑并命令它自毁（须人工再三确认）"""
+    if not args:
+        ui.err('用法：brain block <agent_id> [--reason "原因"]')
+        return 1
+    aid = args[0]
+    reason = ''
+    for i, a in enumerate(args):
+        if a == '--reason' and i + 1 < len(args):
+            reason = args[i + 1]
+    r, e = apicli.api(conf, 'GET', '/internal/agents')
+    if e:
+        ui.err('查询失败：', e)
+        return 1
+    hit = [a for a in (r or {}).get('agents') or [] if a['agent_id'] == aid]
+    if not hit:
+        ui.err(f'没有这台子 agent：{aid}')
+        return 1
+    a = hit[0]
+    ui.say()
+    ui.warn('⚠ 拉黑 = 不可恢复的两件事：')
+    ui.say('   1) 立刻拒绝它以后的一切请求（心跳 / 领任务 / 升级 全断）')
+    ui.say('   2) 命令它把**本机关于自己的一切全部删除**：')
+    ui.say('      程序文件、配置、本机令牌、缓存、日志、开机自启 —— 一点不留')
+    ui.say(f'   这台现在：{"在线" if a.get("online") else "离线"}，版本 {a.get("version") or "-"}')
+    if a.get('blocked'):
+        ui.dim('   （它之前已被拉黑过，这次会重新下发自毁指令）')
+    ui.say()
+    if not sys.stdin.isatty():
+        ui.err('拉黑必须在终端里人工操作（不接受管道 / 脚本输入）。')
+        return 1
+
+    # 第 1 层
+    if not ui.confirm(f'第 1 步：确定要拉黑 {aid} 吗？', force=True):
+        ui.dim('已取消（什么都没做）。')
+        return 0
+    # 第 2 层：原样输入它的名字
+    try:
+        t = input(f'  第 2 步：原样输入它的名字以确认 —— {ui.C_Y}{aid}{ui.C_0}\n  > ').strip()
+    except (EOFError, UnicodeDecodeError):
+        ui.err('已取消（什么都没做）。')
+        return 1
+    if t != aid:
+        ui.err('输入不一致，已取消（什么都没做）。')
+        return 1
+    # 第 3 层：一字不差的确认口令
+    phrase = '我确认拉黑并让它自毁'
+    try:
+        t = input(f'  第 3 步：一字不差地输入 —— {ui.C_Y}{phrase}{ui.C_0}\n  > ').strip()
+    except (EOFError, UnicodeDecodeError):
+        ui.err('已取消（什么都没做）。')
+        return 1
+    if t != phrase:
+        ui.err('口令不一致，已取消（什么都没做）。')
+        return 1
+
+    r2, e2 = apicli.api(conf, 'POST', '/internal/block', {'agent_id': aid, 'reason': reason})
+    if e2 or (r2 or {}).get('error'):
+        ui.err('拉黑失败：', e2 or (r2 or {}).get('error'))
+        return 1
+    ui.good(f'已拉黑 {aid}：以后它的请求一律拒绝。')
+    if a.get('online'):
+        ui.say('  自毁指令已就位：它下次来领任务时就会把自己清干净。')
+    else:
+        ui.warn('  它现在不在线：自毁指令要等它下次联网（领任务）才会执行。')
+        ui.dim('  若它一直不上线，需要你手动去那台机器清理（停服务 + 删程序 + 删 ~/.ai-agent）。')
+    return 0
+
+
+# ==================== 解黑（给误拉黑留的出口） ====================
+def cmd_unblock(conf, args) -> int:
+    """brain unblock <agent_id> —— 解除拉黑（被拉黑后它无法再注册/连接）"""
+    if not args:
+        ui.err('用法：brain unblock <agent_id>')
+        return 1
+    aid = args[0]
+    if not sys.stdin.isatty():
+        ui.err('解黑请在终端里人工操作。')
+        return 1
+    if not ui.confirm(f'解除对 {aid} 的拉黑吗？（它仍需重新部署才能接回来）', force=True):
+        ui.dim('已取消。')
+        return 0
+    r, e = apicli.api(conf, 'POST', '/internal/unblock', {'agent_id': aid})
+    if e or (r or {}).get('error'):
+        ui.err('解黑失败：', e or (r or {}).get('error'))
+        return 1
+    ui.good(f'已解除拉黑：{aid}（要接回来，请在那台机器上重新部署，见第 4 节）')
+    return 0
+
+
+# ==================== 生产版解密口令（查看 / 轮换） ====================
+def _mask_key(s: str) -> str:
+    if not s:
+        return '（未设置）'
+    return s[:6] + '…' + s[-4:] if len(s) > 12 else s
+
+
+def cmd_packkey(conf, args) -> int:
+    """brain pack-key [rotate|drop-old] —— 查看/轮换「生产版解密口令」(PACK_KEY)
+
+    轮换要点：直接用一把新口令换掉旧的，会让"还没升级的子 agent"（老密文按旧口令加密）
+    下次启动时解不开 —— 整片失联。所以这里走**双口令过渡**：旧口令暂留，打包/下发新版本
+    后子 agent 逐台升级；等全部升完再 drop-old。打包脚本会"先按新口令、不匹配退旧口令"。
+    """
+    sub = (args[0] if args else '').strip()
+    cur = conf.get('PACK_KEY') or ''
+    old = conf.get('PACK_KEY_OLD') or ''
+
+    if sub == 'rotate':
+        if not cur:
+            ui.err('还没有 PACK_KEY，请先 brain init')
+            return 1
+        if not sys.stdin.isatty():
+            ui.err('轮换口令请在终端里人工操作。')
+            return 1
+        ui.warn('⚠ 轮换口令期间会有"新旧两把同时可用"的过渡期（这是为了不让老文件失联）。')
+        if not ui.confirm('确定轮换生产版解密口令吗？', force=True):
+            ui.dim('已取消（什么都没做）。')
+            return 0
+        C.set_key('PACK_KEY_OLD', cur)
+        new = new_id(48)
+        C.set_key('PACK_KEY', new)
+        ui.good('已生成新的解密口令（旧的暂留作过渡）。')
+        ui.say('接下来按顺序做：')
+        ui.say('  1) 重新打包（会用新口令）：bash tools/pack-agent.sh <ai-agent> '
+               '--online --brain https://你的大脑域名')
+        ui.say('  2) 发布新版本：brain release <打好的包> --version <新版本>')
+        ui.dim('  3) 等所有子 agent 都升级上来后，执行：brain pack-key drop-old')
+        return 0
+
+    if sub == 'drop-old':
+        if not old:
+            ui.dim('（当前没有过渡旧口令，无需清理）')
+            return 0
+        if not sys.stdin.isatty():
+            ui.err('请在终端里人工操作。')
+            return 1
+        ui.warn('⚠ 废除旧口令后，"还没升级的子 agent"将无法启动（需要它先升级）。')
+        if not ui.confirm('确定废除旧口令吗？', force=True):
+            ui.dim('已取消。')
+            return 0
+        C.set_key('PACK_KEY_OLD', '')
+        ui.good('已废除过渡旧口令（现在只认新口令）。')
+        return 0
+
+    ui.say(f'{ui.C_B}生产版解密口令（PACK_KEY）{ui.C_0}')
+    ui.say(f'  当前口令   : {_mask_key(cur)}')
+    ui.say(f'  过渡旧口令 : {_mask_key(old)}'
+           + ('（轮换过渡期；等全部升级后 drop-old）' if old else ''))
+    ui.dim('  brain pack-key rotate      轮换口令（新旧并行 → 重打包+发布 → 全部升级后 drop-old）')
+    ui.dim('  brain pack-key drop-old    废除过渡旧口令（仅在全部子 agent 都升级之后）')
+    return 0
+
+
+# ==================== 通知（测试） ====================
+def cmd_notify_test(conf) -> int:
+    """brain test-mail —— 用当前配置发一封测试邮件，验证通知通道是否通"""
+    from . import notify
+    if not notify.enabled(conf):
+        ui.err('还没配置通知。请在 brain.conf 里填这三项：')
+        ui.say('   PUSH_APP_ID=...        （推送服务接入项目的 APPID）')
+        ui.say('   PUSH_APP_SECRET=...    （推送服务的 APPSECRET）')
+        ui.say('   PUSH_TO=you@example.com（收件人，多个用逗号分隔）')
+        ui.dim('   （PUSH_BASE 默认 https://www.xiaoyingapi.com）')
+        return 1
+    ui.say(f'正在给 {conf["PUSH_TO"]} 发测试邮件…')
+    ok, msg = notify.send(conf, '[ai-brain] 测试通知',
+                          '这是一封测试邮件：收到它，说明大脑的通知通道（邮件报警）已经配好了。')
+    if ok:
+        ui.good('已发出：', msg)
+        ui.dim('  没收到先看垃圾箱；再不行看 ~/.ai-brain/brain.log 里的 notify 记录')
+        return 0
+    ui.err('发送失败：', msg)
+    ui.dim('  检查 app_id / app_secret 是否正确；以及大脑那台能不能访问 PUSH_BASE（要能出网）')
+    return 1
 
 
 # ==================== 停止 ====================

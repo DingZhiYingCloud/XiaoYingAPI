@@ -33,6 +33,9 @@ DEFAULT_CONF = {
     'RDV_INDEX': '1',                 # 当前期号；换后台域名时 +1（用 brain rendezvous set <n>）
     'BRAIN_ADMIN_TOKEN': '',          # 自动生成（本机 CLI 用）
     'ENROLL_SECRET': '',              # 注册口令（部署子 agent 时用）
+    'PACK_KEY': '',                   # 【生产版】解密口令：只存在大脑上，运行时凭注册口令在线取
+    'PACK_KEY_OLD': '',               # 轮换过渡期的旧口令（brain pack-key rotate 写入；新口令生效后，
+                                      # 让还没升级的子 agent 也能开；全部升级后 brain pack-key drop-old 清掉）
     'AI_BASE_URL': 'https://api.deepseek.com',
     'AI_MODEL': 'deepseek-v4-flash',
     'AI_API_KEY': '',                 # 大脑自己用的模型 Key
@@ -44,13 +47,20 @@ DEFAULT_CONF = {
     'POLL_TIMEOUT': '25',             # 子 agent 领任务的长轮询秒数
     'TASK_TIMEOUT': '300',            # 等所有服务器回报的最长秒数
     'BRAIN_URLS': '',                 # 下发给子 agent 的“大脑地址清单”
+    'PUSH_BASE': 'https://www.xiaoyingapi.com',   # 通知（邮件）走你的「消息推送」服务
+    'PUSH_APP_ID': '',                # 推送服务接入项目的 APPID
+    'PUSH_APP_SECRET': '',            # 推送服务的 APPSECRET（签名密钥，务必保密）
+    'PUSH_TO': '',                    # 报警收件人邮箱，多个用逗号分隔
+    'PUSH_MIN_INTERVAL': '600',       # 同一类事件的最小发送间隔（秒），防刷邮件
+    'OFFLINE_ALERT_SEC': '300',       # 子 agent 失联超过这个秒数就发邮件报警
     'STREAM': '1',                    # 1=流式输出（边生成边显示）；0=生成完整段再显示
     'SHOW_REASONING': '1',            # 1=显示模型思维链（💭 那一段）；0=不显示
     'STDIO_ENCODING': 'utf-8',        # 终端编码；若你的终端是 GBK，改成 gbk
 }
 
 NUMERIC_KEYS = ('BRAIN_PORT', 'RDV_INDEX', 'AI_MAX_STEPS', 'AI_MAX_STEPS_AUTO', 'AI_CMD_TIMEOUT',
-                'AI_API_TIMEOUT', 'POLL_TIMEOUT', 'TASK_TIMEOUT')
+                'AI_API_TIMEOUT', 'POLL_TIMEOUT', 'TASK_TIMEOUT',
+                'PUSH_MIN_INTERVAL', 'OFFLINE_ALERT_SEC')
 
 
 def mode(conf) -> str:

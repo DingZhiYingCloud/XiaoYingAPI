@@ -48,6 +48,12 @@ USAGE = f"""brain v{VERSION} — Agent 大脑
   brain stop                    停止后台服务
   brain rendezvous [子命令]     会合：换服务器/域名后子 agent 靠种子+期号自动找回
                                 （看当前/下一期域名、set <n> 设期号、rotate 换主密钥）
+  brain block <agent_id>        拉黑一台子 agent：先三层确认，再命令它自毁（不可恢复）
+                                （可选 --reason "原因"）
+  brain unblock <agent_id>      解除拉黑（误拉黑时用；之后仍需重新部署那台机器）
+  brain pack-key [rotate|drop-old]
+                                查看/轮换「生产版解密口令」（轮换走新旧并行，避免子 agent 失联）
+  brain test-mail               用当前配置发一封测试邮件（验证通知通道 / 邮件报警）
   brain -h | --help             本帮助
 
 配置与数据：默认在 ~/.ai-brain/（可用环境变量 BRAIN_HOME 换目录）
@@ -103,8 +109,16 @@ def main(argv) -> int:
         return admin.cmd_stop(conf)
     if cmd == 'rendezvous':
         return admin.cmd_rendezvous(conf, argv[1:])
+    if cmd == 'block':
+        return admin.cmd_block(conf, argv[1:])
+    if cmd == 'unblock':
+        return admin.cmd_unblock(conf, argv[1:])
     if cmd in ('pubkey', 'show-pubkey'):
         return admin.cmd_pubkey(conf)
+    if cmd in ('pack-key', 'packkey'):
+        return admin.cmd_packkey(conf, argv[1:])
+    if cmd in ('test-mail', 'testmail'):
+        return admin.cmd_notify_test(conf)
 
     # 其余都当成“跟大脑说话”
     if not confmod.CONF.exists():

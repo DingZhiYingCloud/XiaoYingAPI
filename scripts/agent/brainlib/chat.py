@@ -66,8 +66,13 @@ def _do_action(conf, action) -> str:
             return '没有匹配到的在线子 agent，无法下发。'
         ui.act(f'将在 {len(targets)} 台执行：{", ".join(targets)}')
         ui.act(f'任务：{task}')
-        if not ui.confirm('确认下发？'):
+        verdict, note = ui.decide('确认下发？', action.get('suggestions'))
+        if verdict == 'no':
             return '【系统】用户拒绝了本次下发。请换一种做法，或询问用户。'
+        if verdict == 'amend':
+            return (f'【系统】{note}\n'
+                    f'请据此改写任务（或换做法），然后重新给出一个 dispatch 动作；'
+                    f'改写后的 task 要完整、可直接执行，并体现主人的意见。')
         r, e = apicli.api(conf, 'POST', '/internal/dispatch',
                           {'agents': targets, 'task': task})
         if e or (r or {}).get('error'):
@@ -75,11 +80,18 @@ def _do_action(conf, action) -> str:
         ids = r['task_ids']
         ui.act(f'已下发 {len(ids)} 条任务，等待各服务器回报…')
         deadline = now() + int(conf['TASK_TIMEOUT'])
+        seen = {}
+        last_hint = now()
+        tasks = []
         while now() < deadline:
             tr, _ = apicli.api(conf, 'POST', '/internal/tasks', {'task_ids': ids})
             tasks = (tr or {}).get('tasks') or []
+            _show_progress(tasks, seen)              # 谁领了 / 谁回报了（仅状态变化时打印）
             if tasks and all(t['state'] in ('done', 'failed') for t in tasks):
                 break
+            if tasks and now() - last_hint >= 15:    # 15 秒没动静就报一次进度，别干等
+                last_hint = now()
+                _wait_hint(tasks)
             time.sleep(2)
         tr, _ = apicli.api(conf, 'POST', '/internal/tasks', {'task_ids': ids})
         tasks = (tr or {}).get('tasks') or []
@@ -96,8 +108,12 @@ def _do_action(conf, action) -> str:
         if not cmd:
             return '命令为空。'
         ui.act(f'将在本机（大脑所在机器）执行：{cmd}')
-        if not ui.confirm('确认执行？'):
+        verdict, note = ui.decide('确认执行？', action.get('suggestions'))
+        if verdict == 'no':
             return '【系统】用户拒绝了本机命令。'
+        if verdict == 'amend':
+            return (f'【系统】{note}\n'
+                    f'请据此改写命令（或换做法），然后重新给出一个 run_local 动作。')
         r, e = apicli.api(conf, 'POST', '/internal/run_local', {'cmd': cmd},
                           timeout=int(conf['AI_CMD_TIMEOUT']) + 10)
         if e or (r or {}).get('error'):
@@ -106,6 +122,37 @@ def _do_action(conf, action) -> str:
         return f'退出码={r.get("rc")}\n{out[:6000]}'
 
     return f'未知动作：{name}'
+
+
+# ==================== 下发后的进度显示 ====================
+def _show_progress(tasks, seen):
+    """只在状态/进度**有变化**时打印：谁领走了、谁执行到第几步、谁回报了。"""
+    for t in tasks:
+        aid, st = t['agent_id'], t['state']
+        prog = (t.get('result') or '').strip() if st == 'running' else ''
+        key = (st, prog)
+        if seen.get(aid) == key:
+            continue
+        first = aid not in seen
+        seen[aid] = key
+        if st == 'running':
+            if first or not prog:                    # 刚领取（还不知道进展）
+                left = sum(1 for x in tasks if x['state'] == 'queued')
+                ui.act(f'【{aid}】已领取任务，执行中…（还有 {left} 台未领取）')
+            if prog:                                 # 子 agent 每跑一步就回报一次
+                ui.act(f'【{aid}】{prog}')
+        elif st == 'done':
+            ui.act(f'【{aid}】已回报（成功）')
+        elif st == 'failed':
+            ui.act(f'【{aid}】已回报（失败）')
+
+
+def _wait_hint(tasks):
+    """迟迟没动静时的进度提示，别让主人干等。"""
+    q = sum(1 for t in tasks if t['state'] == 'queued')
+    r = sum(1 for t in tasks if t['state'] == 'running')
+    d = sum(1 for t in tasks if t['state'] in ('done', 'failed'))
+    ui.dim(f'  … 仍在等待：未领取 {q} 台 / 执行中 {r} 台 / 已回报 {d} 台')
 
 
 # ==================== 待批准的新机器 ====================

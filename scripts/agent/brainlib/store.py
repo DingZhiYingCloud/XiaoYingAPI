@@ -27,6 +27,8 @@ CREATE TABLE IF NOT EXISTS audit(
   action TEXT, detail TEXT, task_id TEXT);
 CREATE TABLE IF NOT EXISTS releases(
   version TEXT PRIMARY KEY, filename TEXT, sha256 TEXT, sig TEXT, notes TEXT, created_at REAL);
+CREATE TABLE IF NOT EXISTS blocked(
+  agent_id TEXT PRIMARY KEY, reason TEXT, at REAL, wipe INTEGER DEFAULT 1, wipe_done INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY, v TEXT);
 """
 

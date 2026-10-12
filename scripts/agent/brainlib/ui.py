@@ -98,6 +98,87 @@ def confirm(prompt: str, force: bool = False) -> bool:
     return ans in ('y', 'yes', '是')
 
 
+def _read_line(prompt: str):
+    """读一行（供逐条提问用）。非终端或读不到就返回 None。"""
+    try:
+        return input(f'  {C_DIM}{prompt}{C_0} ').strip()
+    except (EOFError, UnicodeDecodeError):
+        return None
+
+
+def _show_points(points):
+    """打印「它想请你拍板」一览（最多 4 条）。"""
+    if not points:
+        return
+    print()
+    print(f'  {C_Y}它想请你拍板（{len(points)} 条）：{C_0}')
+    for i, s in enumerate(points, 1):
+        q = str(s.get('q') or '').strip() or '（未说明）'
+        d = str(s.get('default') or '').strip()
+        tail = f'   {C_DIM}它倾向：{d}{C_0}' if d else ''
+        print(f'   {i}) {q}{tail}')
+
+
+def decide(prompt: str, suggestions=None):
+    """需要动手前的确认（带 AI 的待拍板项）—— 返回 (verdict, note)。
+
+    suggestions: 模型给的待拍板项，形如 [{'q': 问题, 'default': 它的倾向}]，最多 4 条。
+
+    verdict:
+        'yes'   照办（note 为空）
+        'no'    跳过这一次
+        'amend' 有修改意见；note 是给模型看的「主人意见」原文
+    （选 a=以后都别问 时也返回 'yes'，并顺手把挡位切成 auto）
+    """
+    global AUTO_YES
+    points = [s for s in (suggestions or [])
+              if isinstance(s, dict) and (s.get('q') or s.get('default'))][:4]
+    _show_points(points)
+
+    if AUTO_YES:                                     # 完全放行：只打印，不阻塞
+        dim('  （完全放行模式，不问，直接干）')
+        return 'yes', ''
+    if not sys.stdin.isatty():
+        warn('  （非交互输入：默认不执行；要自动执行请用 brain -y 或 MODE=auto）')
+        return 'no', ''
+
+    # ① 逐条给意见（回车＝照它的倾向办；写了就回喂给模型改写任务）
+    if points:
+        dim('  逐条给意见（直接回车＝照它倾向办）：')
+        notes = []
+        for i, s in enumerate(points, 1):
+            d = str(s.get('default') or '').strip()
+            hint = f'{i} ❯' + (f'（它倾向：{d}）' if d else '')
+            a = _read_line(hint)
+            if a is None:
+                return 'no', ''
+            if a:
+                notes.append(f'{i}. {str(s.get("q") or "").strip()} → 主人意见：{a}')
+        if notes:
+            return 'amend', '主人对本次下发的方案有修改意见：\n' + '\n'.join(notes)
+
+    # ② 最终确认（也可直接打字说修改）
+    dim('  （回车＝跳过；也可直接打字说你的修改）')
+    raw = _read_line(f'{prompt} [y=执行 / n=跳过 / a=以后都别问]')
+    if raw is None:
+        return 'no', ''
+    low = raw.lower()
+    if low in ('a', 'auto'):
+        AUTO_YES = True
+        try:
+            from . import conf as C
+            C.set_key('MODE', 'auto')                # 记住挡位，下次启动也不问
+        except Exception:                            # noqa: BLE001
+            pass
+        warn('  已切到「完全放行」挡：以后不再问你（已写入 brain.conf，重启也生效）。想切回来就输 /auto')
+        return 'yes', ''
+    if low in ('y', 'yes', '是'):
+        return 'yes', ''
+    if low in ('', 'n', 'no', '否'):
+        return 'no', ''
+    return 'amend', f'主人对本次下发的方案有修改意见：{raw}'
+
+
 def mask_key(k: str) -> str:
     """Key 只显示首尾，用于 /conf 之类的地方。"""
     if not k:
