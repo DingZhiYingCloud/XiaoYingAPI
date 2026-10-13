@@ -25,8 +25,10 @@
         （"recommendList" / "videoList"，字段结构相似），必须按 series_id 精确取主对象，
         否则会误取到推荐剧集。
     播放 /player/{sid}/{vid}
-        SSR 内嵌 "video_player_info"（main_url / duration / width / height / poster_url）。
-        仅前 3 集可访问（accessible_episode_cnt=3），第 4 集起服务端直接返回 404。
+        明文 mp4 地址在 JSON-LD 的 VideoObject.contentUrl（形如
+        /video/public/{vid}/360p.mp4）；SSR 的 _ROUTER_DATA 只给封面 / 时长元数据
+        （publicVideoSeo，且 protectedPlayback=true）。仅前 3 集可访问
+        （accessible_episode_cnt=3），第 4 集起服务端直接返回 404。
 """
 
 import json
@@ -144,8 +146,8 @@ SSR_KEY_DETAIL = "seriesDetail"
 SSR_KEY_RECOMMEND_LIST = "recommendList"
 # 搜索页结果数组键名
 SSR_KEY_SEARCH_LIST = "searchList"
-# 播放页播放信息对象键名
-SSR_KEY_PLAYER_INFO = "video_player_info"
+# 注：播放页的播放信息不再走 SSR 键 —— 源站改版后明文地址改放在 JSON-LD 的
+# VideoObject（见下方 extract_video_object）。
 
 # 分页参数正则（用于从分页器链接中取最大页码作为总页数；[[?&]page=N]）
 RE_PAGE_NUM = re.compile(r"[?&]page=(\d+)")
@@ -299,6 +301,49 @@ def max_page(html: str):
     """从分页器链接中取最大页码作为总页数；无分页返回 None"""
     nums = [int(n) for n in RE_PAGE_NUM.findall(html)]
     return max(nums) if nums else None
+
+
+# ==================== 播放页 JSON-LD（schema.org VideoObject） ====================
+#
+# 源站播放页改版后已不再在 SSR 里下发明文地址：_ROUTER_DATA 只给封面 / 时长元数据
+# （publicVideoSeo，且 protectedPlayback=true）。明文 mp4 地址改放在 SEO 用的 JSON-LD
+# VideoObject.contentUrl 里（形如 https://hongguoduanju.com/video/public/{vid}/360p.mp4）。
+# 该段是 schema.org 标准结构，比内部 SSR 键稳定；站点再次改版时优先改这里。
+
+# 播放页 JSON-LD 脚本块（页面有多段，按「含 contentUrl」挑选）
+RE_LD_JSON = re.compile(
+    r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>', re.S)
+# ISO 8601 duration（如 PT2M32S / PT1H2M3S）
+RE_ISO_DURATION = re.compile(r'PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?')
+
+
+def extract_video_object(html: str):
+    """取播放页 JSON-LD 里的 schema.org VideoObject（含 contentUrl / image / duration 等）
+
+    页面可能有多段 ld+json（站点信息 / 面包屑等），以「含 contentUrl」为准挑选；
+    找不到（无该剧 / 站点再次改版）返回 None。
+    """
+    for block in RE_LD_JSON.findall(html):
+        try:
+            obj = json.loads(block)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(obj, dict) and obj.get("contentUrl"):
+            return obj
+    return None
+
+
+def iso_duration_to_ms(value):
+    """ISO 8601 duration（如 PT2M32S）→ 毫秒；无法解析返回 None
+
+    与旧字段同单位（播放直链的 duration 一直是毫秒，见文档中心字段说明）。
+    """
+    m = RE_ISO_DURATION.fullmatch(value or "")
+    if not m:
+        return None
+    hours, minutes, seconds = m.group(1), m.group(2), m.group(3)
+    total = int(hours or 0) * 3600 + int(minutes or 0) * 60 + float(seconds or 0)
+    return int(total * 1000)
 
 
 # ==================== App 内部接口（H5 未下发直链的集数走这里） ====================

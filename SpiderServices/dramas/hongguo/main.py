@@ -338,21 +338,23 @@ class HongguoDramaSpider:
             return {"series_id": series_id, "ep": ep, "playable": False, "reason": "need_app"}
 
         episode_id = detail["episodes"][ep - 1]["episode_id"]
-        key = f"play:{series_id}:{ep}"
+        # 缓存键带版本号：源站播放页改版后，旧键里缓存的是「url 为空」的坏结果
+        # （媒体缓存 30 分钟），换键即让旧缓存失效、无需手工清缓存目录。
+        key = f"play:v2:{series_id}:{ep}"
 
         def fetch():
             html = self._get_html(U.build_player_url(series_id, episode_id))
-            info = U.extract_json_object(html, U.SSR_KEY_PLAYER_INFO) or {}
+            video = U.extract_video_object(html) or {}
             return {
                 "series_id": series_id,
                 "ep": ep,
                 "episode_id": episode_id,
                 "playable": True,
-                "url": info.get("main_url") or "",
-                "duration": info.get("duration"),
-                "width": info.get("width"),
-                "height": info.get("height"),
-                "poster": info.get("poster_url") or "",
+                "url": video.get("contentUrl") or "",
+                "duration": U.iso_duration_to_ms(video.get("duration")),
+                "width": video.get("width"),
+                "height": video.get("height"),
+                "poster": video.get("image") or "",
             }
 
         # 播放直链带签名时效，使用较短的媒体缓存 TTL
