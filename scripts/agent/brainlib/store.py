@@ -13,24 +13,49 @@ _db_lock = threading.Lock()
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS agents(
-  agent_id TEXT PRIMARY KEY, token TEXT, fingerprint TEXT, host TEXT, version TEXT,
+  agent_id TEXT PRIMARY KEY, token TEXT, fingerprint TEXT, host TEXT, version TEXT, os TEXT,
   created_at REAL, last_seen REAL, load1 TEXT, disk TEXT, mem TEXT, extra TEXT);
 CREATE TABLE IF NOT EXISTS tasks(
   id TEXT PRIMARY KEY, batch_id TEXT, agent_id TEXT, task TEXT, state TEXT,
   result TEXT, log TEXT, created_at REAL, started_at REAL, finished_at REAL);
 CREATE TABLE IF NOT EXISTS enrollments(
-  id TEXT PRIMARY KEY, agent_id TEXT, fingerprint TEXT, host TEXT, challenge TEXT,
+  id TEXT PRIMARY KEY, agent_id TEXT, fingerprint TEXT, host TEXT, os TEXT, challenge TEXT,
   secret_ok INTEGER DEFAULT 0, status TEXT, token TEXT, created_at REAL, decided_at REAL);
 CREATE TABLE IF NOT EXISTS nonces(nonce TEXT PRIMARY KEY, ts REAL);
 CREATE TABLE IF NOT EXISTS audit(
   id INTEGER PRIMARY KEY AUTOINCREMENT, ts REAL, actor TEXT, agent_id TEXT,
   action TEXT, detail TEXT, task_id TEXT);
 CREATE TABLE IF NOT EXISTS releases(
-  version TEXT PRIMARY KEY, filename TEXT, sha256 TEXT, sig TEXT, notes TEXT, created_at REAL);
+  os TEXT, version TEXT, filename TEXT, sha256 TEXT, sig TEXT, notes TEXT, created_at REAL,
+  PRIMARY KEY(os, version));
 CREATE TABLE IF NOT EXISTS blocked(
   agent_id TEXT PRIMARY KEY, reason TEXT, at REAL, wipe INTEGER DEFAULT 1, wipe_done INTEGER DEFAULT 0);
+CREATE TABLE IF NOT EXISTS uploads(
+  id TEXT PRIMARY KEY, agent_id TEXT, task_id TEXT, name TEXT, size INTEGER,
+  sha256 TEXT, path TEXT, created_at REAL);
 CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY, v TEXT);
 """
+
+
+def _columns(conn, table) -> set:
+    return {r[1] for r in conn.execute(f'PRAGMA table_info({table})').fetchall()}
+
+
+def _migrate(conn):
+    """老库平滑升级（不丢数据）：agents/enrollments 补 os 列；releases 由单主键 version
+    改成复合主键 (os,version) —— 老数据按 linux 归位。"""
+    for t in ('agents', 'enrollments'):
+        if _columns(conn, t) and 'os' not in _columns(conn, t):
+            conn.execute(f"ALTER TABLE {t} ADD COLUMN os TEXT DEFAULT ''")
+    cols = _columns(conn, 'releases')
+    if cols and 'os' not in cols:
+        conn.execute('CREATE TABLE releases_new('
+                     'os TEXT, version TEXT, filename TEXT, sha256 TEXT, sig TEXT, notes TEXT,'
+                     ' created_at REAL, PRIMARY KEY(os, version))')
+        conn.execute("INSERT INTO releases_new(os,version,filename,sha256,sig,notes,created_at)"
+                     " SELECT 'linux',version,filename,sha256,sig,notes,created_at FROM releases")
+        conn.execute('DROP TABLE releases')
+        conn.execute('ALTER TABLE releases_new RENAME TO releases')
 
 
 def db():
@@ -45,6 +70,7 @@ def db():
 def init():
     with _db_lock, db() as conn:
         conn.executescript(SCHEMA)
+        _migrate(conn)
 
 
 def q(sql, args=(), one=False):

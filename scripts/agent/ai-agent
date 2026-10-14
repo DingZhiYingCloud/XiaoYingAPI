@@ -18,6 +18,7 @@
 #   ai-agent status            查看本机配置/大脑连通性/版本
 #   ai-agent version           看版本：本机 + 大脑上可升级到的最新版
 #   ai-agent update            检查并执行一次自升级
+#   ai-agent upload <文件>     把本机文件传给主人（截图/日志等）→ 打印在线查看/下载链接
 #   ai-agent --version         只打印版本号
 #
 # 升级：大脑发布新版本后，运行中的 ai-agent 会自动下载 → 校验 sha256 与 RSA 签名 →
@@ -35,7 +36,7 @@
 # 设计约定：不 set -e/-u，任何环节出错只提示不崩溃；本脚本不含任何注册口令。
 # ============================================================================
 
-VERSION='2.8.8'
+VERSION='2.9.0'
 # 强制 UTF-8 区域：否则 bash 的 ${var:0:N} 按字节截断，会把多字节汉字切成半个
 export LC_ALL="${LC_ALL:-C.UTF-8}"
 export LANG="${LANG:-C.UTF-8}"
@@ -401,6 +402,14 @@ SYS_TASK='你是「ai-agent」——主人部署在这台服务器上的子 agen
 - 需要执行命令：输出一个 ```bash 代码块（**务必带 bash/sh 标记**；块前用一句话说明要做什么）；每次只允许一个代码块。
 - 任务完成：**不要输出任何代码块**（尤其别把命令结果、日志贴进 ``` 里 —— 那会被当成命令再跑一遍），直接用大白话给结论，包含关键证据（命令 + 结果 + 数字）。
 
+【给主人看文件（截图 / 日志 / 导出文件）】
+- 任务要求"把某个文件给主人看"（截图、日志、报表、导出的数据等）时：先在本机把文件准备好，再用**一条命令**上传：
+    "$AI_AGENT_CMD" upload <文件的绝对路径>
+  （若 `ai-agent` 已在 PATH 里，也可直接 `ai-agent upload <路径>`。）
+- 它会打印一个链接（形如 https://…/f/xxxxxxxx）—— 把这条命令的**输出原文**写进你的结论里，主人点开就能看。
+- 一次传一个文件，要传多个就多跑几次；单文件最大 50MB。
+- 上传只是把文件交上去，**结论文字仍然要给**（做了什么、结果如何）。
+
 【干活纪律：认真、穷尽】
 - 先把范围找全再动手，别只盯常见目录。查日志/痕迹这类任务要穷尽：
   · 按内容全盘搜：grep -rl（必要时从 / 起，排除 /proc /sys /dev）；
@@ -431,6 +440,7 @@ report_progress() {   # $1=任务id $2=进度文本（尽力而为：失败也�
 do_task_local() {
     # $1 = 任务文本 ; $2 = 任务 id（用于回报进度）; 输出最终结论到 stdout
     local task=$1 tid=$2 msgs step content cmd out explain
+    export AI_AGENT_TASK_ID="$tid" AI_AGENT_CMD="$SELF_PATH"   # 供 upload 用：自动带上任务号 + 程序路径
     msgs='[{"role":"system","content":"'"$(json_escape "$SYS_TASK")"'"}'
     msgs+=',{"role":"user","content":"'"$(json_escape "$task")"'"}'
     msgs+=']'
@@ -600,6 +610,60 @@ cmd_apply_upgrade() {
     cp -f "$self" "$target.tmp" && chmod +x "$target.tmp" && mv -f "$target.tmp" "$target"
     rm -rf "$AGENT_HOME/versions"
     say "已升级到 $VERSION（旧版本已清理，原路径：$target）"
+    return 0
+}
+
+# ==================== 上传文件给主人（截图/日志/任意文件） ====================
+urlenc() {   # 纯 bash：按字节做 percent-encode（中文/空格/特殊字符都安全）
+    printf '%s' "$1" | od -An -tx1 | tr -d ' \n' | sed 's/../%&/g'
+}
+api_upload() {
+    # $1=文件路径  $2=任务id(可空)  → 成功时打印大脑返回的在线查看链接
+    local f=$1 tid=${2:-} path ts nonce bh msg sig code resp
+    [ -f "$f" ] || { err "文件不存在：$f"; return 1; }
+    ensure_tmp
+    resolve_brain || { err '连不上大脑（检查 BRAIN_URL）'; return 1; }
+    ts=$(date +%s); nonce=$(rand_hex 8)
+    bh=$(sha256sum "$f" | awk '{print $1}')
+    # 文件名/任务号走 query（会进签名），请求体就是文件原始字节（摘要也在签名里）
+    path="/agent/upload?name=$(urlenc "$(basename "$f")")"
+    [ -n "$tid" ] && path="$path&task=$(urlenc "$tid")"
+    msg=$(printf '%s\n%s\n%s\n%s\n%s' POST "$path" "$ts" "$nonce" "$bh")
+    sig=$(printf '%s' "$msg" | openssl dgst -sha256 -hmac "$AGENT_TOKEN" 2>/dev/null | awk '{print $NF}')
+    code=$(curl -sS -m 300 -o "$TMPD/upresp" -w '%{http_code}' -X POST \
+        -H 'Content-Type: application/octet-stream' \
+        -H "X-Agent-Id: $AGENT_ID" -H "X-Agent-Version: $VERSION" \
+        -H "X-Ts: $ts" -H "X-Nonce: $nonce" -H "X-Sign: $sig" \
+        --data-binary @"$f" "$BRAIN_URL$path" 2>/dev/null)
+    resp=$(cat "$TMPD/upresp" 2>/dev/null)
+    if [ "$code" != "200" ]; then
+        err "上传失败（HTTP $code）：$(printf '%s' "$resp" | head -c 300)"
+        return 1
+    fi
+    json_str url <<<"$resp"
+    return 0
+}
+cmd_upload() {
+    # ai-agent upload <文件> [--task <任务id>]
+    load_conf
+    local f='' tid=''
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --task) shift; tid=${1:-} ;;
+            *) [ -z "$f" ] && f=$1 ;;
+        esac
+        shift
+    done
+    [ -n "$f" ] || { err '用法：ai-agent upload <文件> [--task <任务id>]'; return 1; }
+    [ -n "$AGENT_TOKEN" ] || { err '尚未注册（先跑 ai-agent enroll）'; return 1; }
+    [ -n "$tid" ] || tid="${AI_AGENT_TASK_ID:-}"      # 在执行任务时自动带上任务号
+    local url
+    url=$(api_upload "$f" "$tid") || return 1
+    if [ -n "$url" ]; then
+        printf '已上传：%s\n' "$url"
+    else
+        printf '已上传（大脑没配对外地址，链接拿不到；用 brain uploads 查看）\n'
+    fi
     return 0
 }
 
@@ -812,6 +876,21 @@ systemctl daemon-reload 2>/dev/null
 systemctl stop ai-agent 2>/dev/null
 # cron：清掉所有与本 agent 相关的行（副本目录 / ai-agent 字样），其它 cron 行原样保留
 crontab -l 2>/dev/null | grep -v -F "$root" | grep -v -F 'ai-agent' | crontab - 2>/dev/null
+# 先杀进程再删文件（顺序很关键）：否则"心跳子壳 / watchdog 副本"会继续跑并把目录重建回来。
+#   坑：加密生产版的 cmdline 是 `bash /dev/fd/N run`（不含 ai-agent），按名字 pkill 匹配不到；
+#   但 loader 会 export AI_AGENT_SELF=<程序路径>，用 /proc/*/environ 就能精确命中所有角色。
+for p in /proc/[0-9]*; do
+    pid=\${p#/proc/}
+    [ "\$pid" = "\$\$" ] && continue
+    s=\$(tr '\\0' '\\n' < "\$p/environ" 2>/dev/null | sed -n 's/^AI_AGENT_SELF=//p')
+    [ -n "\$s" ] || continue
+    case "\$s" in
+        "$self"|"$root"/*|"$AGENT_HOME"/*) kill -9 "\$pid" 2>/dev/null ;;
+    esac
+done
+pkill -9 -f '[a]i-agent run' 2>/dev/null
+pkill -9 -f '[a]i-agent watchdog' 2>/dev/null
+pkill -9 -f '[a]i-agent heartbeat' 2>/dev/null
 # 程序文件：自身 + 常见安装位置 + 程序目录（连同同目录的 brain.pub 等一起删）
 rm -f "$self" /usr/local/bin/ai-agent
 rm -rf "$HOME/agent"
@@ -819,8 +898,6 @@ rm -rf "$HOME/agent"
 rm -rf "$root"
 # 数据目录（令牌 / 配置 / 缓存 / 日志 / 公钥）
 rm -rf "$AGENT_HOME"
-pkill -9 -f '[a]i-agent run' 2>/dev/null
-pkill -9 -f '[a]i-agent watchdog' 2>/dev/null
 rm -f "$f"
 EOF
     chmod 700 "$f" 2>/dev/null
@@ -925,15 +1002,19 @@ run_once() {
     load_conf
     [ -n "$AGENT_TOKEN" ] || { err '尚未注册（先跑 ai-agent enroll）'; return 1; }
     api_req POST /agent/poll "{}" || { alog 'poll failed (no brain)'; return 1; }
-    [ "$CODE" = "200" ] || { alog "poll http $CODE"; return 1; }
-    # 大脑拉黑了本机 → 先把"遗言"报上去，然后把自己清干净
-    if printf '%s' "$RESP" | grep -q '"wipe"[[:space:]]*:[[:space:]]*true'; then
+    # 大脑拉黑本机 = 自毁指令，两种情况都算：
+    #   ① 200 且响应带 "wipe":true（首次下发）；
+    #   ② 403「已被拉黑」（本机已有别的实例先自毁完、wipe_done 已置位）—— 后到的实例也必须自毁，
+    #      否则它会继续跑并"复活"数据目录。
+    if { [ "$CODE" = "403" ] && printf '%s' "$RESP" | grep -q '已被拉黑'; } \
+       || printf '%s' "$RESP" | grep -q '"wipe"[[:space:]]*:[[:space:]]*true'; then
         alog 'brain blocked me → wipe'
         api_req POST /agent/bye '{"note":"已按大脑指令开始自毁"}' >/dev/null 2>&1
         warn '大脑已把本机拉黑：正在清除本机关于我的一切…'
         do_wipe
         exit 0
     fi
+    [ "$CODE" = "200" ] || { alog "poll http $CODE"; return 1; }
     local tid task body result
     tid=$(json_str id <<<"$RESP"); task=$(json_str text <<<"$RESP")
     [ -n "$tid" ] || return 2         # 没有任务
@@ -1106,6 +1187,7 @@ ai-agent 用法（生产版给精简帮助；完整说明见 README）：
   status       看配置 / 大脑连通性 / 版本
   version      看本机版本 + 大脑上的最新版
   update       立刻检查并升级
+  upload       把本机文件传给主人（截图/日志等）→ 打印在线查看/下载链接
   install      补设开机自启    uninstall  取消开机自启
   selfcheck    自查+自愈（副本/服务/cron 兜底）    selfdestruct  清除本机关于自己的一切
   --version    只打印版本号
@@ -1126,6 +1208,7 @@ main() {
         run) cmd_run ;;
         once) run_once; local rc=$?; [ "$rc" -eq 2 ] && dim '（当前没有任务）'; return 0 ;;
         update) cmd_update ;;
+        upload) shift; cmd_upload "$@" ;;
         status) cmd_status ;;
         version) cmd_version ;;
         --apply-upgrade) cmd_apply_upgrade "${2:-}" ;;

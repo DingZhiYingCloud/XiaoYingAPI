@@ -104,3 +104,5 @@ tailwindcss.exe
 # Agent 打包口令（tools/pack-agent.sh 本地生成的密钥，绝不入库；
 # 打包产物 tools/dist/ 已由上面的 `dist` 规则覆盖）
 /scripts/agent/tools/pack.key
+# Windows 子 agent 打包口令（win/pack-agent.ps1 生成；产物 win/dist/ 由 `dist` 规则覆盖）
+/scripts/agent/win/pack.key

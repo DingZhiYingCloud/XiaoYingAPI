@@ -78,8 +78,9 @@ ENTRIES = [
          peek='python3 brain files（会显示已配置项）／ cat ~/.ai-brain/brain.conf'),
     dict(root='brain_home', path='brain.db', kind='数据', secret=False,
          when='brain init 建表；之后每次注册/心跳/下发/执行/升级都会写入',
-         what='大脑的**主数据库**（SQLite）。共 7 张表：agents（已接入的服务器）、'
+         what='大脑的**主数据库**（SQLite）。共 8 张表：agents（已接入的服务器）、'
               'enrollments（注册申请）、tasks（下发过的任务与结果）、releases（发布过的升级包）、'
+              'uploads（子 agent 传上来的文件）、'
               'audit（审计流水：谁在何时对谁做了什么）、nonces（防重放的随机数）、meta（管理令牌等）。',
          dele='**不要删**。删了所有服务器要从头注册、任务与审计记录全没。',
          peek='python3 brain status（概况）／ sqlite3 ~/.ai-brain/brain.db ".tables"'),
@@ -131,6 +132,12 @@ ENTRIES = [
               '记录（版本号/sha256/签名/说明）。子 agent 来取的就是这里的文件。',
          dele='可以删旧版本包（只影响"回滚到那个版本"）；删最新的会让子 agent 取不到更新。',
          peek='ls -l ~/.ai-brain/releases/'),
+    dict(root='brain_home', path='uploads/', kind='数据', secret=False,
+         when='子 agent 第一次用 ai-agent upload 传文件时自动创建',
+         what='子 agent 传上来的**文件**（截图 / 日志 / 报告…），按 `<agent_id>/<时间>-<随机码>-<文件名>` 存放。'
+              '在线查看/下载的链接是 `<PUBLIC_URL>/f/<id>`，对应记录在数据库 uploads 表里。',
+         dele='可以删（用 brain uploads --rm <id> / --clean 删更干净，会连库记录一起清）。',
+         peek='python3 brain uploads（列表，带在线链接）／ python3 brain get <id>（取回本机）'),
     dict(root='brain_home', path='prompts/', kind='配置', secret=False,
          when='**你自己建**（可选）。程序不会自动创建',
          what='你的自定义提示词：放同名文件（system.md / actions.md / skills/*.md）'
@@ -253,7 +260,7 @@ def db_summary() -> str:
     except Exception:                                # noqa: BLE001
         return '（读不到）'
     parts = []
-    for t in ('agents', 'enrollments', 'tasks', 'releases', 'audit', 'nonces'):
+    for t in ('agents', 'enrollments', 'tasks', 'releases', 'uploads', 'audit', 'nonces'):
         try:
             row = q(f'SELECT COUNT(*) AS n FROM {t}', one=True)
             parts.append(f'{t}={row["n"] if row else 0}')

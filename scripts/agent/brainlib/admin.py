@@ -105,16 +105,17 @@ def cmd_status(conf) -> int:
     if not ov['agents']:
         ui.dim('（还没有子 agent 接入）')
         return 0
-    ui.say(f'{"AGENT":<20}{"状态":<8}{"负载":<18}{"磁盘":<32}{"版本":<10}')
+    ui.say(f'{"AGENT":<20}{"系统":<9}{"状态":<8}{"负载":<16}{"磁盘":<26}{"版本":<10}')
     for a in ov['agents']:
+        oslabel = 'Windows' if (a.get('os') == 'win') else 'Linux'
         if a.get('blocked'):
             st, color = ('已自毁' if a.get('wipe_done') else '已拉黑'), ui.C_R
         else:
             st = '在线' if a['online'] else '离线'
             color = ui.C_G if a['online'] else ui.C_R
-        load = str(a['load1'] or '-')[:16]
-        disk = str(a['disk'] or '-')[:30]
-        ui.say(f'{a["agent_id"]:<20}{color}{st}{ui.C_0}      {load:<18}{disk:<32}'
+        load = str(a['load1'] or '-')[:14]
+        disk = str(a['disk'] or '-')[:24]
+        ui.say(f'{a["agent_id"]:<20}{oslabel:<9}{color}{st}{ui.C_0}      {load:<16}{disk:<26}'
                f'{a["version"] or ""}')
     return 0
 
@@ -146,28 +147,36 @@ def cmd_decide(conf, enroll_id: str, allow: bool) -> int:
 
 # ==================== 发布升级包 ====================
 def cmd_release(conf, args) -> int:
-    """brain release <文件> --version 1.1.0 [--notes "说明"]"""
+    """brain release <文件> --version 1.1.0 [--notes "说明"] [--os linux|win]"""
     if not args:
-        ui.err('用法：brain release <文件> --version 1.1.0 [--notes "说明"]')
+        ui.err('用法：brain release <文件> --version 1.1.0 [--notes "说明"] [--os linux|win]')
         return 1
     src = Path(args[0])
     ver = notes = ''
+    osname = 'linux'
     for i, a in enumerate(args):
         if a == '--version' and i + 1 < len(args):
             ver = args[i + 1]
         elif a == '--notes' and i + 1 < len(args):
             notes = args[i + 1]
+        elif a == '--os' and i + 1 < len(args):
+            osname = args[i + 1].strip().lower()
+    if osname not in ('linux', 'win'):
+        ui.err('--os 只能是 linux 或 win')
+        return 1
     if not src.exists():
         ui.err('文件不存在：', src)
         return 1
-    # 护栏：别把「开发版」（明文）发出去 —— 那会让所有子 agent 从加密变明文
+    # 护栏：别把「开发版」（明文）发出去 —— 那会让所有子 agent 从加密变明文。
+    # 两个平台的明文开发版都含 SYS_TASK 的赋值（Linux `SYS_TASK='…'`、Windows `$SYS_TASK = @'…`）；
+    # 加密生产版正文是 base64 密文（base64 不含下划线）且 loader 里没有这个标识 → 不会误伤。
     try:
         head = src.read_text(encoding='utf-8', errors='replace')[:200000]
     except OSError:
         head = ''
-    if "SYS_TASK='" in head and '--force' not in args:
+    if re.search(r'\$?SYS_TASK\s*=', head) and '--force' not in args:
         ui.err('这个文件看起来是【开发版（明文）】：直接发布会让全网子 agent 变成明文。')
-        ui.dim('  先打包成生产版：bash tools/pack-agent.sh <文件> --online --brain https://…')
+        ui.dim('  先打包成生产版：Linux 用 bash tools/pack-agent.sh …；Windows 用 win/pack-agent.ps1 …')
         ui.dim('  确实要发明文，就在命令后面加 --force。')
         return 1
     if not re.match(r'^[\w.\-]{1,32}$', ver or ''):
@@ -178,7 +187,7 @@ def cmd_release(conf, args) -> int:
         ui.err('还没生成签名密钥，请先执行：brain init')
         return 1
     C.PKG_DIR.mkdir(parents=True, exist_ok=True)
-    dst = C.PKG_DIR / f'ai-agent-{ver}'
+    dst = C.PKG_DIR / f'ai-agent-{osname}-{ver}'
     try:
         shutil.copyfile(src, dst)
         digest = secure.sha256_file(dst)
@@ -187,15 +196,15 @@ def cmd_release(conf, args) -> int:
         ui.err(f'✗ 发布失败：{type(e).__name__}: {e}')
         ui.dim('  常见原因：文件读不了/写不进去，或 openssl 不可用（签名需要它）。')
         return 1
-    x('INSERT INTO releases(version,filename,sha256,sig,notes,created_at) VALUES(?,?,?,?,?,?)'
-      ' ON CONFLICT(version) DO UPDATE SET filename=excluded.filename, sha256=excluded.sha256,'
+    x('INSERT INTO releases(os,version,filename,sha256,sig,notes,created_at) VALUES(?,?,?,?,?,?,?)'
+      ' ON CONFLICT(os,version) DO UPDATE SET filename=excluded.filename, sha256=excluded.sha256,'
       ' sig=excluded.sig, notes=excluded.notes, created_at=excluded.created_at',
-      (ver, dst.name, digest, sig_b64, notes, now()))
-    audit('brain', 'release', '', f'{ver} {digest[:12]}')
-    ui.good(f'已发布子 agent 版本 {ver}')
+      (osname, ver, dst.name, digest, sig_b64, notes, now()))
+    audit('brain', 'release', '', f'{osname} {ver} {digest[:12]}')
+    ui.good(f'已发布子 agent 版本 {ver}（{osname}）')
     ui.say(f'  sha256 : {digest}')
     ui.say(f'  包路径 : {dst}')
-    ui.dim('子 agent 最多 10 分钟内自动升级；也可在任意一台执行 ai-agent update 立刻升。')
+    ui.dim('子 agent 最多 10 分钟内自动升级；也可在任意一台执行对应命令立刻升。')
     return 0
 
 
@@ -633,70 +642,179 @@ def cmd_files(conf) -> int:
 
 
 # ==================== 版本 ====================
-def shipped_agent_version() -> str:
-    """程序目录里 ai-agent 脚本自带的版本号（读它文件里的 VERSION='x.y.z'）。"""
-    f = C.script_dir() / 'ai-agent'
+def shipped_agent_version(osname='linux') -> str:
+    """程序目录里子 agent 自带版本号：Linux 读 ai-agent（VERSION='x'），
+    Windows 读 win/ai-agent.ps1（$VERSION = 'x'）。"""
+    if osname == 'win':
+        f = C.script_dir() / 'win' / 'ai-agent.ps1'
+        pat = r"\$VERSION\s*=\s*'([^']+)'"
+    else:
+        f = C.script_dir() / 'ai-agent'
+        pat = r"^VERSION='([^']+)'"
     try:
-        m = re.search(r"^VERSION='([^']+)'",
-                      f.read_text(encoding='utf-8', errors='replace'), re.M)
+        m = re.search(pat, f.read_text(encoding='utf-8', errors='replace'), re.M)
         return m.group(1) if m else '未知'
     except OSError:
         return '未知'
 
 
-def latest_release():
-    """大脑上已发布的最新子 agent 版本（没发布过就返回 None）。"""
+def latest_release(osname='linux'):
+    """某个系统上已发布的最新子 agent 版本（没发布过就返回 None）。"""
     if not C.DBPATH.exists():
         return None
     try:
-        return q('SELECT version, notes, created_at FROM releases '
-                 'ORDER BY created_at DESC LIMIT 1', one=True)
+        return q('SELECT version, notes, created_at FROM releases WHERE os=? '
+                 'ORDER BY created_at DESC LIMIT 1', (osname,), one=True)
     except Exception:                                # noqa: BLE001
         return None
+
+
+def _rel_txt(rel) -> str:
+    if not rel:
+        return '（还没发布过）'
+    t = time.strftime('%Y-%m-%d %H:%M', time.localtime(rel['created_at'] or 0))
+    note = f'：{rel["notes"]}' if rel['notes'] else ''
+    return f'{rel["version"]}（{t} 发布{note}）'
 
 
 def _agent_rows():
     if not C.DBPATH.exists():
         return []
     try:
-        return q('SELECT agent_id, version, last_seen FROM agents ORDER BY agent_id')
+        return q('SELECT agent_id, version, os, last_seen FROM agents ORDER BY agent_id')
     except Exception:                                # noqa: BLE001
         return []
 
 
 def cmd_version(conf) -> int:
-    """看版本：大脑自己 / 程序自带的子 agent / 大脑上发布的最新版 / 每台服务器的实际版本。"""
+    """看版本：大脑自己 / 自带子 agent（Linux/Win）/ 各系统已发布最新版 / 每台实际版本。"""
     W = 24
     ui.say(f'{ui.C_B}{ui.pad("大脑当前版本", W)}{ui.C_0}: {VERSION}')
-    ui.say(f'{ui.pad("程序里自带的 ai-agent", W)}: {shipped_agent_version()}'
-           f'{ui.C_DIM}（程序目录里那个 ai-agent 文件自带的版本）{ui.C_0}')
-    rel = latest_release()
-    if rel:
-        t = time.strftime('%Y-%m-%d %H:%M', time.localtime(rel['created_at'] or 0))
-        note = f'：{rel["notes"]}' if rel['notes'] else ''
-        ui.say(f'{ui.C_B}{ui.pad("大脑上已发布的最新版", W)}{ui.C_0}: {rel["version"]}'
-               f'{ui.C_DIM}（{t} 发布{note}）{ui.C_0}')
-    else:
-        ui.warn(f'{ui.pad("大脑上已发布的最新版", W)}: （还没发布过）')
-        ui.dim('  发布方法：brain release <ai-agent文件> --version 1.1.3 --notes "说明"')
+    ui.say(f'{ui.pad("程序自带的 ai-agent", W)}: '
+           f'Linux {shipped_agent_version("linux")} ｜ Windows {shipped_agent_version("win")}')
+    rel_l = latest_release('linux')
+    rel_w = latest_release('win')
+    ui.say(f'{ui.C_B}{ui.pad("已发布的最新版", W)}{ui.C_0}:')
+    ui.say(f'    Linux   : {_rel_txt(rel_l)}')
+    ui.say(f'    Windows : {_rel_txt(rel_w)}')
 
     rows = _agent_rows()
     ui.say()
     if not rows:
         ui.dim(f'{ui.pad("各服务器", W)}: （还没有子 agent 接入）')
         return 0
-    latest = rel['version'] if rel else None
-    ui.say(f'{"服务器":<18}{"它上报的版本":<18}{"最后心跳":<14}状态')
+    latest = {'linux': (rel_l or {}).get('version'), 'win': (rel_w or {}).get('version')}
+    ui.say(f'{"服务器":<22}{"系统":<9}{"它上报的版本":<15}{"最后心跳":<12}状态')
     for r in rows:
+        osname = (r.get('os') or 'linux')
+        oslabel = 'Windows' if osname == 'win' else 'Linux'
         v = r['version'] or '未上报'
-        if not latest:
-            st = '（还没发布过版本）'
-        elif v == latest:
+        want = latest.get(osname)
+        if not want:
+            st = '（该系统的版本还没发布过）'
+        elif v == want:
             st = f'{ui.C_G}已是最新{ui.C_0}'
         else:
             st = f'{ui.C_Y}与最新发布不一致{ui.C_0}'
         ago = f'{int(now() - r["last_seen"])}s 前' if r['last_seen'] else '从未'
-        ui.say(f'{r["agent_id"]:<18}{v:<18}{ago:<14}{st}')
-    if latest:
-        ui.dim(f'（“不一致”＝它与大脑上最新发布版 {latest} 不同；在那一台执行 ai-agent update 即可升级）')
+        ui.say(f'{r["agent_id"]:<22}{oslabel:<9}{v:<15}{ago:<12}{st}')
+    ui.dim('（“不一致”＝它与该系统最新发布版不同：Linux 那台执行 ai-agent update；'
+           'Windows 那台执行 ai-agent.ps1 update）')
+    return 0
+
+
+# ==================== 上传的文件（查看 / 下载 / 清理） ====================
+def _hsize(n) -> str:
+    """人类可读的大小：1234 → 1.2KB。"""
+    n = float(n or 0)
+    for u in ('B', 'KB', 'MB', 'GB'):
+        if n < 1024 or u == 'GB':
+            return f'{int(n)}{u}' if u == 'B' else f'{n:.1f}{u}'
+        n /= 1024.0
+    return f'{int(n)}B'
+
+
+def _rm_uploads(rows):
+    for r in rows:
+        try:
+            Path(r['path']).unlink()
+        except OSError:
+            pass
+        x('DELETE FROM uploads WHERE id=?', (r['id'],))
+        audit('brain', 'upload-rm', r['agent_id'], f'{r["name"]} ({r["id"][:8]})', r['task_id'] or '')
+
+
+def cmd_uploads(conf, args) -> int:
+    """brain uploads [--rm <id>] [--clean] —— 看子 agent 传上来的文件（在线链接 / 清理）。"""
+    init()
+    if '--clean' in args:
+        rows = q('SELECT * FROM uploads')
+        if not rows:
+            ui.dim('（没有上传的文件）')
+            return 0
+        if not ui.confirm(f'确定删掉全部 {len(rows)} 个上传文件吗？（连磁盘文件一起删，不可恢复）', force=True):
+            ui.dim('已取消。')
+            return 0
+        _rm_uploads(rows)
+        ui.good(f'已删除 {len(rows)} 个上传文件。')
+        return 0
+    if '--rm' in args:
+        i = args.index('--rm')
+        fid = args[i + 1] if i + 1 < len(args) else ''
+        row = q('SELECT * FROM uploads WHERE id=?', (fid,), one=True)
+        if not row:
+            ui.err(f'没有这个文件：{fid}（用 brain uploads 看 ID）')
+            return 1
+        _rm_uploads([row])
+        ui.good(f'已删除：{row["name"]}（{row["id"][:8]}）')
+        return 0
+
+    rows = q('SELECT * FROM uploads ORDER BY created_at DESC LIMIT 500')
+    if not rows:
+        ui.dim('（还没有子 agent 上传过文件）')
+        ui.dim('  子 agent 里执行：ai-agent upload <文件>（Windows：ai-agent.ps1 upload <文件>）')
+        return 0
+    base = C.public_base(conf)
+    ui.say(f'{ui.C_B}{ui.pad("上传的文件", 24)}{ui.C_0}: 共 {len(rows)} 个（链接可在浏览器直接打开）')
+    ui.say(f'{"ID":<10}{"来自":<20}{"文件名":<26}{"大小":>9}  {"时间":<12}链接')
+    for r in rows:
+        link = f'{base}/f/{r["id"]}' if base else '（未配 PUBLIC_URL；先用 brain get 取回）'
+        ui.say(f'{r["id"][:8]:<10}{str(r["agent_id"])[:19]:<20}'
+               f'{str(r["name"] or "")[:25]:<26}{_hsize(r["size"]):>9}  '
+               f'{time.strftime("%m-%d %H:%M", time.localtime(r["created_at"] or 0)):<12}{link}')
+    ui.dim('取回本机：brain get <ID>    删一个：brain uploads --rm <ID>    全清：brain uploads --clean')
+    return 0
+
+
+def cmd_get(conf, args) -> int:
+    """brain get <id> [-o 输出文件] —— 把一个上传的文件取到本机（默认存当前目录）。"""
+    init()
+    if not args:
+        ui.err('用法：brain get <id> [-o 输出文件]')
+        return 1
+    key = args[0]
+    out = ''
+    if '-o' in args:
+        i = args.index('-o')
+        out = args[i + 1] if i + 1 < len(args) else ''
+    row = q('SELECT * FROM uploads WHERE id=?', (key,), one=True)
+    if not row:                                  # 允许只写 ID 的前几位
+        row = q('SELECT * FROM uploads WHERE id LIKE ? ORDER BY created_at DESC LIMIT 1',
+                (key + '%',), one=True)
+    if not row:
+        ui.err(f'没有这个文件：{key}（用 brain uploads 看 ID）')
+        return 1
+    src = Path(row['path'])
+    if not src.is_file():
+        ui.err('磁盘上找不到这个文件（可能已被清理）。')
+        return 1
+    dst = Path(out) if out else (Path.cwd() / row['name'])
+    if dst.is_dir():
+        dst = dst / row['name']
+    try:
+        shutil.copyfile(src, dst)
+    except OSError as e:
+        ui.err(f'保存失败：{e}')
+        return 1
+    ui.good(f'已保存：{dst}（{_hsize(row["size"])}）')
     return 0

@@ -18,6 +18,7 @@ DBPATH = HOME / 'brain.db'
 SIGN_KEY = HOME / 'signing.key'
 SIGN_PUB = HOME / 'signing.pub'
 PKG_DIR = HOME / 'releases'
+UPLOAD_DIR = HOME / 'uploads'                # 子 agent 上传的文件（截图/日志/任意文件）
 LOG_PATH = HOME / 'brain.log'
 PID_FILE = HOME / 'brain.pid'
 PROMPTS_OVERRIDE = HOME / 'prompts'          # 你自己的提示词（优先级高于程序自带）
@@ -46,6 +47,7 @@ DEFAULT_CONF = {
     'AI_API_TIMEOUT': '180',          # 单次模型请求最长秒数
     'POLL_TIMEOUT': '25',             # 子 agent 领任务的长轮询秒数
     'TASK_TIMEOUT': '300',            # 等所有服务器回报的最长秒数
+    'MAX_UPLOAD_MB': '50',            # 子 agent 单个上传文件的大小上限（MB）
     'BRAIN_URLS': '',                 # 下发给子 agent 的“大脑地址清单”
     'PUSH_BASE': 'https://www.xiaoyingapi.com',   # 通知（邮件）走你的「消息推送」服务
     'PUSH_APP_ID': '',                # 推送服务接入项目的 APPID
@@ -59,8 +61,19 @@ DEFAULT_CONF = {
 }
 
 NUMERIC_KEYS = ('BRAIN_PORT', 'RDV_INDEX', 'AI_MAX_STEPS', 'AI_MAX_STEPS_AUTO', 'AI_CMD_TIMEOUT',
-                'AI_API_TIMEOUT', 'POLL_TIMEOUT', 'TASK_TIMEOUT',
+                'AI_API_TIMEOUT', 'POLL_TIMEOUT', 'TASK_TIMEOUT', 'MAX_UPLOAD_MB',
                 'PUSH_MIN_INTERVAL', 'OFFLINE_ALERT_SEC')
+
+
+def max_upload_bytes(conf) -> int:
+    """子 agent 单个上传文件的上限（字节）。配置写坏了就退回默认 50MB。"""
+    try:
+        mb = int(str(conf.get('MAX_UPLOAD_MB') or '').strip())
+    except ValueError:
+        mb = 0
+    if mb <= 0:
+        mb = int(DEFAULT_CONF['MAX_UPLOAD_MB'])
+    return mb * 1024 * 1024
 
 
 def mode(conf) -> str:

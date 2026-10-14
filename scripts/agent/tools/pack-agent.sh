@@ -154,7 +154,13 @@ _gh="${AI_AGENT_HOME:-$HOME/.ai-agent}"; _cf="$_gh/agent.conf"
 _br="${AI_AGENT_BRAIN:-}"
 [ -n "$_br" ] || _br=$([ -f "$_cf" ] && sed -n 's/^[[:space:]]*BRAIN_URL[[:space:]]*=[[:space:]]*//p' "$_cf" | head -1)
 [ -n "$_br" ] || _br='@BRAIN@'
-_sec="${AI_AGENT_PACK_SECRET:-}"
+_sec=""
+_prev=""
+for _a in "$@"; do
+    [ "$_prev" = "--secret" ] && _sec="$_a"
+    _prev="$_a"
+done
+[ -n "$_sec" ] || _sec="${AI_AGENT_PACK_SECRET:-}"
 [ -n "$_sec" ] || _sec=$([ -f "$_cf" ] && sed -n 's/^[[:space:]]*PACK_SECRET[[:space:]]*=[[:space:]]*//p' "$_cf" | head -1)
 if [ -z "$_sec" ] && [ -t 0 ]; then
     printf 'first start: enrollment secret (used to fetch the key): ' >&2

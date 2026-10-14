@@ -13,8 +13,12 @@
     POST /agent/heartbeat       心跳（在线 / 负载 / 磁盘）
     GET  /agent/update          检查有没有新版本（返回已签名包信息）
     GET  /agent/pkg/<ver>       下载升级包
+    POST /agent/upload          上传文件（截图/日志/任意文件；签名 + 大小上限）
     POST /agent/bye             被拉黑的子 agent 回报“我已自毁”
     POST /agent/key             凭注册口令换“生产版解密口令”（文件里不存密钥）
+
+公开只读（给“在线查看/下载”用；ID 不可猜）：
+    GET  /f/<id>                查看/下载某个上传的文件（?dl=1 强制下载）
 
 内部端点（只有本机 CLI 用，需管理令牌）：
     GET  /internal/pending   POST /internal/decide
@@ -27,6 +31,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import mimetypes
 import os
 import re
 import signal
@@ -45,6 +50,61 @@ from .store import audit, init, q, x
 from .util import new_id, now
 
 ONLINE_WINDOW = 180          # 心跳超过这个秒数没来就算“离线”
+
+
+def _os_name(v) -> str:
+    """归一化子 agent 上报的系统名：只认 linux / win（不认的一律当 linux）。"""
+    v = str(v or '').strip().lower()
+    return v if v in ('linux', 'win') else 'linux'
+
+
+# 上传文件：允许“直接内联在浏览器里看”的类型（图片 + 纯文本）。
+# ⚠ 故意**不含** html / svg / js / xml —— 那是脚本，内联会在大脑的域名下执行，
+#    等于给上传方一个"挂马位"；这类一律当附件下载。
+_INLINE_TYPES = {
+    '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif', '.webp': 'image/webp', '.bmp': 'image/bmp',
+    '.txt': 'text/plain; charset=utf-8', '.log': 'text/plain; charset=utf-8',
+    '.md': 'text/plain; charset=utf-8', '.csv': 'text/plain; charset=utf-8',
+    '.tsv': 'text/plain; charset=utf-8', '.json': 'text/plain; charset=utf-8',
+    '.ini': 'text/plain; charset=utf-8', '.conf': 'text/plain; charset=utf-8',
+    '.yaml': 'text/plain; charset=utf-8', '.yml': 'text/plain; charset=utf-8',
+}
+
+_UNSAFE_NAME = re.compile(r'[^0-9A-Za-z\u4e00-\u9fff._\-]')
+
+
+def _safe_name(s) -> str:
+    """收拾上传的文件名：只留最后一层、去掉路径与奇怪字符、限长（防目录穿越/怪字符）。"""
+    s = os.path.basename(str(s or '').replace('\\', '/')).strip()
+    s = _UNSAFE_NAME.sub('_', s).lstrip('.')
+    return s[:80]
+
+
+def _hsize(n) -> str:
+    """人类可读的大小：1234 → 1.2KB。"""
+    n = float(n or 0)
+    for u in ('B', 'KB', 'MB', 'GB'):
+        if n < 1024 or u == 'GB':
+            return f'{int(n)}{u}' if u == 'B' else f'{n:.1f}{u}'
+        n /= 1024.0
+    return f'{int(n)}B'
+
+
+def _with_uploads(conf, task_id, result: str) -> str:
+    """任务结束时，把它上传过的文件（链接）附在结论后面 —— 主人一眼就能点开看。"""
+    try:
+        ups = q('SELECT id,name,size FROM uploads WHERE task_id=? ORDER BY created_at', (task_id,))
+    except Exception:                                # noqa: BLE001
+        return result
+    if not ups:
+        return result
+    base = C.public_base(conf)
+    lines = ['', '', '【本任务上传的文件】']
+    for u in ups:
+        lines.append(f'- {u["name"]}（{_hsize(u["size"])}）→ {base}/f/{u["id"]}' if base
+                     else f'- {u["name"]}（{_hsize(u["size"])}）')
+    return result.rstrip() + '\n' + '\n'.join(lines)
 
 
 _KEY_HITS = {}          # ip -> (次数, 窗口起点)：给 /agent/key 做暴力猜口令限速
@@ -132,6 +192,9 @@ class Handler(BaseHTTPRequestHandler):
             seed = self.conf.get('RDV_SEED') or ''
             return self._send({'ok': True, 'version': VERSION, 'time': now(),
                                'id': rendezvous.brain_id(seed) if seed else ''})
+        m = re.match(r'^/f/([0-9a-fA-F]{8,64})$', path)
+        if m:
+            return self._file_view(m.group(1))          # 公开只读：上传的文件（ID 不可猜）
         if path == '/agent/install':
             return self._agent_install()
         if path == '/agent/pubkey':
@@ -161,6 +224,7 @@ class Handler(BaseHTTPRequestHandler):
             '/agent/heartbeat': self._agent_heartbeat,
             '/agent/bye': self._agent_bye,
             '/agent/notice': self._agent_notice,
+            '/agent/upload': self._agent_upload,
             '/agent/key': self._agent_key,
             '/internal/decide': self._internal_decide,
             '/internal/dispatch': self._internal_dispatch,
@@ -187,10 +251,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._send({'error': '该机器已被拉黑，不能再注册'}, 403)
         enroll_id = new_id(12)
         challenge = new_id(24)
-        x('INSERT INTO enrollments(id,agent_id,fingerprint,host,challenge,status,created_at)'
-          ' VALUES(?,?,?,?,?,?,?)',
+        x('INSERT INTO enrollments(id,agent_id,fingerprint,host,os,challenge,status,created_at)'
+          ' VALUES(?,?,?,?,?,?,?,?)',
           (enroll_id, agent_id, str(d.get('fingerprint') or '')[:200],
-           str(d.get('host') or '')[:200], challenge, 'pending', now()))
+           str(d.get('host') or '')[:200], _os_name(d.get('os')), challenge, 'pending', now()))
         audit('agent', 'enroll-begin', agent_id, '发起注册')
         return self._send({'status': 'pending', 'enroll_id': enroll_id,
                            'challenge': challenge})
@@ -279,8 +343,11 @@ class Handler(BaseHTTPRequestHandler):
         if not t:
             return self._send({'error': '任务不存在或不属于该 agent'}, 404)
         finished = now() if state in ('done', 'failed') else None
+        result = str(d.get('result') or '')
+        if state in ('done', 'failed'):
+            result = _with_uploads(self.conf, task_id, result)   # 附上本任务上传的文件链接
         x('UPDATE tasks SET state=?, result=?, log=?, finished_at=? WHERE id=?',
-          (state, str(d.get('result') or '')[:20000], str(d.get('log') or '')[:20000],
+          (state, result[:20000], str(d.get('log') or '')[:20000],
            finished, task_id))
         if state in ('done', 'failed'):
             audit('agent', f'task-{state}', row['agent_id'], f'任务 {task_id}', task_id)
@@ -301,11 +368,12 @@ class Handler(BaseHTTPRequestHandler):
         if blocked_row(row['agent_id']):
             return self._send({'error': '已被拉黑'}, 403)
         d = secure.parse_body(body) or {}
-        x('UPDATE agents SET last_seen=?, version=?, load1=?, disk=?, mem=?, extra=? '
-          'WHERE agent_id=?',
+        osv = _os_name(d.get('os')) if str(d.get('os') or '').strip() else ''
+        x("UPDATE agents SET last_seen=?, version=?, load1=?, disk=?, mem=?, extra=?,"
+          " os=COALESCE(NULLIF(?,''), os) WHERE agent_id=?",
           (now(), str(d.get('version') or '')[:32], str(d.get('load') or '')[:64],
            str(d.get('disk') or '')[:128], str(d.get('mem') or '')[:128],
-           json.dumps(d.get('extra') or {}, ensure_ascii=False)[:1000], row['agent_id']))
+           json.dumps(d.get('extra') or {}, ensure_ascii=False)[:1000], osv, row['agent_id']))
         resp = {'ok': True, 'server_time': now(),
                 'brain_urls': self.conf['BRAIN_URLS']}
         resp.update(rendezvous.payload(self.conf))          # 每次心跳同步会合信息（种子可轮换）
@@ -393,6 +461,82 @@ class Handler(BaseHTTPRequestHandler):
             C.log_line(f'notice notify error: {traceback.format_exc()}')
         return self._send({'ok': True})
 
+    # ---------- 子 agent：上传文件 ----------
+    def _agent_upload(self):
+        """子 agent 上传文件（截图 / 日志 / 任意文件）。
+
+        文件名与任务号放在 **query** 里 —— 它们会进 `handler.path`，被签名覆盖；
+        请求体就是**文件原始字节**（它的 sha256 也在签名里）。有大小上限。
+        """
+        body = self._read()
+        row, e = secure.verify_agent(self, body)
+        if e:
+            return self._send({'error': e}, 401)
+        if blocked_row(row['agent_id']):
+            return self._send({'error': '已被拉黑'}, 403)
+        qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        name = _safe_name((qs.get('name') or [''])[0])
+        task_id = str((qs.get('task') or [''])[0])[:64]
+        if not name:
+            return self._send({'error': '缺少 name 参数（文件名）'}, 400)
+        if not body:
+            return self._send({'error': '空文件'}, 400)
+        limit = C.max_upload_bytes(self.conf)
+        if len(body) > limit:
+            return self._send({'error': f'文件太大：{_hsize(len(body))}，上限 {limit // (1024 * 1024)}MB'}, 413)
+        aid = row['agent_id']
+        fid = new_id(32)                                  # 128 位随机，公开链接靠它不可猜
+        try:
+            d = C.UPLOAD_DIR / aid
+            d.mkdir(parents=True, exist_ok=True)
+            p = d / f'{time.strftime("%Y%m%d-%H%M%S")}-{fid[:8]}-{name}'
+            p.write_bytes(body)
+        except OSError as exc:
+            C.log_line(f'upload save error: {exc!r}')
+            return self._send({'error': '大脑写入文件失败'}, 500)
+        digest = hashlib.sha256(body).hexdigest()
+        x('INSERT INTO uploads(id,agent_id,task_id,name,size,sha256,path,created_at)'
+          ' VALUES(?,?,?,?,?,?,?,?)',
+          (fid, aid, task_id, name, len(body), digest, str(p), now()))
+        audit('agent', 'upload', aid, f'{name}（{_hsize(len(body))}）', task_id)
+        base = C.public_base(self.conf)
+        return self._send({'ok': True, 'id': fid, 'name': name, 'size': len(body),
+                           'sha256': digest, 'url': f'{base}/f/{fid}' if base else ''})
+
+    def _file_view(self, fid):
+        """公开只读：在线查看 / 下载一个上传的文件（`?dl=1` 强制下载）。
+
+        安全：只按 **ID 查库**拿路径（不拼用户输入），并校验路径确实在 uploads 目录内；
+        能内联的只有图片和纯文本，其它（html/svg/js/压缩包/可执行…）一律当附件下载。
+        """
+        row = q('SELECT * FROM uploads WHERE id=?', (fid,), one=True)
+        if not row:
+            return self._send({'error': '文件不存在或已被删除'}, 404)
+        try:
+            p = Path(row['path']).resolve()
+            p.relative_to(C.UPLOAD_DIR.resolve())         # 防目录穿越（万一路径被改过）
+        except (ValueError, OSError):
+            return self._send({'error': '文件不存在或已被删除'}, 404)
+        if not p.is_file():
+            return self._send({'error': '文件不存在或已被删除'}, 404)
+        force_dl = bool((urllib.parse.parse_qs(
+            urllib.parse.urlparse(self.path).query).get('dl') or [''])[0])
+        ctype = _INLINE_TYPES.get(p.suffix.lower())
+        if ctype and not force_dl:
+            disp = 'inline'
+        else:
+            ctype, disp = 'application/octet-stream', 'attachment'
+        data = p.read_bytes()
+        self.send_response(200)
+        self.send_header('Content-Type', ctype)
+        self.send_header('Content-Length', str(len(data)))
+        self.send_header('Content-Disposition',
+                         f"{disp}; filename*=UTF-8''{urllib.parse.quote(row['name'])}")
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('X-Robots-Tag', 'noindex, nofollow')
+        self.end_headers()
+        self.wfile.write(data)
+
     # ---------- 子 agent：升级 ----------
     def _agent_install(self):
         """公开分发子 agent 客户端，供“一行命令”安装下载。
@@ -402,19 +546,32 @@ class Handler(BaseHTTPRequestHandler):
         的 ai-agent，但**该文件若是明文（含 SYS_TASK）就拒绝分发** —— 否则等于把源码和
         提示词公开到网上，违背"隐藏自身"。
         """
-        rel = q('SELECT * FROM releases ORDER BY created_at DESC LIMIT 1', one=True)
+        qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        osname = _os_name((qs.get('os') or [''])[0])
+        rel = q('SELECT * FROM releases WHERE os=? ORDER BY created_at DESC LIMIT 1',
+                (osname,), one=True)
         if rel:
             pkg = C.PKG_DIR / rel['filename']
             if pkg.exists():
-                return self._send_bytes(pkg.read_bytes(), 'text/plain; charset=utf-8')
+                data = pkg.read_bytes()
+                # 兜底：万一"发布"那一步被 --force 放过了明文，公开端点也绝不外发。
+                if b'SYS_TASK' in data:
+                    return self._send({'error': '拒绝分发：最新发布包是【明文开发版】（会泄露源码/提示词）。'
+                                                '请重新发布加密生产版。'}, 403)
+                return self._send_bytes(data, 'text/plain; charset=utf-8')
         path = Path(__file__).resolve().parent.parent / 'ai-agent'
+        if osname == 'win':
+            # Windows：只允许分发上面那条"已发布的最新生产版（密文）"。
+            # 程序目录里的 win/ai-agent.ps1 是**明文开发版**，绝不能公开分发（会泄露全部逻辑与提示词）。
+            return self._send({'error': '还没有可分发的 Windows 生产版：请先 tools/pack-agent.ps1 打包，'
+                                        '再 brain release <打包产物> --os win --version <x> --notes "…"'}, 404)
         if not path.exists():
             return self._send({'error': '还没有可分发的子 agent：请先 brain release 一版生产版'}, 404)
         try:
             text = path.read_text(encoding='utf-8', errors='replace')
         except OSError:
             return self._send({'error': '读取 ai-agent 失败'}, 500)
-        if "SYS_TASK='" in text:
+        if re.search(r'\$?SYS_TASK\s*=', text):
             return self._send({'error': '拒绝分发：程序目录里的 ai-agent 是【明文开发版】。'
                                         '请用 tools/pack-agent.sh 打包后 brain release 一版生产版'}, 403)
         return self._send_bytes(path.read_bytes(), 'text/plain; charset=utf-8')
@@ -432,15 +589,18 @@ class Handler(BaseHTTPRequestHandler):
         if blocked_row(row['agent_id']):
             return self._send({'error': '已被拉黑'}, 403)
         cur = (self.headers.get('X-Agent-Version') or '').strip()
-        rel = q('SELECT * FROM releases ORDER BY created_at DESC LIMIT 1', one=True)
+        osname = _os_name(row.get('os'))
+        rel = q('SELECT * FROM releases WHERE os=? ORDER BY created_at DESC LIMIT 1',
+                (osname,), one=True)
         if not rel:
             return self._send({'version': None})
         if cur == rel['version']:
             return self._send({'version': rel['version'], 'up_to_date': True})
+        # linux 老 agent 不认 ?os=，保持老 URL 形式；win 才带上 os
+        url = f'/agent/pkg/{rel["version"]}' + ('' if osname == 'linux' else f'?os={osname}')
         return self._send({'version': rel['version'], 'up_to_date': False,
                            'sha256': rel['sha256'], 'sig': rel['sig'],
-                           'url': f'/agent/pkg/{rel["version"]}',
-                           'notes': rel['notes']})
+                           'url': url, 'notes': rel['notes']})
 
     def _agent_pkg(self, version):
         row, e = secure.verify_agent(self, b'')
@@ -448,7 +608,9 @@ class Handler(BaseHTTPRequestHandler):
             return self._send({'error': e}, 401)
         if blocked_row(row['agent_id']):
             return self._send({'error': '已被拉黑'}, 403)
-        rel = q('SELECT * FROM releases WHERE version=?', (version,), one=True)
+        qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        osname = _os_name((qs.get('os') or [''])[0])
+        rel = q('SELECT * FROM releases WHERE version=? AND os=?', (version, osname), one=True)
         if not rel:
             return self._send({'error': '版本不存在'}, 404)
         path = C.PKG_DIR / rel['filename']
@@ -483,10 +645,11 @@ class Handler(BaseHTTPRequestHandler):
             token = new_id(48)
             x("UPDATE enrollments SET status='approved', token=?, decided_at=? WHERE id=?",
               (token, now(), row['id']))
-            x('INSERT INTO agents(agent_id,token,fingerprint,host,version,created_at,last_seen)'
-              ' VALUES(?,?,?,?,?,?,?) ON CONFLICT(agent_id) DO UPDATE SET token=excluded.token,'
-              ' fingerprint=excluded.fingerprint, host=excluded.host',
-              (row['agent_id'], token, row['fingerprint'], row['host'], '', now(), 0))
+            x('INSERT INTO agents(agent_id,token,fingerprint,host,os,version,created_at,last_seen)'
+              ' VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(agent_id) DO UPDATE SET token=excluded.token,'
+              ' fingerprint=excluded.fingerprint, host=excluded.host, os=excluded.os',
+              (row['agent_id'], token, row['fingerprint'], row['host'],
+               row.get('os') or 'linux', '', now(), 0))
             audit('brain', 'enroll-approved', row['agent_id'], '人工批准')
             return {'status': 'approved', 'agent_id': row['agent_id']}
         return self._internal(go)
@@ -581,6 +744,7 @@ class Handler(BaseHTTPRequestHandler):
             b = blocked_row(r['agent_id'])
             out.append({
                 'agent_id': r['agent_id'], 'host': r['host'], 'version': r['version'],
+                'os': (r.get('os') or 'linux'),
                 'online': bool(r['last_seen'] and now() - r['last_seen'] < ONLINE_WINDOW),
                 'last_seen_ago': int(now() - r['last_seen']) if r['last_seen'] else None,
                 'load1': r['load1'], 'disk': r['disk'], 'mem': r['mem'],
