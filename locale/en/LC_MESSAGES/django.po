@@ -5477,6 +5477,15 @@ msgstr "This program is provided solely for security research, principle analysi
 msgid "源码可下载"
 msgstr "Source Available"
 
+msgid "目录"
+msgstr "Contents"
+
+msgid "搜索标题"
+msgstr "Search titles"
+
+msgid "没有匹配的标题"
+msgstr "No matching titles"
+
 msgid "计算程序 - 小影API"
 msgstr "Programs - XiaoYingAPI"
 

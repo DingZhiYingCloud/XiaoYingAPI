@@ -1,0 +1,13 @@
+{# 说明文档目录节点（递归渲染 markdown toc 的 nodes）；由 detail.html 传入 nodes #}
+{# 每个节点：id（正文标题锚点）、name（标题文本）、children（下级标题） #}
+{# 不用 daisyUI 的 .menu：它给嵌套列表写了 white-space:nowrap，长标题会被截断/横向溢出； #}
+{# 这里改为普通块级链接，长标题自动换行、完整可见（悬停另有 title 提示）。 #}
+{% for node in nodes %}
+<li>
+  <a href="#{{ node.id }}" data-toc-link="{{ node.id }}" title="{{ node.name }}"
+     class="block break-words rounded-box px-2 py-1 leading-snug hover:bg-base-200">{{ node.name }}</a>
+  {% if node.children %}
+  <ul class="ml-2">{% include 'programs/_toc.html' with nodes=node.children %}</ul>
+  {% endif %}
+</li>
+{% endfor %}

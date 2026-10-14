@@ -36,13 +36,15 @@ def index(request):
 
 
 def detail(request, rel):
-    """/programs/<rel>/ 详情页：说明文档正文 + 可下载文件清单"""
+    """/programs/<rel>/ 详情页：说明文档正文（含左侧目录）+ 可下载文件清单"""
     program = programs.get_program(rel.strip('/'))
     if program is None:
         return render(request, '404.html', status=404)
+    readme_html, readme_toc = programs.read_readme(program.directory)
     return render(request, 'programs/detail.html', {
         'program': program,
-        'readme_html': programs.read_readme(program.directory),
+        'readme_html': readme_html,
+        'readme_toc': readme_toc,
         'path_parts': program.rel.split('/'),
     })
 

@@ -73,10 +73,35 @@
     {% endif %}
   </div>
 
-  {# ===== 说明文档 ===== #}
+  {# ===== 说明文档（左：标题目录，右：正文；目录按 README 标题生成，点击跳转） ===== #}
   {% if readme_html %}
-  <div class="mt-8 rounded-box border border-base-300 bg-base-100 p-6 sm:p-8">
-    {% include 'common_html/_markdown.html' with content=readme_html %}
+  <div class="mt-8 flex flex-col gap-6 lg:flex-row">
+
+    {% if readme_toc %}
+    <aside class="w-full shrink-0 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:w-64 lg:overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+           aria-label="{% trans '目录' %}" data-cp-toc>
+      <nav class="rounded-box border border-base-300 bg-base-100 p-3">
+        <p class="mb-2 flex items-center gap-2 text-sm font-bold">
+          <i data-lucide="list-tree" class="h-4 w-4 opacity-60" aria-hidden="true"></i>
+          {% trans "目录" %}
+        </p>
+        <label class="input input-bordered input-sm mb-2 flex w-full items-center gap-2">
+          <i data-lucide="search" class="h-4 w-4 shrink-0 opacity-50" aria-hidden="true"></i>
+          <input data-toc-search type="text" name="toc_search" class="grow text-sm" autocomplete="off"
+                 placeholder="{% trans '搜索标题' %}" />
+        </label>
+        <ul class="w-full text-sm" data-cp-toc-list>
+          {% include 'programs/_toc.html' with nodes=readme_toc %}
+        </ul>
+        <p data-toc-empty class="hidden px-2 py-2 text-xs text-base-content/70">{% trans "没有匹配的标题" %}</p>
+      </nav>
+    </aside>
+    {% endif %}
+
+    <div class="min-w-0 flex-1 rounded-box border border-base-300 bg-base-100 p-6 sm:p-8">
+      {% include 'common_html/_markdown.html' with content=readme_html %}
+    </div>
+
   </div>
   {% endif %}
 
@@ -205,6 +230,92 @@
           showText(gettext('加载失败，请稍后重试'), 'text-sm text-warning');
         });
     });
+  });
+})();
+
+/* 说明文档目录：标题搜索过滤 + 点标题平滑滚动（补偿固定页头高度）+ 滚动高亮当前标题。
+   正文标题的 id 由服务端 markdown toc 扩展生成，目录链接与之同名，故无需再算锚点。 */
+(function () {
+  var toc = document.querySelector('[data-cp-toc]');
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll('a[data-toc-link]'));
+  if (!links.length) return;
+
+  var OFFSET = 88;   // 固定页头高度 + 余量，避免标题被页头挡住
+  var headings = [];
+  var active = null;
+
+  function setActive(link) {
+    if (link === active) return;
+    if (active) active.classList.remove('bg-base-200', 'text-primary', 'font-semibold');
+    active = link;
+    if (active) active.classList.add('bg-base-200', 'text-primary', 'font-semibold');
+  }
+
+  links.forEach(function (link) {
+    var id = link.getAttribute('data-toc-link');
+    var heading = document.getElementById(id);
+    headings.push(heading);
+    link.addEventListener('click', function (event) {
+      if (!heading) return;
+      event.preventDefault();
+      window.scrollTo({
+        top: heading.getBoundingClientRect().top + window.pageYOffset - OFFSET,
+        behavior: 'smooth',
+      });
+      if (history.replaceState) history.replaceState(null, '', '#' + id);
+      setActive(link);
+    });
+  });
+
+  // 滚动高亮：取「滚动位置之上」的最后一个标题（用 rAF 节流，避免滚动时反复重排）
+  var ticking = false;
+  function sync() {
+    ticking = false;
+    var pos = window.pageYOffset + OFFSET + 1;
+    var current = -1;
+    for (var i = 0; i < headings.length; i++) {
+      if (headings[i] && headings[i].getBoundingClientRect().top + window.pageYOffset <= pos) current = i;
+    }
+    if (current >= 0) setActive(links[current]);
+  }
+  window.addEventListener('scroll', function () {
+    if (ticking) return;
+    ticking = true;
+    window.requestAnimationFrame(sync);
+  }, { passive: true });
+  sync();
+
+  /* 标题搜索：按关键词过滤目录项。命中的节点保留，并保留其祖先层级；
+     未命中的节点连同其子树一起隐藏；一个都没命中时显示空态提示。 */
+  var searchBox = toc.querySelector('[data-toc-search]');
+  var list = toc.querySelector('[data-cp-toc-list]');
+  var emptyBox = toc.querySelector('[data-toc-empty]');
+  if (!searchBox || !list) return;
+  var items = Array.prototype.slice.call(list.querySelectorAll('li'));
+
+  function applyFilter() {
+    var q = (searchBox.value || '').trim().toLowerCase();
+    var shown = 0;
+    links.forEach(function (link) {
+      var hit = !q || (link.textContent || '').toLowerCase().indexOf(q) >= 0;
+      link.setAttribute('data-toc-hit', hit ? '1' : '0');
+      if (hit) shown += 1;
+    });
+    for (var i = items.length - 1; i >= 0; i--) {
+      // querySelector 命中「自身或后代」里的匹配链接：父节点因此不会因自身不匹配被误隐藏
+      var keep = items[i].querySelector('[data-toc-link][data-toc-hit="1"]');
+      items[i].classList.toggle('hidden', !keep);
+    }
+    if (emptyBox) emptyBox.classList.toggle('hidden', shown > 0);
+  }
+
+  searchBox.addEventListener('input', applyFilter);
+  searchBox.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && searchBox.value) {
+      searchBox.value = '';
+      applyFilter();
+    }
   });
 })();
 </script>

@@ -81,21 +81,33 @@ def _natural_key(text: str):
     return [int(part) if part.isdigit() else part.lower() for part in re.split(r'(\d+)', text)]
 
 
-def _render_markdown(text: str) -> str:
-    return markdown.markdown(text, extensions=_MD_EXTENSIONS, extension_configs=_MD_EXTENSION_CONFIGS)
+def _render_document(text: str) -> tuple:
+    """渲染 Markdown，返回 (正文 HTML, 标题目录树)。
+
+    用 Markdown 实例而非 markdown.markdown() 调用，是为了同时取到 toc 扩展生成的
+    目录结构（标题层级 / 锚点 id / 标题文本），供详情页左侧目录使用；
+    正文 HTML 里的标题已带同名 id，故目录链接可直接锚点跳转。
+    """
+    md = markdown.Markdown(extensions=_MD_EXTENSIONS, extension_configs=_MD_EXTENSION_CONFIGS)
+    return md.convert(text), md.toc_tokens
 
 
-def _read_doc_html(path: Path) -> str:
-    """读取说明文档并渲染成 HTML；读不出来时退化为一段提示，不让整页 500。
+def _read_doc(path: Path) -> tuple:
+    """读取说明文档并渲染，返回 (HTML, 目录树)；读不出来时退化为一段提示，不让整页 500。
 
     说明文档由人工维护，Windows 记事本「另存为」默认就是 ANSI/GBK，此时
     read_text 会抛 UnicodeDecodeError；文件正被占用/删除时抛 OSError。
-    两种情况都只影响这一段说明，页面其余内容照常展示。
+    两种情况都只影响这一段说明，页面其余内容照常展示（目录为空即不展示）。
     """
     try:
-        return _render_markdown(path.read_text(encoding='utf-8'))
+        return _render_document(path.read_text(encoding='utf-8'))
     except (UnicodeDecodeError, OSError):
-        return f'<p class="text-warning">{_("该说明文档读取失败，请确认文件编码为 UTF-8。")}</p>'
+        return f'<p class="text-warning">{_("该说明文档读取失败，请确认文件编码为 UTF-8。")}</p>', []
+
+
+def _read_doc_html(path: Path) -> str:
+    """只取说明文档的 HTML（分类说明 / 模块总述等不需要目录的场景）"""
+    return _read_doc(path)[0]
 
 
 def _find_readme(directory: Path) -> Path | None:
@@ -184,10 +196,12 @@ def get_program(rel: str) -> Program | None:
     return None
 
 
-def read_readme(directory: Path) -> str:
-    """读取并渲染某程序目录的 README.md（缺失时返回空串）"""
+def read_readme(directory: Path) -> tuple:
+    """读取并渲染某程序目录的 README.md，返回 (HTML, 目录树)；缺失时返回 ('', [])"""
     readme = _find_readme(directory)
-    return _read_doc_html(readme) if readme else ''
+    if not readme:
+        return '', []
+    return _read_doc(readme)
 
 
 def module_intro() -> str:
