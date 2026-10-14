@@ -14,7 +14,7 @@ from .schema import ChannelSpec, EndpointSpec, ParamSpec, ResponseFieldSpec, Ser
 # 出流画质档位直接取后端白名单，避免「文档里能选、接口却报参数非法」——
 # 真实可选值只有一个来源（API/apis/dramas/hongguo/utils.py 的 QUALITY_WIDTHS）。
 # 画质下拉选项：值是输出宽度上限（短剧是竖屏，1080 即 1080×1920，也就是日常说的 1080p）
-_QUALITY_EXTRA_LABEL = {1080: '（源站最高，推荐）'}
+_QUALITY_EXTRA_LABEL = {1080: '（最高，推荐）'}
 _QUALITY_OPTIONS = [
     {'value': str(w), 'label': f'{w}p{_QUALITY_EXTRA_LABEL.get(w, "")}'}
     for w in QUALITY_WIDTHS
@@ -258,14 +258,18 @@ SERVICE = ServiceSpec(
                                            desc='必填：集数，从 1 开始。'),
                                  ParamSpec('q', '画质', kind='select', default=str(DEFAULT_QUALITY),
                                            options=_QUALITY_OPTIONS,
-                                           desc='选填：本站直出的画质，取值是输出宽度上限'
-                                                '（短剧是竖屏，1080 即 1080×1920，也就是日常说的 1080p）。'
-                                                '每档产物各存一份；换画质要重新调本接口换地址。'),
+                                           desc='选填：出流画质（= 输出宽度上限；短剧是竖屏，'
+                                                '1080 即 1080×1920，也就是日常说的 1080p）。'
+                                                '**指定了高于源站公开 mp4 的画质（源站仅 360p）时，'
+                                                '改用本站「网页直出」出到该画质**；未指定、或不高于源站'
+                                                '时直接用源站直链（360p）。每档产物各存一份；'
+                                                '换画质要重新调本接口换地址。'),
                              ],
-                             notes=['前 3 集返回源站明文 MP4 直链；第 4 集及以后源站只下发 DRM 加密的'
-                                    ' H.265（浏览器无法解码），改由本站出流。data.source 区分来源'
+                             notes=['源站有公开 mp4 的集默认返回源站明文直链（origin，源站仅 360p）；'
+                                    '调用方指定了更高画质（q 高于源站）或该集源站无公开 mp4 时，'
+                                    '改由本站出流（stream）。data.source 区分来源'
                                     '（取值与「剧集详情」的 episodes[].source 一致）：',
-                                    '· origin —— 源站明文直链（前若干集）；',
+                                    '· origin —— 源站明文直链（源站公开 mp4，仅 360p）；',
                                     '· stream —— 本站直出：data.url 为可直接交给 <video> 播放的地址'
                                     '（明文 H.264、支持 HTTP Range 拖动），画质见 data.quality，'
                                     'data.ready=false 表示该画质首次被点播、服务端正在生成（约数十秒），'

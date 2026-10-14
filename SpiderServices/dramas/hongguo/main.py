@@ -10,7 +10,7 @@
     get_list()       分类列表（分页；一级取全部，二级取该题材）
     get_search()     关键词搜索（站点不支持分页，仅返回单页）
     get_detail()     详情（全量集号 vid_list + 可播集数）
-    get_play()       播放直链（仅前 3 集可播，超过则返回 need_app 占位）
+    get_play()       播放直链（地址实测存在才下发；否则返回 need_app 占位，由服务层回落本站直出）
 
 注意：这里的「可播」只代表**源站 H5 直链**。对外接口在第 4 集及以后还有两条出路
 （已登记外链 / 本站网页直出），由服务层 `API/apis/dramas/hongguo/utils.py` 补齐 ——
@@ -76,6 +76,28 @@ class HongguoDramaSpider:
                 last_err = e
             time.sleep(U.RETRY_DELAY)
         raise RuntimeError(f"请求失败（已重试 {U.MAX_RETRIES} 次）: {url} -> {last_err}")
+
+    def _url_exists(self, url) -> bool:
+        """探测某个公开 mp4 地址是否**真实存在**（用于剔除 JSON-LD 的死链）
+
+        源站只对每部剧前若干集真提供公开 mp4，但播放页 JSON-LD 对第 4 集起也照样塞了
+        contentUrl（指向不存在的文件，404）。故下发的地址必须实测存在：仅 200/206 才算
+        存在；其余（含网络异常）一律按「不存在」处理 —— 宁可让该集回落本站「网页直出」，
+        也不给调用方下发一条播不了的死链。失败重试 2 次以防抖动误判。
+        """
+        if not url:
+            return False
+        for _ in range(2):
+            try:
+                resp = self.session.head(url, timeout=U.REQUEST_TIMEOUT)
+                if resp.status_code in (200, 206):
+                    return True
+                if resp.status_code == 404:
+                    return False
+            except Exception:          # noqa: BLE001 - 网络类异常统一重试
+                pass
+            time.sleep(U.RETRY_DELAY)
+        return False
 
     # ==================== 解析工具 ====================
 
@@ -276,7 +298,8 @@ class HongguoDramaSpider:
         获取剧集详情（全量集号 + 可播集数）。
 
         总集数取自 vid_list 长度；可播集数取页面的 accessible_episode_cnt，
-        缺失时回退 PLAYABLE_LIMIT_FALLBACK（实测该站仅前 3 集可播）。
+        缺失时回退 PLAYABLE_LIMIT_FALLBACK（该值在源站改版后可能偏大 —— 声明的集未必
+        真下发公开 mp4，故 play 会对具体地址再实测一次，不存在就回落本站「网页直出」）。
 
         :param series_id: 剧集 id（详情页链接中的 series_id）
         :return: {series_id, name, cover, intro, tags, episode_cnt, playable_cnt,
@@ -315,9 +338,9 @@ class HongguoDramaSpider:
         """
         获取某集播放直链。
 
-        站点仅前若干集（accessible_episode_cnt，实测为 3）可播，超过则返回 need_app 占位，
-        不抛异常；ep 超出总集数时返回 None。可播结果按媒体类 TTL 缓存，
-        need_app 占位结果不缓存。
+        详情声明的可播范围内（accessible_episode_cnt）再实测地址是否真实存在；不存在或
+        超出范围都返回 need_app 占位（由服务层回落本站「网页直出」），ep 超出总集数时
+        返回 None。可播结果按媒体类 TTL 缓存。
 
         :param series_id: 剧集 id
         :param ep: 集数（从 1 开始）
@@ -338,19 +361,31 @@ class HongguoDramaSpider:
             return {"series_id": series_id, "ep": ep, "playable": False, "reason": "need_app"}
 
         episode_id = detail["episodes"][ep - 1]["episode_id"]
-        # 缓存键带版本号：源站播放页改版后，旧键里缓存的是「url 为空」的坏结果
-        # （媒体缓存 30 分钟），换键即让旧缓存失效、无需手工清缓存目录。
-        key = f"play:v2:{series_id}:{ep}"
+        # 缓存键带版本号：url 口径改为「优先按 vid 直接拼公开 mp4 地址」（见下），
+        # 旧键里可能缓存了播放页 404 / 死链结果，换键即让旧缓存失效。
+        key = f"play:v3:{series_id}:{ep}"
 
         def fetch():
-            html = self._get_html(U.build_player_url(series_id, episode_id))
-            video = U.extract_video_object(html) or {}
+            # 播放页仅作**元数据**补充（时长 / 宽高 / 封面），且尽力而为：实测该页对部分
+            # 集直接 404，但其公开 mp4 却存在，故不能因它失败就判该集不可播。
+            video = {}
+            try:
+                html = self._get_html(U.build_player_url(series_id, episode_id), missing_ok=True)
+                if html:
+                    video = U.extract_video_object(html) or {}
+            except Exception:           # noqa: BLE001 - 页面取不到不影响出地址
+                video = {}
+            url = video.get("contentUrl") or U.build_public_mp4_url(episode_id)
+            # 源站只对部分集真下发公开 mp4（JSON-LD 对第 4 集起也塞地址，是 404 死链），
+            # 故下发的地址必须实测存在；不存在即判为不可播，交给服务层回落本站「网页直出」。
+            if not self._url_exists(url):
+                return {"series_id": series_id, "ep": ep, "playable": False, "reason": "need_app"}
             return {
                 "series_id": series_id,
                 "ep": ep,
                 "episode_id": episode_id,
                 "playable": True,
-                "url": video.get("contentUrl") or "",
+                "url": url,
                 "duration": U.iso_duration_to_ms(video.get("duration")),
                 "width": video.get("width"),
                 "height": video.get("height"),

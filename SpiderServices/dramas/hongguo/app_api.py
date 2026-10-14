@@ -123,23 +123,19 @@ def get_episode_vids(series_id):
 
 def get_video_tracks(vids):
     """
-    批量取视频轨道（含加密直链与 encrypt_info.spade_a / kid）。
+    取视频轨道（含加密直链与 encrypt_info.spade_a / kid），逐 vid 调用。
 
     :param vids: vid 可迭代对象
     :return: {vid(str): [轨道 dict, ...]}；接口未返回的 vid 不在结果里
     """
     out = {}
-    vids = [str(v) for v in vids]
-    batch = max(1, int(U.APP_VID_BATCH))
-    for i in range(0, len(vids), batch):
-        body = {"biz_param": U.APP_MODEL_BIZ_PARAM,
-                "mixed_video_id_map": {"1": vids[i:i + batch]}}
-        data = _post(U.APP_PATH_VIDEO_MODEL, body)
-        for vid, item in data.items():
-            raw = (item or {}).get("video_model")
-            if not raw:
-                continue
-            tracks = (json.loads(raw).get("video_list") or [])
-            if tracks:
-                out[str(vid)] = tracks
+    for vid in (str(v) for v in vids):
+        data = _post(U.APP_PATH_VIDEO_MODEL,
+                     {"video_id": vid, "biz_param": U.APP_MODEL_BIZ_PARAM})
+        raw = (data or {}).get("video_model")
+        if not raw:
+            continue
+        tracks = (json.loads(raw).get("video_list") or [])
+        if tracks:
+            out[vid] = tracks
     return out

@@ -27,8 +27,9 @@
     播放 /player/{sid}/{vid}
         明文 mp4 地址在 JSON-LD 的 VideoObject.contentUrl（形如
         /video/public/{vid}/360p.mp4）；SSR 的 _ROUTER_DATA 只给封面 / 时长元数据
-        （publicVideoSeo，且 protectedPlayback=true）。仅前 3 集可访问
-        （accessible_episode_cnt=3），第 4 集起服务端直接返回 404。
+        （publicVideoSeo，且 protectedPlayback=true）。注意：该 contentUrl 只对
+        **前若干集**真实存在，第 4 集起虽照样塞地址但文件是 404 死链，故须按 vid
+        实测（见 main.py 的 _url_exists / 本模块 build_public_mp4_url）。
 """
 
 import json
@@ -211,6 +212,16 @@ def build_player_url(series_id, vid) -> str:
     return f"{BASE_URL}/player/{series_id}/{vid}"
 
 
+def build_public_mp4_url(vid) -> str:
+    """按 vid 拼出该集的「公开 mp4」地址（与播放页 JSON-LD 的 contentUrl 同一套）
+
+    源站只对每部剧**前若干集**真提供该文件，但 JSON-LD 对第 4 集起也会照塞地址
+    （指向不存在的文件，404 死链），故 get_play 用它拼出地址后再实测存在性
+    （见 main.py 的 _url_exists），不存在就回落本站「网页直出」。
+    """
+    return f"{BASE_URL}/video/public/{vid}/360p.mp4"
+
+
 # ==================== SSR JSON 提取工具 ====================
 
 
@@ -362,8 +373,10 @@ def iso_duration_to_ms(value):
 APP_API_BASE = "https://api5-normal-sinfonlinea.fqnovel.com"
 # 取剧集列表（返回每集 vid）
 APP_PATH_EPISODES = "/novel/player/multi_video_detail/v1/"
-# 取视频轨道（返回加密直链 + encrypt_info.spade_a + kid）
-APP_PATH_VIDEO_MODEL = "/novel/player/multi_video_model/v1/"
+# 取视频轨道（返回加密直链 + encrypt_info.spade_a + kid），参数 video_id、逐 vid 调用。
+# 注：原批量接口 /novel/player/multi_video_model/v1/ 已失效（返回大写信封
+#     {"Code":110001,"Message":"未知异常"}），改用本接口（2026-10-14 实测有效）。
+APP_PATH_VIDEO_MODEL = "/novel/player/video_model/v1/"
 
 # App 版本（与签名服务内置的 aid/版本保持一致，不要随意改）
 APP_VERSION_CODE = "72232"
@@ -418,6 +431,3 @@ APP_MODEL_BIZ_PARAM = {
     "need_mp4_align": False, "use_os_player": False, "use_server_dns": False,
     "video_platform": 1024,
 }
-
-# 单次批量取的 vid 数量（App 真实批量大小；过大易触发风控）
-APP_VID_BATCH = 5

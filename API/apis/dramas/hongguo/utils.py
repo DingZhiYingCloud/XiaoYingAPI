@@ -66,15 +66,15 @@ def is_service_enabled() -> bool:
 
 
 def parse_quality(raw):
-    """校验「网页直出」画质参数（q）
+    """校验画质参数（q）
 
-    空值用默认档；非白名单值一律拒绝 —— 画质会进产物路径，放任任意数值等于让人
-    用不同 q 把我们磁盘刷满。
-    :return: (True, width) 或 (False, 错误提示)
+    空值返回 None（= 调用方**未指定**画质，不做画质判定）；非白名单值一律拒绝 —— 画质会进
+    产物路径，放任任意数值等于让人用不同 q 把我们磁盘刷满。
+    :return: (True, width|None) 或 (False, 错误提示)
     """
     raw = (raw or '').strip()
     if not raw:
-        return True, DEFAULT_QUALITY
+        return True, None
     try:
         width = int(raw)
     except (TypeError, ValueError):
@@ -82,6 +82,18 @@ def parse_quality(raw):
     if width not in QUALITY_WIDTHS:
         return False, f'参数值非法: q 只支持 {" / ".join(str(w) for w in QUALITY_WIDTHS)}'
     return True, width
+
+
+def _origin_quality(data):
+    """源站公开 mp4 的画质（取其**短边**，即文件名里的 «Np»，如 360p.mp4 → 360）
+
+    源站公开 mp4 只有 360p 一档（竖屏 360×640 / 横屏 640×360 的短边都是 360），
+    缺宽高信息时返回 None（此时按「无法判定」处理）。
+    """
+    w, h = data.get('width'), data.get('height')
+    if not w or not h:
+        return None
+    return min(int(w), int(h))
 
 
 def make_stream_token(series_id, ep, width):
@@ -198,11 +210,15 @@ def get_play(series_id, ep, quality=None):
     """
     获取某集播放地址。
 
-    前若干集（H5 可播范围）返回源站明文直链；第 4 集及以后返回本站「网页直出」地址
-    （画质由 quality 指定，见 QUALITY_WIDTHS）。
+    源站有公开 mp4 的集：默认用它（origin）；但**调用方显式要了更高画质**（quality 非空且
+    高于源站公开 mp4 的画质）时改用本站「网页直出」（stream），以便出到更高画质。
+    其余集（源站没公开 mp4）一律走本站直出。
 
     payload 的 ``source`` 标注走的哪条路（取值与 detail 的 episodes[].source 一致）：
     ``origin`` 源站直链 / ``stream`` 本站直出。
+
+    :param quality: 调用方显式指定的出流画质（= 输出宽度上限，见 QUALITY_WIDTHS）；
+                    None = 未指定（不据此判定画质，源站够用就用源站直链）
 
     :return: (status, payload)
         - PLAY_OK           payload 为播放数据 dict
@@ -216,14 +232,22 @@ def get_play(series_id, ep, quality=None):
         return PLAY_ERROR, data
     if data is None:                      # 爬虫对超出总集数的集号返回 None
         return PLAY_OUT_OF_RANGE, None
-    if data.get('playable'):              # 源站下发明文直链（前若干集）
-        # source 与 detail 的 episodes[].source 同一套取值，调用方不必两处各判一套
-        return PLAY_OK, {**data, 'source': 'origin'}
+    if data.get('playable'):              # 源站有公开 mp4
+        # 仅当调用方**显式**要了比源站公开 mp4 更高的画质时，才改用本站直出（能出更高画质）；
+        # 未指定画质、或要的画质不高于源站时，直接用源站直链（省本站带宽）。
+        origin_q = _origin_quality(data)
+        if quality is None or origin_q is None or int(quality) <= origin_q:
+            # source 与 detail 的 episodes[].source 同一套取值，调用方不必两处各判一套
+            return PLAY_OK, {**data, 'source': 'origin'}
+        # 否则落到下面的本站直出
 
-    # 第 4 集及以后：源站只给 DRM 加密的 H.265，走服务端「网页直出」
+    # 第 4 集及以后（或调用方要了更高画质）：源站只给 DRM 加密的 H.265，走服务端「网页直出」
     #（按需解密 + 转 H.264，产物永久复用）
     from SpiderServices.dramas.hongguo import transcode
     if not getattr(settings, 'HONGGUO_STREAM_DIR', '') or not is_service_enabled():
+        # 直出不可用：源站有直链就仍给直链（聊胜于无），否则提示未上架
+        if data.get('playable'):
+            return PLAY_OK, {**data, 'source': 'origin'}
         return PLAY_NOT_LISTED, NOT_LISTED_MSG
     token = make_stream_token(series_id, ep, width)
     return PLAY_OK, {
