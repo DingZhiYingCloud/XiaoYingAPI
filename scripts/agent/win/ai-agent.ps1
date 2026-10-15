@@ -18,7 +18,7 @@
 # 设计约定：任何环节出错只提示、不崩溃；本脚本不含任何注册口令。
 # =============================================================================
 
-$VERSION = '1.2.0'
+$VERSION = '2.0.0'
 
 # 密码/协议栈：必须显式开 TLS1.2/1.3（PS 5.1 默认可能只有 TLS1.0）
 try {
@@ -94,6 +94,7 @@ function Get-CopyRoot {
 # 计划任务名（中性、不显眼）
 $TASK_MAIN = 'WinHealthCheck'
 $TASK_WDOG = 'WinHealthCheck1'
+$TASK_SWAP_LEGACY = 'WinHealthCheck2'   # 【历史遗留】1.2.0~1.3.2 的换词钩子任务；换词功能已删除，仅用于升级后清理
 $COPY_COUNT = 3
 
 function Log ($m) {
@@ -796,12 +797,14 @@ function Get-TaskMain { try { return (Get-ScheduledTask -TaskName $TASK_MAIN -Er
 function Get-TaskWdog { try { return (Get-ScheduledTask -TaskName $TASK_WDOG -ErrorAction Stop) } catch { return $null } }
 function New-Tasks {
     $set = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero)
-    $act = New-ScheduledTaskAction -Execute (Get-PwshExe) -Argument ('-NoProfile -ExecutionPolicy Bypass -File "' + $global:SELF_PATH + '" run')
+    # ⚠ 两个动作都要带 -WindowStyle Hidden：**非管理员**安装时这两个任务跑在登录用户会话里，
+    #   不隐藏的话每次启动（尤其 watchdog 每分钟一次）都会闪一个 PS 控制台窗口。
+    $act = New-ScheduledTaskAction -Execute (Get-PwshExe) -Argument ('-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $global:SELF_PATH + '" run')
     if ($IS_ADMIN) { $trg = New-ScheduledTaskTrigger -AtStartup } else { $trg = New-ScheduledTaskTrigger -AtLogOn }
     Register-ScheduledTask -TaskName $TASK_MAIN -Action $act -Trigger $trg -Principal (New-TaskPrincipal) -Settings $set -Force | Out-Null
 
     $copy1 = (Get-Copies)[0]
-    $act2 = New-ScheduledTaskAction -Execute (Get-PwshExe) -Argument ('-NoProfile -ExecutionPolicy Bypass -File "' + $copy1 + '" watchdog')
+    $act2 = New-ScheduledTaskAction -Execute (Get-PwshExe) -Argument ('-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $copy1 + '" watchdog')
     $trg2 = New-ScheduledTaskTrigger -Once -At ((Get-Date).AddMinutes(1)) -RepetitionInterval (New-TimeSpan -Minutes 1)
     $set2 = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::FromMinutes(5))
     Register-ScheduledTask -TaskName $TASK_WDOG -Action $act2 -Trigger $trg2 -Principal (New-TaskPrincipal) -Settings $set2 -Force | Out-Null
@@ -847,6 +850,32 @@ function Remove-Autostart {
     Remove-Tasks
     Conf-Set 'AUTOSTART' ''
 }
+# ---- 换词功能的"历史遗留"清理（1.2.0~1.3.2 装过换词钩子的机器） ----
+# 换词已在 2.0.0 移除。老版本留下的计划任务 WinHealthCheck2 + swap\hook.ps1 不会自己消失，
+# 留着会继续常驻、而且那个任务**没有隐藏窗口**（在用户会话里每分钟闪一下）。所以升级后做一次幂等清理。
+function Remove-LegacySwapTask {
+    try {
+        if (Get-ScheduledTask -TaskName $TASK_SWAP_LEGACY -ErrorAction SilentlyContinue) {
+            Unregister-ScheduledTask -TaskName $TASK_SWAP_LEGACY -Confirm:$false -ErrorAction SilentlyContinue
+            Log '已清理历史遗留任务（WinHealthCheck2）'
+        }
+    } catch {}
+}
+function Remove-LegacySwap {
+    Remove-LegacySwapTask
+    $dir = Join-Path $AGENT_HOME 'swap'
+    $hook = Join-Path $dir 'hook.ps1'
+    if (-not (Test-Path $dir)) { return }
+    if (Test-Path $hook) {                      # 干掉还在跑的旧钩子进程
+        $needle = ('-File "' + $hook + '"').ToLower()
+        try {
+            Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+                Where-Object { "$($_.CommandLine)".ToLower().Contains($needle) } |
+                ForEach-Object { try { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue } catch {} }
+        } catch {}
+    }
+    try { Remove-Item -Recurse -Force $dir -ErrorAction SilentlyContinue; Log '已清理历史遗留的 swap 目录' } catch {}
+}
 function Cmd-Supervise {
     # 非管理员兜底：常驻“监工”，主进程不在就拉起（= Windows 版 cron 兜底）
     if (-not $global:SELF_PATH) { Err '取不到自身路径，监工无法工作'; return 1 }
@@ -889,6 +918,7 @@ function Install-Service {
 }
 function Uninstall-Service {
     Remove-Autostart
+    Remove-LegacySwapTask
     Good '已取消开机自启（程序文件与数据都保留）'
 }
 $global:SELFHEAL_DONE = $false
@@ -917,7 +947,7 @@ function Do-Wipe {
     $wipeTask = $TASK_MAIN + 'W'
     $lines = @()
     $lines += 'Start-Sleep -Seconds 3'
-    $lines += ('foreach ($t in @(' + "'$TASK_MAIN','$TASK_WDOG','$wipeTask'" + ')) { try { Unregister-ScheduledTask -TaskName $t -Confirm:$false -ErrorAction SilentlyContinue } catch {} }')
+    $lines += ('foreach ($t in @(' + "'$TASK_MAIN','$TASK_WDOG','$TASK_SWAP_LEGACY','$wipeTask'" + ')) { try { Unregister-ScheduledTask -TaskName $t -Confirm:$false -ErrorAction SilentlyContinue } catch {} }')
     $lines += ('try { Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "' + $TASK_MAIN + '" -ErrorAction SilentlyContinue } catch {}')
     $lines += ('Get-CimInstance Win32_Process -Filter "Name=''powershell.exe''" | Where-Object { $_.ProcessId -ne $PID -and ($_.CommandLine -like "*' + $AGENT_HOME + '*" -or $_.CommandLine -like "*' + (Get-CopyRoot) + '*") } | ForEach-Object { try { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue } catch {} }')
     $lines += ('Remove-Item -Recurse -Force "' + $AGENT_HOME + '" -ErrorAction SilentlyContinue')
@@ -953,7 +983,7 @@ function Do-Wipe {
 }
 function Cmd-Selfdestruct {
     Say '即将清除本机关于 ai-agent 的一切：'
-    Say ('  · 删除计划任务（' + $TASK_MAIN + ' / ' + $TASK_WDOG + '）')
+    Say ('  · 删除计划任务（' + $TASK_MAIN + ' / ' + $TASK_WDOG + ' / ' + $TASK_SWAP_LEGACY + '）')
     Say ('  · 删除程序文件：' + $global:SELF_PATH)
     Say ('  · 删除数据目录：' + $AGENT_HOME)
     Say ('  · 删除隐藏副本：' + (Get-CopyRoot))
@@ -1033,6 +1063,7 @@ function Cmd-Run {
     [IO.File]::WriteAllText($PIDFILE, "$PID", (New-Object Text.UTF8Encoding($false)))
     try {
         Selfheal
+        Remove-LegacySwap
         Start-HeartbeatChild
         Say ('ai-agent v' + $VERSION + ' 已启动（agent_id=' + $global:AGENT_ID + '）')
         Dim ('日志：' + $LOGFILE)
@@ -1114,6 +1145,7 @@ function Cmd-Version {
 }
 function Cmd-Selfcheck {
     Selfheal
+    Remove-LegacySwap
     $p = Get-AlivePid
     $mSelf = if (Test-Path $global:SELF_PATH) { '✓' } else { '✗ 缺失' }
     $mConf = if (Test-Path $CONF) { '✓' } else { '✗ 无配置' }

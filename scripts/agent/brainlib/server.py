@@ -186,10 +186,18 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:                            # noqa: BLE001
             pass
 
+    def live_conf(self) -> dict:
+        """现读配置文件（本进程的 conf 是启动时快照）。
+
+        用于"下发给子 agent、改完必须立刻生效"的字段：会合信息（`brain rendezvous rotate
+        / set` 改的就是它）、地址清单、解密口令 —— 这几项都不该逼你重启 `serve`。
+        """
+        return C.load()
+
     def _route_get(self):
         path = self.path.split('?')[0]
         if path == '/health':
-            seed = self.conf.get('RDV_SEED') or ''
+            seed = self.live_conf().get('RDV_SEED') or ''
             return self._send({'ok': True, 'version': VERSION, 'time': now(),
                                'id': rendezvous.brain_id(seed) if seed else ''})
         m = re.match(r'^/f/([0-9a-fA-F]{8,64})$', path)
@@ -291,10 +299,11 @@ class Handler(BaseHTTPRequestHandler):
         if not row:
             return self._send({'error': 'enroll_id 不存在'}, 404)
         if row['status'] == 'approved':
+            live = self.live_conf()
             resp = {'status': 'approved', 'token': row['token'],
                     'brain_version': VERSION,
-                    'brain_urls': self.conf['BRAIN_URLS']}
-            resp.update(rendezvous.payload(self.conf))      # 下发会合信息（种子/模板/期号）
+                    'brain_urls': live['BRAIN_URLS']}
+            resp.update(rendezvous.payload(live))           # 下发会合信息（种子/模板/期号）
             return self._send(resp)
         if row['status'] == 'pending' and now() - row['created_at'] > 900:
             x("UPDATE enrollments SET status='expired' WHERE id=?", (row['id'],))
@@ -374,9 +383,10 @@ class Handler(BaseHTTPRequestHandler):
           (now(), str(d.get('version') or '')[:32], str(d.get('load') or '')[:64],
            str(d.get('disk') or '')[:128], str(d.get('mem') or '')[:128],
            json.dumps(d.get('extra') or {}, ensure_ascii=False)[:1000], osv, row['agent_id']))
+        live = self.live_conf()                             # 现读：改完立刻下发，不用重启 serve
         resp = {'ok': True, 'server_time': now(),
-                'brain_urls': self.conf['BRAIN_URLS']}
-        resp.update(rendezvous.payload(self.conf))          # 每次心跳同步会合信息（种子可轮换）
+                'brain_urls': live['BRAIN_URLS']}
+        resp.update(rendezvous.payload(live))               # 每次心跳同步会合信息（种子可轮换）
         return self._send(resp)
 
     def _agent_bye(self):
@@ -413,7 +423,8 @@ class Handler(BaseHTTPRequestHandler):
         if xff:                             # 反代后 client_address 全是 127.0.0.1，取真实来源
             ip = xff
         secret = str(d.get('secret') or '')
-        expect = self.conf.get('ENROLL_SECRET') or ''
+        live = self.live_conf()             # 现读：brain pack-key rotate 改的就是它，不该逼着重启 serve
+        expect = live.get('ENROLL_SECRET') or ''
         if not expect or not secret or not hmac.compare_digest(secret, expect):
             # ⚠ 只对「猜错口令」限速：口令正确的正常取钥匙**不限速**。
             #   否则子 agent 重启 / 自升级时会连着来取几次，被自己人挡成 429，
@@ -431,12 +442,12 @@ class Handler(BaseHTTPRequestHandler):
             return self._send({'error': '口令不正确'}, 403)
         _key_ok(ip)                         # 口令正确：清掉失败与限速记录（正常重启用）
         _KEY_HITS.pop(ip, None)
-        key = self.conf.get('PACK_KEY') or ''
+        key = live.get('PACK_KEY') or ''
         if not key:
             return self._send({'error': '大脑还没配 PACK_KEY（brain init 会自动生成）'}, 404)
         # 同时下发“轮换过渡期的旧口令”：子 agent 先按新口令校验，不匹配再退到旧口令 ——
         # 这样轮换时，还没升级的老文件仍能启动，不会整片失联。
-        old = self.conf.get('PACK_KEY_OLD') or ''
+        old = live.get('PACK_KEY_OLD') or ''
         audit('agent', 'key-ok', '', f'ip={ip} 已下发解密口令')
         return self._send({'key': key, 'old': old})
 
