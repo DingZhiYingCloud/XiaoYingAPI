@@ -55,3 +55,22 @@ class SignBindingTests(TestCase):
         ok, app = verify_sign(params, 'POST', '/api/a/')
         self.assertTrue(ok)
         self.assertEqual(app.app_id, self.app.app_id)
+
+    def test_legacy_sign_accepted_during_compat(self):
+        """兼容期：旧口径签名（只签参数）仍然放行
+
+        这是为「接入方尚未改造完」保留的过渡行为；等所有接入方迁移完成、兼容分支被删除时，
+        本测试应一并删除或改为断言拒绝。
+        """
+        import hashlib
+        import hmac
+
+        params = {'app_id': self.app.app_id, 'timestamp': str(int(time.time())),
+                  'nonce': secrets.token_hex(8), 'keyword': 'x'}
+        items = sorted((k, str(v)) for k, v in params.items()
+                       if k != 'sign' and v not in (None, ''))
+        raw = '&'.join(f'{k}={v}' for k, v in items)
+        params['sign'] = hmac.new(self.app.app_secret.encode(), raw.encode(),
+                                  hashlib.sha256).hexdigest()
+        ok, _ = verify_sign(params, 'POST', '/api/a/')
+        self.assertTrue(ok, '兼容期内旧口径签名应被接受')

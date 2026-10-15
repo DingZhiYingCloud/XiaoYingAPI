@@ -49,6 +49,25 @@ def build_sign(params: dict, app_secret: str, method: str, path: str) -> str:
     ).hexdigest()
 
 
+def _legacy_sign(params: dict, app_secret: str) -> str:
+    """旧口径签名（只签参数、**不含**请求方法与路径）
+
+    **仅为兼容期保留**：线上已切到绑定「方法+路径」的新口径，但接入方尚未同步改造，
+    强制切换会让它们全部 401。兼容期内旧签名同样放行，并在日志里留痕，便于统计还有哪些
+    接入项目没迁移；所有接入方迁移完成后，删除本函数与 verify_sign 里的兼容分支。
+    """
+    items = sorted(
+        (k, str(v)) for k, v in params.items()
+        if k != 'sign' and v not in (None, '')
+    )
+    raw = '&'.join(f'{k}={v}' for k, v in items)
+    return hmac.new(
+        app_secret.encode('utf-8'),
+        raw.encode('utf-8'),
+        hashlib.sha256,
+    ).hexdigest()
+
+
 def verify_sign(params: dict, method: str, path: str):
     """校验请求签名
 
@@ -87,9 +106,15 @@ def verify_sign(params: dict, method: str, path: str):
     if not app.status:
         return False, '接入项目已被停用'
 
+    sign_lower = sign.lower()
     expect = build_sign(params, app.app_secret, method, path)
-    if not hmac.compare_digest(expect, sign.lower()):
-        return False, '签名校验失败: sign 不匹配'
+    if not hmac.compare_digest(expect, sign_lower):
+        # 兼容期：旧口径（不含方法与路径）同样放行，并留日志便于统计未迁移的接入方。
+        # 全部迁移完成后删除本分支与 _legacy_sign()。
+        if not hmac.compare_digest(_legacy_sign(params, app.app_secret), sign_lower):
+            return False, '签名校验失败: sign 不匹配'
+        logger.warning('接入方仍在使用旧口径签名（未含方法与路径），待迁移: app_id=%s %s %s',
+                       app.app_id, method, path)
 
     # S-05: nonce 服务端去重（仅对签名合法的请求登记；窗口内重复即视为重放）
     if nonce_replayed(app.app_id, nonce):
