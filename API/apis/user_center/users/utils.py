@@ -47,6 +47,17 @@ from API.models import (AuthMethod, EmailTemplate, User, UserApp, UserLoginLog,
 
 logger = logging.getLogger(__name__)
 
+
+def _err(action: str, exc: Exception) -> str:
+    """把预期外的内部异常收敛成「给人话」的对外提示
+
+    对 C 端只回一句可读的话（不再把 SQL / 表名 / 类名这类内部细节回显给用户），
+    原始异常（含堆栈）只进 logs/error.log，排查时靠 request_id 关联。
+    """
+    logger.exception('用户中心 %s', action)
+    return f'{action}，请稍后重试'
+
+
 # 系统分配账号长度范围
 ACCOUNT_MIN_LEN = 6
 ACCOUNT_MAX_LEN = 12
@@ -278,7 +289,7 @@ def _issue_verify_record(user, method, credential, base_url='', scene=SCENE_REGI
                 # token 落库存 SHA-256 哈希（S-06），激活时对链接令牌做同样哈希后查询
             )
         except Exception as e:
-            return False, f'生成验证记录失败: {e}'
+            return False, _err('生成验证记录失败', e)
 
         # 按验证模式决定邮件内容（link/code/both）；登录验证码邮件不发链接
         mode = settings.EMAIL_VERIFY_MODE
@@ -309,7 +320,7 @@ def _issue_verify_record(user, method, credential, base_url='', scene=SCENE_REGI
                 code=code, token=None, expire_time=expire_time, is_used=False,
             )
         except Exception as e:
-            return False, f'生成验证记录失败: {e}'
+            return False, _err('生成验证记录失败', e)
 
         ok, data = aliyun_send_verify_code(
             credential,
@@ -480,7 +491,7 @@ def login_user(app, account, email, phone, password, code='', ip='', user_agent=
         except User.DoesNotExist:
             return False, f'该{METHOD_NAMES[method]}未注册，请先注册'
         except Exception as e:
-            return False, f'登录失败: {e}'
+            return False, _err('登录失败', e)
 
         if not user.status:
             return False, '账号已被封禁'
@@ -514,7 +525,7 @@ def login_user(app, account, email, phone, password, code='', ip='', user_agent=
             elif method == METHOD_PHONE and not user.phone_verified:
                 User.objects.filter(pk=user.pk).update(phone_verified=True)
         except Exception as e:
-            return False, f'登录失败: {e}'
+            return False, _err('登录失败', e)
 
         return _issue_login_token(app, user, UserLoginLog.METHOD_CODE, ip, user_agent)
 
@@ -524,7 +535,7 @@ def login_user(app, account, email, phone, password, code='', ip='', user_agent=
     try:
         user = _find_user_by_identifier(account, email, phone)
     except Exception as e:
-        return False, f'登录失败: {e}'
+        return False, _err('登录失败', e)
 
     if user is None:
         # 不暴露凭证是否存在，统一提示
@@ -552,7 +563,7 @@ def _issue_login_token(app, user, method, ip='', user_agent=''):
             expire_time=expire_time,
         )
     except Exception as e:
-        return False, f'登录失败: {e}'
+        return False, _err('登录失败', e)
 
     # 登录日志：只增不删的「登录事实」（退出登录 / 重置密码不会清除它）。
     # 属辅助审计数据，写入失败不影响本次登录成功。
@@ -699,7 +710,7 @@ def _complete_register(verify):
     except IntegrityError:
         return False, '注册失败: 凭证唯一冲突，请重试'
     except Exception as e:
-        return False, f'注册失败: {e}'
+        return False, _err('注册失败', e)
 
     data = {
         'user_id': str(user.id),
@@ -782,7 +793,7 @@ def verify_by_code(app, method, credential, code):
                 return False, payload
             return True, payload
     except Exception as e:
-        return False, f'验证失败: {e}'
+        return False, _err('验证失败', e)
 
 
 def verify_by_token(token):
@@ -804,7 +815,7 @@ def verify_by_token(token):
     except UserVerifyRecord.DoesNotExist:
         return False, '激活链接无效'
     except Exception as e:
-        return False, f'查询失败: {e}'
+        return False, _err('查询失败', e)
 
     if verify.type != METHOD_EMAIL:
         return False, '激活链接无效'
@@ -833,7 +844,7 @@ def verify_by_token(token):
             User.objects.filter(pk=verify.user_id).update(email_verified=True)
             return True, {'user_id': str(verify.user_id), 'email': verify.credential}
     except Exception as e:
-        return False, f'验证失败: {e}'
+        return False, _err('验证失败', e)
 
 
 def send_login_code(app, method, credential):
@@ -872,7 +883,7 @@ def send_login_code(app, method, credential):
     except User.DoesNotExist:
         return False, f'该{METHOD_NAMES[method]}未注册，请先注册'
     except Exception as e:
-        return False, f'查询失败: {e}'
+        return False, _err('查询失败', e)
 
     if not user.status:
         return False, '账号已被封禁'
@@ -925,7 +936,7 @@ def send_reset_code(app, method, credential, base_url=''):
     except User.DoesNotExist:
         return False, f'该{METHOD_NAMES[method]}未注册，请先注册'
     except Exception as e:
-        return False, f'查询失败: {e}'
+        return False, _err('查询失败', e)
 
     if not user.status:
         return False, '账号已被封禁'
@@ -1009,7 +1020,7 @@ def reset_password(app, method, credential, code, new_password):
             # 作废该用户全部 Token（跨项目），迫使其所有已登录设备重新登录
             UserToken.objects.filter(user=user).delete()
     except Exception as e:
-        return False, f'重置失败: {e}'
+        return False, _err('重置失败', e)
 
     data = {
         'user_id': str(user.id),
@@ -1041,7 +1052,7 @@ def logout_user(app, token):
             return False, 'Token 不存在或不属于当前项目'
         return True, None
     except Exception as e:
-        return False, f'退出失败: {e}'
+        return False, _err('退出失败', e)
 
 
 def _get_token_record(app, token):
@@ -1057,7 +1068,7 @@ def _get_token_record(app, token):
     except UserToken.DoesNotExist:
         return False, 'Token 无效: 不存在或不属于当前项目'
     except Exception as e:
-        return False, f'查询失败: {e}'
+        return False, _err('查询失败', e)
 
     if not record.is_valid:
         return False, 'Token 已失效: 已过期 / 用户封禁 / 项目停用'
@@ -1213,7 +1224,7 @@ def admin_reset_password(user, new_password):
             user.save(update_fields=['password', 'updated_time'])
             UserToken.objects.filter(user=user).delete()
     except Exception as e:
-        return False, f'重置失败: {e}'
+        return False, _err('重置失败', e)
     return True, None
 
 

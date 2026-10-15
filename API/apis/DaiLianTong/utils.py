@@ -200,8 +200,9 @@ def _invoke(method_name, kwargs):
     spider = DaiLianTongService()
     try:
         return True, getattr(spider, method_name)(**kwargs)
-    except Exception as e:
-        return False, f'{method_name} 调用异常: {e}'
+    except Exception:
+        logger.exception('代练通爬虫调用异常: %s', method_name)
+        return False, f'{method_name} 调用异常，请稍后重试'
 
 
 def _is_signature_error(data) -> bool:

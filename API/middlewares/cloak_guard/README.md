@@ -68,7 +68,9 @@ CLOAK_GUARD_ACTIONS = {
 }
 
 # IP 白名单（支持单个 IP 和 CIDR），命中直接放行（方便自己调试查看真实页面）
-CLOAK_GUARD_WHITELIST = ['127.0.0.1', '192.168.1.0/24']
+# 客户端 IP 口径与全站一致：取 X-Forwarded-For 末段（线上 Nginx + uwsgi，REMOTE_ADDR 恒为反代地址）
+# 注意：不要把反代自身地址（如 127.0.0.1）写进白名单，否则等于对所有请求全放行、斗篷规则整体失效
+CLOAK_GUARD_WHITELIST = ['203.0.113.10', '192.168.1.0/24']
 
 # 路径前缀排除：这些路径不参与判定，直接放行（后台/静态/接口）
 CLOAK_GUARD_EXEMPT_PATHS = ['/admin', '/static', '/api', '/media']
@@ -94,7 +96,7 @@ MIDDLEWARE = [
 |---|---|---|
 | `CLOAK_GUARD_ENABLED` | `False` | 是否启用中间件 |
 | `CLOAK_GUARD_ACTIONS` | 见默认动作表 | 各类型动作配置 |
-| `CLOAK_GUARD_WHITELIST` | `[]` | IP 白名单（支持单个 IP 与 CIDR 网段） |
+| `CLOAK_GUARD_WHITELIST` | `[]` | IP 白名单（支持单个 IP 与 CIDR 网段）；IP 取 `X-Forwarded-For` 末段（与全站口径一致），**勿把反代自身地址写入**，否则等于全放行 |
 | `CLOAK_GUARD_EXEMPT_PATHS` | `[]` | 路径前缀排除列表 |
 
 `CLOAK_GUARD_ACTIONS` 每项格式：
@@ -170,6 +172,6 @@ UA 特征库位于 `classifier.py` 顶部三个常量，可自行增删：
 2. `direct` 默认 404 会**误伤直接输网址的真人**（分享链接/书签访问），如需放行改配 `pass`
 3. **斗篷有被搜索引擎判站的风险**（cloaking 是违反谷歌站长规范的行为），请评估后果后使用
 4. `render` 的 `url` 来源需要客户端安装 `pip install requests`；拉取超时 5 秒，失败自动回退放行
-5. **`url` 拉取是服务端发起的网络请求**，请只配置可信来源的链接（避免 SSRF 风险）
+5. **`url` 拉取是服务端发起的网络请求**，已内置 SSRF 校验（仅允许公网 http/https，拒绝内网/回环/保留地址段），仍建议只配置可信来源的链接
 6. `domain` iframe 方式受目标站 `X-Frame-Options`/CSP 限制，部分网站（如百度）可能拒绝被嵌入，属正常现象
 7. 日志 logger 名：`cloak_guard`，便于统一采集

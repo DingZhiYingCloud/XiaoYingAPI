@@ -201,6 +201,14 @@ def cmd_release(conf, args) -> int:
       ' sig=excluded.sig, notes=excluded.notes, created_at=excluded.created_at',
       (osname, ver, dst.name, digest, sig_b64, notes, now()))
     audit('brain', 'release', '', f'{osname} {ver} {digest[:12]}')
+    # 防呆：新发的包若与上一版**字节完全相同**，几乎一定是"忘了重新打包"（release 只是登记你给的文件，
+    # 不会替你打包）。发出去后机器会反复"升级"、版本号却永远不动 —— 这个坑真踩过一次。
+    prev = q('SELECT version, sha256 FROM releases WHERE os=? AND version<>?'
+             ' ORDER BY created_at DESC LIMIT 1', (osname, ver), one=True)
+    if prev and prev['sha256'] == digest:
+        ui.warn(f'⚠ 注意：这个包与已发布的 {osname} {prev["version"]} **字节完全相同**（sha256 一样）。')
+        ui.dim('   多半是忘了重新打包：先改源码里的 VERSION，再打包（Windows：win/pack-agent.ps1 -Online …），')
+        ui.dim('   然后拿**新产物**来 release。否则机器下载到的正文里版本号不变，会一直"升不上去"。')
     ui.good(f'已发布子 agent 版本 {ver}（{osname}）')
     ui.say(f'  sha256 : {digest}')
     ui.say(f'  包路径 : {dst}')

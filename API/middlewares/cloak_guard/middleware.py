@@ -8,7 +8,8 @@
         'direct':  {'action': 'not_found'},         #   direct  → 404
         'unknown': {'action': 'render', 'html': '<h1>403</h1>'},           # unknown → 自定义内容
     }
-    CLOAK_GUARD_WHITELIST     = ['127.0.0.1', '192.168.1.0/24']  # IP 白名单（支持 CIDR），命中直接放行
+    CLOAK_GUARD_WHITELIST     = ['203.0.113.10', '192.168.1.0/24']  # IP 白名单（支持 CIDR），命中直接放行
+                                                                     # 客户端 IP 取 XFF 末段；勿写反代自身地址，否则等于全放行
     CLOAK_GUARD_EXEMPT_PATHS  = ['/admin', '/static', '/api']    # 路径前缀白名单，命中直接放行
 
 标记注入（放行时视图也可用）:
@@ -19,6 +20,8 @@ import ipaddress
 import logging
 
 from django.conf import settings
+
+from API.common.ip_guard import client_ip
 
 from .actions import build_response, resolve_action
 from .classifier import classify
@@ -42,7 +45,8 @@ class CloakGuardMiddleware:
             return self.get_response(request)
 
         # IP 白名单（支持单个 IP 与 CIDR）→ 放行
-        ip = request.META.get('REMOTE_ADDR', '')
+        # 客户端 IP 取全站统一口径：X-Forwarded-For 末段（线上 Nginx+uwsgi，REMOTE_ADDR 恒为反代地址）
+        ip = client_ip(request)
         if self._is_whitelisted_ip(ip):
             return self.get_response(request)
 

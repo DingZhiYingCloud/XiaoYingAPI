@@ -17,6 +17,7 @@ from django.http import StreamingHttpResponse
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+from API.common.errors import safe_error
 from API.common.responses import json_response as _json_response
 
 from . import utils
@@ -236,7 +237,7 @@ def _stream_response(target, messages):
             yield from utils.stream_chat_completion(target, messages, **_sampling(target))
         except ValueError as e:
             # 流启动阶段出错（Key 无效 / 地址不通 / 上游返回错误）
-            yield f"data: {json.dumps({'code': StatusCode.EXTERNAL_API_FAILED, 'msg': str(e)}, ensure_ascii=False)}\n\n"
+            yield f"data: {json.dumps({'code': StatusCode.EXTERNAL_API_FAILED, 'msg': safe_error('AI 对话', e)}, ensure_ascii=False)}\n\n"
             yield "data: [DONE]\n\n"
 
     response = StreamingHttpResponse(streaming_content=sse_generator(),

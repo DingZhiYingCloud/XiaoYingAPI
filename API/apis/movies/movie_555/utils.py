@@ -5,6 +5,7 @@
 - 统一捕获异常，返回 (是否成功, 数据或错误信息) 二元组
 - 与爬虫对外方法一一对应：categories / filters / home / list / detail / play / search
 """
+from API.common.errors import safe_error
 from SpiderServices.movies.movie_555.main import Movie555Spider
 
 
@@ -20,7 +21,7 @@ def _run(action, fn):
     try:
         return True, fn(spider)
     except Exception as e:
-        return False, f"{action}失败: {e}"
+        return False, safe_error(action, e)
 
 
 def get_categories():

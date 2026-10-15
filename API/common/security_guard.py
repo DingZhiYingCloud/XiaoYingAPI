@@ -1,9 +1,14 @@
 """通用防刷与去重守卫（S-03 登录锁定/验证码失败上限、S-05 nonce 去重）
 
 背景与选型：
-- 该库 django_migrations 记录已应用但迁移文件缺失，无法再用标准迁移演进表结构；
-  本模块因此直接对 SQLite 库操作两张原生表（首次使用自动 CREATE TABLE IF NOT EXISTS，
-  各环境幂等；不写入 django_migrations，不影响既有迁移历史）。
+- 这两张表需要「原子 upsert」语义（nonce 用 INSERT OR IGNORE 判重、登录计数用
+  ON CONFLICT DO UPDATE 原子累加），Django ORM 不便表达（get_or_create 非原子、
+  bulk_create 拿不到「本次是否真的插入」），故直接用底层 SQLite 游标操作原生表；
+  这也省去给 api_nonce 造一个多余的自增主键（它天然以 (app_id, nonce) 为主键）。
+- 表结构的**权威定义**在迁移 API/migrations/0104_security_guard_tables.py：migrate
+  阶段即建好表，新库不必等到第一次请求才建。本模块仍保留 CREATE TABLE / INDEX
+  IF NOT EXISTS 作为「自愈兜底」——两侧语句一致且都幂等，既有库跑新迁移是无副作用的
+  空操作（与 PUBLIC_PATHS 的「代码兜底 + DB 双保险」同一思路）。
 - 时间统一用 Python 生成的定长字符串存 TEXT，保证字典序比较正确。
 
 表结构：
@@ -89,7 +94,11 @@ def _minutes_left(lock_until_str: str) -> int:
 
 
 def _ensure_tables():
-    """首次使用时自举建表（幂等）"""
+    """自愈兜底建表（幂等）
+
+    正式建表在迁移 0104_security_guard_tables（migrate 阶段执行）；这里仅在表**缺失**时
+    补建（如未跑迁移的开发库），语句与迁移一致，不影响已存在的表与数据。
+    """
     global _created
     if _created:
         return

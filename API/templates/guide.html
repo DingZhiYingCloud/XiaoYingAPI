@@ -93,9 +93,10 @@
           <li>{% trans "取" %}<strong>{% trans "除 sign 外" %}</strong>{% trans "的全部参数（含 app_id/timestamp/nonce 与业务参数），过滤空值；" %}</li>
           <li>{% trans "按键名 ASCII 升序排序；" %}</li>
           <li>{% trans "拼接为" %} <code class="font-mono text-xs">key=value&key=value…</code>{% trans "；" %}</li>
-          <li>{% trans "以 APPSECRET 为密钥做" %} <strong>HMAC-SHA256</strong>{% trans "，输出小写 hex 即 sign。" %}</li>
+          <li>{% trans "与「方法(大写) + 换行 + 请求路径 + 换行」拼成待签串（路径含结尾斜杠、不含查询串）；" %}</li>
+          <li>{% trans "以 APPSECRET 为密钥对该整串做" %} <strong>HMAC-SHA256</strong>{% trans "，输出小写 hex 即 sign。" %}</li>
         </ol>
-        <p class="mt-2 text-xs text-base-content/60">{% trans "timestamp 为秒级时间戳，有效窗口 ±5 分钟；nonce 每次请求唯一（服务端去重防重放）。" %}</p>
+        <p class="mt-2 text-xs text-base-content/60">{% trans "timestamp 为秒级时间戳，有效窗口 ±5 分钟；nonce 每次请求唯一（服务端去重防重放）；路径必须与最终 URL 完全一致（含结尾斜杠）。" %}</p>
 
         <div class="mt-3">
           <div class="flex items-center justify-between">
@@ -111,26 +112,27 @@ APP_ID = 'app_yourAppId'
 APP_SECRET = 'sk_yourAppSecret'
 
 
-def build_sign(params: dict, secret: str) -> str:
-    """{% trans "按键名 ASCII 升序拼接 key=value，HMAC-SHA256 输出小写 hex" %}"""
+def build_sign(params: dict, secret: str, method: str, path: str) -> str:
+    """{% trans "方法(大写)+换行+路径+换行 拼接参数，HMAC-SHA256 输出小写 hex" %}"""
     items = sorted(
         (k, str(v)) for k, v in params.items()
         if k != 'sign' and v not in (None, '')
     )
-    raw = '&amp;'.join(f'{k}={v}' for k, v in items)
+    raw = method.upper() + '\n' + path + '\n' + '&amp;'.join(f'{k}={v}' for k, v in items)
     return hmac.new(secret.encode(), raw.encode(), hashlib.sha256).hexdigest()
 
 
-def signed_params(biz: dict):
+def signed_params(biz: dict, method: str, path: str):
     params = dict(biz)
     params.update({
         'app_id': APP_ID,
         'timestamp': str(int(time.time())),
         'nonce': secrets.token_hex(8),
     })
-    params['sign'] = build_sign(params, APP_SECRET)
+    params['sign'] = build_sign(params, APP_SECRET, method, path)
     return params</pre>
         </div>
+        <p class="mt-3 text-xs text-base-content/60">{% trans "用法示例：signed_params({'keyword': '周杰伦'}, 'POST', '/api/music/xiaoying/search/')。" %}</p>
         <p class="mt-3 text-xs text-base-content/60">{% trans "提示：在线调试页会自动用你填写的密钥代签，初学无需手工算签名；上生产前请务必实现与服务端一致的口径。" %}</p>
       </div>
 

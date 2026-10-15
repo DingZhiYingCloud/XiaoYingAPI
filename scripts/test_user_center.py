@@ -79,7 +79,7 @@ def _check(name, cond, extra=''):
         _log(f'  [FAIL] {name} {extra}')
 
 
-def _signed(app, extra=None, timestamp=None):
+def _signed(app, method, path, extra=None, timestamp=None):
     """构造签名参数（可覆盖 timestamp 做时间窗测试；None 值参数自动剔除）"""
     extra = {k: v for k, v in (extra or {}).items() if v is not None}
     params = {
@@ -89,7 +89,7 @@ def _signed(app, extra=None, timestamp=None):
     }
     if extra:
         params.update(extra)
-    params['sign'] = build_sign(params, app[1])
+    params['sign'] = build_sign(params, app[1], method, path)
     return params
 
 
@@ -147,14 +147,14 @@ def _record_code(method, credential, scene=None):
 
 def _register(app, username=None, email=None, phone=None, password=PASS):
     """注册（新规则：只支持邮箱/手机号两步注册第一步；None 值参数自动剔除）"""
-    return _response(Client().post(f'{BASE}/users/register', _signed(app, {
+    return _response(Client().post(f'{BASE}/users/register', _signed(app, 'POST', f'{BASE}/users/register', {
         'username': username, 'email': email, 'phone': phone, 'password': password,
     })))
 
 
 def _verify_email(app, email, code):
     """两步注册第二步：邮箱验证码校验，通过后建号"""
-    return _response(Client().post(f'{BASE}/users/verify/email', _signed(app, {
+    return _response(Client().post(f'{BASE}/users/verify/email', _signed(app, 'POST', f'{BASE}/users/verify/email', {
         'email': email, 'code': code,
     })))
 
@@ -176,21 +176,21 @@ def _email_register(app, username=None, password=PASS):
 
 
 def _login(app, account=None, password=PASS, email=None, phone=None):
-    return _response(Client().post(f'{BASE}/users/login', _signed(app, {
+    return _response(Client().post(f'{BASE}/users/login', _signed(app, 'POST', f'{BASE}/users/login', {
         'account': account, 'email': email, 'phone': phone, 'password': password,
     })))
 
 
 def _verify(app, token):
-    return _response(Client().post(f'{BASE}/users/verify', _signed(app, {'token': token})))
+    return _response(Client().post(f'{BASE}/users/verify', _signed(app, 'POST', f'{BASE}/users/verify', {'token': token})))
 
 
 def _info(app, token):
-    return _response(Client().get(f'{BASE}/users/info', _signed(app, {'token': token})))
+    return _response(Client().get(f'{BASE}/users/info', _signed(app, 'GET', f'{BASE}/users/info', {'token': token})))
 
 
 def _logout(app, token):
-    return _response(Client().post(f'{BASE}/users/logout', _signed(app, {'token': token})))
+    return _response(Client().post(f'{BASE}/users/logout', _signed(app, 'POST', f'{BASE}/users/logout', {'token': token})))
 
 
 def _is_success(resp):
@@ -331,19 +331,19 @@ def round3():
         _check(f'签名-缺 {miss}', r.get('code') == 20011 and '签名参数缺失' in r.get('msg', ''))
 
     # 时间戳非法
-    params = _signed(app, {'username': 'a', 'password': PASS}, timestamp='not-a-number')
+    params = _signed(app, 'POST', f'{BASE}/users/register', {'username': 'a', 'password': PASS}, timestamp='not-a-number')
     r = _response(Client().post(f'{BASE}/users/register', params))
     _check('签名-timestamp 非数字', r.get('code') == 20011 and '格式错误' in r.get('msg', ''))
 
     # 时间戳过期（10 分钟前）
     ts = int(time.time()) - 600
-    params = _signed(app, {'username': 'a', 'password': PASS}, timestamp=ts)
+    params = _signed(app, 'POST', f'{BASE}/users/register', {'username': 'a', 'password': PASS}, timestamp=ts)
     r = _response(Client().post(f'{BASE}/users/register', params))
     _check('签名-timestamp 过期(10分钟前)', r.get('code') == 20011 and '过期' in r.get('msg', ''))
 
     # 时间戳未来（10 分钟后）
     ts = int(time.time()) + 600
-    params = _signed(app, {'username': 'a', 'password': PASS}, timestamp=ts)
+    params = _signed(app, 'POST', f'{BASE}/users/register', {'username': 'a', 'password': PASS}, timestamp=ts)
     r = _response(Client().post(f'{BASE}/users/register', params))
     _check('签名-timestamp 未来(10分钟后)', r.get('code') == 20011 and '过期' in r.get('msg', ''))
 
@@ -352,42 +352,42 @@ def round3():
     ts = int(time.time()) - 280
     sig_email = _random_email('sig')
     _created_credentials.append(('email', sig_email))
-    params = _signed(app, {'username': '边界', 'email': sig_email, 'password': PASS}, timestamp=ts)
+    params = _signed(app, 'POST', f'{BASE}/users/register', {'username': '边界', 'email': sig_email, 'password': PASS}, timestamp=ts)
     r = _response(Client().post(f'{BASE}/users/register', params))
     _check('签名-timestamp 边界(窗口内280秒)', _is_success(r), f'code={r.get("code")}')
 
     # 错误 sign
-    params = _signed(app, {'username': 'a', 'password': PASS})
+    params = _signed(app, 'POST', f'{BASE}/users/register', {'username': 'a', 'password': PASS})
     params['sign'] = '0' * 64
     r = _response(Client().post(f'{BASE}/users/register', params))
     _check('签名-错误 sign', r.get('code') == 20011 and '不匹配' in r.get('msg', ''))
 
     # 篡改业务参数（签名用 a，实际提交 b）
-    params = _signed(app, {'username': 'a', 'password': PASS})
+    params = _signed(app, 'POST', f'{BASE}/users/register', {'username': 'a', 'password': PASS})
     params['username'] = 'b'
     r = _response(Client().post(f'{BASE}/users/register', params))
     _check('签名-篡改业务参数', r.get('code') == 20011 and '不匹配' in r.get('msg', ''))
 
     # 未注册 app_id
-    params = _signed(other_app, {'username': 'a', 'password': PASS})
+    params = _signed(other_app, 'POST', f'{BASE}/users/register', {'username': 'a', 'password': PASS})
     params['app_id'] = 'NONE_APP_999'
     r = _response(Client().post(f'{BASE}/users/register', params))
     _check('签名-未注册 app_id', r.get('code') == 20011 and '未注册' in r.get('msg', ''))
 
     # 停用项目
     disabled = _create_app(status=False)
-    params = _signed(disabled, {'username': 'a', 'password': PASS})
+    params = _signed(disabled, 'POST', f'{BASE}/users/register', {'username': 'a', 'password': PASS})
     r = _response(Client().post(f'{BASE}/users/register', params))
     _check('签名-停用项目', r.get('code') == 20011 and '停用' in r.get('msg', ''))
 
     # 使用其他项目密钥签名的参数，用本项目 app_id 提交 → sign 不匹配
-    params = _signed(other_app, {'username': 'a', 'password': PASS})
+    params = _signed(other_app, 'POST', f'{BASE}/users/register', {'username': 'a', 'password': PASS})
     params['app_id'] = app[0]
     r = _response(Client().post(f'{BASE}/users/register', params))
     _check('签名-跨项目密钥伪造', r.get('code') == 20011 and '不匹配' in r.get('msg', ''))
 
     # 项目信息接口签名
-    r = _response(Client().get(f'{BASE}/projects/info', _signed(app)))
+    r = _response(Client().get(f'{BASE}/projects/info', _signed(app, 'GET', f'{BASE}/projects/info')))
     _check('项目信息-正确签名', _is_success(r))
     r = _response(Client().get(f'{BASE}/projects/info', {'app_id': app[0]}))
     _check('项目信息-缺签名参数', r.get('code') == 20011)
@@ -397,15 +397,15 @@ def round3():
     nonce = 'same-nonce'
     replay_email = _random_email('replay')
     _created_credentials.append(('email', replay_email))
-    params = _signed(app, {'username': '重放', 'email': replay_email, 'password': PASS})
+    params = _signed(app, 'POST', f'{BASE}/users/register', {'username': '重放', 'email': replay_email, 'password': PASS})
     params['nonce'] = nonce
-    params['sign'] = build_sign(params, app[1])  # 覆盖 nonce 后必须重算签名
+    params['sign'] = build_sign(params, app[1], 'POST', f'{BASE}/users/register')  # 覆盖 nonce 后必须重算签名
     r1 = _response(Client().post(f'{BASE}/users/register', params))
     _check('重放-首次使用 nonce 正常通过', _is_success(r1), f'code={r1.get("code")} msg={r1.get("msg")}')
     time.sleep(1)
-    params2 = _signed(app, {'username': '重放', 'email': replay_email, 'password': PASS})
+    params2 = _signed(app, 'POST', f'{BASE}/users/register', {'username': '重放', 'email': replay_email, 'password': PASS})
     params2['nonce'] = nonce
-    params2['sign'] = build_sign(params2, app[1])
+    params2['sign'] = build_sign(params2, app[1], 'POST', f'{BASE}/users/register')
     r2 = _response(Client().post(f'{BASE}/users/register', params2))
     _check('重放-同 nonce 更换时间戳仍被拒', r2.get('code') == 20011 and 'nonce' in r2.get('msg', ''),
            f'code={r2.get("code")} msg={r2.get("msg")}')
@@ -544,11 +544,11 @@ def round5():
 
     # 方法限制：GET 调用 register（POST 接口）→ 认证通过后 Django 返回 405
     # （未带签名的请求会在认证层先被拦截返回 20011，故此处携带有效签名验证方法限制本身）
-    r = Client().get(f'{BASE}/users/register', _signed(app, {'email': _random_email(), 'password': PASS}))
+    r = Client().get(f'{BASE}/users/register', _signed(app, 'GET', f'{BASE}/users/register', {'email': _random_email(), 'password': PASS}))
     _check('方法限制-GET 访问 register 返回405', r.status_code == 405, f'status={r.status_code}')
 
     # POST 调用 info（GET 接口）→ 405
-    r = Client().post(f'{BASE}/users/info', _signed(app, {'token': 'x'}))
+    r = Client().post(f'{BASE}/users/info', _signed(app, 'POST', f'{BASE}/users/info', {'token': 'x'}))
     _check('方法限制-POST 访问 info 返回405', r.status_code == 405, f'status={r.status_code}')
 
     # 账号生成格式抽查：邮箱两步注册 20 个验证分布长度覆盖 6-12

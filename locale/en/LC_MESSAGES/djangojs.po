@@ -113,6 +113,9 @@ msgstr "Loaded, %(n)s quality levels"
 msgid "已复制"
 msgstr "Copied"
 
+msgid "请求失败，请稍后重试"
+msgstr "Request failed, please try again later"
+
 msgid "幻想"
 msgstr "Fantasy"
 

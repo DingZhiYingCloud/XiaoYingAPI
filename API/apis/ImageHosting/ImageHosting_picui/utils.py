@@ -19,6 +19,7 @@ from django.db.models import F, Sum
 from django.utils import timezone
 
 from API.apis.push.email.utils import send_email
+from API.common.errors import safe_error
 from API.models import ImageHostingToken
 
 logger = logging.getLogger(__name__)
@@ -265,7 +266,7 @@ def upload_image(image=None, image_filename=None, upload_token=None,
             album_id=album_id, expired_at=expired_at,
         )
     except Exception as e:
-        return False, f"upload_image 调用异常: {e}"
+        return False, safe_error('上传图片', e)
 
     if result.get("code") == 0:
         used_bytes = (result.get("data") or {}).get("size_bytes") or 0

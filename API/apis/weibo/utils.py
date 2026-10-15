@@ -13,6 +13,7 @@ from django.conf import settings
 from django.core import signing
 
 from API.common import platform_accounts
+from API.common.errors import safe_error
 from SpiderServices.weibo.main import (
     WeiboCredentialExpired,
     WeiboError,
@@ -83,7 +84,7 @@ def get_channels(cookie=''):
     try:
         return True, spider.get_channels()
     except WeiboError as exc:
-        return False, str(exc)
+        return False, safe_error('获取微博频道', exc)
 
 
 def get_feed(channel, containerid, limit, since_id, cookie=''):
@@ -102,9 +103,9 @@ def get_feed(channel, containerid, limit, since_id, cookie=''):
         if account is not None:
             # 只有平台自己的账号才回写「已过期」；调用方自带的凭据与我们无关
             platform_accounts.mark_expired(account, str(exc))
-        return False, str(exc)
+        return False, safe_error('获取微博内容', exc)
     except WeiboError as exc:
-        return False, str(exc)
+        return False, safe_error('获取微博内容', exc)
 
 
 def check_credential(cookie=''):
@@ -154,6 +155,6 @@ def open_video(status_id, range_header='', cookie=''):
         if account is not None:
             # 只有平台自己的账号才回写「已过期」；调用方自带的凭据与我们无关
             platform_accounts.mark_expired(account, str(exc))
-        return False, str(exc)
+        return False, safe_error('打开微博视频', exc)
     except WeiboError as exc:
-        return False, str(exc)
+        return False, safe_error('打开微博视频', exc)

@@ -73,8 +73,17 @@ MIDDLEWARE = [
 # ==================== API 服务策略缓存（认证判定） ====================
 # ApiAuthMiddleware 每个 /api/ 请求都要做一次服务策略前缀匹配，故用进程内 TTL 缓存
 # 避免请求级 DB 查询（默认 60s）。后台保存/删除策略、改动白名单后由 API/apps.py 的信号
-# 立即失效，改动对鉴权即时生效，无需等 TTL。设为 0 可关闭缓存（不推荐，会逐请求查库）。
+# 立即失效，改动对**处理该次保存的那个 worker** 即时生效；多 worker 下其余 worker 最多
+# 滞后 TTL（60s）—— 即「下线接口」在其它 worker 上最迟 60s 后彻底生效（安全敏感操作请知悉）。
+# 设为 0 可关闭缓存（不推荐，会逐请求查库）。
 API_SERVICE_POLICY_CACHE_TTL = 60
+
+
+# ==================== IP 封禁判定缓存 ====================
+# IPBanMiddleware 对每个非后台请求都要查一次 BannedIP（见 API/common/ip_guard.py）。
+# 封禁是低频运维操作，用进程内 TTL 缓存（默认 30s）省掉请求级 DB 查询；后台调入/解封
+# 会立即清掉本进程的对应缓存，改动对其它 worker 最多滞后 TTL 生效。设为 0 关闭缓存。
+IP_BAN_CACHE_TTL = int(os.getenv('IP_BAN_CACHE_TTL', '30'))
 
 
 # ==================== 环境模式与安全 Cookie 配置（单一开关） ====================
@@ -355,6 +364,12 @@ CACHES = {
         'LOCATION': str(XYAPI_CACHE_ROOT / 'haijiao'),
         'TIMEOUT': HAIJIAO_DATA_CACHE_TTL * 60,
     },
+    # 接口限流计数（固定窗口，见 API/common/ratelimit.py）：
+    # 必须跨 worker 共享，故用文件缓存 —— locmem 会让每个 worker 各算一份，限流失效。
+    'ratelimit': {
+        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+        'LOCATION': str(XYAPI_CACHE_ROOT / 'ratelimit'),
+    },
 }
 
 
@@ -410,8 +425,10 @@ PROGRAMS_ROOT = Path(os.getenv('XYAPI_PROGRAMS_ROOT') or BASE_DIR / 'Calculation
 # ==================== 文件上传配置 ====================
 # 单次上传请求体最大大小(110MB，预留10MB余量给表单字段)
 DATA_UPLOAD_MAX_MEMORY_SIZE = 110 * 1024 * 1024  # 115343360 字节
-# 内存中允许的最大文件大小，超过则写入临时文件(110MB)
-FILE_UPLOAD_MAX_MEMORY_SIZE = 110 * 1024 * 1024  # 115343360 字节
+# 内存中允许的最大文件大小：超过即写入临时文件，不再占进程内存。
+# 原与请求体上限同为 110MB，等于单个 100MB 视频会被整个读进内存 —— 多个并发上传
+# 就能把 uwsgi worker 的内存打满。收敛到 5MB：大文件一律走磁盘临时文件，功能不变。
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
 
 
 # ==================== 阿里云 AccessKey 配置 ====================

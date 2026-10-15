@@ -7,6 +7,7 @@
 """
 import requests
 
+from API.common.errors import safe_error
 from SpiderServices.Music_2t58.main import Music2t58Spider
 
 
@@ -25,10 +26,10 @@ def _run(method_name, *args, **kwargs):
         return True, data
     except requests.RequestException as e:
         # 网络层异常(连接超时、DNS失败、HTTP错误等)
-        return False, f'请求音乐网站失败: {e}'
+        return False, safe_error('请求音乐网站', e)
     except Exception as e:
         # 其他未预期异常(解析失败等)
-        return False, f'数据解析失败: {e}'
+        return False, safe_error('解析音乐数据', e)
 
 
 def fetch_home_data():

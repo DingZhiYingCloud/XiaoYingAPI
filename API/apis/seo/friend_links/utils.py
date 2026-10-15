@@ -3,10 +3,15 @@
 所有函数返回 (success, data_or_msg) 二元组，便于视图层统一处理。
 异常已在内部捕获，调用方无需再 try/except。
 """
+import logging
+
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 
+from API.common.errors import safe_error
 from .models import FriendLink
+
+logger = logging.getLogger('api.request')
 
 # 列表接口单次最多返回的条数（防御无界查询；超出时响应里 truncated=true 提示）
 MAX_LIST_COUNT = 500
@@ -60,7 +65,7 @@ def list_friend_links(keyword: str = '',
             'truncated': total > len(items),
         }
     except Exception as e:
-        return False, f'查询友情链接失败: {e}'
+        return False, safe_error('查询友情链接', e)
 
 
 def get_friend_link(link_id: int) -> tuple:
@@ -71,7 +76,7 @@ def get_friend_link(link_id: int) -> tuple:
     except FriendLink.DoesNotExist:
         return False, f'友情链接不存在: id={link_id}'
     except Exception as e:
-        return False, f'查询友情链接失败: {e}'
+        return False, safe_error('查询友情链接', e)
 
 
 def create_friend_link(data: dict) -> tuple:
@@ -103,10 +108,11 @@ def create_friend_link(data: dict) -> tuple:
         return True, _to_dict(link)
     except ValidationError as e:
         return False, f'参数校验失败: {"; ".join(f"{k}: {v[0]}" for k, v in e.message_dict.items())}'
-    except IntegrityError as e:
-        return False, f'数据冲突（url 已存在）: {e}'
+    except IntegrityError:
+        logger.exception('友情链接 创建友情链接')
+        return False, '数据冲突（url 已存在）'
     except Exception as e:
-        return False, f'创建友情链接失败: {e}'
+        return False, safe_error('创建友情链接', e)
 
 
 def update_friend_link(link_id: int, data: dict) -> tuple:
@@ -119,7 +125,7 @@ def update_friend_link(link_id: int, data: dict) -> tuple:
     except FriendLink.DoesNotExist:
         return False, f'友情链接不存在: id={link_id}'
     except Exception as e:
-        return False, f'查询友情链接失败: {e}'
+        return False, safe_error('查询友情链接', e)
 
     # 逐字段更新（仅更新 data 中存在的字段）
     for field in ['name', 'url', 'description', 'logo', 'category', 'contact']:
@@ -139,10 +145,11 @@ def update_friend_link(link_id: int, data: dict) -> tuple:
         return True, _to_dict(link)
     except ValidationError as e:
         return False, f'参数校验失败: {"; ".join(f"{k}: {v[0]}" for k, v in e.message_dict.items())}'
-    except IntegrityError as e:
-        return False, f'数据冲突（url 已存在）: {e}'
+    except IntegrityError:
+        logger.exception('友情链接 更新友情链接')
+        return False, '数据冲突（url 已存在）'
     except Exception as e:
-        return False, f'更新友情链接失败: {e}'
+        return False, safe_error('更新友情链接', e)
 
 
 def delete_friend_link(link_id: int) -> tuple:
@@ -154,7 +161,7 @@ def delete_friend_link(link_id: int) -> tuple:
     except FriendLink.DoesNotExist:
         return False, f'友情链接不存在: id={link_id}'
     except Exception as e:
-        return False, f'删除友情链接失败: {e}'
+        return False, safe_error('删除友情链接', e)
 
 
 def _parse_bool(val, default: bool) -> bool:

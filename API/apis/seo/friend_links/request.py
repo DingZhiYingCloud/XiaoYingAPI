@@ -11,6 +11,7 @@ from django.http import QueryDict
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+from API.common.errors import safe_error
 from API.common.responses import json_response as _json_response
 from . import utils
 
@@ -27,7 +28,7 @@ def _parse_body(request):
         try:
             return QueryDict(request.body.decode('utf-8')).dict(), None
         except Exception as e:
-            return None, f'表单解析失败: {e}'
+            return None, safe_error('表单解析', e)
     return {}, None
 
 

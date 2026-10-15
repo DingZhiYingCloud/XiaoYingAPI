@@ -55,7 +55,7 @@ def request(method, path, params=None, app=None, sign=True):
         }
         if params:
             p.update(params)
-        p['sign'] = build_sign(p, app.app_secret)
+        p['sign'] = build_sign(p, app.app_secret, method, path)
     elif params:
         p = params
     url = BASE + path
@@ -108,13 +108,13 @@ def main():
         # 6. 过期时间戳（10 分钟前）
         old = {'app_id': app.app_id, 'timestamp': str(int(time.time()) - 600),
                'nonce': secrets.token_hex(8)}
-        old['sign'] = build_sign(old, app.app_secret)
+        old['sign'] = build_sign(old, app.app_secret, 'GET', '/api/music/xiaoying/musics')
         st, r = request('GET', '/api/music/xiaoying/musics', params=old, sign=False)
         check('认证分类-过期时间戳被拦截', r.get('code') == 20011 and '过期' in (r.get('msg') or ''), f'msg={r.get("msg")}')
 
         # 7. 未注册 app_id
         ghost = {'app_id': 'app_ghost' * 4, 'timestamp': str(int(time.time())), 'nonce': secrets.token_hex(8)}
-        ghost['sign'] = build_sign(ghost, 'sk_fake')
+        ghost['sign'] = build_sign(ghost, 'sk_fake', 'GET', '/api/music/xiaoying/musics')
         st, r = request('GET', '/api/music/xiaoying/musics', params=ghost, sign=False)
         check('认证分类-未注册app_id被拦截', r.get('code') == 20011 and '未注册' in (r.get('msg') or ''), f'msg={r.get("msg")}')
 

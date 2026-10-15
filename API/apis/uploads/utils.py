@@ -8,10 +8,13 @@
        拒绝 html/htm/svg/xml/js/mht 等可执行/可渲染类型；
     3. 新增文件头(magic bytes)校验，防止"HTML 改名 .jpg"等仅靠扩展名绕过。
 """
+import logging
 import os
 import uuid
 from datetime import datetime
 from django.conf import settings
+
+logger = logging.getLogger('api.uploads')
 
 
 # 文件头(magic bytes)签名表：扩展名 -> 校验片段
@@ -30,6 +33,18 @@ _MAGIC_SIGNATURES = {
     'docx': [(0, b'PK\x03\x04'), (0, b'PK\x05\x06')],
     'xlsx': [(0, b'PK\x03\x04'), (0, b'PK\x05\x06')],
     'pdf': [(0, b'%PDF')],
+    # 视频容器：原先 video 类型不做魔数校验（改名的任意文件都能过），此处补齐。
+    # ISO BMFF 系（mp4 / m4v / 3gp / mov）第 4 字节起是 box 类型，'ftyp' 最常见，
+    # mov 还可能是 moov / mdat / wide / free；AVI 是 RIFF 容器；MKV / WebM 同一签名。
+    'mp4': [(4, b'ftyp')],
+    'm4v': [(4, b'ftyp')],
+    '3gp': [(4, b'ftyp')],
+    'mov': [(4, b'ftyp'), (4, b'moov'), (4, b'mdat'), (4, b'wide'), (4, b'free')],
+    'avi': [(0, b'RIFF')],
+    'flv': [(0, b'FLV\x01')],
+    'mkv': [(0, b'\x1a\x45\xdf\xa3')],
+    'webm': [(0, b'\x1a\x45\xdf\xa3')],
+    'wmv': [(0, b'\x30\x26\xb2\x75\x8e\x66\xcf\x11')],
 }
 
 # 无固定魔数的类型（txt）：仅做内容前缀黑名单，拒绝 HTML/XML/SVG 等可渲染内容
@@ -172,8 +187,9 @@ class FileUploader:
             with open(save_path, 'wb') as f:
                 for chunk in uploaded_file.chunks():
                     f.write(chunk)
-        except Exception as e:
-            return False, f'文件写入失败: {str(e)}'
+        except Exception:
+            logger.exception('文件写入失败: %s', save_path)
+            return False, '文件写入失败，请稍后重试'
 
         relative_path = os.path.join('uploads', config['dir'], filename).replace('\\', '/')
         file_url = f"{settings.MEDIA_URL}{relative_path}"

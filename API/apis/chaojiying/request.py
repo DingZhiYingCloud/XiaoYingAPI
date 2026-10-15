@@ -13,25 +13,14 @@ from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
 from API.common.responses import json_response as _json_response
+from API.common.spider import spider_result
 from API.common.url_safety import check_public_http_url
 from SpiderServices.Chaojiying.utils import CODETYPES, MAX_IMAGE_BYTES
 from . import utils
 
-
-def _spider_result(result):
-    """将服务层的 {code, message, data} 映射为项目统一响应
-
-    失败信息来自超级鹰平台（非本站业务文案），一律按「外部服务调用失败」返回，
-    平台的中文说明原样放进 msg（不走 StatusCode.from_message 的关键词映射，
-    否则「用户不存在」这类平台文案会被误判成 20030 资源不存在）。
-    """
-    if not isinstance(result, dict):
-        return _json_response(StatusCode.UNKNOWN_ERROR, msg=str(result))
-    if result.get("code") == 0:
-        return _json_response(StatusCode.SUCCESS, data=result.get("data"),
-                              msg=result.get("message"))
-    return _json_response(StatusCode.EXTERNAL_API_FAILED,
-                          msg=result.get("message") or "识别失败")
+# 超级鹰的失败信息来自平台（非本站业务文案），一律按「外部服务调用失败」返回，
+# 平台的中文说明原样放进 msg（不走 StatusCode.from_message 的关键词映射，
+# 否则「用户不存在」这类平台文案会被误判成 20030 资源不存在），故显式传兜底文案「识别失败」。
 
 
 def _decode_base64_image(raw):
@@ -108,7 +97,7 @@ def ocr_view(request):
         return error
 
     str_debug = request.POST.get('str_debug', '').strip()
-    return _spider_result(utils.recognize(image_bytes, codetype, str_debug))
+    return spider_result(utils.recognize(image_bytes, codetype, str_debug), '识别失败')
 
 
 @require_http_methods(["POST"])
@@ -124,10 +113,10 @@ def report_error_view(request):
     pic_id = request.POST.get('pic_id', '').strip()
     if not pic_id:
         return _json_response(StatusCode.PARAM_MISSING, msg='参数缺失: pic_id(图片标识号)')
-    return _spider_result(utils.report_error(pic_id))
+    return spider_result(utils.report_error(pic_id), '识别失败')
 
 
 @require_http_methods(["GET"])
 def score_view(request):
     """查询题分余额（无参数）"""
-    return _spider_result(utils.get_score())
+    return spider_result(utils.get_score(), '识别失败')

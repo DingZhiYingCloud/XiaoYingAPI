@@ -383,26 +383,26 @@ finally:
 app = UserApp.objects.create(name=f'{PREFIX}app', token_expire_days=7, status=True)
 
 
-def signed_params(extra=None):
+def signed_params(method, path, extra=None):
     params = {'app_id': app.app_id, 'timestamp': str(int(time.time())),
               'nonce': secrets.token_hex(8)}
     if extra:
         params.update(extra)
-    params['sign'] = build_sign(params, app.app_secret)
+    params['sign'] = build_sign(params, app.app_secret, method, path)
     return params
 
 
 r = body(client.get('/api/zhihu/hot'))
 check('新服务默认需签名：无签名 → 20011', r['code'] == StatusCode.AUTH_FAILED, r)
 
-r = body(client.get('/api/zhihu/hot', signed_params({'limit': '5'})))
+r = body(client.get('/api/zhihu/hot', signed_params('GET', '/api/zhihu/hot', {'limit': '5'})))
 check('带正确签名可进入业务（不再返回 20011）',
       r['code'] != StatusCode.AUTH_FAILED, r)
 check('签名通过后确实到达业务层（成功 / 未配置 / 上游失败 三者之一）',
       r['code'] in (StatusCode.SUCCESS, StatusCode.SERVICE_UNAVAILABLE,
                     StatusCode.EXTERNAL_API_FAILED), r)
 
-r = body(client.post('/api/zhihu/hot', signed_params({'limit': '3'})))
+r = body(client.post('/api/zhihu/hot', signed_params('POST', '/api/zhihu/hot', {'limit': '3'})))
 check('POST 表单体同样走签名认证并到达业务层',
       r['code'] in (StatusCode.SUCCESS, StatusCode.SERVICE_UNAVAILABLE,
                     StatusCode.EXTERNAL_API_FAILED), r)
@@ -412,7 +412,7 @@ r = body(client.get('/api/zhihu/hot', {'limit': '5', 'app_id': app.app_id,
                                        'nonce': secrets.token_hex(8), 'sign': 'deadbeef'}))
 check('签名错误 → 20011', r['code'] == StatusCode.AUTH_FAILED, r)
 
-r = body(client.get('/api/zhihu/hot', signed_params({'limit': 'abc'})))
+r = body(client.get('/api/zhihu/hot', signed_params('GET', '/api/zhihu/hot', {'limit': 'abc'})))
 check('签名通过后仍走参数校验（limit=abc → 20002）',
       r['code'] == StatusCode.PARAM_FORMAT_ERROR, r)
 

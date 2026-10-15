@@ -16,13 +16,17 @@ SSE 分片格式一致；厂商差异只体现在「地址 + Key + 模型名」�
 ——平台 Key 在每次调用时按需查库并解密，避免密钥长期驻留在进程缓存里。
 """
 import json
+import logging
 import re
 import time
 
 import requests
 
 from API.common import StatusCode
+from API.common.errors import safe_error
 from API.common.url_safety import check_public_http_url
+
+logger = logging.getLogger('api.request')
 
 # ==================== 模型清单缓存 ====================
 MODELS_CACHE_TTL = 60
@@ -395,8 +399,9 @@ def _request_with_retry(method, url, attempts=_MAX_RETRIES, **kwargs):
             if resp.status_code not in _RETRYABLE_STATUSES:
                 return resp, None
             last_error = f"HTTP {resp.status_code}"
-        except requests.RequestException as e:
-            last_error = str(e)
+        except requests.RequestException:
+            logger.exception('上游请求失败')
+            last_error = '网络请求异常'
             resp = None
 
         if attempt < attempts - 1:
@@ -460,7 +465,7 @@ def chat_completion(target, messages, timeout=None, attempts=None, background=Fa
     try:
         data = resp.json()
     except ValueError as e:
-        return False, f'解析上游响应失败: {e}'
+        return False, safe_error('解析上游响应', e)
 
     choices = data.get('choices') or []
     if not choices:
@@ -561,7 +566,7 @@ def test_provider(provider, timeout=TEST_TIMEOUT):
             timeout=timeout,
         )
     except requests.RequestException as e:
-        return False, f'请求失败: {e}'
+        return False, safe_error('请求', e)
     cost_ms = int((time.monotonic() - started) * 1000)
 
     if resp.status_code != 200:

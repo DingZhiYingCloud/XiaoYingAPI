@@ -11,6 +11,8 @@
 import ipaddress
 from datetime import timedelta
 
+from django.conf import settings
+from django.core.cache import cache
 from django.utils import timezone
 
 from API.models import BannedIP
@@ -19,6 +21,13 @@ from API.models import BannedIP
 DEFAULT_BAN_DAYS = 7
 #: 控制台封禁表单的快捷天数档位
 BAN_DAY_PRESETS = (1, 3, 7, 30)
+
+#: 「缓存未命中」哨兵（缓存值可能是 None=未封禁，不能用 None 判未命中）
+_CACHE_MISS = object()
+
+
+def _ban_cache_key(ip: str) -> str:
+    return f'ip_ban:{ip}'
 
 
 def client_ip(request) -> str:
@@ -51,18 +60,38 @@ def is_protected_ip(ip: str) -> bool:
                 or addr.is_reserved or addr.is_multicast or addr.is_unspecified)
 
 
-def find_effective_ban(ip: str):
-    """取该 IP 当前**生效中**的封禁记录（无则 None）
+def _query_effective_ban(ip: str):
+    """直查库：该 IP 生效中的封禁记录（无则 None）
 
     同一 IP 可能有多条历史记录，只要有一条「未解禁且未到期」就算生效。
     """
-    ip = (ip or '').strip()
-    if not ip:
-        return None
     for record in BannedIP.objects.filter(ip=ip, is_active=True).order_by('-create_time'):
         if not record.is_expired:
             return record
     return None
+
+
+def find_effective_ban(ip: str):
+    """取该 IP 当前**生效中**的封禁记录（无则 None）
+
+    带进程内 TTL 缓存（settings.IP_BAN_CACHE_TTL，默认 30s）：封禁判定会出现在每个
+    网页请求上，而封禁本身是低频运维操作，缓存可省掉请求级 DB 查询；后台调入/解封会
+    立即清掉本进程缓存，改动对其它 worker 最多滞后 TTL 生效。TTL=0 时关闭缓存。
+    """
+    ip = (ip or '').strip()
+    if not ip:
+        return None
+    ttl = getattr(settings, 'IP_BAN_CACHE_TTL', 30)
+    if not ttl:
+        return _query_effective_ban(ip)
+
+    key = _ban_cache_key(ip)
+    cached = cache.get(key, _CACHE_MISS)
+    if cached is not _CACHE_MISS:
+        return cached
+    record = _query_effective_ban(ip)
+    cache.set(key, record, ttl)
+    return record
 
 
 def is_banned(ip: str) -> bool:
@@ -101,6 +130,7 @@ def ban_ip(ip: str, *, reason: str, days=None, permanent: bool = False,
         ip=ip, reason=reason[:255], expire_time=expire_time,
         operator=(operator or '')[:64],
     )
+    cache.delete(_ban_cache_key(ip))
     return record, ''
 
 
@@ -115,6 +145,7 @@ def unban_ip(record, *, operator: str = '', note: str = ''):
         record.operator = operator[:64]
     record.save(update_fields=['is_active', 'unbanned_at', 'unban_note', 'operator',
                                'updated_time'])
+    cache.delete(_ban_cache_key(record.ip))
     return record
 
 

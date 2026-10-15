@@ -101,7 +101,9 @@
       });
       hls.on(Hls.Events.ERROR, function (evt, data) {
         if (!data || !data.fatal) return;
-        var msg = _t('播放失败') + ': ' + data.type + ' / ' + data.details;
+        // 技术细节只进控制台：对外只给一句人话（原先把 HLS 的 type / details 直接显示给用户）
+        console.warn('[XY] HLS fatal error', data.type, data.details);
+        var msg = _t('播放失败');
         if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
           msg += _t('（可能是地址已过期或源站不可达）');
           hls.startLoad();            // 网络类错误尝试重载一次

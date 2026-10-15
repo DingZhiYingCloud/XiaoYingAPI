@@ -4,6 +4,7 @@
 - 每次调用创建新的爬虫实例（无状态，线程安全）
 - 统一捕获异常，返回 (是否成功, 数据或错误信息) 二元组
 """
+from API.common.errors import safe_error
 from SpiderServices.SpiderVerification_4759.main import SpiderVerification
 
 
@@ -20,6 +21,6 @@ def verify_ip(ip):
     except ValueError as e:
         return False, str(e)
     except RuntimeError as e:
-        return False, str(e)
+        return False, safe_error('验证爬虫 IP', e)
     except Exception as e:
-        return False, f"验证失败: {e}"
+        return False, safe_error('验证爬虫 IP', e)

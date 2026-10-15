@@ -5,6 +5,7 @@
 - 统一捕获 RuntimeError 等异常,返回 (是否成功, 数据或错误信息) 二元组
 - 对外提供 1 个与爬虫方法对应的函数: publish_comment(发布评论)
 """
+from API.common.errors import safe_error
 from SpiderServices.Douyin.Comment.home import DouyinCommentPublisher
 
 
@@ -23,6 +24,6 @@ def publish_comment(cookie, aweme_id, text):
         data = spider.publish_comment(cookie, aweme_id, text)
         return True, data
     except RuntimeError as e:
-        return False, str(e)
+        return False, safe_error('评论发布', e)
     except Exception as e:
-        return False, f'评论发布失败: {e}'
+        return False, safe_error('评论发布', e)

@@ -31,6 +31,7 @@ from django.db.models import Q
 from django.utils.timezone import localdate
 
 from API.apis.chaojiying import utils as chaojiying_utils
+from API.common.errors import safe_error
 from API.models import HaijiaoAccount
 from SpiderServices.haijiao import utils as spider_utils
 from SpiderServices.haijiao.main import HaijiaoSpider
@@ -69,7 +70,7 @@ def _run(action, fn, user_id=None, user_token=None):
     try:
         return True, fn(spider)
     except Exception as e:
-        return False, f"{action}失败: {e}"
+        return False, safe_error(action, e)
 
 
 def get_topics(tab='hot', page=1):
@@ -499,7 +500,7 @@ def login(username=None, password=None, account_id=None):
         except HaijiaoAccount.DoesNotExist:
             return False, f'账号不存在: account_id={account_id}'
         except Exception as e:      # noqa: BLE001 - 统一转 (False, msg)
-            return False, f'查询账号失败: {e}'
+            return False, safe_error('查询账号', e)
         username, password = account.username, account.password
     if not username or not password:
         return False, '参数缺失: 请提供 username + password，或 account_id(库内账号ID)'
@@ -583,7 +584,7 @@ def sign_in(account_id=None, user_id=None, user_token=None):
         except HaijiaoAccount.DoesNotExist:
             return False, f'账号不存在: account_id={account_id}'
         except Exception as e:      # noqa: BLE001 - 统一转 (False, msg)
-            return False, f'查询账号失败: {e}'
+            return False, safe_error('查询账号', e)
         if account.last_sign_in_date == localdate():
             # ① 本地已记录今天签到过：不再请求源站
             return True, {
@@ -665,7 +666,7 @@ def _resolve_credentials(account_id=None, user_id=None, user_token=None):
         except HaijiaoAccount.DoesNotExist:
             return None, None, None, f'账号不存在: account_id={account_id}'
         except Exception as e:      # noqa: BLE001 - 统一转 (False, msg)
-            return None, None, None, f'查询账号失败: {e}'
+            return None, None, None, safe_error('查询账号', e)
         return account.user_id, account.token, account, None
     if user_id and user_token:
         return user_id, user_token, None, None
@@ -1140,7 +1141,7 @@ def list_accounts(keyword='', page=1, page_size=10, with_password=False):
         rows = [_account_dict(a, with_password=with_password)
                 for a in queryset[start:start + page_size]]
     except Exception as e:          # noqa: BLE001 - 统一转 (False, msg)
-        return False, f'查询账号失败: {e}'
+        return False, safe_error('查询账号', e)
     return True, {'total': total, 'page': page, 'page_size': page_size, 'items': rows}
 
 
@@ -1151,7 +1152,7 @@ def get_account(account_id, with_password=False):
     except HaijiaoAccount.DoesNotExist:
         return False, f'账号不存在: account_id={account_id}'
     except Exception as e:          # noqa: BLE001
-        return False, f'查询账号失败: {e}'
+        return False, safe_error('查询账号', e)
     return True, _account_dict(account, with_token=True, with_password=with_password)
 
 
@@ -1174,7 +1175,7 @@ def create_account(data):
             token=(data.get('token') or '').strip(),
             remark=(data.get('remark') or '').strip())
     except Exception as e:          # noqa: BLE001
-        return False, f'创建账号失败: {e}'
+        return False, safe_error('创建账号', e)
     return True, _account_dict(account, with_token=True)
 
 
@@ -1185,7 +1186,7 @@ def update_account(account_id, data):
     except HaijiaoAccount.DoesNotExist:
         return False, f'账号不存在: account_id={account_id}'
     except Exception as e:          # noqa: BLE001
-        return False, f'查询账号失败: {e}'
+        return False, safe_error('查询账号', e)
 
     for field in ('username', 'password'):
         if field in data and not (data.get(field) or '').strip():
@@ -1196,7 +1197,7 @@ def update_account(account_id, data):
     try:
         account.save()
     except Exception as e:          # noqa: BLE001
-        return False, f'更新账号失败: {e}'
+        return False, safe_error('更新账号', e)
     return True, _account_dict(account, with_token=True)
 
 
@@ -1205,7 +1206,7 @@ def delete_account(account_id):
     try:
         deleted, _ = HaijiaoAccount.objects.filter(id=account_id).delete()
     except Exception as e:          # noqa: BLE001
-        return False, f'删除账号失败: {e}'
+        return False, safe_error('删除账号', e)
     if not deleted:
         return False, f'账号不存在: account_id={account_id}'
     return True, None

@@ -21,6 +21,7 @@ _SPIDER_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__),
 if _SPIDER_ROOT not in sys.path:
     sys.path.insert(0, _SPIDER_ROOT)
 
+from API.common.errors import safe_error
 from SpiderServices import relay_proxy
 
 from ProxyIp.ProxyIP_51daili.home import ProxyIP51Daili
@@ -69,6 +70,6 @@ def get_51daili_proxies(params: dict) -> tuple:
         # get_proxies 参数签名为 (pages=1, page_size=None, **kwargs)
         result = spider.get_proxies(pages=1, page_size=None, **(params or {}))
     except Exception as e:
-        return False, f'get_51daili_proxies 调用异常: {e}'
+        return False, safe_error('获取代理 IP', e)
     _attach_relay_proxy(result)
     return True, result

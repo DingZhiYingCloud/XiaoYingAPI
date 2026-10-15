@@ -11,10 +11,22 @@
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+from API.common.ip_guard import client_ip
+from API.common.ratelimit import allow
 from API.common.responses import json_response as _json_response
 from API.website.docs import ALL_ENDPOINTS
 
 from . import utils
+
+# 公开统计接口的频率上限（同一来源 IP）：60 次 / 分钟
+# 目的：本服务匿名可访问且要做历史聚合查询，不限频时被反复刷新会持续消耗数据库。
+RATE_LIMIT = 60
+RATE_WINDOW = 60
+
+
+def _rate_limited(request) -> bool:
+    """本次请求是否应因频率超限被拒"""
+    return not allow(f'statistics:{client_ip(request)}', RATE_LIMIT, RATE_WINDOW)
 
 
 @require_http_methods(['GET'])
@@ -27,6 +39,8 @@ def api_calls_view(request):
 
     返回 data = {path, total_calls, today_calls}。
     """
+    if _rate_limited(request):
+        return _json_response(StatusCode.RATE_LIMITED, msg='请求过于频繁，请稍后重试')
     path = (request.GET.get('path') or '').strip()
     if not path:
         return _json_response(StatusCode.PARAM_MISSING, msg='参数缺失: path')
@@ -42,4 +56,6 @@ def services_view(request):
 
     返回 data = {services: [{service, name, total_calls, today_calls}, ...]}，按累计调用量降序。
     """
+    if _rate_limited(request):
+        return _json_response(StatusCode.RATE_LIMITED, msg='请求过于频繁，请稍后重试')
     return _json_response(StatusCode.SUCCESS, data={'services': utils.service_calls()}, msg='查询成功')

@@ -570,9 +570,9 @@ def call(request):
         if method in ('PATCH', 'DELETE'):
             # PATCH/DELETE 的 request.POST 为空，中间件只校验 query 中的签名参数，
             # 故签名仅覆盖签名参数本身（业务字段走表单体/无体，不参与验签）
-            auth_params['sign'] = build_sign(dict(auth_params), app_secret)
+            auth_params['sign'] = build_sign(dict(auth_params), app_secret, method, path)
         else:
-            auth_params['sign'] = build_sign({**collapsed, **auth_params}, app_secret)
+            auth_params['sign'] = build_sign({**collapsed, **auth_params}, app_secret, method, path)
     else:
         auth_params = {}
 

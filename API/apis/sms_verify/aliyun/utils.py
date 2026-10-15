@@ -24,6 +24,8 @@ from datetime import datetime, timezone
 import requests
 from django.conf import settings
 
+from API.common.errors import safe_error
+
 # 阿里云 Dypnsapi 接口地址与版本
 DYPNS_ENDPOINT = 'https://dypnsapi.aliyuncs.com/'
 API_VERSION = '2017-05-25'
@@ -87,7 +89,7 @@ def _rpc_call(action, biz_params):
     try:
         resp = requests.get(DYPNS_ENDPOINT, params=params, timeout=REQUEST_TIMEOUT)
     except requests.RequestException as e:
-        return False, f'阿里云接口请求失败: {e}'
+        return False, safe_error('阿里云接口请求', e)
 
     try:
         data = resp.json()

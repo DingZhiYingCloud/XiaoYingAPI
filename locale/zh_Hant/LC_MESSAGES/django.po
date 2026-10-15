@@ -180,8 +180,8 @@ msgstr "通用 API 聚合服務平臺"
 msgid "阅读接口文档"
 msgstr "閱讀接口文檔"
 
-msgid "需要认证的接口须携带 app_id / timestamp / nonce / sign 四个签名参数（HMAC-SHA256，密钥为 APPSECRET）；用户中心等公开配置接口免签名，可参考接口文档中的分类配置。"
-msgstr "需要認證的接口須攜帶 app_id / timestamp / nonce / sign 四個簽名參數（HMAC-SHA256，密鑰為 APPSECRET）；用戶中心等公開配置接口免簽名，可參考接口文檔中的分類配置。"
+msgid "需要认证的接口须携带 app_id / timestamp / nonce / sign 四个签名参数（HMAC-SHA256，密钥为 APPSECRET，签名绑定请求方法与路径）；用户中心等公开配置接口免签名，可参考接口文档中的分类配置。"
+msgstr "需要認證的接口須攜帶 app_id / timestamp / nonce / sign 四個簽名參數（HMAC-SHA256，密鑰為 APPSECRET，簽名綁定請求方法與路徑）；用戶中心等公開配置接口免簽名，可參考接口文檔中的分類配置。"
 
 msgid "音乐 / 视频 / AI / 代理IP ..."
 msgstr "音樂 / 視頻 / AI / 代理IP ..."
@@ -209,8 +209,8 @@ msgstr "APPSECRET 泄露了怎麼辦？"
 msgid "Python 签名示例"
 msgstr "Python 簽名示例"
 
-msgid "timestamp 为秒级时间戳，有效窗口 ±5 分钟；nonce 每次请求唯一（服务端去重防重放）。"
-msgstr "timestamp 為秒級時間戳，有效窗口 ±5 分鐘；nonce 每次請求唯一（服務端去重防重放）。"
+msgid "timestamp 为秒级时间戳，有效窗口 ±5 分钟；nonce 每次请求唯一（服务端去重防重放）；路径必须与最终 URL 完全一致（含结尾斜杠）。"
+msgstr "timestamp 為秒級時間戳，有效窗口 ±5 分鐘；nonce 每次請求唯一（服務端去重防重放）；路徑必須與最終 URL 完全一致（含結尾斜槓）。"
 
 msgid "① 注册/登录"
 msgstr "① 註冊/登錄"
@@ -248,8 +248,8 @@ msgstr "僅保存在本機瀏覽器"
 msgid "代码接入生产"
 msgstr "代碼接入生產"
 
-msgid "以 APPSECRET 为密钥做"
-msgstr "以 APPSECRET 為密鑰做"
+msgid "以 APPSECRET 为密钥对该整串做"
+msgstr "以 APPSECRET 為密鑰對該整串做"
 
 msgid "先注册小影API 账号（入口在首页右上角）。"
 msgstr "先註冊小影API 賬號（入口在首頁右上角）。"
@@ -317,8 +317,14 @@ msgstr "拼接為"
 msgid "按步骤完成注册 → 开通 → 签名 → 调试 → 上线。"
 msgstr "按步驟完成註冊 → 開通 → 簽名 → 調試 → 上線。"
 
-msgid "按键名 ASCII 升序拼接 key=value，HMAC-SHA256 输出小写 hex"
-msgstr "按鍵名 ASCII 升序拼接 key=value，HMAC-SHA256 輸出小寫 hex"
+msgid "与「方法(大写) + 换行 + 请求路径 + 换行」拼成待签串（路径含结尾斜杠、不含查询串）；"
+msgstr "與「方法(大寫) + 換行 + 請求路徑 + 換行」拼成待簽串（路徑含結尾斜槓、不含查詢串）；"
+
+msgid "方法(大写)+换行+路径+换行 拼接参数，HMAC-SHA256 输出小写 hex"
+msgstr "方法(大寫)+換行+路徑+換行 拼接參數，HMAC-SHA256 輸出小寫 hex"
+
+msgid "用法示例：signed_params({'keyword': '周杰伦'}, 'POST', '/api/music/xiaoying/search/')。"
+msgstr "用法示例：signed_params({'keyword': '周杰倫'}, 'POST', '/api/music/xiaoying/search/')。"
 
 msgid "按键名 ASCII 升序排序；"
 msgstr "按鍵名 ASCII 升序排序；"

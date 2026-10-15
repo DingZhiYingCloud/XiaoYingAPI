@@ -23,6 +23,8 @@ from django.http import HttpResponse, HttpResponseNotFound, HttpResponseRedirect
 from django.template import TemplateDoesNotExist
 from django.template.loader import render_to_string
 
+from API.common.url_safety import check_public_http_url
+
 logger = logging.getLogger('cloak_guard')
 
 # 拉取远程 url 时的超时秒数与 UA（避免被目标站识别为默认 requests UA）
@@ -102,6 +104,11 @@ def _build_render_response(cfg):
 
     # 4. 远程 http(s) 链接
     if url:
+        # 服务端发起的抓取必须先做 SSRF 校验（仅 http/https 公网地址，拒绝内网/回环/保留段）
+        ok, reason = check_public_http_url(url)
+        if not ok:
+            logger.warning('cloak_guard render 拉取 %s 被拒绝: %s，已回退为放行', url, reason)
+            return None
         try:
             resp = requests.get(url, timeout=FETCH_TIMEOUT, headers={'User-Agent': FETCH_UA})
             resp.raise_for_status()

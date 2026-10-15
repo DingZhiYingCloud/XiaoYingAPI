@@ -14,6 +14,7 @@ from decimal import Decimal, InvalidOperation
 import requests
 
 from API.apis.chaojiying.utils import get_score as chaojiying_get_score
+from API.common.errors import safe_error
 from SpiderServices.ProxyIp.ProxyIP_51daili.utils import (
     DEFAULT_ACCESS_PASSWORD as PROXY_ACCESS_PASSWORD,
 )
@@ -59,7 +60,7 @@ def fetch_51daili_balance():
         resp.encoding = 'utf-8'
         payload = resp.json()
     except requests.RequestException as e:
-        return False, f'请求 51代理余额接口失败: {e}'
+        return False, safe_error('请求 51代理余额接口', e)
     except ValueError:
         return False, '51代理余额接口返回内容不是合法 JSON'
 
@@ -138,9 +139,9 @@ def fetch_deepseek_balance():
         if status in (401, 403):
             return False, ('DeepSeek API Key 无效或已失效（%s）：请到控制台「AI 模型」更新 '
                            'deepseek 厂商的 Key' % status)
-        return False, f'请求 DeepSeek 余额接口失败: {e}'
+        return False, safe_error('请求 DeepSeek 余额接口', e)
     except requests.RequestException as e:
-        return False, f'请求 DeepSeek 余额接口失败: {e}'
+        return False, safe_error('请求 DeepSeek 余额接口', e)
     except ValueError:
         return False, 'DeepSeek 余额接口返回内容不是合法 JSON'
 

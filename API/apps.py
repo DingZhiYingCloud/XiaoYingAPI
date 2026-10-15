@@ -136,6 +136,13 @@ class ApiConfig(AppConfig):
         if run_workers:
             start_email_task_worker()
 
+        # 数据维护线程：定期清理小时级统计表（原先只有 management command，
+        # 靠人工在服务器上配计划任务，忘了配就无限增长；见 API/common/maintenance.py）
+        from API.common.maintenance import start_worker as start_maintenance_worker
+
+        if run_workers:
+            start_maintenance_worker()
+
         # collectstatic：把「前端编译源码与工具」排除在收集之外 —— 它们只服务编译期，不是运行时资源：
         #   - css/input.css 第 1 行的 @import "tailwindcss" 会被 Manifest 存储当成待解析的 URL，直接报错；
         #   - tailwindcss.exe 有 109MB，收集它既拖慢部署又会让它被公开下载；

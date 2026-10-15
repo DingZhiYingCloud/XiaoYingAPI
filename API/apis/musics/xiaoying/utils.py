@@ -5,6 +5,7 @@
 """
 import io
 import json
+import logging
 import uuid
 import zipfile
 
@@ -14,7 +15,10 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.db.models.functions import Lower
 
+from API.common.errors import safe_error
 from API.models.Music.music import Music, MusicSource
+
+logger = logging.getLogger('api.request')
 
 # 批量导入接口配置（可按需调整）
 MAX_IMPORT_COUNT = 9999                 # 单次导入最大条数
@@ -160,7 +164,7 @@ def list_musics(keyword: str = '', online: str = '', page: int = 1, page_size: i
             'total_pages': total_pages,
         }
     except Exception as e:
-        return False, f'查询音乐失败: {e}'
+        return False, safe_error('查询音乐', e)
 
 
 def get_music(music_id: uuid.UUID) -> tuple:
@@ -176,7 +180,7 @@ def get_music(music_id: uuid.UUID) -> tuple:
     except Music.DoesNotExist:
         return False, f'音乐不存在: id={music_id}'
     except Exception as e:
-        return False, f'查询音乐失败: {e}'
+        return False, safe_error('查询音乐', e)
 
 
 def create_music(data: dict) -> tuple:
@@ -210,7 +214,7 @@ def create_music(data: dict) -> tuple:
     except ValidationError as e:
         return False, f'参数校验失败: {"; ".join(f"{k}: {v[0]}" for k, v in e.message_dict.items())}'
     except Exception as e:
-        return False, f'创建音乐失败: {e}'
+        return False, safe_error('创建音乐', e)
 
 
 def update_music(music_id: uuid.UUID, data: dict) -> tuple:
@@ -224,7 +228,7 @@ def update_music(music_id: uuid.UUID, data: dict) -> tuple:
     except Music.DoesNotExist:
         return False, f'音乐不存在: id={music_id}'
     except Exception as e:
-        return False, f'查询音乐失败: {e}'
+        return False, safe_error('查询音乐', e)
 
     if 'name' in data:
         music.name = (data['name'] or '').strip()
@@ -247,7 +251,7 @@ def update_music(music_id: uuid.UUID, data: dict) -> tuple:
     except ValidationError as e:
         return False, f'参数校验失败: {"; ".join(f"{k}: {v[0]}" for k, v in e.message_dict.items())}'
     except Exception as e:
-        return False, f'更新音乐失败: {e}'
+        return False, safe_error('更新音乐', e)
 
 
 def delete_music(music_id: uuid.UUID) -> tuple:
@@ -259,7 +263,7 @@ def delete_music(music_id: uuid.UUID) -> tuple:
     except Music.DoesNotExist:
         return False, f'音乐不存在: id={music_id}'
     except Exception as e:
-        return False, f'删除音乐失败: {e}'
+        return False, safe_error('删除音乐', e)
 
 
 # ==================== MusicSource 增删改查 ====================
@@ -295,10 +299,11 @@ def create_music_source(data: dict) -> tuple:
         return True, _source_to_dict(source)
     except ValidationError as e:
         return False, f'参数校验失败: {"; ".join(f"{k}: {v[0]}" for k, v in e.message_dict.items())}'
-    except IntegrityError as e:
-        return False, f'数据冲突: {e}'
+    except IntegrityError:
+        logger.exception('音乐播放源 数据冲突')
+        return False, '数据冲突（该播放源已存在）'
     except Exception as e:
-        return False, f'创建播放源失败: {e}'
+        return False, safe_error('创建播放源', e)
 
 
 def update_music_source(source_id: uuid.UUID, data: dict) -> tuple:
@@ -311,7 +316,7 @@ def update_music_source(source_id: uuid.UUID, data: dict) -> tuple:
     except MusicSource.DoesNotExist:
         return False, f'播放源不存在: id={source_id}'
     except Exception as e:
-        return False, f'查询播放源失败: {e}'
+        return False, safe_error('查询播放源', e)
 
     if 'music_id' in data:
         music_id_str = (data['music_id'] or '').strip()
@@ -330,10 +335,11 @@ def update_music_source(source_id: uuid.UUID, data: dict) -> tuple:
         return True, _source_to_dict(source)
     except ValidationError as e:
         return False, f'参数校验失败: {"; ".join(f"{k}: {v[0]}" for k, v in e.message_dict.items())}'
-    except IntegrityError as e:
-        return False, f'数据冲突: {e}'
+    except IntegrityError:
+        logger.exception('音乐播放源 数据冲突')
+        return False, '数据冲突（该播放源已存在）'
     except Exception as e:
-        return False, f'更新播放源失败: {e}'
+        return False, safe_error('更新播放源', e)
 
 
 def delete_music_source(source_id: uuid.UUID) -> tuple:
@@ -345,7 +351,7 @@ def delete_music_source(source_id: uuid.UUID) -> tuple:
     except MusicSource.DoesNotExist:
         return False, f'播放源不存在: id={source_id}'
     except Exception as e:
-        return False, f'删除播放源失败: {e}'
+        return False, safe_error('删除播放源', e)
 
 
 # ==================== 批量导入 ====================
@@ -457,7 +463,7 @@ def import_musics(records: list) -> tuple:
                     MusicSource.objects.bulk_create(sources, batch_size=500)
         except Exception as e:
             # 不可预期的数据库错误：整批回滚（所有可预期失败已在校验阶段拦截）
-            return False, f'批量导入失败: {e}'
+            return False, safe_error('批量导入', e)
 
     return True, {
         'total': total,
@@ -544,4 +550,4 @@ def build_export(online: str = '', keyword: str = '') -> tuple:
                             json.dumps(chunk, ensure_ascii=False))
         return True, {'kind': 'zip', 'content': buffer.getvalue(), 'total': total, 'files': files}
     except Exception as e:
-        return False, f'导出音乐失败: {e}'
+        return False, safe_error('导出音乐', e)

@@ -24,6 +24,7 @@ import requests
 from API.apis.pay.utils import format_money
 from API.apis.pay.providers.base import BasePayProvider, PayError
 from API.apis.pay.providers.sign import build_sign_content, sign_content, verify_content
+from API.common.errors import safe_error
 
 logger = logging.getLogger('api.pay')
 
@@ -95,7 +96,9 @@ class EzfpProvider(BasePayProvider):
             resp.raise_for_status()
             payload = resp.json()
         except requests.RequestException as exc:
-            raise PayError(f'{self.name} 网关请求失败：{exc}') from exc
+            # 原始网络异常（含内网地址、库版本等技术信息）不能显示给付款用户：
+            # safe_error 会把全量堆栈写进 error.log，对外只回一句人话
+            raise PayError(safe_error(f'{self.name} 网关请求', exc)) from exc
         except ValueError as exc:
             raise PayError(f'{self.name} 网关返回不是 JSON，无法解析') from exc
 
@@ -107,10 +110,16 @@ class EzfpProvider(BasePayProvider):
         return payload
 
     def _verify_response(self, payload: dict) -> None:
-        """校验平台应答签名（有 sign 且配了平台公钥才校验）"""
+        """校验平台应答签名
+
+        平台应答带 `sign` 时**必须能验**：渠道启用前控制台已强制填齐平台公钥
+        （见 console_pay 保存逻辑），故此处「没有公钥」属于配置漏配 —— 按 fail-closed
+        报错，而不是静默跳过验签（否则等于放行任意伪造应答）。
+        """
         sign = payload.get('sign')
-        if not sign or not self.config.platform_public_key:
+        if not sign:
             return
+        self.ensure_verifiable()
         if not verify_content(build_sign_content(payload), sign, self.config.platform_public_key):
             raise PayError(f'{self.name} 应答验签失败：平台公钥与商户不匹配，或应答签名口径需调整')
 

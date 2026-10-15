@@ -10,9 +10,9 @@
 (function () {
   'use strict';
 
-  // Django i18n 的全局函数（脚本加载顺序异常时退化为原文）
-  function _t(s) { return (typeof gettext === 'function') ? gettext(s) : s; }
-  function _ti(s, ctx) { return (typeof interpolate === 'function') ? interpolate(s, ctx, true) : s; }
+  // 公共运行时（core.js）提供的 i18n 兜底：脚本加载顺序异常时退化为原文
+  var _t = window.XY.t;
+  var _ti = window.XY.ti;
 
   function el(tag, className, text) {
     var node = document.createElement(tag);
@@ -32,7 +32,8 @@
     return window.DocsCall(path, 'GET', params || {}).then(function (res) {
       var body = res && res.json;
       if (!body || body.code !== 10000) {
-        throw new Error((body && body.msg) || ('HTTP ' + (res && res.http_status)));
+        // 失败原因优先用服务端业务文案；拿不到时给一句人话，不把 HTTP 状态码显示给用户
+        throw new Error(window.XY.failText(res));
       }
       return body.data || {};
     });

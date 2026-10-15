@@ -5,6 +5,7 @@
 - 统一捕获 RuntimeError 等异常,返回 (是否成功, 数据或错误信息) 二元组
 - 对外提供 1 个与爬虫方法对应的函数: parse_video(解析抖音视频/图文)
 """
+from API.common.errors import safe_error
 from SpiderServices.Douyin.Video.home import DouyinVideoAnalysis
 
 
@@ -23,6 +24,6 @@ def parse_video(share_text):
         data = spider.parse(share_text)
         return True, data
     except RuntimeError as e:
-        return False, str(e)
+        return False, safe_error('视频解析', e)
     except Exception as e:
-        return False, f'视频解析失败: {e}'
+        return False, safe_error('视频解析', e)

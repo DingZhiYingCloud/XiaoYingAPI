@@ -121,15 +121,20 @@ def resolve_service_policy(path):
     }
 
 
-def requires_auth(path):
+def requires_auth(path, effective=None):
     """认证判定的唯一口径：生效 auth_mode == open 时放行，其余一律需要签名
 
     基于 resolve_service_policy() 的逐级继承结果判定，保证「页面展示的生效结果」
     与中间件真实鉴权永远一致（**不要在别处复制这段判定逻辑**）。
     服务级 / 线路级 / 端点级策略及各字段 inherit 的继承都在 resolve 内统一处理，
     未命中任何策略时 fail-closed 落回 auth（需要签名）。
+
+    :param effective: 已算好的 resolve_service_policy(path) 结果；调用方（如
+        ApiAuthMiddleware）已算过一次时传进来即可，避免同一次请求重复解析策略链。
     """
-    return resolve_service_policy(path)['auth_mode'] != 'open'
+    if effective is None:
+        effective = resolve_service_policy(path)
+    return effective['auth_mode'] != 'open'
 
 
 def is_docs_hidden(path, viewer_is_superadmin=False):
@@ -359,11 +364,13 @@ class ApiAuthMiddleware:
             # 公开路径（邮件内激活链接、注册/登录方式配置、红果直出流）免签名
             is_public = (request.method in ('GET', 'HEAD')
                          and request.path in PUBLIC_PATHS)
-            if not is_public and requires_auth(request.path):
+            # 复用上面已算出的 effective，避免同一次请求把整条策略链再解析一遍
+            if not is_public and requires_auth(request.path, effective):
                 params = request.POST.dict()
                 params.update({k: v for k, v in request.GET.items() if k not in params})
                 from API.apis.user_center.sign import verify_sign
-                ok, result = verify_sign(params)
+                # 签名绑定「请求方法 + 请求路径」：同一条签名不可被搬到其它端点复用
+                ok, result = verify_sign(params, request.method, request.path)
                 if not ok:
                     return JsonResponse({
                         'code': StatusCode.AUTH_FAILED,

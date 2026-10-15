@@ -7,12 +7,15 @@
 「账号管理」(/console/accounts/) 里代练丸子（platform=dlwz）的托管账号；
 托管的「登录凭据」按爬虫层的 parse_credential 动态解析出 accessToken。
 """
+import logging
 import sys
 import os
 import importlib
 
 from API.common import platform_accounts
 from API.apis.DaiLianWanZi.games import get_preset
+
+logger = logging.getLogger('api.dailianwanzi')
 
 # 爬虫目录绝对路径
 _SPIDER_DIR = os.path.normpath(
@@ -137,8 +140,9 @@ def _call_with(service_class, method_name, **kwargs):
     try:
         result = getattr(spider, method_name)(**kwargs)
         return True, result
-    except Exception as e:
-        return False, f'{method_name} 调用异常: {e}'
+    except Exception:
+        logger.exception('代练丸子爬虫调用异常: %s', method_name)
+        return False, f'{method_name} 调用异常，请稍后重试'
 
 
 def _call(method_name, **kwargs):

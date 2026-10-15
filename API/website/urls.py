@@ -34,6 +34,9 @@ urlpatterns = [
     # （仅下发前端 JS 用到的词条，不把整份服务端词条目录发给浏览器）
     path('jsi18n/', JavaScriptCatalog.as_view(), name='javascript-catalog'),
 
+    # 健康检查（监控 / 负载均衡探活）：只探测数据库连通性，不返回任何内部信息
+    path('health', views.health_view, name='health'),
+
     # SEO：robots.txt 与站点地图（robots.txt 内声明的 Sitemap 地址即 /sitemap.xml）
     path('robots.txt', TemplateView.as_view(template_name='robots.txt', content_type='text/plain'),
          name='robots_txt'),

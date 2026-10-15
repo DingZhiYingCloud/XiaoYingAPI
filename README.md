@@ -85,7 +85,6 @@ XiaoYingAPI/
 - `middleware.py`：`ApiAuthMiddleware`（服务策略签名认证，服务/线路/端点三级继承；**签名通过即放行，不按次计费**）+ `ApiJsonErrorMiddleware`（`/api/` 的 404 / 405 统一返回 JSON）+ `ApiRequestLogMiddleware`（请求日志 + 调用统计采集）
 - `api_stats.py` / `api_stats_query.py`：调用统计的写入（缓冲 + 批量落库）与查询
 - `base.py`：`BaseModel` 基础模型（含 create_time / updated_time 自动字段）
-- `sqlite_orm.py`：独立的 SQLite3 ORM 工具库（仅标准库，可单独复用）
 - `credential_crypto.py`：凭据对称加密（S-06，`app_secret` / Token 等）
 - `security_guard.py`：登录防爆破与签名 nonce 去重（S-03 / S-05）
 - `url_safety.py`：公网 URL 校验，拒绝内网 / 回环地址（S-09）
@@ -564,7 +563,15 @@ curl -s "https://<你的域名>/api/xxx/internal_yyy"
 - `nonce`：每次请求唯一的随机字符串
 - `sign`：HMAC-SHA256 签名
 
-签名算法：除 `sign` 外所有参数按键名 ASCII 升序拼为 `k=v&k=v...`，以 `app_secret` 为密钥做 HMAC-SHA256，输出小写 hex。参考实现见 [API/apis/user_center/sign.py](API/apis/user_center/sign.py) 的 `build_sign` / `verify_sign`。
+签名算法（签名**绑定请求方法与路径**）：
+
+1. 取除 `sign` 外的所有参数（含 `app_id`/`timestamp`/`nonce` 与业务参数），过滤空值，按键名 ASCII 升序排序，拼接为 `k=v&k=v...`；
+2. 拼出待签串：`方法(大写)\n路径\n<上一步的串>`；**路径取最终请求路径** —— 含结尾斜杠、不含查询串（如 `/api/music/xiaoying/search/`）；
+3. 以 `app_secret` 为密钥对整串做 HMAC-SHA256，输出小写 hex 即 `sign`。
+
+> 路径必须与最终发出去的 URL 完全一致（含结尾斜杠）。Django 对缺结尾斜杠的地址会先 302 跳转，跳转后的路径与跳转前不同，签名会因此校验失败 —— 请直接请求带斜杠的正确地址。
+
+参考实现见 [API/apis/user_center/sign.py](API/apis/user_center/sign.py) 的 `build_sign` / `verify_sign`。
 
 ### 6. API 调用统计
 
@@ -717,7 +724,7 @@ curl -s "https://<你的域名>/api/xxx/internal_yyy"
 | 51代理 | 账户余额（元） | `GET http://aapi.51daili.com/userapi?appkey=...` → `data.currentScore`；`appkey` = `.env` 的 `PROXY_51DAILI_ACCESS_PASSWORD` + `PROXY_51DAILI_UID` 拼接 |
 | 超级鹰 | 题分 | 官方「查询题分」接口 `GetScore.php`（复用 `API/apis/chaojiying/utils.py` 的 `get_score()`）—— **不需要登录网页打码**，凭据即 `.env` 的 `CHAOJIYING_USER/CHAOJIYING_PASS` |
 
-- **51代理 余额接口不受「只认国内 IP」限制**：线上实测（海外服务器 `192.253.235.28`）直连 3/3 都是 HTTP 200、0.25~0.40s，因此**不需要中转**，实现里固定用官方地址。注意区分——`PROXY_51DAILI_API_BASE`（国内 nginx 反代）只服务「**提取 IP**」接口，那一个从海外直连确实会回 `{"code":501,…地区为美国}`。
+- **51代理 余额接口不受「只认国内 IP」限制**：线上实测（海外服务器 `{海外服务器IP}`）直连 3/3 都是 HTTP 200、0.25~0.40s，因此**不需要中转**，实现里固定用官方地址。注意区分——`PROXY_51DAILI_API_BASE`（国内 nginx 反代）只服务「**提取 IP**」接口，那一个从海外直连确实会回 `{"code":501,…地区为美国}`。
 - **服务清单在代码里**：`API/apis/quota/services.py` 的 `SERVICES` 注册表是唯一来源（显示名 / 单位 / 取数函数），新增一个被监控服务只需在那里加一条；表 `quota_service` 只存「按服务可配置的项 + 每次检查的结果」，不重复存显示名与单位。
 - **巡检**：后台线程每 30 分钟一轮（`API/apis/quota/utils.py` 的 `CHECK_INTERVAL_SECONDS`），只在「对外提供服务」的进程里启动（与反馈中心 AI 审核同一判定，见 `API/apps.py`）；多 worker 靠**行级条件更新抢占告警态翻转**，保证同一轮告警只发出一封邮件。页面上的「立即检查」用同一套逻辑手动触发。
 - **告警语义（不刷屏）**：跌破阈值**只发一封**；余量回升到阈值以上（或关闭该服务的通知）后自动复位、**重新武装**，再次跌破时才会再发一封。阈值留空 = 该服务不通知。

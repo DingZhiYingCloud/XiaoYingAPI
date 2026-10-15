@@ -14,6 +14,7 @@ _SPIDER_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__),
 if _SPIDER_ROOT not in sys.path:
     sys.path.insert(0, _SPIDER_ROOT)
 
+from API.common.errors import safe_error
 from ProxyIp.ProxyIP_juliang.home import ProxyIPJuliang
 from ProxyIp.ProxyIP_juliang.utils import (MAX_NUM, PASSTHROUGH_ENUM,
                                            PASSTHROUGH_TEXT)
@@ -44,4 +45,4 @@ def get_juliang_proxies(trade_no: str = None, key: str = None, sign: str = None,
                                     **(extras or {}))
         return True, result
     except Exception as e:
-        return False, f'get_juliang_proxies 调用异常: {e}'
+        return False, safe_error('获取代理 IP', e)

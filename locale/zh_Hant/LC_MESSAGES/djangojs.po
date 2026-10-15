@@ -112,6 +112,9 @@ msgstr "已加載，共 %(n)s 個清晰度"
 msgid "已复制"
 msgstr "已複製"
 
+msgid "请求失败，请稍后重试"
+msgstr "請求失敗，請稍後重試"
+
 msgid "幻想"
 msgstr "幻想"
 

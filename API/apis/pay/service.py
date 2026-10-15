@@ -158,16 +158,37 @@ def query_order(order: PayOrder, *, save_state: bool = True) -> PayOrder:
 # ==================== 回调 ====================
 
 def handle_notify(provider_code: str, params: dict, request=None) -> tuple:
-    """处理异步通知：留痕 → 验签 → 找单 → 核金额 → 发货
+    """处理异步通知：验签 → 留痕 → 找单 → 核金额 → 发货
 
     :return: (ok, message) —— ok=True 时视图必须返回 `success`，否则平台会一直重推
     """
     raw = '&'.join(f'{k}={v}' for k, v in params.items() if k != 'sign')
+
+    # 先验签、后留痕：该回调接口对外免签名，若不分真假都写 PayNotifyLog，
+    # 任何匿名请求都能往留痕表里插行（刷表 / 撑体积）。故**只有通过验签的通知才落库**，
+    # 验签失败 / 未知渠道的只记文件日志（error.log 里带原文，仍可排查伪造与配置错误）。
+    try:
+        provider = build_provider_for(provider_code)
+    except PayError as exc:
+        logger.warning('支付回调：渠道不可用 provider=%s raw=%s', provider_code, raw[:2000])
+        return False, str(exc)
+
+    try:
+        verified = provider.verify_notify(params)
+    except PayError as exc:
+        logger.warning('支付回调：验签异常 provider=%s raw=%s', provider_code, raw[:2000])
+        return False, str(exc)
+    if not verified:
+        logger.warning('支付回调：验签失败 provider=%s ip=%s raw=%s',
+                       provider_code, (client_ip(request) if request else ''), raw[:2000])
+        return False, '验签失败'
+
     log = PayNotifyLog.objects.create(
         provider_code=provider_code,
         out_trade_no=(params.get('out_trade_no') or '')[:64],
         trade_no=(params.get('trade_no') or '')[:64],
         raw=raw[:20000],
+        verified=True,
         ip=(client_ip(request) if request else ''),
         user_agent=(request.META.get('HTTP_USER_AGENT', '')[:255]) if request else '',
     )
@@ -177,18 +198,6 @@ def handle_notify(provider_code: str, params: dict, request=None) -> tuple:
         log.save(update_fields=['message'])
         return False, message
 
-    try:
-        provider = build_provider_for(provider_code)
-    except PayError as exc:
-        return _fail(str(exc))
-
-    try:
-        if not provider.verify_notify(params):
-            return _fail('验签失败')
-    except PayError as exc:
-        return _fail(str(exc))
-    log.verified = True
-
     parsed = provider.parse_notify(params)
     if not parsed['out_trade_no']:
         return _fail('通知缺少商户订单号')
@@ -196,7 +205,6 @@ def handle_notify(provider_code: str, params: dict, request=None) -> tuple:
     order = PayOrder.objects.filter(out_trade_no=parsed['out_trade_no'],
                                     provider_code=provider_code).first()
     if order is None:
-        log.verified = True
         return _fail(f'订单不存在：{parsed["out_trade_no"]}')
 
     # 金额必须与本地订单一致（防止改价 / 错单）
@@ -206,14 +214,14 @@ def handle_notify(provider_code: str, params: dict, request=None) -> tuple:
 
     if parsed['state'] != 'paid':
         log.message = f'非成功状态：{parsed.get("trade_status")}'[:255]
-        log.save(update_fields=['verified', 'message'])
+        log.save(update_fields=['message'])
         return True, '非成功状态，已忽略'
 
     changed = _mark_paid(order, trade_no=parsed['trade_no'] or order.trade_no,
                          money=parsed['money'], buyer=parsed.get('buyer', ''), source='notify')
     log.handled = True
     log.message = ('订单已支付并处理' if changed else '订单此前已处理（幂等跳过）')[:255]
-    log.save(update_fields=['verified', 'handled', 'message'])
+    log.save(update_fields=['handled', 'message'])
     return True, log.message
 
 
@@ -318,13 +326,23 @@ def refund_order(order: PayOrder, amount, *, operator: str = '', source: str = '
     money = parse_money(amount)
     if money is None or money <= 0:
         raise PayError('退款金额非法')
-    refundable = refundable_amount(order)
-    if money > refundable:
-        raise PayError(f'退款金额超过可退金额（可退 {format_money(refundable)} 元）')
 
-    if resolve_refund_mode(order.provider_code) == PayProvider.REFUND_MANUAL:
-        return 'manual', _create_refund_request(
-            order, money, source=source, user=user, app=app, contact=contact, remark=remark)
+    # 并发保护：可退金额的校验与「落待办申请」必须在同一把订单行锁内完成。
+    # 可退额 = 订单金额 − 已退金额 − 其它**待人工处理**的申请金额（见 refundable_amounts）。
+    # 若在锁外先判、再落库，两笔并发申请会各自按同一份「还没有 pending 记录」的旧可退额
+    # 通过校验，双双落库导致同一订单被超额受理。放进锁内且先落 pending 申请后，
+    # 后一笔会读到前一笔的 pending 金额从而被正确拒绝。
+    with transaction.atomic():
+        locked = PayOrder.objects.select_for_update().get(pk=order.pk)
+        if not locked.is_paid:
+            raise PayError('只有已支付的订单才能退款')
+        refundable = refundable_amount(locked)
+        if money > refundable:
+            raise PayError(f'退款金额超过可退金额（可退 {format_money(refundable)} 元）')
+        if resolve_refund_mode(locked.provider_code) == PayProvider.REFUND_MANUAL:
+            return 'manual', _create_refund_request(
+                locked, money, source=source, user=user, app=app,
+                contact=contact, remark=remark)
 
     provider = build_provider_for(order.provider_code)
     result = provider.refund(amount=money, out_trade_no=order.out_trade_no,
@@ -351,6 +369,10 @@ def _apply_refund(order: PayOrder, money, *, refund_no: str, operator: str) -> P
     """
     with transaction.atomic():
         locked = PayOrder.objects.select_for_update().get(pk=order.pk)
+        # 兜底：累计退款不得超过订单金额。这是退款回写的**唯一写点**，
+        # 自助退款在锁外调平台、并发时可能两笔都进来，这里做最后一道防线。
+        if locked.refund_amount + money > locked.amount:
+            raise PayError('退款金额超过订单金额，已拒绝（可能为并发退款）')
         locked.refund_amount = locked.refund_amount + money
         locked.status = (PayOrder.STATUS_REFUNDED
                          if locked.refund_amount >= locked.amount

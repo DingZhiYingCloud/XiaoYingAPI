@@ -257,7 +257,7 @@
     <details class="collapse collapse-arrow feel-card">
       <summary class="collapse-title font-medium">{% trans "接口需要什么认证？" %}</summary>
       <div class="collapse-content text-sm leading-relaxed text-base-content/70">
-        {% blocktrans %}需要认证的接口须携带 app_id / timestamp / nonce / sign 四个签名参数（HMAC-SHA256，密钥为 APPSECRET）；用户中心等公开配置接口免签名，可参考接口文档中的分类配置。{% endblocktrans %}
+        {% blocktrans %}需要认证的接口须携带 app_id / timestamp / nonce / sign 四个签名参数（HMAC-SHA256，密钥为 APPSECRET，签名绑定请求方法与路径）；用户中心等公开配置接口免签名，可参考接口文档中的分类配置。{% endblocktrans %}
       </div>
     </details>
     <details class="collapse collapse-arrow feel-card">

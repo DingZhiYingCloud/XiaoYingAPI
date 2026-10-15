@@ -6,11 +6,16 @@
     nonce     - 随机字符串（每次请求唯一）
     sign      - HMAC-SHA256 签名
 
-签名算法：
-1. 取除 sign 外的所有参数（含 app_id/timestamp/nonce/业务参数），
-   按键名 ASCII 升序排序；
-2. 拼接为 `key=value&key=value...`；
-3. 以 app_secret 为密钥做 HMAC-SHA256，输出小写 hex 即为签名。
+签名算法（签名绑定「请求方法 + 请求路径」）：
+1. 取除 sign 外的所有参数（含 app_id/timestamp/nonce/业务参数），过滤空值，
+   按键名 ASCII 升序排序，拼接为 `key=value&key=value...`；
+2. 与「方法（大写）+ 路径」拼成待签串：`METHOD\nPATH\n<上一步的串>`；
+   PATH 取**最终请求路径**（含结尾斜杠、不含查询串，如 /api/music/xiaoying/search/）；
+3. 以 app_secret 为密钥对该待签串做 HMAC-SHA256，输出小写 hex 即为签名。
+
+为什么要绑方法与路径：只签参数、不签目标时，同一条签名可被搬到另一个「参数名兼容」
+的端点上复用（截获一次有效请求即可触发非预期动作）。绑上方法 + 路径后，签名只对
+它当初签的那个端点有效。
 """
 import hashlib
 import hmac
@@ -26,13 +31,17 @@ SIGN_TIMESTAMP_WINDOW = 300
 logger = logging.getLogger('api.request')
 
 
-def build_sign(params: dict, app_secret: str) -> str:
-    """根据参数与密钥生成签名（小写 hex）"""
+def build_sign(params: dict, app_secret: str, method: str, path: str) -> str:
+    """根据参数、请求方法与路径生成签名（小写 hex）
+
+    :param method: HTTP 方法（大小写不敏感，内部统一转大写）
+    :param path:   最终请求路径（含结尾斜杠、不含查询串）
+    """
     items = sorted(
         (k, str(v)) for k, v in params.items()
         if k != 'sign' and v not in (None, '')
     )
-    raw = '&'.join(f'{k}={v}' for k, v in items)
+    raw = f'{method.upper()}\n{path}\n' + '&'.join(f'{k}={v}' for k, v in items)
     return hmac.new(
         app_secret.encode('utf-8'),
         raw.encode('utf-8'),
@@ -40,10 +49,12 @@ def build_sign(params: dict, app_secret: str) -> str:
     ).hexdigest()
 
 
-def verify_sign(params: dict):
+def verify_sign(params: dict, method: str, path: str):
     """校验请求签名
 
     :param params: 请求参数字典（含 app_id/timestamp/nonce/sign）
+    :param method: 本次请求的 HTTP 方法（中间件传入 request.method）
+    :param path:   本次请求路径（中间件传入 request.path：含结尾斜杠、不含查询串）
     :return: (True, UserApp) 校验通过；或 (False, err_msg) 失败原因
     """
     app_id = (params.get('app_id') or '').strip()
@@ -66,16 +77,17 @@ def verify_sign(params: dict):
         app = UserApp.objects.get(app_id=app_id)
     except UserApp.DoesNotExist:
         return False, '未注册的接入项目: app_id 不存在'
-    except Exception as e:
+    except Exception:
         # 数据库异常也会走到这里：对外仍是 20011（fail-closed），但必须留日志 ——
         # 否则「DB 故障」会被当成「密钥不对」，监控与排查看不出真实原因。
+        # 对外只回一句可读的话，不把 DB 异常细节（表名 / SQL）回显给调用方。
         logger.exception('查询接入项目失败: app_id=%s', app_id)
-        return False, f'查询接入项目失败: {e}'
+        return False, '查询接入项目失败，请稍后重试'
 
     if not app.status:
         return False, '接入项目已被停用'
 
-    expect = build_sign(params, app.app_secret)
+    expect = build_sign(params, app.app_secret, method, path)
     if not hmac.compare_digest(expect, sign.lower()):
         return False, '签名校验失败: sign 不匹配'
 

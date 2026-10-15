@@ -13,9 +13,11 @@
   HOUR_RETENTION_DAYS 天，超出部分自动截断；按天表是全历史真值，不受影响。
 - 筛选（service / app_id）只影响读，不影响写入口径。
 """
+import hashlib
 from collections import defaultdict
 from datetime import timedelta
 
+from django.core.cache import cache
 from django.db.models import Count, Max, Q, Sum
 from django.utils import timezone
 
@@ -327,6 +329,14 @@ def endpoint_call_counts(paths):
     if not wanted:
         return {}
 
+    # 结果缓存 PUBLIC_CACHE_TTL 秒：文档中心每次打开都会为本函数传一批端点，
+    # 而聚合要扫全历史统计表 —— 不缓存则页面耗时随历史数据线性增长。
+    cache_key = ('stats:docs:endpoints:'
+                 + hashlib.sha1('\n'.join(sorted(wanted)).encode('utf-8')).hexdigest())
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     variants = set()
     for norm in wanted:
         variants.update((norm, norm.rstrip('/') + '/'))
@@ -341,32 +351,51 @@ def endpoint_call_counts(paths):
         total = sum(by_path.get(c, 0) for c in candidates)
         for declared in declared_list:
             result[declared] = total
+    cache.set(cache_key, result, PUBLIC_CACHE_TTL)
     return result
 
 
 # ==================== 公开口径（仅调用次数，不含项目/耗时/失败率） ====================
 
+# 公开口径结果的缓存时长（秒）：调用量不是实时指标，缓存可挡掉匿名反复刷新带来的重复聚合
+# （这两个函数是公开接口 /api/statistics/ 的数据源，聚合要扫全历史统计表）。
+PUBLIC_CACHE_TTL = 300
+
+
 def public_path_calls(path):
     """某接口的公开调用量：累计 + 今日
 
     路径参数会先归一（与写入侧一致），因此 /musics/<uuid> 这类带参接口也能查到。
+    结果按路径缓存 PUBLIC_CACHE_TTL 秒。
     """
+    cache_key = f'stats:public:path:{path}'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
     norm = normalize_path(path)
     candidates = sorted({norm, norm.rstrip('/') + '/'})
     base = ApiCallStat.objects.filter(path__in=candidates)
     total = base.aggregate(t=Sum('call_count'))['t'] or 0
     today = (base.filter(stat_date=timezone.localdate())
              .aggregate(t=Sum('call_count'))['t'] or 0)
-    return {'path': path, 'total_calls': total, 'today_calls': today}
+    result = {'path': path, 'total_calls': total, 'today_calls': today}
+    cache.set(cache_key, result, PUBLIC_CACHE_TTL)
+    return result
 
 
 def public_service_calls():
-    """各服务的公开调用量（累计），按调用量降序"""
+    """各服务的公开调用量（累计），按调用量降序；结果缓存 PUBLIC_CACHE_TTL 秒"""
+    cache_key = 'stats:public:services'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
     rows = (ApiCallStat.objects.values('service')
             .annotate(total=Sum('call_count')).order_by('-total'))
     today = timezone.localdate()
     today_rows = (ApiCallStat.objects.filter(stat_date=today).values('service')
                   .annotate(total=Sum('call_count')))
     today_map = {row['service']: row['total'] or 0 for row in today_rows}
-    return [{'service': row['service'], 'total_calls': row['total'] or 0,
-             'today_calls': today_map.get(row['service'], 0)} for row in rows]
+    result = [{'service': row['service'], 'total_calls': row['total'] or 0,
+               'today_calls': today_map.get(row['service'], 0)} for row in rows]
+    cache.set(cache_key, result, PUBLIC_CACHE_TTL)
+    return result

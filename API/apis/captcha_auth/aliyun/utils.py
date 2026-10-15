@@ -25,6 +25,8 @@ import requests
 
 from dotenv import load_dotenv
 
+from API.common.errors import safe_error
+
 load_dotenv()
 
 # ── 阿里云图形认证配置（.env 读取，禁止硬编码） ──
@@ -63,7 +65,7 @@ def _post_validate(query):
         resp.raise_for_status()
         data = resp.json()
     except requests.RequestException as e:
-        return False, f'图形认证服务请求失败: {e}'
+        return False, safe_error('图形认证服务请求', e)
     except ValueError:
         return False, f'图形认证服务返回非 JSON 内容 (HTTP {resp.status_code}): {resp.text[:200]}'
     return True, data

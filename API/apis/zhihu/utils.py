@@ -10,6 +10,7 @@
       维护）；调用中发现失效会顺手把该账号标成「已过期」，与人工点「校验」等效。
 """
 from API.common import platform_accounts
+from API.common.errors import safe_error
 from SpiderServices.zhihu.main import (
     ZhihuCredentialExpired,
     ZhihuError,
@@ -51,9 +52,9 @@ def get_hot(limit=50, cookie=''):
         if account is not None:
             # 只有平台自己的账号才回写「已过期」；调用方自带的凭据与我们无关
             platform_accounts.mark_expired(account, str(exc))
-        return False, str(exc)
+        return False, safe_error('获取知乎热榜', exc)
     except ZhihuError as exc:
-        return False, str(exc)
+        return False, safe_error('获取知乎热榜', exc)
 
 
 def check_credential(cookie=''):
@@ -102,9 +103,9 @@ def get_question(question_id, answer_limit=5, comment_limit=3,
         if account is not None:
             # 只有平台自己的账号才回写「已过期」；调用方自带的凭据与我们无关
             platform_accounts.mark_expired(account, str(exc))
-        return False, str(exc)
+        return False, safe_error('获取知乎问题', exc)
     except ZhihuError as exc:
-        return False, str(exc)
+        return False, safe_error('获取知乎问题', exc)
 
 
 def get_article(article_id, comment_limit=10, cookie=''):
@@ -122,9 +123,9 @@ def get_article(article_id, comment_limit=10, cookie=''):
     except ZhihuCredentialExpired as exc:
         if account is not None:
             platform_accounts.mark_expired(account, str(exc))
-        return False, str(exc)
+        return False, safe_error('获取知乎文章', exc)
     except ZhihuError as exc:
-        return False, str(exc)
+        return False, safe_error('获取知乎文章', exc)
 
 
 def get_search(keyword, limit=20, offset=0, cookie=''):
@@ -142,6 +143,6 @@ def get_search(keyword, limit=20, offset=0, cookie=''):
     except ZhihuCredentialExpired as exc:
         if account is not None:
             platform_accounts.mark_expired(account, str(exc))
-        return False, str(exc)
+        return False, safe_error('搜索知乎', exc)
     except ZhihuError as exc:
-        return False, str(exc)
+        return False, safe_error('搜索知乎', exc)

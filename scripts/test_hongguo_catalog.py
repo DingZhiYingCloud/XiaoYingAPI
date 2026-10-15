@@ -72,14 +72,14 @@ def skip(reason):
     return 1 if _FAILED else 0
 
 
-def _signed(app, extra=None):
+def _signed(app, path, extra=None):
     params = {
         'app_id': app.app_id,
         'timestamp': str(int(time.time())),
         'nonce': secrets.token_hex(8),
     }
     params.update(extra or {})
-    params['sign'] = build_sign(params, app.app_secret)
+    params['sign'] = build_sign(params, app.app_secret, 'GET', path)
     return params
 
 
@@ -192,7 +192,7 @@ def round5_http_contract():
     client = Client()
     app = UserApp.objects.create(name=f'DramaCat{MARK}')
     try:
-        resp = client.get('/api/dramas/hongguo/categories', _signed(app))
+        resp = client.get('/api/dramas/hongguo/categories', _signed(app, '/api/dramas/hongguo/categories'))
         body = resp.json()
         nodes = (body.get('data') or {}).get('categories') or []
         check('分类清单接口原样下发分类树（一级带 children）',
@@ -201,7 +201,7 @@ def round5_http_contract():
               f'body={str(body)[:160]}')
 
         resp = client.get('/api/dramas/hongguo/list',
-                          _signed(app, {'category': 'real-drama/romance'}))
+                          _signed(app, '/api/dramas/hongguo/list', {'category': 'real-drama/romance'}))
         body = resp.json()
         check('二级分类取值被接口接受',
               body.get('code') == StatusCode.SUCCESS
@@ -209,7 +209,7 @@ def round5_http_contract():
               f'body={str(body)[:160]}')
 
         resp = client.get('/api/dramas/hongguo/rank',
-                          _signed(app, {'type': 'hot-comic-drama'}))
+                          _signed(app, '/api/dramas/hongguo/rank', {'type': 'hot-comic-drama'}))
         body = resp.json()
         check('漫剧热播榜被接口接受',
               body.get('code') == StatusCode.SUCCESS
@@ -217,12 +217,12 @@ def round5_http_contract():
               f'body={str(body)[:160]}')
 
         resp = client.get('/api/dramas/hongguo/list',
-                          _signed(app, {'category': 'real-drama/nope'}))
+                          _signed(app, '/api/dramas/hongguo/list', {'category': 'real-drama/nope'}))
         check('非法二级取值被拒（PARAM_VALUE_INVALID）',
               resp.json().get('code') == StatusCode.PARAM_VALUE_INVALID,
               f'body={str(resp.json())[:160]}')
 
-        resp = client.get('/api/dramas/hongguo/rank', _signed(app, {'type': 'nope'}))
+        resp = client.get('/api/dramas/hongguo/rank', _signed(app, '/api/dramas/hongguo/rank', {'type': 'nope'}))
         check('非法榜单类型被拒（PARAM_VALUE_INVALID）',
               resp.json().get('code') == StatusCode.PARAM_VALUE_INVALID,
               f'body={str(resp.json())[:160]}')

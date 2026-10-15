@@ -73,14 +73,14 @@ def skip(reason):
     return 1 if _FAILED else 0
 
 
-def _signed(app, extra=None):
+def _signed(app, path, extra=None):
     params = {
         'app_id': app.app_id,
         'timestamp': str(int(time.time())),
         'nonce': secrets.token_hex(8),
     }
     params.update(extra or {})
-    params['sign'] = build_sign(params, app.app_secret)
+    params['sign'] = build_sign(params, app.app_secret, 'GET', path)
     return params
 
 
@@ -213,7 +213,7 @@ def main():
     client = Client()
     try:
         section('测试 4：对外接口返回体（签名请求真实 HTTP）')
-        resp = client.get('/api/dramas/hongguo/detail', _signed(app, {'series_id': series}))
+        resp = client.get('/api/dramas/hongguo/detail', _signed(app, '/api/dramas/hongguo/detail', {'series_id': series}))
         body = resp.json()
         data = body.get('data') or {}
         check('detail 接口 200 且业务码成功',
@@ -229,7 +229,7 @@ def main():
                   f'source={_ep_field(data, ep, "source")}')
 
         resp = client.get('/api/dramas/hongguo/play',
-                          _signed(app, {'series_id': series, 'ep': ep}))
+                          _signed(app, '/api/dramas/hongguo/play', {'series_id': series, 'ep': ep}))
         body = resp.json()
         play_data = body.get('data') or {}
         if stream_on:
@@ -244,7 +244,7 @@ def main():
                   f'body={body}')
 
         resp = client.get('/api/dramas/hongguo/play',
-                          _signed(app, {'series_id': series, 'ep': 1}))
+                          _signed(app, '/api/dramas/hongguo/play', {'series_id': series, 'ep': 1}))
         first = (resp.json().get('data') or {})
         check('play 第 1 集 source=origin（与 detail 同一套取值）',
               resp.json().get('code') == StatusCode.SUCCESS and first.get('source') == 'origin',

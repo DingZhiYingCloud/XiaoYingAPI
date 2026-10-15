@@ -127,7 +127,7 @@ def _code(resp):
     return _json(resp).get('code')
 
 
-def _signed(app, extra=None):
+def _signed(app, path, extra=None):
     """构造带合法签名的请求参数"""
     params = {
         'app_id': app.app_id,
@@ -135,7 +135,7 @@ def _signed(app, extra=None):
         'nonce': secrets.token_hex(8),
     }
     params.update(extra or {})
-    params['sign'] = build_sign(params, app.app_secret)
+    params['sign'] = build_sign(params, app.app_secret, 'GET', path)
     return params
 
 
@@ -182,7 +182,7 @@ def round1_fail_closed():
     check('未命中策略的路径判定为「需要签名」', requires_auth(path) is True)
     resp = anon.get(path)
     check('匿名请求返回 20011', _code(resp) == StatusCode.AUTH_FAILED, f'code={_code(resp)}')
-    resp = anon.get(path, _signed(app))
+    resp = anon.get(path, _signed(app, path))
     check('携带合法签名后放行（落到未匹配路由 20030）',
           _code(resp) == StatusCode.NOT_FOUND, f'code={_code(resp)}')
     return app
@@ -244,7 +244,7 @@ def round4_status_inherit():
           f'code={_code(resp)}')
 
     app = _mk_app('M')
-    resp = anon.get(f'{BASE}maint/x', _signed(app))
+    resp = anon.get(f'{BASE}maint/x', _signed(app, f'{BASE}maint/x'))
     check('携带合法签名仍返回 30004（未做签名校验）',
           _code(resp) == StatusCode.SERVICE_MAINTENANCE, f'code={_code(resp)}')
 
@@ -264,7 +264,7 @@ def round4_status_inherit():
     resp = anon.get(f'{BASE}offline/x')
     check('已下线服务返回 30005（不是 30004）',
           _code(resp) == StatusCode.SERVICE_OFFLINE, f'code={_code(resp)}')
-    resp = anon.get(f'{BASE}offline/x', _signed(_mk_app('O')))
+    resp = anon.get(f'{BASE}offline/x', _signed(_mk_app('O'), f'{BASE}offline/x'))
     check('已下线：携带合法签名仍返回 30005（未做签名校验）',
           _code(resp) == StatusCode.SERVICE_OFFLINE, f'code={_code(resp)}')
     _mk_policy(name=f'EpNormalOffline {MARK}', level='endpoint',
@@ -282,7 +282,7 @@ def round4_status_inherit():
     resp = anon.get(f'{BASE}dev/x')
     check('开发中服务返回 30006（不是 20011）',
           _code(resp) == StatusCode.SERVICE_DEVELOPING, f'code={_code(resp)}')
-    resp = anon.get(f'{BASE}dev/x', _signed(_mk_app('V')))
+    resp = anon.get(f'{BASE}dev/x', _signed(_mk_app('V'), f'{BASE}dev/x'))
     check('开发中：携带合法签名仍返回 30006（未做签名校验）',
           _code(resp) == StatusCode.SERVICE_DEVELOPING, f'code={_code(resp)}')
     _mk_policy(name=f'EpNormalDev {MARK}', level='endpoint', path_prefix=f'{BASE}dev/ok',
@@ -620,7 +620,7 @@ def round12_docs_visible_audience():
     resp = anon.get(f'{BASE}dv/ch/any')
     check('admin_only 匿名请求返回 20020', _code(resp) == StatusCode.FORBIDDEN,
           f'code={_code(resp)}')
-    resp = anon.get(f'{BASE}dv/ch/any', _signed(_mk_app('D')))
+    resp = anon.get(f'{BASE}dv/ch/any', _signed(_mk_app('D'), f'{BASE}dv/ch/any'))
     check('admin_only 携带合法签名仍返回 20020（未做签名校验）',
           _code(resp) == StatusCode.FORBIDDEN, f'code={_code(resp)}')
     resp = anon.get(f'{BASE}dv/ch/visible')

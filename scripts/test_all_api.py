@@ -153,7 +153,7 @@ class Runner:
                 path = path.replace('<int>', str(business.pop('link_id')))
         return path, business
 
-    def _auth_params(self, sign_source):
+    def _auth_params(self, method, path, sign_source):
         """生成签名参数。
 
         sign_source 为「服务端验签时可见的业务参数」：GET/POST 含业务参数，
@@ -166,14 +166,14 @@ class Runner:
             'timestamp': str(int(time.time())),
             'nonce': secrets.token_hex(8),
         }
-        auth['sign'] = build_sign({**sign_source, **auth}, self.app.app_secret)
+        auth['sign'] = build_sign({**sign_source, **auth}, self.app.app_secret, method, path)
         return auth
 
     def call(self, method, path, params, sign=True, files=None):
         method = method.upper()
         path, business = self._resolve_path(path, params)
         sign_source = business if method in ('GET', 'POST') else {}
-        auth = self._auth_params(sign_source) if sign else {}
+        auth = self._auth_params(method, path, sign_source) if sign else {}
         url = self.base + path
 
         kwargs = {'timeout': self.timeout}

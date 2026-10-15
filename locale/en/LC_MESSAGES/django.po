@@ -182,8 +182,8 @@ msgstr "Unified API Aggregation Platform"
 msgid "阅读接口文档"
 msgstr "Read the API Docs"
 
-msgid "需要认证的接口须携带 app_id / timestamp / nonce / sign 四个签名参数（HMAC-SHA256，密钥为 APPSECRET）；用户中心等公开配置接口免签名，可参考接口文档中的分类配置。"
-msgstr "Authenticated APIs must carry four signature parameters — app_id / timestamp / nonce / sign (HMAC-SHA256, with APPSECRET as the key). Public configuration APIs such as the user center require no signature; refer to the category configuration in the API docs."
+msgid "需要认证的接口须携带 app_id / timestamp / nonce / sign 四个签名参数（HMAC-SHA256，密钥为 APPSECRET，签名绑定请求方法与路径）；用户中心等公开配置接口免签名，可参考接口文档中的分类配置。"
+msgstr "Authenticated APIs must carry four signature parameters — app_id / timestamp / nonce / sign (HMAC-SHA256, with APPSECRET as the key; the signature is bound to the request method and path). Public configuration APIs such as the user center require no signature; refer to the category configuration in the API docs."
 
 msgid "音乐 / 视频 / AI / 代理IP ..."
 msgstr "Music / Video / AI / Proxy IP ..."
@@ -211,8 +211,8 @@ msgstr "What if my APPSECRET is leaked?"
 msgid "Python 签名示例"
 msgstr "Python Signature Example"
 
-msgid "timestamp 为秒级时间戳，有效窗口 ±5 分钟；nonce 每次请求唯一（服务端去重防重放）。"
-msgstr "timestamp is a Unix timestamp in seconds with a ±5 minute validity window; nonce must be unique per request (the server deduplicates to prevent replay)."
+msgid "timestamp 为秒级时间戳，有效窗口 ±5 分钟；nonce 每次请求唯一（服务端去重防重放）；路径必须与最终 URL 完全一致（含结尾斜杠）。"
+msgstr "timestamp is a Unix timestamp in seconds with a ±5 minute validity window; nonce must be unique per request (the server deduplicates to prevent replay); the path must match the final URL exactly, including the trailing slash."
 
 msgid "① 注册/登录"
 msgstr "① Sign Up / Log In"
@@ -250,8 +250,8 @@ msgstr "stored only in your local browser"
 msgid "代码接入生产"
 msgstr "Integrate in Production"
 
-msgid "以 APPSECRET 为密钥做"
-msgstr "Use APPSECRET as the key for"
+msgid "以 APPSECRET 为密钥对该整串做"
+msgstr "Use APPSECRET as the key to sign the whole string with"
 
 msgid "先注册小影API 账号（入口在首页右上角）。"
 msgstr "Sign up for a XiaoYingAPI account first (the entry is in the top-right corner of the home page)."
@@ -319,8 +319,14 @@ msgstr "Concatenate into"
 msgid "按步骤完成注册 → 开通 → 签名 → 调试 → 上线。"
 msgstr "Complete the steps in order: Sign Up → Activate → Signature → Debug → Go Live."
 
-msgid "按键名 ASCII 升序拼接 key=value，HMAC-SHA256 输出小写 hex"
-msgstr "Sort by parameter name in ascending ASCII order, join as key=value, and output lowercase hex via HMAC-SHA256"
+msgid "与「方法(大写) + 换行 + 请求路径 + 换行」拼成待签串（路径含结尾斜杠、不含查询串）；"
+msgstr "Prepend the uppercase method, a newline, the request path and another newline to form the string to sign (the path includes the trailing slash and excludes the query string);"
+
+msgid "方法(大写)+换行+路径+换行 拼接参数，HMAC-SHA256 输出小写 hex"
+msgstr "Join the uppercase method, a newline, the path, another newline and the parameters, then output lowercase hex via HMAC-SHA256"
+
+msgid "用法示例：signed_params({'keyword': '周杰伦'}, 'POST', '/api/music/xiaoying/search/')。"
+msgstr "Example: signed_params({'keyword': 'Jay Chou'}, 'POST', '/api/music/xiaoying/search/')."
 
 msgid "按键名 ASCII 升序排序；"
 msgstr "Sort by parameter name in ascending ASCII order;"

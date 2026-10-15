@@ -125,25 +125,11 @@
 {% endblock %}
 
 {% block js %}
-{% trans "已复制" as v_copied %}
 <script>
 (function () {
-  // 一次性复制
-  function copyText(text, btn) {
-    function done() { var old = btn.textContent; btn.textContent = "{{ v_copied|escapejs }}"; setTimeout(function () { btn.textContent = old; }, 1200); }
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text, btn, done); });
-    } else { fallbackCopy(text, btn, done); }
-  }
-  function fallbackCopy(text, btn, done) {
-    var ta = document.createElement('textarea');
-    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
-    document.body.appendChild(ta); ta.select();
-    try { document.execCommand('copy'); done(); } catch (e) {}
-    document.body.removeChild(ta);
-  }
+  // 一次性复制（实现收敛在公共运行时 site/core.js 的 XY.copy）
   document.querySelectorAll('[data-copy]').forEach(function (btn) {
-    btn.addEventListener('click', function () { copyText(btn.dataset.copy, btn); });
+    btn.addEventListener('click', function () { window.XY.copy(btn.dataset.copy, btn); });
   });
 
   // 查看/复制 APPSECRET（仅超管会话页可见）
@@ -157,7 +143,9 @@
       copy.classList.toggle('hidden', !hidden);
       if (hidden) {
         box.textContent = btn.dataset.secret;
-        copy.addEventListener('click', function () { copyText(btn.dataset.secret, copy); });
+        // 用 onclick 覆盖赋值而不是 addEventListener：后者每展开一次就多绑一个监听器，
+        // 反复展开会累积重复绑定（点一次复制触发多次）
+        copy.onclick = function () { window.XY.copy(btn.dataset.secret, copy); };
       }
     });
   });

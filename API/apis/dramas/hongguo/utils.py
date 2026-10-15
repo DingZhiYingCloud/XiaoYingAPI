@@ -14,6 +14,7 @@ H.264 后出流。浏览器在多数机器上完全解不了源站的 HEVC（原
 from django.conf import settings
 from django.core import signing
 
+from API.common.errors import safe_error
 from SpiderServices.dramas.hongguo.main import HongguoDramaSpider
 from SpiderServices.dramas.hongguo.utils import (
     CATEGORY_OPTIONS,   # noqa: F401  （文档页下拉用，经本模块转出）
@@ -139,7 +140,7 @@ def _run(action, fn):
     try:
         return True, fn(spider)
     except Exception as e:
-        return False, f"{action}失败: {e}"
+        return False, safe_error(action, e)
 
 
 def get_rank(rank_type='hot-drama', page=1):

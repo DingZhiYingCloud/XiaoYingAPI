@@ -24,6 +24,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+from API.common.errors import safe_error
 from API.common.responses import json_response as _json_response
 from . import utils
 
@@ -46,7 +47,7 @@ def _parse_body(request):
         try:
             qd = QueryDict(request.body.decode('utf-8'))
         except Exception as e:
-            return None, f'表单解析失败: {e}'
+            return None, safe_error('表单解析', e)
     else:
         return {}, None
 
@@ -216,7 +217,7 @@ def music_import_view(request):
     except UnicodeDecodeError:
         return _json_response(StatusCode.PARAM_FORMAT_ERROR, msg='参数格式错误: 文件必须为 UTF-8 编码')
     except json.JSONDecodeError as e:
-        return _json_response(StatusCode.PARAM_FORMAT_ERROR, msg=f'参数格式错误: JSON 解析失败: {e}')
+        return _json_response(StatusCode.PARAM_FORMAT_ERROR, msg=safe_error('JSON 解析', e))
 
     if not isinstance(records, list):
         return _json_response(StatusCode.PARAM_FORMAT_ERROR, msg='参数格式错误: JSON 顶层必须为数组')

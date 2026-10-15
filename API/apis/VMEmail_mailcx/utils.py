@@ -10,6 +10,7 @@
     client_id(X-Client-ID) 标识客户端身份, 未传时爬虫自动生成 UUID。
     generate_email 会把 client_id 一并返回, 客户端可保存后在其余接口回传以复用同一身份。
 """
+from API.common.errors import safe_error
 from SpiderServices.VMEmail_mailcx.main import VMEmailMailcxSpider
 
 # 官网支持的后缀域名 / 默认域名：唯一来源为爬虫类常量，避免在多处重复定义
@@ -28,7 +29,7 @@ def list_domains():
     try:
         return True, spider.list_domains()
     except Exception as e:
-        return False, f'获取域名列表失败: {e}'
+        return False, safe_error('获取域名列表', e)
 
 
 def generate_email(domain=None, client_id=None):
@@ -46,7 +47,7 @@ def generate_email(domain=None, client_id=None):
     except ValueError as e:
         return False, str(e)
     except Exception as e:
-        return False, f'生成邮箱失败: {e}'
+        return False, safe_error('生成邮箱', e)
 
 
 def get_emails(address, since=None, client_id=None):
@@ -63,9 +64,9 @@ def get_emails(address, since=None, client_id=None):
     try:
         return True, spider.get_emails(address=address, since=since)
     except RuntimeError as e:
-        return False, str(e)
+        return False, safe_error('获取邮件', e)
     except Exception as e:
-        return False, f'获取邮件失败: {e}'
+        return False, safe_error('获取邮件', e)
 
 
 def get_email_detail(email_id, client_id=None):
@@ -82,6 +83,6 @@ def get_email_detail(email_id, client_id=None):
     try:
         return True, spider.get_email_detail(email_id)
     except RuntimeError as e:
-        return False, str(e)
+        return False, safe_error('获取邮件详情', e)
     except Exception as e:
-        return False, f'获取邮件详情失败: {e}'
+        return False, safe_error('获取邮件详情', e)

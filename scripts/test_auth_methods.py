@@ -95,7 +95,7 @@ def _check(name, cond, extra=''):
         _log(f'  [FAIL] {name} {extra}')
 
 
-def _signed(app, extra=None):
+def _signed(app, method, path, extra=None):
     """构造签名参数"""
     extra = {k: v for k, v in (extra or {}).items() if v is not None}
     params = {
@@ -105,7 +105,7 @@ def _signed(app, extra=None):
     }
     if extra:
         params.update(extra)
-    params['sign'] = build_sign(params, app[1])
+    params['sign'] = build_sign(params, app[1], method, path)
     return params
 
 
@@ -129,44 +129,44 @@ def _is_success(resp):
 
 
 def _register(app, email=None, phone=None, username=None, password=PASS):
-    return _response(Client().post(f'{BASE}/users/register', _signed(app, {
+    return _response(Client().post(f'{BASE}/users/register', _signed(app, 'POST', f'{BASE}/users/register', {
         'username': username, 'email': email, 'phone': phone, 'password': password,
     })))
 
 
 def _login(app, account=None, email=None, phone=None, password=PASS, code=None):
-    return _response(Client().post(f'{BASE}/users/login', _signed(app, {
+    return _response(Client().post(f'{BASE}/users/login', _signed(app, 'POST', f'{BASE}/users/login', {
         'account': account, 'email': email, 'phone': phone, 'password': password, 'code': code,
     })))
 
 
 def _send_login_code(app, email=None, phone=None):
     """发送登录验证码（邮箱/手机号验证码登录第一步）"""
-    return _response(Client().post(f'{BASE}/users/login/send', _signed(app, {
+    return _response(Client().post(f'{BASE}/users/login/send', _signed(app, 'POST', f'{BASE}/users/login/send', {
         'email': email, 'phone': phone,
     })))
 
 
 def _verify_phone(app, phone, code):
-    return _response(Client().post(f'{BASE}/users/verify/phone', _signed(app, {
+    return _response(Client().post(f'{BASE}/users/verify/phone', _signed(app, 'POST', f'{BASE}/users/verify/phone', {
         'phone': phone, 'code': code,
     })))
 
 
 def _send_phone(app, phone):
-    return _response(Client().post(f'{BASE}/users/verify/phone/send', _signed(app, {
+    return _response(Client().post(f'{BASE}/users/verify/phone/send', _signed(app, 'POST', f'{BASE}/users/verify/phone/send', {
         'phone': phone,
     })))
 
 
 def _verify_email(app, email, code):
-    return _response(Client().post(f'{BASE}/users/verify/email', _signed(app, {
+    return _response(Client().post(f'{BASE}/users/verify/email', _signed(app, 'POST', f'{BASE}/users/verify/email', {
         'email': email, 'code': code,
     })))
 
 
 def _resend_email(app, email):
-    return _response(Client().post(f'{BASE}/users/verify/email/resend', _signed(app, {
+    return _response(Client().post(f'{BASE}/users/verify/email/resend', _signed(app, 'POST', f'{BASE}/users/verify/email/resend', {
         'email': email,
     })))
 
@@ -177,11 +177,11 @@ def _methods():
 
 
 def _info(app, token):
-    return _response(Client().get(f'{BASE}/users/info', _signed(app, {'token': token})))
+    return _response(Client().get(f'{BASE}/users/info', _signed(app, 'GET', f'{BASE}/users/info', {'token': token})))
 
 
 def _verify_token(app, token):
-    return _response(Client().post(f'{BASE}/users/verify', _signed(app, {'token': token})))
+    return _response(Client().post(f'{BASE}/users/verify', _signed(app, 'POST', f'{BASE}/users/verify', {'token': token})))
 
 
 def _random_phone():

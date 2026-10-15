@@ -8,6 +8,7 @@
 """
 import requests
 
+from API.common.errors import safe_error
 from SpiderServices.Chaojiying.home import ChaojiyingService
 from SpiderServices.Chaojiying.utils import response_dict
 
@@ -20,7 +21,7 @@ def _call(method_name, **kwargs):
     try:
         return getattr(ChaojiyingService(), method_name)(**kwargs)
     except Exception as e:
-        return response_dict(1, f'{method_name} 调用异常: {e}')
+        return response_dict(1, safe_error(f'{method_name} 调用', e))
 
 
 def download_image(url):
@@ -32,7 +33,7 @@ def download_image(url):
         resp = requests.get(url, timeout=_DOWNLOAD_TIMEOUT)
         resp.raise_for_status()
     except requests.RequestException as e:
-        return False, f'图片下载失败: {e}'
+        return False, safe_error('图片下载', e)
     return True, resp.content
 
 

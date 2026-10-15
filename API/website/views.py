@@ -212,6 +212,22 @@ def _auth_page_context():
 
 # ==================== 页面 ====================
 
+def health_view(request):
+    """健康检查（供监控 / 负载均衡探活）
+
+    只做一次数据库连通性探测，**不返回**任何内部信息（版本、路径、依赖状态都不下发），
+    避免探活接口变成信息源。数据库不可用时返回 503，便于负载均衡摘除本节点。
+    """
+    from django.db import connection
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT 1')
+    except Exception:
+        logger.exception('健康检查失败：数据库不可用')
+        return JsonResponse({'status': 'error'}, status=503)
+    return JsonResponse({'status': 'ok'})
+
+
 def index(request):
     """官网首页（服务能力卡片带对外状态徽标，状态见 service_status）
 

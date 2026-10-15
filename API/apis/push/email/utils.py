@@ -12,6 +12,8 @@ import logging
 
 from django.core.mail import EmailMessage
 
+from API.common.errors import safe_error
+
 logger = logging.getLogger('api.push')
 
 # 推送渠道标识（PushLog.channel）
@@ -57,9 +59,10 @@ def send_email(subject, body, recipients, html_body=None, app_id=''):
         email.send(fail_silently=False)
     except Exception as e:
         # 捕获所有异常(SMTP连接失败、认证错误、网络错误等)
+        # 推送日志（运维排查用，非对外）保留原始原因；对外只回可读文案
         message = f'邮件发送失败: {e}'
         _log(subject, body, recipients, ok=False, message=message, app_id=app_id)
-        return False, message
+        return False, safe_error('邮件发送', e)
 
     _log(subject, body, recipients, ok=True, message='邮件发送成功', app_id=app_id)
     return True, '邮件发送成功'

@@ -60,6 +60,7 @@ from django.http import HttpResponse, QueryDict
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+from API.common.errors import safe_error
 from API.common.responses import json_response as _json_response
 from API.common.url_safety import check_public_http_url
 from . import utils
@@ -156,7 +157,7 @@ def _parse_body(request):
         try:
             qd = QueryDict(request.body.decode('utf-8'))
         except Exception as e:      # noqa: BLE001 - 解析失败按参数格式错误返回
-            return None, f'表单解析失败: {e}'
+            return None, safe_error('表单解析', e)
     else:
         return {}, None
     return qd.dict(), None
@@ -1343,7 +1344,7 @@ def register_batch_view(request):
         items = json.loads(raw)
     except Exception as e:      # noqa: BLE001 - 解析失败按参数格式错误返回
         return _json_response(StatusCode.PARAM_FORMAT_ERROR,
-                              msg=f'参数格式错误: items 需为 JSON 数组（{e}）')
+                              msg=safe_error('解析 items 参数', e))
     if not isinstance(items, list) or not items:
         return _json_response(StatusCode.PARAM_FORMAT_ERROR, msg='参数格式错误: items 需为非空 JSON 数组')
     if len(items) > utils.MAX_BATCH_SIZE:

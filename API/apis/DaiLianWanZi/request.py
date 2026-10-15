@@ -37,17 +37,8 @@ from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
 from API.common.responses import json_response as _json_response
+from API.common.spider import spider_result as _spider_result
 from . import utils
-
-
-def _spider_result(result):
-    """将爬虫的 {code, message, data} 映射为项目统一响应"""
-    if not isinstance(result, dict):
-        return _json_response(StatusCode.UNKNOWN_ERROR, msg=str(result))
-    if result.get("code") == 0:
-        return _json_response(StatusCode.SUCCESS, data=result.get("data"), msg=result.get("message"))
-    else:
-        return _json_response(StatusCode.EXTERNAL_API_FAILED, msg=result.get("message", "未知错误"))
 
 
 # ==================== 认证模块 ====================

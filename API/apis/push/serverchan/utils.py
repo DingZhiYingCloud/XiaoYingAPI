@@ -24,6 +24,7 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad
 
 from API.common import platform_accounts
+from API.common.errors import safe_error
 
 logger = logging.getLogger('api.push')
 
@@ -147,7 +148,7 @@ def send(title, desp='', channel='', short='', tags='', openid='', noip=False,
         resp = requests.post(_endpoint(key), data=payload, timeout=TIMEOUT)
         resp.raise_for_status()
     except requests.RequestException as e:
-        message = f'推送请求失败: {e}'
+        message = safe_error('推送请求', e)
         _log(title, sent, ok=False, message=message, app_id=app_id)
         return False, {'code': None, 'message': message}
 
@@ -186,7 +187,7 @@ def query_status(pushid, readkey):
         resp = requests.get(STATUS_URL, params={'id': pushid, 'readkey': readkey}, timeout=TIMEOUT)
         resp.raise_for_status()
     except requests.RequestException as e:
-        return False, {'code': None, 'message': f'状态查询请求失败: {e}'}
+        return False, {'code': None, 'message': safe_error('状态查询请求', e)}
 
     try:
         result = resp.json()

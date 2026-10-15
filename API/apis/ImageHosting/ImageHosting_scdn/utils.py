@@ -13,6 +13,7 @@ _SPIDER_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__),
 if _SPIDER_ROOT not in sys.path:
     sys.path.insert(0, _SPIDER_ROOT)
 
+from API.common.errors import safe_error
 from ImageHosting.home import ImageHostingService
 
 
@@ -46,4 +47,4 @@ def upload_image(image=None, image_url=None, image_filename=None,
         )
         return True, result
     except Exception as e:
-        return False, f'upload_image 调用异常: {e}'
+        return False, safe_error('上传图片', e)

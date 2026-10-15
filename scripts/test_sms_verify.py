@@ -66,7 +66,7 @@ def _check(name, cond, extra=''):
         _log(f'  [FAIL] {name} {extra}')
 
 
-def _signed(app, extra=None, timestamp=None):
+def _signed(app, method, path, extra=None, timestamp=None):
     """构造签名参数（可覆盖 timestamp 做时间窗测试；None 值参数自动剔除）"""
     extra = {k: v for k, v in (extra or {}).items() if v is not None}
     params = {
@@ -76,7 +76,7 @@ def _signed(app, extra=None, timestamp=None):
     }
     if extra:
         params.update(extra)
-    params['sign'] = build_sign(params, app[1])
+    params['sign'] = build_sign(params, app[1], method, path)
     return params
 
 
@@ -93,7 +93,7 @@ def _create_app(name=None, status=True):
 
 def _post(app, path, extra=None, with_sign=True):
     """发送 POST 请求（form-urlencoded + 签名）"""
-    params = _signed(app, extra) if with_sign else (extra or {})
+    params = _signed(app, 'POST', f'{BASE}{path}', extra) if with_sign else (extra or {})
     return Client().post(f'{BASE}{path}', params)
 
 
@@ -192,18 +192,18 @@ def round2(app):
     _check('发送-无签名返回20011', r['code'] == 20011, r)
 
     # 错误签名
-    params = _signed(app, {'phone': TEST_PHONE})
+    params = _signed(app, 'POST', f'{BASE}/send', {'phone': TEST_PHONE})
     params['sign'] = 'deadbeef'
     r = _response(Client().post(f'{BASE}/send', params))
     _check('发送-错误签名返回20011', r['code'] == 20011, r)
 
     # 未注册 app_id
-    fake = _signed(('app_fake' + '0' * 24, 'sk_fake' + '0' * 58), {'phone': TEST_PHONE})
+    fake = _signed(('app_fake' + '0' * 24, 'sk_fake' + '0' * 58), 'POST', f'{BASE}/send', {'phone': TEST_PHONE})
     r = _response(Client().post(f'{BASE}/send', fake))
     _check('发送-未注册项目返回20011', r['code'] == 20011, r)
 
     # 时间戳过期（超出 ±5 分钟窗口）
-    params = _signed(app, {'phone': TEST_PHONE}, timestamp=int(time.time()) - 3600)
+    params = _signed(app, 'POST', f'{BASE}/send', {'phone': TEST_PHONE}, timestamp=int(time.time()) - 3600)
     r = _response(Client().post(f'{BASE}/send', params))
     _check('发送-时间戳过期返回20011', r['code'] == 20011, r)
 
@@ -256,9 +256,9 @@ def round3(app):
 
     # 方法限制：GET 调用 send/check（POST 接口）→ 认证通过后 Django 返回 405
     # （未带签名的请求会在认证层先被拦截返回 20011，故此处携带有效签名验证方法限制本身）
-    resp = Client().get(f'{BASE}/send', _signed(app, {'phone': TEST_PHONE}))
+    resp = Client().get(f'{BASE}/send', _signed(app, 'GET', f'{BASE}/send', {'phone': TEST_PHONE}))
     _check('方法限制-GET访问send返回405', resp.status_code == 405, resp.status_code)
-    resp = Client().get(f'{BASE}/check', _signed(app, {'phone': TEST_PHONE, 'verify_code': '1234'}))
+    resp = Client().get(f'{BASE}/check', _signed(app, 'GET', f'{BASE}/check', {'phone': TEST_PHONE, 'verify_code': '1234'}))
     _check('方法限制-GET访问check返回405', resp.status_code == 405, resp.status_code)
 
     _restore_aliyun()

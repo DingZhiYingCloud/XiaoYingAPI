@@ -35,6 +35,7 @@ from django.http import JsonResponse, StreamingHttpResponse
 from django.shortcuts import render
 
 from API.apis.haijiao import utils as haijiao_utils
+from API.common.errors import safe_error
 from SpiderServices.Chaojiying.utils import CODETYPES
 from SpiderServices.haijiao import utils as haijiao_spider_utils
 from SpiderServices.haijiao.main import PROXY_PROVIDERS
@@ -203,7 +204,8 @@ def haijiao_register_stream_view(request):
                     yield _sse(frame)
         except Exception as e:      # noqa: BLE001 - 流断了前端只能看到「连接中断」，故把原因推给页面
             logger.exception('海角自动注册中断')
-            yield _sse({'type': 'error', 'msg': f'自动注册中断: {e}'})
+            # 原始异常（可能是 KeyError 这类技术信息）已由上一行落盘，页面只给一句人话
+            yield _sse({'type': 'error', 'msg': safe_error('自动注册', e)})
         yield 'data: [DONE]\n\n'
 
     response = StreamingHttpResponse(sse(), content_type='text/event-stream')
