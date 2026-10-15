@@ -48,6 +48,11 @@ USERNAME_PREFIX = 'xy_'
 USERNAME_RANDOM_LEN = 9
 PASSWORD_LEN = 10
 MAX_BATCH_SIZE = 20   # 单次批量注册上限
+# 批量关注 / 批量点赞的**单次**账号数上限：这两个动作在请求线程内串行、每个账号一次真实上游
+# 请求（单次实测 1.7~2.7 秒），不限制的话账号库一大，单次 HTTP 调用就会占住 uwsgi worker 数分钟
+# （网关先超时，且调用方拿不到任何结果）。所以**不是「只处理前 N 个」**，而是「一次处理 N 个」：
+# 接口带 offset 参数，配合返回的 next_offset / has_more 续跑即可覆盖全部账号。
+BATCH_MAX_ACCOUNTS = 100
 
 
 def _run(action, fn, user_id=None, user_token=None):
@@ -746,9 +751,13 @@ def set_follow(target_user_id, follow=True, account_id=None, user_id=None, user_
 FOLLOW_ALREADY_HINTS = ('已关注此用户', '并未关注')
 
 
-def set_follow_batch(target_user_id, follow=True):
+def set_follow_batch(target_user_id, follow=True, offset=0):
     """
     批量关注 / 取消关注：让账号库里**全部有 token 的账号**都对同一个目标用户执行关注 / 取关。
+
+    **分页**：一次最多处理 `BATCH_MAX_ACCOUNTS` 个账号（按 create_time 升序从 `offset` 开始取），
+    返回里给 `account_total` / `account_limit` / `offset` / `next_offset` / `has_more`；
+    账号数超过上限时用上一次的 `next_offset` 再调一次，`has_more=false` 即已覆盖全部账号。
 
     稳定性处理：
     - 逐个**串行**执行（不并发），避免瞬时多请求被源站判定为异常批量行为；
@@ -758,10 +767,16 @@ def set_follow_batch(target_user_id, follow=True):
       都**直接跳过**并注明原因，不浪费请求；
     - 账号已是目标状态（已关注 / 本来就没关注）计入 already，不算失败。
 
+    :param offset: 从账号库的第几条开始（默认 0）
     :return: (True, {target_user_id, action, total, success_count, already_count,
-                     skipped_count, failed_count, items})
+                     skipped_count, failed_count, account_total, account_limit,
+                     offset, next_offset, has_more, items})
     """
-    accounts = list(HaijiaoAccount.objects.all().order_by('create_time'))
+    account_total = HaijiaoAccount.objects.count()
+    # 排序带上 id 做兜底：同一批导入的账号 create_time 可能完全相同，只按时间排序时
+    # offset 分页会漏账号或重复处理（顺序不稳定）。
+    accounts = list(HaijiaoAccount.objects.all()
+                    .order_by('create_time', 'id')[offset:offset + BATCH_MAX_ACCOUNTS])
     results = []
     for account in accounts:
         item = {
@@ -797,6 +812,12 @@ def set_follow_batch(target_user_id, follow=True):
         'already_count': counts['already'],
         'skipped_count': counts['skipped'],
         'failed_count': counts['failed'],
+        # 分页游标：账号数超过 account_limit 时，用 next_offset 再调一次，直到 has_more=false
+        'account_total': account_total,
+        'account_limit': BATCH_MAX_ACCOUNTS,
+        'offset': offset,
+        'next_offset': offset + len(results),
+        'has_more': offset + len(results) < account_total,
         'items': results,
     }
 
@@ -1013,9 +1034,13 @@ def delete_favorite_folder(folder_id, account_id=None, user_id=None, user_token=
 LIKE_ALREADY_HINTS = {'like': '已点赞', 'unlike': '未点赞'}
 
 
-def set_like_batch(topic_id, like=True):
+def set_like_batch(topic_id, like=True, offset=0):
     """
     批量点赞 / 取消点赞：让账号库里**全部账号**都对同一篇帖子执行点赞（或取消）。
+
+    **分页**：一次最多处理 `BATCH_MAX_ACCOUNTS` 个账号（按 create_time 升序从 `offset` 开始取），
+    返回里给 `account_total` / `account_limit` / `offset` / `next_offset` / `has_more`；
+    账号数超过上限时用上一次的 `next_offset` 再调一次，`has_more=false` 即已覆盖全部账号。
 
     稳定性处理（与「批量关注」同一套口径）：
     - 逐个**串行**执行（不并发），避免瞬时多请求被源站判定为异常批量行为；
@@ -1024,10 +1049,15 @@ def set_like_batch(topic_id, like=True):
     - 没有 token 的账号（无法登录）**直接跳过**并注明原因；
     - 账号已是目标状态（已点过赞 / 本来就没点赞）计入 already，不算失败。
 
+    :param offset: 从账号库的第几条开始（默认 0）
     :return: (True, {topic_id, action, total, success_count, already_count,
-                     skipped_count, failed_count, items})
+                     skipped_count, failed_count, account_total, account_limit,
+                     offset, next_offset, has_more, items})
     """
-    accounts = list(HaijiaoAccount.objects.all().order_by('create_time'))
+    account_total = HaijiaoAccount.objects.count()
+    # 同 set_follow_batch：排序带 id 兜底，保证 offset 分页顺序稳定
+    accounts = list(HaijiaoAccount.objects.all()
+                    .order_by('create_time', 'id')[offset:offset + BATCH_MAX_ACCOUNTS])
     results = []
     for account in accounts:
         item = {
@@ -1061,6 +1091,12 @@ def set_like_batch(topic_id, like=True):
         'already_count': counts['already'],
         'skipped_count': counts['skipped'],
         'failed_count': counts['failed'],
+        # 分页游标：账号数超过 account_limit 时，用 next_offset 再调一次，直到 has_more=false
+        'account_total': account_total,
+        'account_limit': BATCH_MAX_ACCOUNTS,
+        'offset': offset,
+        'next_offset': offset + len(results),
+        'has_more': offset + len(results) < account_total,
         'items': results,
     }
 

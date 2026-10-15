@@ -19,7 +19,8 @@ from django.utils.translation import gettext as _
 
 from API.apis.pay.providers import build_provider
 from API.apis.pay.providers.base import PayError
-from API.apis.pay.utils import absolute_url, format_money, gen_out_trade_no, parse_money
+from API.apis.pay.utils import (absolute_url, client_ip, format_money,
+                                gen_out_trade_no, parse_money)
 from API.models import (
     PayNotifyLog,
     PayOrder,
@@ -167,8 +168,7 @@ def handle_notify(provider_code: str, params: dict, request=None) -> tuple:
         out_trade_no=(params.get('out_trade_no') or '')[:64],
         trade_no=(params.get('trade_no') or '')[:64],
         raw=raw[:20000],
-        ip=(request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip()
-            or request.META.get('REMOTE_ADDR', '')) if request else '',
+        ip=(client_ip(request) if request else ''),
         user_agent=(request.META.get('HTTP_USER_AGENT', '')[:255]) if request else '',
     )
 
@@ -278,14 +278,29 @@ def refund_notice(days=None) -> str:
 
 
 def refundable_amount(order: PayOrder):
-    """订单当前可退金额 = 订单金额 − 已退金额 − 其它**待人工处理**的申请金额
+    """订单当前可退金额（单笔口径，公式见 refundable_amounts）"""
+    return refundable_amounts([order]).get(order.pk, Decimal('0'))
 
+
+def refundable_amounts(orders) -> dict:
+    """批量算可退金额，返回 `{order_id: Decimal}`
+
+    公式（唯一实现）：可退金额 = 订单金额 − 已退金额 − **其它待人工处理**的申请金额
     最后一项不可少：人工受理的申请在被处理前不会动 `refund_amount`，
     若不算进来，同一笔订单能被反复申请、退超。
+
+    列表页一次要算多笔，故这里一次性聚合（逐笔调 `refundable_amount` 会产生 N+1）。
     """
-    pending = (order.refund_requests.filter(status=PayRefundRequest.STATUS_PENDING)
-               .aggregate(total=Sum('amount'))['total']) or Decimal('0')
-    return order.amount - order.refund_amount - pending
+    orders = list(orders)
+    if not orders:
+        return {}
+    pending = dict(
+        PayRefundRequest.objects
+        .filter(order__in=[o.pk for o in orders], status=PayRefundRequest.STATUS_PENDING)
+        .values_list('order')
+        .annotate(total=Sum('amount')))
+    return {o.pk: o.amount - o.refund_amount - (pending.get(o.pk) or Decimal('0'))
+            for o in orders}
 
 
 def refund_order(order: PayOrder, amount, *, operator: str = '', source: str = '',

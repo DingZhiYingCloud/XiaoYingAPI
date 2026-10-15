@@ -127,16 +127,10 @@ urlpatterns = [
 
 ### 4.1 响应体
 
-所有接口（成功 / 失败）统一返回三字段 JSON：
+所有接口（成功 / 失败）统一返回三字段 JSON。统一实现收口在 [API/common/responses.py](../common/responses.py) 的 `json_response`（公共实现位置，全站唯一），各服务从公共模块导入后按原调用点使用（`_json_response(...)` 调用方式不变）：
 
 ```python
-def _json_response(code, data=None, msg=None):
-    """统一响应格式: {"code", "msg", "data"}"""
-    return JsonResponse({
-        'code': code,
-        'msg': msg or StatusCode.get_message(code),  # 未传 msg 时取状态码默认描述
-        'data': data,
-    })
+from API.common.responses import json_response as _json_response
 ```
 
 | 字段 | 类型 | 说明 |
@@ -145,7 +139,7 @@ def _json_response(code, data=None, msg=None):
 | `msg` | str | 面向调用方的中文提示；缺省用 `StatusCode.get_message(code)` |
 | `data` | any | 业务数据；无数据时为 `null` |
 
-- 每个 `request.py` 内定义本服务私有的 `_json_response`（现状如此），**不跨服务复用私有函数**。
+- `_json_response` 取自 [API/common/responses.py](../common/responses.py)（`json_response`），全站唯一实现，**不在各服务里重复定义私有 `_json_response`**。
 - 成功统一用 `StatusCode.SUCCESS`，失败按下方状态码选择，**禁止自造裸数字**。
 
 ### 4.2 状态码

@@ -18,6 +18,7 @@ import logging
 
 from django.core.exceptions import ValidationError
 from django.contrib import messages
+from django.core.paginator import Paginator
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.utils.translation import gettext as _
@@ -30,6 +31,9 @@ from .admin_auth import notify_success, superadmin_required
 logger = logging.getLogger('api.accounts')
 
 REDIRECT_URL = 'website:console_accounts'
+
+# 列表每页条数：与其它控制台列表一致，避免账号变多后一页渲染全部（每行都要解密凭据）
+PER_PAGE = 20
 
 
 @superadmin_required
@@ -52,18 +56,26 @@ def _render(request):
     supported = set(platform_accounts.supported_platforms())
     # 平台名（模型选项）按当前语言翻译后展示，与「接口公告」等页口径一致
     platform_labels = {value: _(label) for value, label in Platform.choices}
+    paginator = Paginator(PlatformAccount.objects.all(), PER_PAGE)
+    page = paginator.get_page(request.GET.get('page'))
     rows = []
-    for record in PlatformAccount.objects.all():
+    for record in page.object_list:
         # 模板据此决定是否渲染「校验」按钮（该平台有没有接入校验器）
         record.check_supported = record.platform in supported
         record.platform_label = platform_labels.get(record.platform, record.platform)
         rows.append(record)
+    # 「已录入凭据」的**总数**：加密字段的空值原样存空串（见 EncryptedSecretField 的落库规则），
+    # 因此在 SQL 侧数即可，不必把全表逐行取出来解密。
+    has_credential_count = PlatformAccount.objects.exclude(credential='').count()
     return render(request, 'console/accounts.html', {
+        'page_obj': page,
+        'paginator': paginator,
         'rows': rows,
-        'total': len(rows),
+        'total': paginator.count,
+        'page_prefix': '',
         'platform_choices': list(platform_labels.items()),
         'supported_platforms': supported,
-        'has_credential_count': sum(1 for row in rows if row.has_credential),
+        'has_credential_count': has_credential_count,
     })
 
 

@@ -9,6 +9,7 @@
 - 仅允许转发注册表（API.website.docs.ALL_ENDPOINTS）中已声明的端点路径；
 - SSE 响应（AI 接口 stream=true）逐块透传，调试面板可逐字打印，其余响应仍为一次性 JSON。
 """
+import copy
 import html
 import json
 import secrets
@@ -18,6 +19,7 @@ from urllib.parse import urlencode
 import markdown
 from django.http import JsonResponse, StreamingHttpResponse
 from django.shortcuts import render
+from django.utils.translation import get_language
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_POST
 
@@ -202,6 +204,31 @@ def _field_indent(name):
     return max(0, len([part for part in str(name).split('.') if part]) - 1)
 
 
+# 「已本地化 + 已渲染 Markdown」的文档副本缓存，键为 (slug, 当前语言)。
+#
+# 文档声明是**代码里的静态常量**，翻译与 Markdown 渲染的结果只取决于 (slug, 语言)，
+# 与请求无关；而 localize() 每次都要 deepcopy 整份声明并逐字段 gettext、_attach_markdown()
+# 要重新解析所有说明文本 —— 服务越大越明显（海角那种几十个端点的页面）。
+# 故这里只算一次；每次请求再 deepcopy 一份出来用（调用次数 / 线路状态 / 接口公告 /
+# 动态下拉这些都是**逐请求**数据，必须写在副本上，不能污染缓存）。
+# 代价：改了 docs/*.py 的声明要重启进程才生效（与模板、.mo 词条同口径）。
+_DOC_CACHE = {}
+
+
+def _load_localized_doc(slug):
+    """取「已本地化 + 已渲染 Markdown」的文档副本；slug 不存在返回 None"""
+    spec = get_doc(slug)
+    if spec is None:
+        return None
+    key = (slug, get_language())
+    if key not in _DOC_CACHE:
+        # localize() 返回副本、_attach_markdown() 在副本上就地把说明文本渲染成 HTML（返回 None）
+        doc = localize(spec)
+        _attach_markdown(doc)
+        _DOC_CACHE[key] = doc
+    return copy.deepcopy(_DOC_CACHE[key])
+
+
 def service(request, slug: str):
     """/docs/<slug>/ 单个服务文档页（线路 tab + 端点调试）
 
@@ -212,10 +239,10 @@ def service(request, slug: str):
     from API.common.middleware import is_docs_hidden
     from .service_status import annotate as _annotate_status, channel_status_fields
     viewer = is_superadmin(getattr(request, 'user', None))
-    doc = get_doc(slug)
+    # 取「已本地化 + 已渲染 Markdown」的副本（按 (slug, 语言) 缓存，见 _load_localized_doc）
+    doc = _load_localized_doc(slug)
     if doc is None or is_docs_hidden(doc.prefix, viewer):
         return render(request, '404.html', status=404)
-    doc = localize(doc)  # 文档内容按当前语言翻译（副本）
     doc.channels = [channel for channel in doc.channels
                     if any(not is_docs_hidden(ep.path, viewer) for ep in channel.endpoints)]
     for channel in doc.channels:
@@ -240,8 +267,7 @@ def service(request, slug: str):
     _attach_announcements(doc)
     # 动态下拉选项（声明里只写 dynamic_options 名字，如 AI 模型清单来自数据库）
     _resolve_dynamic_options(doc)
-    # 说明类文本按 Markdown 渲染成 HTML（翻译之后再做，见 _attach_markdown）
-    _attach_markdown(doc)
+    # 注：说明类文本的 Markdown 渲染已在 _load_localized_doc() 里随缓存一起做掉
     # 本机凭据（声明 local=True 的参数，如抖音登录 Cookie）：不在参数表单里渲染，
     # 改由右侧栏「本机凭据」卡片提供。同一凭据可能被多个端点复用，按参数名去重，
     # 展示信息取首次声明的那一份（label / 说明 / 占位符，此时已翻译并渲染好 HTML）。

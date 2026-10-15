@@ -12,10 +12,10 @@
 （后台「账号管理」`/console/accounts/` 维护，加密落库）。
 文档页 `/docs/zhihu/` 右侧栏「本机凭据」可粘贴并保存到本机，调试时自动带上。
 """
-from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+from API.common.responses import json_response as _json_response
 from SpiderServices.zhihu.utils import (
     MAX_ANSWERS,
     MAX_COMMENTS,
@@ -26,14 +26,6 @@ from SpiderServices.zhihu.utils import (
 )
 
 from . import utils
-
-
-def _json_response(code, data=None, msg=None):
-    return JsonResponse({
-        'code': code,
-        'msg': msg or StatusCode.get_message(code),
-        'data': data,
-    })
 
 
 def _param(request, name):

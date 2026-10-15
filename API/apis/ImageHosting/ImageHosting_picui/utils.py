@@ -15,7 +15,7 @@ import re
 import sys
 
 from django.conf import settings
-from django.db.models import F
+from django.db.models import F, Sum
 from django.utils import timezone
 
 from API.apis.push.email.utils import send_email
@@ -92,8 +92,13 @@ def _pick_token():
 
 
 def _pool_remaining_bytes() -> int:
-    """池内所有 Token 的剩余容量合计（字节）"""
-    return sum(t.remaining_bytes for t in ImageHostingToken.objects.all())
+    """池内所有 Token 的剩余容量合计（字节）
+
+    在数据库里聚合（`Sum(capacity - used)`），不要把整池行读进 Python 再求和：
+    上传成功一次会调用两遍，逐行求和是两次全表加载。
+    """
+    return ImageHostingToken.objects.aggregate(
+        total=Sum(F("capacity_bytes") - F("used_bytes")))["total"] or 0
 
 
 def _notify_low_capacity(remaining_bytes: int) -> tuple:

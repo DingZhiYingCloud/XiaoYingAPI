@@ -57,7 +57,7 @@ XiaoYingAPI/
 │   │   ├── docs/                 # 文档中心的「服务 × 线路 × 端点」声明式数据
 │   │   └── programs.py           # 「计算程序」模块：扫描内容目录、渲染说明文档（见第八章第 6 节）
 │   ├── middlewares/              # 独立中间件组件（cloak_guard 斗篷守卫，见其目录内 README.md）
-│   ├── management/commands/      # 自定义管理命令（security_backfill / prune_api_call_hour / prune_qq_messages / cleanup_api_stats / seed_service_policies）
+│   ├── management/commands/      # 自定义管理命令（security_backfill / prune_api_call_hour / cleanup_api_stats / seed_service_policies）
 │   ├── migrations/               # 数据库迁移（随代码入库，详见第六章）
 │   ├── templates/                # 全站模板，前端规范见其目录内 前端开发必看.md
 │   ├── static/                   # 应用内静态文件（前端 CSS/JS 源码与编译产物）
@@ -189,7 +189,7 @@ XiaoYingAPI/
 >
 > **画质说明**：源站 1080p 本体码率仅约 540 kbps，转码的意义是「别在二次编码时再掉一层」而非「加细节」，因此各档码率上限按档位分别设定（见 `SpiderServices/dramas/hongguo/transcode.py` 的 `_RATE_BY_WIDTH`）。此前默认档是 `HONGGUO_STREAM_HEIGHT=720`（按**高度**缩，竖屏宽度只剩 408px），观感明显发虚，故改为按**宽度**计档、默认 1080。
 
-**网页直出相关配置**（详见 `.env.example`）：`HONGGUO_STREAM_DIR` / `HONGGUO_STREAM_QUALITY`（默认出流画质 = 输出宽度上限，默认 1080）/ `HONGGUO_STREAM_HW_ENCODERS` / `HONGGUO_STREAM_X264_PRESET` / `HONGGUO_STREAM_X264_CRF` / `HONGGUO_STREAM_MAX_CONCURRENT`（全局并发转码上限，默认 2）/ `HONGGUO_STREAM_TOKEN_TTL`（默认 7200 秒）；各画质档的码率上限在 `SpiderServices/dramas/hongguo/transcode.py` 的 `_RATE_BY_WIDTH` 里按档位设定。
+**网页直出相关配置**（详见 `.env.example`）：`HONGGUO_STREAM_DIR` / `HONGGUO_STREAM_QUALITY`（默认出流画质 = 输出宽度上限，默认 1080）/ `HONGGUO_STREAM_HW_ENCODERS` / `HONGGUO_STREAM_X264_PRESET` / `HONGGUO_STREAM_X264_CRF` / `HONGGUO_STREAM_MAX_CONCURRENT`（全局并发转码上限，默认 1）/ `HONGGUO_STREAM_TOKEN_TTL`（默认 7200 秒）；各画质档的码率上限在 `SpiderServices/dramas/hongguo/transcode.py` 的 `_RATE_BY_WIDTH` 里按档位设定。
 
 > API 文档中心的「播放地址」接口自带**在线播放器**：发送请求成功后会自动加载并播放返回的地址（m3u8 走 hls.js，mp4 直链直接交给 `<video>`），可直接用来验收。
 
@@ -460,8 +460,6 @@ python manage.py cleanup_api_stats --no-drop-orphan-apps  # 只归并路径，�
 - `app_secret`：签名密钥（`sk_` 前缀，63 字符，**仅展示一次，需妥善保存**）
 
 创建后 APPID / APPSECRET 固定不可修改；删除项目会使其全部 Token 立即失效。
-
-> 备注：`API/admin.py` 是后台下线前的遗留文件，已无入口引用（死代码），保留仅作参考。
 
 ### 2. 用户管理（超管控制台 `/console/users/`）
 

@@ -25,6 +25,7 @@ from django.contrib import messages
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.contrib.auth.views import redirect_to_login
 
+from API.common.ip_guard import client_ip
 from API.common.views import handler404
 
 logger = logging.getLogger('api.console')
@@ -52,11 +53,13 @@ def notify_success(request, note):
 
 
 def _client_ip(request):
-    """来源 IP：优先取 Nginx 透传的 X-Forwarded-For 首段（生产走反代，REMOTE_ADDR 是 127.0.0.1）"""
-    forwarded = (request.META.get('HTTP_X_FORWARDED_FOR') or '').strip()
-    if forwarded:
-        return forwarded.split(',')[0].strip()[:45]
-    return (request.META.get('REMOTE_ADDR') or '')[:45]
+    """来源 IP：口径全站唯一（`API/common/ip_guard.client_ip`，取 X-Forwarded-For **末段**）
+
+    末段才是本站 Nginx 亲眼看到的直连地址（`$proxy_add_x_forwarded_for` 把客户端自带的
+    XFF 原样保留在前），取首段等于让调用方自己填一个假 IP 写进审计日志。
+    审计表 ip 列长度有限，这里统一截到 45 字符（IPv6 最长 45）。
+    """
+    return client_ip(request)[:45]
 
 
 def _record_audit(request, response):

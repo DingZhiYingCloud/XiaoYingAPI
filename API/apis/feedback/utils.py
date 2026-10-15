@@ -22,19 +22,11 @@ from django.utils.translation import gettext as _
 from API.apis.uploads.utils import FileUploader
 from API.common import StatusCode
 from API.common.credential_crypto import hash_token
+# 客户端 IP 口径全站唯一（取 X-Forwarded-For **末段**，抗伪造）：票据签发留痕与游客提交
+# 的防刷计数都用这一份，不要在本地再写一遍「首段」口径。
+from API.common.ip_guard import client_ip
 from API.models import FeedbackAttachment, FeedbackTicket, ProjectContact, UserApp, UserToken
 from API.models.Feedback.ticket import TICKET_TTL_SECONDS
-
-
-def client_ip(request) -> str:
-    """客户端 IP（优先反向代理透传头，兜底 REMOTE_ADDR）
-
-    用于票据签发留痕与游客提交的防刷计数。
-    """
-    xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
-    if xff:
-        return xff.split(',')[0].strip()
-    return request.META.get('HTTP_X_REAL_IP', '') or request.META.get('REMOTE_ADDR', '')
 
 
 def serialize_contacts(app) -> list:

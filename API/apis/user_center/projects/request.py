@@ -3,20 +3,11 @@
 接口清单：
     GET /api/user_center/projects/info   查询项目自身信息（需签名）
 """
-from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+from API.common.responses import json_response as _json_response
 from . import utils
-
-
-def _json_response(code, data=None, msg=None):
-    """统一响应格式: {"code", "msg", "data"}"""
-    return JsonResponse({
-        'code': code,
-        'msg': msg or StatusCode.get_message(code),
-        'data': data,
-    })
 
 
 @require_http_methods(['GET'])

@@ -161,6 +161,8 @@ class Feedback(BaseModel):
             models.Index(fields=['app', 'create_time'], name='idx_fb_app_time'),
             # 审核线程的取任务队列：按 ai_status 过滤、按提交时间先进先出
             models.Index(fields=['ai_status', 'create_time'], name='idx_fb_ai_queue'),
+            # 后台默认列表：不带过滤条件、只按 -create_time 排序分页
+            models.Index(fields=['-create_time'], name='idx_fb_create_time'),
         ]
 
     def __str__(self):

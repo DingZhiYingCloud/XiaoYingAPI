@@ -11,24 +11,11 @@
 
 签名参数（app_id/timestamp/nonce/sign）由 ApiAuthMiddleware 统一校验，视图不重复处理。
 """
-from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+from API.common.responses import json_response as _json_response
 from . import utils
-
-
-def _json_response(code, data=None, msg=None):
-    """构建统一的 JSON 响应体
-    :param code: 状态码(参见 StatusCode)
-    :param data: 业务数据,默认为 None
-    :param msg:  自定义消息,未传则使用状态码对应的默认描述
-    """
-    return JsonResponse({
-        'code': code,
-        'msg': msg or StatusCode.get_message(code),
-        'data': data,
-    })
 
 
 def _require_int(value, name, minimum=None):

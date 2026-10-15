@@ -5,24 +5,15 @@
     GET  /api/push/serverchan/status  查询推送送达状态
 SendKey 由服务端托管（控制台「账号管理」，platform=serverchan），调用方不传。
 """
-from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+from API.common.responses import json_response as _json_response
 
 from . import utils
 
 # noip 的真值写法（表单过来的都是字符串）
 _TRUTHY = ('1', 'true', 'yes', 'on')
-
-
-def _json_response(code, data=None, msg=None):
-    """统一响应格式: {"code", "msg", "data"}"""
-    return JsonResponse({
-        'code': code,
-        'msg': msg or StatusCode.get_message(code),
-        'data': data,
-    })
 
 
 @require_http_methods(['POST'])

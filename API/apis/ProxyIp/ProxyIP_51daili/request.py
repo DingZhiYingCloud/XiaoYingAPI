@@ -3,20 +3,12 @@
 提供 51代理 动态代理IP接口:
     GET /api/ProxyIp/51daili/proxies  获取动态代理IP
 """
-from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+from API.common.responses import json_response as _json_response
 from . import utils
 from .utils import PARAM_NAMES
-
-
-def _json_response(code, data=None, msg=None):
-    return JsonResponse({
-        "code": code,
-        "msg": msg or StatusCode.get_message(code),
-        "data": data,
-    })
 
 
 def _spider_result(result):

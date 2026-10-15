@@ -3,20 +3,12 @@
 提供巨量代理IP接口:
     GET /api/ProxyIp/juliang/proxies  获取动态代理IP（独享代理产品）
 """
-from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+from API.common.responses import json_response as _json_response
 from . import utils
 from .utils import MAX_NUM, PASSTHROUGH_ENUM, PASSTHROUGH_TEXT
-
-
-def _json_response(code, data=None, msg=None):
-    return JsonResponse({
-        "code": code,
-        "msg": msg or StatusCode.get_message(code),
-        "data": data,
-    })
 
 
 def _spider_result(result):

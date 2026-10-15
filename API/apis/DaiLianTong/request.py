@@ -30,19 +30,11 @@
 """
 import json
 
-from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+from API.common.responses import json_response as _json_response
 from . import utils
-
-
-def _json_response(code, data=None, msg=None):
-    return JsonResponse({
-        "code": code,
-        "msg": msg or StatusCode.get_message(code),
-        "data": data,
-    })
 
 
 def _spider_result(result):

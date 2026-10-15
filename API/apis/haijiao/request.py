@@ -56,10 +56,11 @@ import json
 import re
 import uuid
 
-from django.http import HttpResponse, JsonResponse, QueryDict
+from django.http import HttpResponse, QueryDict
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+from API.common.responses import json_response as _json_response
 from API.common.url_safety import check_public_http_url
 from . import utils
 
@@ -102,19 +103,6 @@ _DATA_URI_RE = re.compile(r'^data:(image/[\w.+-]+);base64,(.+)$', re.S)
 # 布尔型表单参数取值
 _TRUE_VALUES = ('true', '1', 'yes', 'y')
 _FALSE_VALUES = ('false', '0', 'no', 'n')
-
-
-def _json_response(code, data=None, msg=None):
-    """构建统一的 JSON 响应体
-    :param code: 状态码(参见 StatusCode)
-    :param data: 业务数据,默认为 None
-    :param msg:  自定义消息,未传则使用状态码对应的默认描述
-    """
-    return JsonResponse({
-        'code': code,
-        'msg': msg or StatusCode.get_message(code),
-        'data': data,
-    })
 
 
 def _require_int(raw, name, minimum=0):
@@ -172,6 +160,19 @@ def _parse_body(request):
     else:
         return {}, None
     return qd.dict(), None
+
+
+def _paging_hint(data):
+    """批量接口的续跑提示：账号数超过单次上限时，追加到成功文案末尾
+
+    批量关注 / 批量点赞一次最多处理 account_limit 个账号（见 utils.BATCH_MAX_ACCOUNTS），
+    返回的 next_offset / has_more 用来续跑；这里只负责把这件事明确告诉调用方，
+    避免「以为一次跑完了，其实只跑了一部分」。
+    """
+    if not data.get('has_more'):
+        return ''
+    return (f'（已处理 {data["next_offset"]}/{data["account_total"]}，'
+            f'请带 offset={data["next_offset"]} 再调一次，直到 has_more=false）')
 
 
 def _parse_page(request):
@@ -702,6 +703,9 @@ def follow_batch_view(request):
     表单参数:
         target_user_id (必填): 目标用户 ID（个人主页 /homepage/<user_id> 里的那段数字）
         action         (可选): follow=关注（默认）/ unfollow=取消关注
+        offset         (可选): 从账号库的第几条开始（默认 0）。单次最多处理 account_limit 个，
+                               账号数超过它时用返回的 next_offset 续跑，直到 has_more=false
+                               即已覆盖全部账号
 
     串行逐个执行（避免瞬时并发触发源站风控），单个账号失败不影响其它账号：
     成功计入 success_count、已是目标状态计入 already_count、目标就是账号自己的计入
@@ -712,12 +716,17 @@ def follow_batch_view(request):
     if err:
         return err
 
+    offset, err = _require_int(request.POST.get('offset', '').strip() or '0',
+                               'offset(起始序号)', minimum=0)
+    if err:
+        return err
+
     action = request.POST.get('action', '').strip() or 'follow'
     if action not in FOLLOW_ACTIONS:
         return _json_response(StatusCode.PARAM_VALUE_INVALID,
                               msg='参数值非法: action 仅支持 ' + ' / '.join(FOLLOW_ACTIONS))
 
-    ok, data = utils.set_follow_batch(target_user_id, follow=FOLLOW_ACTIONS[action])
+    ok, data = utils.set_follow_batch(target_user_id, follow=FOLLOW_ACTIONS[action], offset=offset)
     if not ok:
         return _json_response(StatusCode.INTERNAL_ERROR, msg=data)
     return _json_response(
@@ -725,7 +734,7 @@ def follow_batch_view(request):
         msg=f'批量{"关注" if data["action"] == "follow" else "取关"}完成：'
             f'成功 {data["success_count"]} / 无需操作 {data["already_count"]}'
             f' / 跳过 {data["skipped_count"]} / 失败 {data["failed_count"]}'
-            f' / 共 {data["total"]} 个账号')
+            f' / 共 {data["total"]} 个账号' + _paging_hint(data))
 
 
 @require_http_methods(['GET'])
@@ -925,6 +934,9 @@ def like_batch_view(request):
     表单参数:
         topic_id (必填): 帖子 ID
         action   (可选): like=点赞（默认）/ unlike=取消点赞
+        offset   (可选): 从账号库的第几条开始（默认 0）。单次最多处理 account_limit 个，
+                         账号数超过它时用返回的 next_offset 续跑，直到 has_more=false
+                         即已覆盖全部账号
 
     串行逐个执行（避免瞬时并发触发源站风控），单个账号失败不影响其它账号：
     成功计入 success_count、已是目标状态计入 already_count、账号没有 token 的计入
@@ -933,11 +945,15 @@ def like_batch_view(request):
     topic_id, err = _require_int(request.POST.get('topic_id', '').strip(), 'topic_id(帖子ID)')
     if err:
         return err
+    offset, err = _require_int(request.POST.get('offset', '').strip() or '0',
+                               'offset(起始序号)', minimum=0)
+    if err:
+        return err
     action = request.POST.get('action', '').strip() or 'like'
     if action not in LIKE_ACTIONS:
         return _json_response(StatusCode.PARAM_VALUE_INVALID,
                               msg='参数值非法: action 仅支持 ' + ' / '.join(LIKE_ACTIONS))
-    ok, data = utils.set_like_batch(topic_id, like=LIKE_ACTIONS[action])
+    ok, data = utils.set_like_batch(topic_id, like=LIKE_ACTIONS[action], offset=offset)
     if not ok:
         return _json_response(StatusCode.INTERNAL_ERROR, msg=data)
     return _json_response(
@@ -945,7 +961,7 @@ def like_batch_view(request):
         msg=f'批量{"点赞" if data["action"] == "like" else "取消点赞"}完成：'
             f'成功 {data["success_count"]} / 无需操作 {data["already_count"]}'
             f' / 跳过 {data["skipped_count"]} / 失败 {data["failed_count"]}'
-            f' / 共 {data["total"]} 个账号')
+            f' / 共 {data["total"]} 个账号' + _paging_hint(data))
 
 
 @require_http_methods(['GET'])

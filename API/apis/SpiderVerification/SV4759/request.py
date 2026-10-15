@@ -5,20 +5,11 @@
 """
 import ipaddress
 
-from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+from API.common.responses import json_response as _json_response
 from . import utils
-
-
-def _json_response(code, data=None, msg=None):
-    """构建统一的 JSON 响应体"""
-    return JsonResponse({
-        'code': code,
-        'msg': msg or StatusCode.get_message(code),
-        'data': data,
-    })
 
 
 def _is_valid_ip(value):

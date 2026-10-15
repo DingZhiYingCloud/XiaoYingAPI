@@ -1016,21 +1016,30 @@ SERVICE = ServiceSpec(
                                            options=[{'value': 'follow', 'label': 'follow（批量关注，默认）'},
                                                     {'value': 'unfollow', 'label': 'unfollow（批量取关）'}],
                                            desc='选填：对全部账号执行的动作。'),
+                                 ParamSpec('offset', '起始序号', kind='number', default='0',
+                                           desc='选填：从账号库的第几条开始（默认 0）。单次最多处理 '
+                                                'account_limit 个账号；还有剩余时用返回的 next_offset 续跑。'),
                              ],
                              notes=[
-                                 '不用传凭据：直接用账号库里每个账号自己的登录态执行，遍历范围是**全部库内账号**。',
+                                 '不用传凭据：直接用账号库里每个账号自己的登录态执行，遍历范围是**账号库的全部账号**。',
+                                 '**分批执行**：单次最多处理 `account_limit` 个账号（默认 100，按入库顺序），'
+                                 '返回 `account_total` / `offset` / `next_offset` / `has_more`；'
+                                 '账号数超过上限时用上一次的 `next_offset` 再调一次，`has_more=false` 即已覆盖全部账号'
+                                 '（函数返回文案里也会给出续跑提示）。单次 100 个约需 3~4 分钟，请把客户端超时留够。',
                                  '没有 token 的账号（无法登录）与「目标就是该账号自己」的账号都计入 skipped 并注明原因，'
                                  '不发起请求。',
                                  '逐个**串行**执行、不并发；单个账号失败不影响其它账号。整批比较慢，'
-                                 '请把客户端超时留够：单次关注请求实测 1.7~2.7 秒，10 个以上账号整体约 20~30 秒。',
+                                 '请把客户端超时留够：单次关注请求实测 1.7~2.7 秒。',
                                  '已经是目标状态（已关注 / 本来就没关注）计入 already，不记为失败。',
                                  '返回 data：target_user_id / action / total / success_count / already_count / '
-                                 'skipped_count / failed_count / items（逐账号的 account_id、user_id、username、'
+                                 'skipped_count / failed_count / account_total / account_limit / offset / '
+                                 'next_offset / has_more / items（逐账号的 account_id、user_id、username、'
                                  'state（done / already / skipped / failed）、message）。',
                                  '**风控提醒**：一次让大量账号关注同一目标属于明显异常行为，源站可能限制甚至封号，'
                                  '请自行控制频率；需要更保守可改用「关注 / 取消关注用户」逐个、间隔执行。',
                                  'target_user_id 缺失返回 PARAM_MISSING、非数字 / 小于 1 返回 '
-                                 'PARAM_FORMAT_ERROR / PARAM_VALUE_INVALID；action 非两种取值返回 PARAM_VALUE_INVALID。',
+                                 'PARAM_FORMAT_ERROR / PARAM_VALUE_INVALID；action 非两种取值返回 PARAM_VALUE_INVALID；'
+                                 'offset 缺失按 0 处理、非整数 / 负数返回 PARAM_FORMAT_ERROR / PARAM_VALUE_INVALID。',
                              ],
                              response_fields=[
                                  ResponseFieldSpec('target_user_id', 'int', '目标用户 ID'),
@@ -1040,6 +1049,11 @@ SERVICE = ServiceSpec(
                                  ResponseFieldSpec('already_count', 'int', '无需操作数'),
                                  ResponseFieldSpec('skipped_count', 'int', '跳过数'),
                                  ResponseFieldSpec('failed_count', 'int', '失败数'),
+                                 ResponseFieldSpec('account_total', 'int', '账号库总条数'),
+                                 ResponseFieldSpec('account_limit', 'int', '单次处理的账号数上限'),
+                                 ResponseFieldSpec('offset', 'int', '本次的起始序号'),
+                                 ResponseFieldSpec('next_offset', 'int', '续跑时应传的 offset'),
+                                 ResponseFieldSpec('has_more', 'bool', '是否还有未处理的账号（true=需带 next_offset 再调一次）'),
                                  ResponseFieldSpec('items', 'array', '逐账号结果'),
                                  ResponseFieldSpec('items[].account_id', 'string', '库内账号 ID'),
                                  ResponseFieldSpec('items[].user_id', 'string', '源站用户 ID'),
@@ -1336,21 +1350,30 @@ SERVICE = ServiceSpec(
                                            options=[{'value': 'like', 'label': 'like（批量点赞，默认）'},
                                                     {'value': 'unlike', 'label': 'unlike（批量取消点赞）'}],
                                            desc='选填：对全部账号执行的动作。'),
+                                 ParamSpec('offset', '起始序号', kind='number', default='0',
+                                           desc='选填：从账号库的第几条开始（默认 0）。单次最多处理 '
+                                                'account_limit 个账号；还有剩余时用返回的 next_offset 续跑。'),
                              ],
                              notes=[
-                                 '不用传凭据：直接用账号库里每个账号自己的登录态执行，遍历范围是**全部库内账号**。',
+                                 '不用传凭据：直接用账号库里每个账号自己的登录态执行，遍历范围是**账号库的全部账号**。',
+                                 '**分批执行**：单次最多处理 `account_limit` 个账号（默认 100，按入库顺序），'
+                                 '返回 `account_total` / `offset` / `next_offset` / `has_more`；'
+                                 '账号数超过上限时用上一次的 `next_offset` 再调一次，`has_more=false` 即已覆盖全部账号'
+                                 '（函数返回文案里也会给出续跑提示）。单次 100 个约需 3~4 分钟，请把客户端超时留够。',
                                  '没有 token 的账号（无法登录）计入 skipped 并注明原因，不发起请求。',
                                  '逐个**串行**执行、不并发；单个账号失败不影响其它账号。整批比较慢，'
                                  '请把客户端超时留够（单次点赞请求实测 1.7~2.1 秒）。',
                                  '已经是目标状态的账号（已点过赞 / 本来就没点赞）计入 already，不记为失败，'
                                  '所以重复调用是安全的。',
                                  '返回 data：topic_id / action / total / success_count / already_count / '
-                                 'skipped_count / failed_count / items（逐账号的 account_id、user_id、username、'
+                                 'skipped_count / failed_count / account_total / account_limit / offset / '
+                                 'next_offset / has_more / items（逐账号的 account_id、user_id、username、'
                                  'state（done / already / skipped / failed）、message）。',
                                  '**风控提醒**：一次让大量账号给同一篇帖子点赞属于明显的刷赞行为，'
                                  '源站可能限制甚至封号，请自行控制频率；需要更保守就用「点赞 / 取消点赞」逐个执行。',
                                  'topic_id 缺失返回 PARAM_MISSING、非数字返回 PARAM_FORMAT_ERROR；'
-                                 'action 非两种取值返回 PARAM_VALUE_INVALID。',
+                                 'action 非两种取值返回 PARAM_VALUE_INVALID；'
+                                 'offset 缺失按 0 处理、非整数 / 负数返回 PARAM_FORMAT_ERROR / PARAM_VALUE_INVALID。',
                              ],
                              response_fields=[
                                  ResponseFieldSpec('topic_id', 'int', '帖子 ID'),
@@ -1360,6 +1383,11 @@ SERVICE = ServiceSpec(
                                  ResponseFieldSpec('already_count', 'int', '无需操作数'),
                                  ResponseFieldSpec('skipped_count', 'int', '跳过数'),
                                  ResponseFieldSpec('failed_count', 'int', '失败数'),
+                                 ResponseFieldSpec('account_total', 'int', '账号库总条数'),
+                                 ResponseFieldSpec('account_limit', 'int', '单次处理的账号数上限'),
+                                 ResponseFieldSpec('offset', 'int', '本次的起始序号'),
+                                 ResponseFieldSpec('next_offset', 'int', '续跑时应传的 offset'),
+                                 ResponseFieldSpec('has_more', 'bool', '是否还有未处理的账号（true=需带 next_offset 再调一次）'),
                                  ResponseFieldSpec('items', 'array', '逐账号结果'),
                                  ResponseFieldSpec('items[].account_id', 'string', '库内账号 ID'),
                                  ResponseFieldSpec('items[].user_id', 'string', '源站用户 ID'),

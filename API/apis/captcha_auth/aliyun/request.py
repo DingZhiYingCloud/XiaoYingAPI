@@ -7,20 +7,11 @@
 鉴权: 当前接口开放调用（不做签名校验）；appKey 由服务端持有，
       仅用于生成 sign_token，绝不下发客户端。
 """
-from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+from API.common.responses import json_response as _json_response
 from . import utils
-
-
-def _json_response(code, data=None, msg=None):
-    """统一响应格式: {"code", "msg", "data"}"""
-    return JsonResponse({
-        'code': code,
-        'msg': msg or StatusCode.get_message(code),
-        'data': data,
-    })
 
 
 @require_http_methods(['GET'])

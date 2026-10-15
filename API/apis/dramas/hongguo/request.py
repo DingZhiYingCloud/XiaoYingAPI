@@ -27,24 +27,12 @@ from django.http import FileResponse, HttpResponse, JsonResponse, StreamingHttpR
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+from API.common.responses import json_response as _json_response
 from . import utils
 
 # 出流分块大小（256KB：Range 拖动时首包够快，又不至于切太碎）
 _CHUNK = 256 * 1024
 _RANGE_RE = re.compile(r'^bytes=(\d*)-(\d*)$')
-
-
-def _json_response(code, data=None, msg=None):
-    """构建统一的 JSON 响应体
-    :param code: 状态码(参见 StatusCode)
-    :param data: 业务数据,默认为 None
-    :param msg:  自定义消息,未传则使用状态码对应的默认描述
-    """
-    return JsonResponse({
-        'code': code,
-        'msg': msg or StatusCode.get_message(code),
-        'data': data,
-    })
 
 
 def _require_int(value, name, minimum=None):

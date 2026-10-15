@@ -11,23 +11,14 @@
 的账户余额加钱**（单位：元）。接入项目本身不再有任何额度概念，本接口只是把「代收的钱」
 落到你自己用户的账上。
 """
-from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from API.apis.pay import service
 from API.apis.pay.providers.base import PayError
 from API.apis.pay.utils import client_ip, format_money
 from API.common import StatusCode
+from API.common.responses import json_response as _json_response
 from API.models import PayRefundRequest
-
-
-def _json_response(code, data=None, msg=None):
-    """统一响应格式: {"code", "msg", "data"}"""
-    return JsonResponse({
-        'code': code,
-        'msg': msg or StatusCode.get_message(code),
-        'data': data,
-    })
 
 
 def _order_brief(order) -> dict:

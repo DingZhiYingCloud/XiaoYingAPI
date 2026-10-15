@@ -7,20 +7,12 @@
     PATCH  /api/seo/friend_links/<id>      更新(部分字段)
     DELETE /api/seo/friend_links/<id>      删除
 """
-from django.http import JsonResponse, QueryDict
+from django.http import QueryDict
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+from API.common.responses import json_response as _json_response
 from . import utils
-
-
-def _json_response(code, data=None, msg=None):
-    """统一响应格式: {"code, msg, data}"""
-    return JsonResponse({
-        'code': code,
-        'msg': msg or StatusCode.get_message(code),
-        'data': data,
-    })
 
 
 def _parse_body(request):

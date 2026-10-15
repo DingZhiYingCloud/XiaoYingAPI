@@ -8,19 +8,11 @@
 鉴权说明：上传使用的 PicUI 账号 Token 由服务端 Token 池统一管理，
 调用方无需提供；Token 池容量用尽时自动删除该 Token 并切换下一个。
 """
-from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+from API.common.responses import json_response as _json_response
 from . import utils
-
-
-def _json_response(code, data=None, msg=None):
-    return JsonResponse({
-        "code": code,
-        "msg": msg or StatusCode.get_message(code),
-        "data": data,
-    })
 
 
 def _fail_response(msg):

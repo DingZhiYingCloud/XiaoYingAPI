@@ -58,6 +58,10 @@ class Music(BaseModel):
         verbose_name = '音乐'
         verbose_name_plural = '音乐'
         ordering = ['-create_time']
+        indexes = [
+            # 列表接口不带过滤条件、只按 -create_time 排序分页，需要独立索引
+            models.Index(fields=['-create_time'], name='idx_music_create_time'),
+        ]
 
     def __str__(self):
         return f'{self.name} - {self.singer}'

@@ -106,6 +106,10 @@ class User(BaseModel):
         verbose_name = '用户'
         verbose_name_plural = '用户'
         ordering = ['-create_time']
+        indexes = [
+            # 用户管理页默认列表：不带过滤条件、只按 -create_time 排序分页
+            models.Index(fields=['-create_time'], name='idx_user_create_time'),
+        ]
 
     def __str__(self):
         return f'{self.account} ({self.username})'

@@ -22,40 +22,24 @@
 - 邮箱/手机号等验证方式是否可用由后台 AuthMethod 配置控制（见 utils.get_available_methods），
   客户端先调用 methods 接口获取可用方式，再渲染注册/登录入口
 """
-from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+from API.common.ip_guard import client_ip
+from API.common.responses import json_response as _json_response
 from API.common.security_guard import login_clear, login_fail, login_locked
 from . import utils
-
-
-def _json_response(code, data=None, msg=None):
-    """统一响应格式: {"code", "msg", "data"}"""
-    return JsonResponse({
-        'code': code,
-        'msg': msg or StatusCode.get_message(code),
-        'data': data,
-    })
 
 
 def _client_ip(request):
     """获取客户端 IP（用于登录防爆破计数）
 
-    X-Forwarded-For 取**最后一段**：本站 Nginx 用 `$proxy_add_x_forwarded_for`，真实来源
-    地址被**追加在末尾**，前面几段客户端可随意伪造 —— 取第一段会让「换假 IP 即重置失败
-    计数」，绕过 S-03 的连续失败锁定。口径须与官网 views._client_ip 保持一致。
+    口径全站唯一：`API/common/ip_guard.client_ip`（取 X-Forwarded-For **最后一段**）。
+    取第一段会让「换假 IP 即重置失败计数」，绕过 S-03 的连续失败锁定 —— 理由详见
+    ip_guard 模块说明，这里不再重复实现。
     """
-    xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
-    if xff:
-        parts = [seg.strip() for seg in xff.split(',') if seg.strip()]
-        if parts:
-            return parts[-1]
-    real_ip = request.META.get('HTTP_X_REAL_IP', '')
-    if real_ip:
-        return real_ip.strip()
-    return request.META.get('REMOTE_ADDR', '')
+    return client_ip(request)
 
 
 def _parse_params(request):

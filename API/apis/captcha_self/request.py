@@ -9,10 +9,10 @@
 """
 import uuid
 
-from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+from API.common.responses import json_response as _json_response
 from API.models.Captcha.captcha import CaptchaChallenge
 from SpiderServices.Captcha import generator
 
@@ -20,15 +20,6 @@ from . import utils
 
 # 支持的验证码类型（唯一来源：模型 choices，避免多处硬编码）
 VALID_KINDS = tuple(value for value, _label in CaptchaChallenge.KIND_CHOICES)
-
-
-def _json_response(code, data=None, msg=None):
-    """统一响应格式: {"code", "msg", "data"}"""
-    return JsonResponse({
-        'code': code,
-        'msg': msg or StatusCode.get_message(code),
-        'data': data,
-    })
 
 
 @require_http_methods(['GET'])

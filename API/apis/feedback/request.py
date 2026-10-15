@@ -9,21 +9,12 @@
 数据隔离：反馈数据按接入项目（UserApp）隔离；本模块不涉及反馈读写，
 提交 / 查看 / 回复都在反馈页里完成。
 """
-from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+from API.common.responses import json_response as _json_response
 
 from . import utils
-
-
-def _json_response(code, data=None, msg=None):
-    """统一响应格式: {"code", "msg", "data"}"""
-    return JsonResponse({
-        'code': code,
-        'msg': msg or StatusCode.get_message(code),
-        'data': data,
-    })
 
 
 @require_http_methods(['POST'])

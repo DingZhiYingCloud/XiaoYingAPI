@@ -14,7 +14,13 @@ Get-ChildItem -Path . -Recurse -Directory -Filter __pycache__ | Remove-Item -Rec
 """
 
 class BaseModel(models.Model):
-    """项目基础模型，所有业务模型继承此类"""
+    """项目基础模型，所有业务模型继承此类
+
+    注：`create_time` 故意**不加 db_index** —— Django 在 SQLite 上为「给字段加索引」发出的
+    是整表重建（CREATE new_ / INSERT SELECT / DROP / RENAME），45 张表全量重建不可接受。
+    需要「不带过滤条件、只按 -create_time 排序分页」的追加型大表，在其自身 Meta.indexes 里
+    单独加索引（见 Music / User / PushLog / Feedback），那才是纯 CREATE INDEX。
+    """
 
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
     updated_time = models.DateTimeField(auto_now=True, verbose_name='更新时间')

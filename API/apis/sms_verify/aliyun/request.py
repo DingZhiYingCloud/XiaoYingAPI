@@ -7,20 +7,11 @@
 鉴权: 复用用户中心项目签名（APPID + APPSECRET + timestamp/nonce/sign），
       只有已注册的接入项目才能调用，防止短信被滥用（短信轰炸）。
 """
-from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+from API.common.responses import json_response as _json_response
 from . import utils
-
-
-def _json_response(code, data=None, msg=None):
-    """统一响应格式: {"code", "msg", "data"}"""
-    return JsonResponse({
-        'code': code,
-        'msg': msg or StatusCode.get_message(code),
-        'data': data,
-    })
 
 
 def _parse_params(request):

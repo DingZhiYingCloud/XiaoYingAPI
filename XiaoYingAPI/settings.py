@@ -28,7 +28,10 @@ else:
     ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 # 跨域设置
-SECURE_CROSS_ORIGIN_OPENER_POLICY = "None"
+# 注：该值必须是 Django 认可的三种之一（same-origin / same-origin-allow-popups /
+# unsafe-none）。此处原写 "None"，会被 check --deploy 判为 security.E024 非法值，
+# 且实际响应头会发出浏览器不认识的值（等于没设）；unsafe-none 才是「不启用 COOP 隔离」的合法写法。
+SECURE_CROSS_ORIGIN_OPENER_POLICY = 'unsafe-none'
 # 跨域请求配置，允许所有源的跨域请求（由 .env 中 CORS_ORIGIN_ALLOW_ALL 控制）
 CORS_ORIGIN_ALLOW_ALL = os.getenv('CORS_ORIGIN_ALLOW_ALL', 'False').lower() in ('true', '1', 'yes')
 

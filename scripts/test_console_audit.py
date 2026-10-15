@@ -107,7 +107,7 @@ def round1_write(client, admin):
     check('动作取自表单 action 字段（本页无 action，记为空）', log.action == '', repr(log.action))
     check('说明为操作者看到的那句成功提示', log.note == '安全设置已保存', repr(log.note))
     check('响应状态码已记录', log.status_code == 302, f'code={log.status_code}')
-    check('来源 IP 取 X-Forwarded-For 首段', log.ip == '203.0.113.9', f'ip={log.ip}')
+    check('来源 IP 取 X-Forwarded-For 末段（抗伪造）', log.ip == '10.0.0.1', f'ip={log.ip}')
     check('User-Agent 已记录', log.user_agent == 'xytest-audit-agent', log.user_agent)
     check('操作者主键已记录', log.operator_id == admin.pk, f'operator_id={log.operator_id}')
 

@@ -5,6 +5,10 @@ from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
 
+# 客户端 IP 口径全站唯一（取 X-Forwarded-For **末段**，抗伪造）：订单与回调留痕用这一份，
+# 不要在本地再写一遍「首段」口径（首段由调用方可随意伪造）。
+from API.common.ip_guard import client_ip  # noqa: F401  (对外仍是 pay.utils.client_ip)
+
 #: 金额统一小数位（元）
 MONEY_PLACES = Decimal('0.01')
 
@@ -35,14 +39,6 @@ def gen_out_trade_no(prefix: str = 'XY') -> str:
     """生成商户订单号：前缀 + 年月日时分秒 + 6 位随机数（够用且可读，唯一性由 DB 唯一约束兜底）"""
     stamp = time.strftime('%Y%m%d%H%M%S')
     return f'{prefix}{stamp}{random.randint(100000, 999999)}'
-
-
-def client_ip(request) -> str:
-    """取客户端真实 IP（优先 X-Forwarded-For 首段，取不到回落到 REMOTE_ADDR）"""
-    if request is None:
-        return ''
-    forwarded = (request.META.get('HTTP_X_FORWARDED_FOR') or '').split(',')[0].strip()
-    return forwarded or (request.META.get('REMOTE_ADDR') or '')
 
 
 def absolute_url(request, path: str) -> str:

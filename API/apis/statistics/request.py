@@ -8,22 +8,13 @@
       未登录也能查看某个接口一共被调用了多少次。
 口径：**仅返回调用次数**，不含接入项目、失败率、耗时等敏感维度（那些只在超管看板可见）。
 """
-from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+from API.common.responses import json_response as _json_response
 from API.website.docs import ALL_ENDPOINTS
 
 from . import utils
-
-
-def _json_response(code, data=None, msg=None):
-    """统一响应格式: {"code", "msg", "data"}"""
-    return JsonResponse({
-        'code': code,
-        'msg': msg or StatusCode.get_message(code),
-        'data': data,
-    })
 
 
 @require_http_methods(['GET'])

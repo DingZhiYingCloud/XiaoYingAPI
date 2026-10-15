@@ -19,21 +19,13 @@
 import json
 import uuid
 
-from django.http import HttpResponse, JsonResponse, QueryDict
+from django.http import HttpResponse, QueryDict
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+from API.common.responses import json_response as _json_response
 from . import utils
-
-
-def _json_response(code, data=None, msg=None):
-    """统一响应格式: {"code, msg, data}"""
-    return JsonResponse({
-        'code': code,
-        'msg': msg or StatusCode.get_message(code),
-        'data': data,
-    })
 
 
 def _error_response(msg, fallback=StatusCode.PARAM_VALUE_INVALID):

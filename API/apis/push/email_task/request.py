@@ -13,11 +13,11 @@ from datetime import datetime
 
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
-from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+from API.common.responses import json_response as _json_response
 
 from . import utils
 
@@ -25,15 +25,6 @@ from . import utils
 _DT_FORMATS = ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M')
 _TRUTHY = ('1', 'true', 'yes', 'on')
 _FALSY = ('0', 'false', 'no', 'off')
-
-
-def _json_response(code, data=None, msg=None):
-    """统一响应格式: {"code", "msg", "data"}"""
-    return JsonResponse({
-        'code': code,
-        'msg': msg or StatusCode.get_message(code),
-        'data': data,
-    })
 
 
 def _parse_bool(value):

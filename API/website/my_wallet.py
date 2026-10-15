@@ -147,11 +147,13 @@ def _orders_with_refund_state(user) -> list:
     orders = list(PayOrder.objects.filter(user=user).order_by('-create_time')[:ORDER_ROWS])
     pending = {row.order_id: row for row in PayRefundRequest.objects.filter(
         applicant_user=user, status=PayRefundRequest.STATUS_PENDING)}
+    # 可退金额一次性批量算好（逐笔调用会产生 N+1；公式与口径见 pay.service.refundable_amounts）
+    refundable = service.refundable_amounts(orders)
     for order in orders:
         order.pending_refund = pending.get(order.pk)
-        # 已支付才有得退；refundable_amount 只在需要时算（每算一次一条聚合查询）
+        # 已支付才有得退
         order.can_refund = bool(order.is_paid and not order.pending_refund
-                                and service.refundable_amount(order) > 0)
+                                and (refundable.get(order.pk) or 0) > 0)
     return orders
 
 

@@ -7,20 +7,11 @@
 
 注意：所有接口均使用 multipart/form-data 格式，文件字段名为 'file'。
 """
-from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+from API.common.responses import json_response as _json_response
 from API.apis.uploads.utils import FileUploader
-
-
-def _json_response(code, data=None, msg=None):
-    """构建统一的 JSON 响应体。"""
-    return JsonResponse({
-        'code': code,
-        'msg': msg or StatusCode.get_message(code),
-        'data': data,
-    })
 
 
 def _handle_upload(request, upload_type):

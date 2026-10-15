@@ -88,7 +88,7 @@ description: "基于爬虫文件分析并生成符合项目规范的API服务(�
 - 参数校验顺序：必填校验 → 格式校验 → 值域校验
 - 调用 `utils` 层函数，根据返回的二元组构造响应
 - 统一响应格式：`{"code": int, "msg": str, "data": Any}`
-- 提供私有 `_json_response(code, data=None, msg=None)` 辅助函数
+- 统一响应封装 `_json_response(code, data=None, msg=None)` 取自 `API/common/responses.py`（import 别名），不在各服务里重复定义
 
 **`urls.py`（路由配置）**：
 
@@ -254,20 +254,12 @@ def <对外函数名>(<参数>):
     <METHOD> <路径1>  <功能1>
     <METHOD> <路径2>  <功能2>
 """
-from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+# 统一响应封装全站唯一实现（注意：不在本服务里重新定义 _json_response）
+from API.common.responses import json_response as _json_response
 from . import utils
-
-
-def _json_response(code, data=None, msg=None):
-    """构建统一的 JSON 响应体"""
-    return JsonResponse({
-        'code': code,
-        'msg': msg or StatusCode.get_message(code),
-        'data': data,
-    })
 
 
 def _<校验函数名>(value):

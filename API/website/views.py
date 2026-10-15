@@ -25,6 +25,7 @@ from django.views.decorators.http import require_POST
 
 from API.apis.user_center.users import utils as uc_utils
 from API.common import StatusCode
+from API.common.ip_guard import client_ip
 from API.common.security_guard import login_clear, login_fail, login_locked
 from API.models import User, UserApp
 
@@ -101,16 +102,11 @@ def _json(code, msg='', data=None):
 def _client_ip(request):
     """客户端 IP，用于登录防爆破计数
 
-    X-Forwarded-For 取**最后一段**：本站 Nginx 用 `$proxy_add_x_forwarded_for`，会把真实
-    来源地址**追加在末尾**，而前面几段是客户端自己就能伪造的。取第一段等于让攻击者每次夹带
-    一个不同的假 IP 就能重置失败计数，S-03 的「连续失败锁定」形同虚设。
+    口径全站唯一：`API/common/ip_guard.client_ip`（取 X-Forwarded-For **最后一段**）。
+    取第一段等于让攻击者每次夹带一个不同的假 IP 就能重置失败计数，S-03 的「连续失败锁定」
+    形同虚设 —— 理由详见 ip_guard 模块说明，这里不再重复实现。
     """
-    xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
-    if xff:
-        parts = [seg.strip() for seg in xff.split(',') if seg.strip()]
-        if parts:
-            return parts[-1]
-    return request.META.get('HTTP_X_REAL_IP', '') or request.META.get('REMOTE_ADDR', '')
+    return client_ip(request)
 
 
 def _base_url(request):

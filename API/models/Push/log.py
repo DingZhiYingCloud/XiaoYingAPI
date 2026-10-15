@@ -42,6 +42,10 @@ class PushLog(BaseModel):
         verbose_name = '推送日志'
         verbose_name_plural = '推送日志'
         ordering = ['-create_time']
+        indexes = [
+            # 推送日志页默认列表：不带过滤条件、只按 -create_time 排序分页
+            models.Index(fields=['-create_time'], name='idx_push_log_create_time'),
+        ]
 
     def __str__(self):
         return f'[{self.channel}] {self.title} · {"成功" if self.ok else "失败"}'
