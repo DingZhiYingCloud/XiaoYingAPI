@@ -1,0 +1,236 @@
+/**
+ * 主题自定义补充样式（可复制骨架）
+ *
+ * 职责：只放 daisyUI 组件类与 Tailwind 工具类**无法表达**的少量规则；
+ *      凡是能用工具类写在模板里的样式，一律不要写到这里。
+ * 来源：按参考主题的 assets/css/theme.css 改写（去掉项目专属的邮件正文样式）。
+ * 落地位置：新主题 assets/css/theme.css。
+ *
+ * 复制后必须改的地方：
+ * TODO 1. 把全文的 mytheme- 前缀替换为你的主题短名，并同步修改模板里正文容器的类名
+ *          （single.php / page.php 的 <div class="mytheme-entry">，两处必须同名）。
+ * TODO 2. 删掉本项目用不到的分组：不渲染第三方嵌入就删「二、嵌入内容」，不做分页就删「三、分页外观」。
+ *
+ * 三条纪律：
+ * 1. 本文件是**手写 CSS**，不经过 Tailwind 编译：改完保存即生效，**不需要**执行 `npm run build:css`；
+ *    反过来，模板里新增的 daisyUI / Tailwind 类名仍然必须重新构建，两者不要混淆。
+ * 2. 颜色一律用 daisyUI 语义变量（--color-* / --radius-*），不要写死色值，否则亮暗主题切换时会不可读。
+ * 3. functions.php 已按 filemtime() 把本文件入队：文件一改版本号就变，不会被浏览器 / CDN 的旧缓存卡住。
+ *
+ * 为什么下面这三组「必须」写自定义 CSS：它们作用的 HTML 都不受模板控制——
+ * 正文由编辑器 / 第三方嵌入生成，我们改不了它的标签、也拿不到逐元素挂工具类的机会；
+ * 分页 HTML 由 WordPress 直接输出，而 daisyUI 没有分页组件。这两类只能靠元素选择器统一兜底。
+ */
+
+/* ============================================================
+ * 一、正文排版（.mytheme-entry 内）
+ * 工具类无法表达：正文是编辑器输出的任意 HTML，模板里没有逐元素挂类的机会；
+ * 且项目未引入 @tailwindcss/typography，也没有 prose 类可用。
+ * ============================================================ */
+
+/* 正文字号与行高：默认 16px / 行高 1.5 对长文偏挤，这里统一放宽到 17px / 1.75。 */
+.mytheme-entry {
+	color: var(--color-base-content);
+	font-size: 1.0625rem;
+	line-height: 1.75;
+}
+
+/* 首元素去掉顶部外边距，避免正文与标题之间出现双倍留白。 */
+.mytheme-entry > :first-child {
+	margin-top: 0;
+}
+
+/* 正文小标题：段前留白大于段后，形成清晰的段落分组（编辑器只会输出裸 h2/h3，没有类名可挂）。 */
+.mytheme-entry h2 {
+	margin: 2rem 0 0.75rem;
+	font-size: 1.5rem;
+	font-weight: 700;
+	line-height: 1.35;
+}
+
+.mytheme-entry h3 {
+	margin: 1.5rem 0 0.5rem;
+	font-size: 1.25rem;
+	font-weight: 600;
+	line-height: 1.35;
+}
+
+.mytheme-entry p {
+	margin: 1rem 0;
+}
+
+/* 列表缩进与项目符号：Tailwind preflight 会清掉 list-style 与 padding-left，
+ * 正文列表必须显式还原，否则所有 ul/ol 都会退化成无符号、无缩进的段落。 */
+.mytheme-entry ul,
+.mytheme-entry ol {
+	margin: 1rem 0;
+	padding-left: 1.5rem;
+}
+
+.mytheme-entry ul {
+	list-style: disc;
+}
+
+.mytheme-entry ol {
+	list-style: decimal;
+}
+
+.mytheme-entry li {
+	margin: 0.25rem 0;
+}
+
+.mytheme-entry li > ul,
+.mytheme-entry li > ol {
+	margin: 0.25rem 0;
+}
+
+/* 引用块：左侧主色竖线 + 浅底色，与正文区分（工具类只能作用于我们自己写的元素，作用不到编辑器输出的裸 blockquote）。 */
+.mytheme-entry blockquote {
+	margin: 1.25rem 0;
+	padding: 0.5rem 1rem;
+	border-left: 4px solid var(--color-primary);
+	background-color: var(--color-base-200);
+}
+
+/* 行内代码与代码块：pre 必须横向滚动，否则长代码行会把正文撑出横向滚动条。 */
+.mytheme-entry code {
+	padding: 0.15em 0.4em;
+	border-radius: 0.25rem;
+	background-color: var(--color-base-200);
+	font-size: 0.9em;
+}
+
+.mytheme-entry pre {
+	margin: 1rem 0;
+	padding: 1rem;
+	border-radius: var(--radius-box, 0.5rem);
+	background-color: var(--color-base-200);
+	overflow-x: auto;
+}
+
+.mytheme-entry pre code {
+	padding: 0;
+	background-color: transparent;
+}
+
+/* 正文图片：限制不超容器宽度并统一圆角。max-width / height 其实由 preflight 提供，
+ * 这里显式再写一遍是为了不依赖 preflight 的具体行为。 */
+.mytheme-entry img {
+	max-width: 100%;
+	height: auto;
+	border-radius: 0.5rem;
+}
+
+.mytheme-entry a {
+	color: var(--color-primary);
+	text-decoration: underline;
+}
+
+/* 正文表格：改为块级 + 横向滚动，避免宽表格（对比表、数据表）把整页撑出横向滚动条。 */
+.mytheme-entry table {
+	display: block;
+	width: 100%;
+	margin: 1rem 0;
+	border-collapse: collapse;
+	overflow-x: auto;
+}
+
+.mytheme-entry th,
+.mytheme-entry td {
+	padding: 0.5rem 0.75rem;
+	border: 1px solid var(--color-base-300);
+}
+
+.mytheme-entry th {
+	background-color: var(--color-base-200);
+	font-weight: 600;
+}
+
+/* 图文（figure + figcaption）：统一上下间距与圆角；图注居中弱化，不抢正文注意力。 */
+.mytheme-entry figure {
+	margin: 1.5rem 0;
+}
+
+.mytheme-entry figure img {
+	border-radius: var(--radius-box, 0.5rem);
+}
+
+.mytheme-entry figcaption {
+	margin-top: 0.5rem;
+	color: var(--color-base-content);
+	opacity: 0.6;
+	font-size: 0.875rem;
+	text-align: center;
+}
+
+/* ============================================================
+ * 二、嵌入内容（iframe）
+ * 工具类无法表达：iframe 由编辑者 / 邮件 / 第三方代码直接插进正文，没有类名可挂；
+ * 且第三方嵌入通常自带固定像素宽度（常见 600px 或更宽），窄屏下会顶破正文容器、出现横向滚动。
+ * 这里统一限宽 + 圆角：宽度跟随正文列，高度仍由 iframe 自身的 height 属性 / 内联样式决定。
+ * ============================================================ */
+
+.mytheme-entry iframe {
+	display: block;
+	width: 100%;
+	max-width: 100%;
+	border: 0;
+	border-radius: var(--radius-box, 0.5rem);
+	background: #fff;
+}
+
+/* ============================================================
+ * 三、分页外观（.page-numbers）
+ * 工具类无法表达：这段 HTML 由 the_posts_pagination() 直接输出，模板里无法逐项挂类；
+ * daisyUI 也没有提供分页组件，所以只能自己把页码做成按钮的观感（语义色 + 圆角 + 当前页高亮）。
+ * ============================================================ */
+
+.pagination .nav-links {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	margin-top: 2rem;
+}
+
+/* 分页的「页码说明」只给屏幕阅读器使用：WordPress 只输出 .screen-reader-text 类名，隐藏规则需主题补齐。 */
+.pagination .screen-reader-text {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+}
+
+.page-numbers {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 2.5rem;
+	height: 2.5rem;
+	padding: 0 0.75rem;
+	border-radius: var(--radius-field, 0.5rem);
+	background-color: var(--color-base-200);
+	color: var(--color-base-content);
+	font-size: 0.875rem;
+	text-decoration: none;
+}
+
+.page-numbers:hover {
+	background-color: var(--color-base-300);
+}
+
+.page-numbers.current {
+	background-color: var(--color-primary);
+	color: var(--color-primary-content);
+	font-weight: 600;
+}
+
+/* 省略号（…）只是占位符，去掉背景与内边距，避免看起来像可点的按钮。 */
+.page-numbers.dots {
+	min-width: 0;
+	padding: 0 0.25rem;
+	background-color: transparent;
+}

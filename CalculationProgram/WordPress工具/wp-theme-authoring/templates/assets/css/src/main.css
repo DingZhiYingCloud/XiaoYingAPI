@@ -1,0 +1,28 @@
+/**
+ * 主题 Tailwind CSS 构建入口（可复制骨架，源文件，不直接对外加载）
+ *
+ * 职责：声明 Tailwind 4 + daisyUI 5 的扫描范围，由 `npm run build:css` 编译为 ../tailwind.css；
+ *       functions.php 只入队编译产物，因此前台不依赖 WindPress、不需要浏览器端运行时编译，首屏即带完整样式。
+ * 来源：本技能包 templates/ 骨架（Tailwind 4 + daisyUI 5 构建入口）。
+ * 落地位置：assets/css/src/main.css。
+ *
+ * 复制后要改的地方：
+ * TODO 1. 本文件不含主题名，通常无需改动；新增含类名的目录时，按下面的格式补一行 @source（*.php 不递归）。
+ * TODO 2. 项目没有前端脚本时，删掉最后一行 @source "../../js/*.js"（留着只会多扫一个不存在的路径）。
+ *
+ * 三条纪律：
+ * 1. `source(none)` 关闭自动探测，必须保留：否则 Tailwind 会把 node_modules/、vendor/ 一起扫描，
+ *    产物可能从几十 KB 膨胀到数 MB，还会混进无关类名。
+ * 2. 任何新增 / 修改的 Tailwind / daisyUI 类名，都要在主题目录重新执行 `npm run build:css`，否则样式不生效。
+ * 3. 新增目录（如 blocks/、inc/admin/、woocommerce/）必须补一行 @source，否则该目录的类名不会进产物。
+ */
+@import "tailwindcss" source(none);
+@plugin "daisyui";
+
+/* 主题模板与 PHP 模块：路径相对本文件所在目录（assets/css/src/） */
+@source "../../../*.php";               /* 主题根：header.php / single.php / 404.php / searchform.php 等 */
+@source "../../../template-parts/*.php"; /* 片段：列表卡片、侧栏模块 */
+@source "../../../inc/*.php";           /* inc 模块：评论回调、表单字段等拼出的类名 */
+
+/* 前端脚本：JS 里通过字符串拼接产生的类名，必须以字面量写法出现才会被收录 */
+@source "../../js/*.js";

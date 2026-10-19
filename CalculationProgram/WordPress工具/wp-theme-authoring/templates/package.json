@@ -1,0 +1,15 @@
+{
+  "name": "mytheme",
+  "version": "1.0.0",
+  "private": true,
+  "description": "可复制骨架：Tailwind CSS 4 + daisyUI 5 的样式构建配置（仅开发期使用，把类名预编译为 assets/css/tailwind.css，避免前台运行时编译导致的样式延迟）。落地位置：主题根目录 package.json。复制后要改的地方（本文件是 JSON，不能写注释，改动点统一记在此字段）：TODO 1. 把 name 改成你的主题短名，并与 style.css 的 Text Domain、目录名保持一致；TODO 2. version 跟着主题版本走；TODO 3. devDependencies 里三个包是构建必需项，版本范围照抄参考实现即可，不要漏掉 @tailwindcss/cli（build:css 实际调用的命令由它提供）。",
+  "scripts": {
+    "build:css": "tailwindcss -i ./assets/css/src/main.css -o ./assets/css/tailwind.css --minify",
+    "watch:css": "tailwindcss -i ./assets/css/src/main.css -o ./assets/css/tailwind.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "daisyui": "^5.7.38",
+    "tailwindcss": "^4.3.3"
+  }
+}
