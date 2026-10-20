@@ -26,6 +26,7 @@ from API.models.Accounts.account import AccountStatus, Platform, PlatformAccount
 from API.models.Docs.announcement import Announcement
 from API.models.AI.provider import AiModel, AiProvider, AiSystemPrompt
 from API.models.Website.appearance import SiteAppearance
+from API.models.Website.program_download import ProgramDownloadStat
 from API.models.Security.audit import ConsoleAuditLog
 from API.models.Security.ip_ban import BannedIP
 from API.models.Security.setting import SecuritySetting
@@ -75,6 +76,7 @@ __all__ = [
     'AiSystemPrompt',
     'AiModel',
     'SiteAppearance',
+    'ProgramDownloadStat',
     'SecuritySetting',
     'ConsoleAuditLog',
     'BannedIP',

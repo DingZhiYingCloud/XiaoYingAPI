@@ -28,12 +28,12 @@
       <i data-lucide="activity" class="h-5 w-5" aria-hidden="true"></i>
     </span>
     <div class="min-w-0">
-      <div class="con-metric-value">{{ stats.calls }}</div>
+      <div class="con-metric-value">{{ stats.calls_display }}</div>
       <div class="con-metric-label">{% trans "调用总量" %}</div>
       {% if stats.calls_delta is not None %}
       <div class="flex items-center gap-1 text-xs {% if stats.calls_delta > 0 %}text-success{% elif stats.calls_delta < 0 %}text-error{% else %}text-base-content/50{% endif %}">
         <i data-lucide="{% if stats.calls_delta > 0 %}trending-up{% elif stats.calls_delta < 0 %}trending-down{% else %}minus{% endif %}" class="h-3.5 w-3.5" aria-hidden="true"></i>
-        {% blocktrans with d=stats.calls_delta %}环比 {{ d }}%{% endblocktrans %}
+        {% blocktrans with d=stats.calls_delta_display %}环比 {{ d }}%{% endblocktrans %}
       </div>
       {% else %}
       <div class="text-xs text-base-content/50">{% trans "上一周期无数据" %}</div>
@@ -46,13 +46,13 @@
       <i data-lucide="circle-check" class="h-5 w-5" aria-hidden="true"></i>
     </span>
     <div class="min-w-0">
-      <div class="con-metric-value">{{ stats.success_rate }}%</div>
+      <div class="con-metric-value">{{ stats.success_rate|floatformat:"-2" }}%</div>
       <div class="con-metric-label">{% trans "成功率" %}</div>
       <div class="text-xs text-base-content/50">
-        {% blocktrans with ok=stats.success bad=stats.failed %}成功 {{ ok }} · 失败 {{ bad }}{% endblocktrans %}
+        {% blocktrans with ok=stats.success_display bad=stats.failed_display %}成功 {{ ok }} · 失败 {{ bad }}{% endblocktrans %}
         {% if stats.success_rate_delta %}
         <span class="{% if stats.success_rate_delta > 0 %}text-success{% else %}text-error{% endif %}">
-          {% blocktrans with d=stats.success_rate_delta %}（环比 {{ d }}pp）{% endblocktrans %}
+          {% blocktrans with d=stats.success_rate_delta_display %}（环比 {{ d }}pp）{% endblocktrans %}
         </span>
         {% endif %}
       </div>
@@ -64,10 +64,10 @@
       <i data-lucide="timer" class="h-5 w-5" aria-hidden="true"></i>
     </span>
     <div class="min-w-0">
-      <div class="con-metric-value">{{ stats.avg_ms }}<span class="text-sm font-normal"> ms</span></div>
+      <div class="con-metric-value">{{ stats.avg_ms|floatformat:"-1" }}<span class="text-sm font-normal"> ms</span></div>
       <div class="con-metric-label">{% trans "平均耗时" %}</div>
       <div class="text-xs text-base-content/50">
-        {% blocktrans with max=stats.max_ms %}最大 {{ max }} ms{% endblocktrans %}
+        {% blocktrans with max=stats.max_ms_display %}最大 {{ max }} ms{% endblocktrans %}
       </div>
     </div>
   </div>
@@ -119,17 +119,17 @@
       <i data-lucide="banknote" class="h-5 w-5" aria-hidden="true"></i>
     </span>
     <div class="min-w-0">
-      <div class="con-metric-value">{{ revenue.amount }}<span class="text-sm font-normal"> {% trans "元" %}</span></div>
+      <div class="con-metric-value">{{ revenue.amount_display }}<span class="text-sm font-normal"> {% trans "元" %}</span></div>
       <div class="con-metric-label">{% trans "充值金额" %}</div>
     </div>
   </a>
 
   <a href="{% url 'website:console_pay' %}" class="con-metric">
-    <span class="con-metric-icon {% if revenue.refund %}bg-warning/10 text-warning{% else %}bg-base-200 text-base-content/60{% endif %}">
+    <span class="con-metric-icon {% if revenue.has_refund %}bg-warning/10 text-warning{% else %}bg-base-200 text-base-content/60{% endif %}">
       <i data-lucide="undo-2" class="h-5 w-5" aria-hidden="true"></i>
     </span>
     <div class="min-w-0">
-      <div class="con-metric-value">{{ revenue.refund }}<span class="text-sm font-normal"> {% trans "元" %}</span></div>
+      <div class="con-metric-value">{{ revenue.refund_display }}<span class="text-sm font-normal"> {% trans "元" %}</span></div>
       <div class="con-metric-label">{% trans "退款金额" %}</div>
     </div>
   </a>

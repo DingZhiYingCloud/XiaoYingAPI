@@ -1,21 +1,40 @@
 {% load i18n %}
 {% comment %}控制台菜单列表：被 _sidebar.html 在「小屏折叠条」与「宽屏常驻栏」两处复用，
-菜单数据来自 API/website/console_menu.py（一处声明，新增模块只改那里；分组口径见该文件说明）。{% endcomment %}
-<ul class="menu w-full gap-0.5 p-0 text-sm">
+菜单数据来自 API/website/console_menu.py（一处声明，新增模块只改那里；分组口径见该文件说明）。
+
+分组用原生 <details> 实现展开 / 折叠：
+- 折叠状态由 _sidebar.html 末尾的脚本写入 localStorage，并让「当前页所在分组」始终展开；
+- 展开 / 收起由脚本对 [data-console-group-body] 做 height 过渡（尊重 prefers-reduced-motion）；
+- 分组标题是 <summary>，键盘可聚焦、回车 / 空格可开合；
+- style="list-style:none" 去掉浏览器默认的三角标记，改用右侧 chevron 图标。
+
+字号随「菜单自身的宽度」缩放（容器查询单位 cqi）：侧栏宽则字略大、窄则略小，
+不再写死 text-sm；ul 上显式设字号，覆盖 daisyUI menu 的固定值后由条目继承。{% endcomment %}
+<div class="flex flex-col gap-0.5" style="container-type: inline-size">
   {% for group in console_menu %}
-  <li class="menu-title mt-2 first:mt-0">
-    <span class="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider opacity-55">
+  <details class="con-console-group" data-console-group="{{ group.key }}"
+           {% if group.active %}data-group-active="1"{% endif %}
+           {% if group.active or group.key == 'overview' %}open{% endif %}>
+    <summary class="flex cursor-pointer items-center gap-1.5 rounded-field px-2 py-1.5 font-bold uppercase tracking-wider opacity-55 hover:bg-base-200 hover:opacity-90"
+             style="list-style:none; font-size: 11.5px; font-size: clamp(11px, 5.6cqi, 12.5px)">
       {% if group.icon %}<i data-lucide="{{ group.icon }}" class="h-3.5 w-3.5" aria-hidden="true"></i>{% endif %}
-      {% trans group.title %}
-    </span>
-  </li>
-  {% for item in group.items %}
-  <li>
-    <a href="{% url item.url %}"
-       class="gap-2 rounded-field{% if console_active_key == item.key %} menu-active{% endif %}">
-      <i data-lucide="{{ item.icon }}" class="h-4 w-4 opacity-70"></i>{% trans item.name %}
-    </a>
-  </li>
+      <span class="flex-1">{% trans group.title %}</span>
+      <span data-console-group-chevron class="inline-flex" style="transition: transform .18s ease">
+        <i data-lucide="chevron-down" class="h-3.5 w-3.5" aria-hidden="true"></i>
+      </span>
+    </summary>
+    <div data-console-group-body style="overflow:hidden">
+      <ul class="menu w-full gap-0.5 p-0" style="font-size: 14px; font-size: clamp(13px, 6.8cqi, 15px)">
+        {% for item in group.items %}
+        <li>
+          <a href="{% url item.url %}"
+             class="gap-2 rounded-field{% if console_active_key == item.key %} menu-active{% endif %}">
+            <i data-lucide="{{ item.icon }}" class="h-4 w-4 opacity-70"></i>{% trans item.name %}
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </details>
   {% endfor %}
-  {% endfor %}
-</ul>
+</div>

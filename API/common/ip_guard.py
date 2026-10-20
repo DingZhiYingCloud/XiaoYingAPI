@@ -31,10 +31,30 @@ def _ban_cache_key(ip: str) -> str:
 
 
 def client_ip(request) -> str:
-    """取客户端真实 IP（X-Forwarded-For 末段 → X-Real-IP → REMOTE_ADDR）"""
+    """取客户端真实 IP（Cloudflare → XFF 最后一个公网地址 → X-Real-IP → REMOTE_ADDR）
+
+    **站点在 Cloudflare 之后**：CF 会把真实访客 IP 放在 `CF-Connecting-IP`，
+    而 `X-Forwarded-For` 的末段是 Cloudflare 边缘节点（或回源的内网地址）。
+    支付风控要求 `clientip` 是真实付款人 IP（传 127.0.0.1 / 内网 / DNS 地址会被上游
+    直接拒成「系统异常无法完成付款」），因此：
+
+    1. 优先 `CF-Connecting-IP`（Cloudflare 会覆盖客户端自带值；前提是源站只允许 CF 回源）；
+    2. 其次从 XFF **从后往前找第一个公网地址**（跳过 127.0.0.1 / 10.x / 172.16-31.x 等代理地址）；
+    3. 最后退回 `X-Real-IP` / `REMOTE_ADDR`。
+
+    直接连源站（绕过 Cloudflare）时 `CF-Connecting-IP` 可伪造，故源站防火墙应只放行
+    Cloudflare 回源 IP —— 这是使用该头的前提。
+    """
+    cf_ip = (request.META.get('HTTP_CF_CONNECTING_IP', '') or '').strip()
+    if cf_ip and is_valid_ip(cf_ip) and not is_protected_ip(cf_ip):
+        return cf_ip
+
     xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
     if xff:
         parts = [seg.strip() for seg in xff.split(',') if seg.strip()]
+        for part in reversed(parts):
+            if is_valid_ip(part) and not is_protected_ip(part):
+                return part
         if parts:
             return parts[-1]
     return (request.META.get('HTTP_X_REAL_IP', '')

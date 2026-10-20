@@ -40,6 +40,31 @@ PRESETS = {
         'desc': '发光描边配扫描线与锐利几何，高对比的科技张力。',
         'theme_hint': 'dark / night / synthwave',
     },
+    'sunset': {
+        'label': '落日暖砂',
+        'desc': '暖色日落光晕、圆弧卡片与柔和大标题，偏生活方式产品的温润观感。',
+        'theme_hint': 'light / cupcake / autumn',
+    },
+    'blueprint': {
+        'label': '蓝图工坊',
+        'desc': '细网格蓝图底纹配虚线描边与等宽标签，工程图纸般的严谨感。',
+        'theme_hint': 'light / corporate / nord',
+    },
+    'monolith': {
+        'label': '极简巨石',
+        'desc': '无装饰大字号配粗描边与硬投影，强对比的粗野主义构图。',
+        'theme_hint': 'light / black / lofi',
+    },
+    'zen': {
+        'label': '留白禅意',
+        'desc': '大量留白、居中文字与极细描边，安静克制的东方极简。',
+        'theme_hint': 'light / winter / silk',
+    },
+    'retro': {
+        'label': '复古报刊',
+        'desc': '纸张底纹、双线分隔与衬线标题，旧报刊的印刷质感。',
+        'theme_hint': 'light / retro / coffee',
+    },
 }
 
 DEFAULT_PRESET = 'aurora'

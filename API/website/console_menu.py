@@ -9,23 +9,30 @@
 | 分组 | 管的对象 | 成员 |
 | --- | --- | --- |
 | 概览 | 控制台自身 | 控制台首页 |
-| 安全 | 控制台自身的防护 | 安全设置 |
-| 接口治理 | 对外提供的 API 本身 | 服务策略、接口公告、AI 模型 |
-| 数据运营 | 接入方 / 流量 / 站点与内容 | 接入项目、支付设置、账号管理、调用统计、服务余量、官网外观、红果短剧 |
-| 用户支持 | 用户体系与用户声音 | 用户管理、问题反馈 |
+| 接口治理 | 对外提供的 API 本身 | 服务策略、接口公告、AI 模型、调用统计 |
+| 账号与交易 | 接入方、资金与上游账号 | 接入项目、账号管理、支付设置、服务余量、海角自动注册 |
+| 站点运营 | 官网前台与站点内容 | 官网外观、程序下载 |
+| 消息与任务 | 站内推送与定时任务 | 推送日志、邮件定时推送 |
+| 用户支持 | 用户体系与用户声音 | 用户管理、问题反馈、联系方式 |
+| 安全与审计 | 控制台自身的防护与留痕 | 安全设置、操作日志、IP 封禁 |
 
 判断一个模块该进哪组，先问「它管的对象是什么」：
-控制台自身的安全开关 → 安全；
-对外接口本身的认证 / 状态 / 公告 / 能力接入 → 接口治理；
-接入方、流量数据、站点外观与内容 → 数据运营；
+控制台自身的安全开关 / 审计 / 封禁 → 安全与审计；
+对外接口本身的认证 / 状态 / 公告 / 能力接入 / 调用量 → 接口治理；
+接入方、账号、支付与上游余量 → 账号与交易；
+官网外观与站点内容（如计算程序下载） → 站点运营；
+站内消息推送与定时任务 → 消息与任务；
 用户资料与用户反馈 → 用户支持。
 
 约定：
 - 分组（group）顺序 = 侧边栏显示顺序；分组内的项按声明顺序显示。
+- 侧边栏支持分组展开 / 折叠：折叠状态存浏览器 localStorage（键 `xyapi_console_menu_groups_v1`），
+  **当前页所在分组始终自动展开**；首次访问时只展开「概览」，其余收起。
 - **未实现的功能不要提前放进菜单**，避免点进去是空链接；页面可用了再补一行。
 - 分组名与项名都写中文（源语言），由模板 {% trans %} 在渲染时翻译。
 
 group 字段：
+    key   - 分组唯一标识（折叠状态存储键；改标题不影响已保存的折叠状态）
     title - 分组标题（中文源语言）
     icon  - 分组图标（lucide 图标名，渲染在标题左侧）
 
@@ -44,6 +51,7 @@ CONSOLE_HOME = '/console/'
 
 MENU = [
     {
+        'key': 'overview',
         'title': '概览',
         'icon': 'layout-dashboard',
         'items': [
@@ -54,7 +62,132 @@ MENU = [
         ],
     },
     {
-        'title': '安全',
+        'key': 'api',
+        'title': '接口治理',
+        'icon': 'shield-check',
+        'items': [
+            {
+                'key': 'console_services', 'name': '服务策略', 'url': 'website:console_services',
+                'icon': 'shield-check', 'desc': '按服务 / 线路 / 端点三级配置认证模式、对外状态、文档可见性与使用范围，逐级继承。',
+            },
+            {
+                'key': 'console_announcements', 'name': '接口公告', 'url': 'website:console_announcements',
+                'icon': 'megaphone', 'desc': '给服务 / 线路 / 端点三级 API 对象发布公告，在官网文档中心对应位置展示。',
+            },
+            {
+                'key': 'console_ai_models', 'name': 'AI 模型', 'url': 'website:console_ai_models',
+                'icon': 'bot', 'desc': '维护 AI 厂商与模型（上游地址、平台密钥、模型能力），调用方只需选模型即可无缝切换。',
+            },
+            {
+                'key': 'console_stats', 'name': '调用统计', 'url': 'website:console_stats',
+                'icon': 'chart-column', 'desc': '按服务、接口、项目与结果查看调用量与耗时。',
+            },
+        ],
+    },
+    {
+        'key': 'accounts',
+        'title': '账号与交易',
+        'icon': 'wallet',
+        'items': [
+            {
+                'key': 'console_projects', 'name': '接入项目', 'url': 'website:console_projects',
+                'icon': 'boxes', 'desc': '创建 / 编辑 / 启停 / 删除接入项目；APPID、APPSECRET 由系统自动生成。',
+            },
+            {
+                'key': 'console_accounts', 'name': '账号管理', 'url': 'website:console_accounts',
+                'icon': 'key-round',
+                'desc': '统一托管第三方平台账号与登录凭据（Cookie）：知乎、小红书、微博、百家号、今日头条等；'
+                        '凭据加密落库、页面不回显，并可一键校验凭据是否过期（过期即提示重新登录）。',
+            },
+            {
+                'key': 'console_pay', 'name': '支付设置', 'url': 'website:console_pay',
+                'icon': 'credit-card',
+                'desc': '在线支付的全局开关、各支付渠道的商户配置'
+                        '（商户ID / 密钥加密落库 / 可用支付方式）、订单列表（可手动查单与退款）'
+                        '与最近用户余额流水。',
+            },
+            {
+                'key': 'console_quotas', 'name': '服务余量', 'url': 'website:console_quotas',
+                'icon': 'gauge',
+                'desc': '监控上游服务账号还剩多少（51代理余额、超级鹰题分），可逐项设置最低数量阈值，'
+                        '低于阈值时发邮件提醒（告警只发一次，恢复后重新武装）。',
+            },
+            {
+                'key': 'console_haijiao_register', 'name': '海角自动注册',
+                'url': 'website:console_haijiao_register',
+                'icon': 'user-plus',
+                'desc': '全自动注册海角社区账号：出口可选直连 / 51代理 / 巨量代理（默认 51代理），'
+                        '验证码交超级鹰打码识别（识别类型可选、默认 1902），'
+                        '打码没打对时自动向超级鹰报错返分并换图重试，进度实时推送（注册中请勿关闭页面）。',
+            },
+        ],
+    },
+    {
+        'key': 'site',
+        'title': '站点运营',
+        'icon': 'monitor',
+        'items': [
+            {
+                'key': 'console_appearance', 'name': '官网外观', 'url': 'website:console_appearance',
+                'icon': 'swatch-book',
+                'desc': '切换官网首页与接口文档中心的视觉气质（多套预设可切换），并可覆盖首页头图文案；'
+                        '颜色仍由访客选择的主题决定，二者互不冲突。',
+            },
+            {
+                'key': 'console_program_downloads', 'name': '程序下载',
+                'url': 'website:console_program_downloads',
+                'icon': 'download',
+                'desc': '「计算程序」各条目的下载次数排行：整包与单文件分列，附合计与最近下载时间。',
+            },
+        ],
+    },
+    {
+        'key': 'messages',
+        'title': '消息与任务',
+        'icon': 'send',
+        'items': [
+            {
+                'key': 'console_push_logs', 'name': '推送日志',
+                'url': 'website:console_push_logs',
+                'icon': 'send',
+                'desc': '消息推送服务（Server酱 / 邮件）每次推送的记录：标题与正文摘要、发起项目、'
+                        '成功或失败、上游返回码与推送ID，便于回看与排错。',
+            },
+            {
+                'key': 'console_email_tasks', 'name': '邮件定时推送',
+                'url': 'website:console_email_tasks',
+                'icon': 'alarm-clock',
+                'desc': '管理各接入项目的邮件定时推送任务：可只发一次或每 N 分钟重复，'
+                        '由站内常驻线程按点自动发送；支持查看、新增、编辑、启停与删除。',
+            },
+        ],
+    },
+    {
+        'key': 'support',
+        'title': '用户支持',
+        'icon': 'users',
+        'items': [
+            {
+                'key': 'console_users', 'name': '用户管理', 'url': 'website:console_users',
+                'icon': 'users', 'desc': '查看用户资料与登录明细（登录过的项目、次数、最后登录、剩余有效天数），支持建号、编辑、封禁、重置密码与删除。',
+            },
+            {
+                'key': 'console_feedback', 'name': '问题反馈', 'url': 'website:console_feedback',
+                'icon': 'messages-square',
+                'desc': '查看各接入项目提交的反馈（按项目 / 状态 / 类型 / AI 审核状态筛选），回复可带图与视频；'
+                        'AI 只提醒、管理员可强制发送；还可手动送审与维护反馈类型字典。',
+            },
+            {
+                'key': 'console_contacts', 'name': '联系方式', 'url': 'website:console_contacts',
+                'icon': 'headset',
+                'desc': '维护开发者联系方式的「平台字典」（渠道、填写项、跳转链接模板）与各接入项目的具体值；'
+                        '展示在对应项目的反馈页与公开区底部，子项目也可调 /api/feedback/contacts 自行渲染。',
+            },
+        ],
+    },
+    {
+        'key': 'security',
+        'title': '安全与审计',
         'icon': 'shield',
         'items': [
             {
@@ -77,118 +210,24 @@ MENU = [
             },
         ],
     },
-    {
-        'title': '接口治理',
-        'icon': 'shield-check',
-        'items': [
-            {
-                'key': 'console_services', 'name': '服务策略', 'url': 'website:console_services',
-                'icon': 'shield-check', 'desc': '按服务 / 线路 / 端点三级配置认证模式、对外状态、文档可见性与使用范围，逐级继承。',
-            },
-            {
-                'key': 'console_announcements', 'name': '接口公告', 'url': 'website:console_announcements',
-                'icon': 'megaphone', 'desc': '给服务 / 线路 / 端点三级 API 对象发布公告，在官网文档中心对应位置展示。',
-            },
-            {
-                'key': 'console_ai_models', 'name': 'AI 模型', 'url': 'website:console_ai_models',
-                'icon': 'bot', 'desc': '维护 AI 厂商与模型（上游地址、平台密钥、模型能力），调用方只需选模型即可无缝切换。',
-            },
-        ],
-    },
-    {
-        'title': '数据运营',
-        'icon': 'chart-column',
-        'items': [
-            {
-                'key': 'console_projects', 'name': '接入项目', 'url': 'website:console_projects',
-                'icon': 'boxes', 'desc': '创建 / 编辑 / 启停 / 删除接入项目；APPID、APPSECRET 由系统自动生成。',
-            },
-            {
-                'key': 'console_pay', 'name': '支付设置', 'url': 'website:console_pay',
-                'icon': 'credit-card',
-                'desc': '在线支付的全局开关、各支付渠道的商户配置'
-                        '（商户ID / 密钥加密落库 / 可用支付方式）、订单列表（可手动查单与退款）'
-                        '与最近用户余额流水。',
-            },
-            {
-                'key': 'console_accounts', 'name': '账号管理', 'url': 'website:console_accounts',
-                'icon': 'key-round',
-                'desc': '统一托管第三方平台账号与登录凭据（Cookie）：知乎、小红书、微博、百家号、今日头条等；'
-                        '凭据加密落库、页面不回显，并可一键校验凭据是否过期（过期即提示重新登录）。',
-            },
-            {
-                'key': 'console_stats', 'name': '调用统计', 'url': 'website:console_stats',
-                'icon': 'chart-column', 'desc': '按服务、接口、项目与结果查看调用量与耗时。',
-            },
-            {
-                'key': 'console_quotas', 'name': '服务余量', 'url': 'website:console_quotas',
-                'icon': 'gauge',
-                'desc': '监控上游服务账号还剩多少（51代理余额、超级鹰题分），可逐项设置最低数量阈值，'
-                        '低于阈值时发邮件提醒（告警只发一次，恢复后重新武装）。',
-            },
-            {
-                'key': 'console_appearance', 'name': '官网外观', 'url': 'website:console_appearance',
-                'icon': 'swatch-book',
-                'desc': '切换官网首页与接口文档中心的视觉气质（多套预设可切换），并可覆盖首页头图文案；'
-                        '颜色仍由访客选择的主题决定，二者互不冲突。',
-            },
-            {
-                'key': 'console_haijiao_register', 'name': '海角自动注册',
-                'url': 'website:console_haijiao_register',
-                'icon': 'user-plus',
-                'desc': '全自动注册海角社区账号：出口可选直连 / 51代理 / 巨量代理（默认 51代理），'
-                        '验证码交超级鹰打码识别（识别类型可选、默认 1902），'
-                        '打码没打对时自动向超级鹰报错返分并换图重试，进度实时推送（注册中请勿关闭页面）。',
-            },
-            {
-                'key': 'console_push_logs', 'name': '推送日志',
-                'url': 'website:console_push_logs',
-                'icon': 'send',
-                'desc': '消息推送服务（Server酱 / 邮件）每次推送的记录：标题与正文摘要、发起项目、'
-                        '成功或失败、上游返回码与推送ID，便于回看与排错。',
-            },
-            {
-                'key': 'console_email_tasks', 'name': '邮件定时推送',
-                'url': 'website:console_email_tasks',
-                'icon': 'alarm-clock',
-                'desc': '管理各接入项目的邮件定时推送任务：可只发一次或每 N 分钟重复，'
-                        '由站内常驻线程按点自动发送；支持查看、新增、编辑、启停与删除。',
-            },
-        ],
-    },
-    {
-        'title': '用户支持',
-        'icon': 'users',
-        'items': [
-            {
-                'key': 'console_users', 'name': '用户管理', 'url': 'website:console_users',
-                'icon': 'users', 'desc': '查看用户资料与登录明细（登录过的项目、次数、最后登录、剩余有效天数），支持建号、编辑、封禁、重置密码与删除。',
-            },
-            {
-                'key': 'console_feedback', 'name': '问题反馈', 'url': 'website:console_feedback',
-                'icon': 'messages-square',
-                'desc': '查看各接入项目提交的反馈（按项目 / 状态 / 类型 / AI 审核状态筛选），回复可带图与视频；'
-                        'AI 只提醒、管理员可强制发送；还可手动送审与维护反馈类型字典。',
-            },
-            {
-                'key': 'console_contacts', 'name': '联系方式', 'url': 'website:console_contacts',
-                'icon': 'headset',
-                'desc': '维护开发者联系方式的「平台字典」（渠道、填写项、跳转链接模板）与各接入项目的具体值；'
-                        '展示在对应项目的反馈页与公开区底部，子项目也可调 /api/feedback/contacts 自行渲染。',
-            },
-        ],
-    },
 ]
 
 
 def console_menu_context(request):
     """模板上下文：仅 /console/* 注入 console_menu 与当前高亮项
 
+    给每个分组附加 `active`（当前页是否落在该分组内），供侧边栏自动展开；
+    这里生成的是浅拷贝，避免把逐请求状态写回模块级 MENU。
     其他页面不注入，避免无谓的上下文变量。
     """
     if not request.path.startswith('/console/'):
         return {}
-    return {'console_menu': MENU, 'console_active_key': _active_key(request)}
+    active_key = _active_key(request)
+    groups = [
+        {**group, 'active': any(item['key'] == active_key for item in group['items'])}
+        for group in MENU
+    ]
+    return {'console_menu': groups, 'console_active_key': active_key}
 
 
 def _active_key(request):

@@ -1,0 +1,64 @@
+{% extends 'console/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "程序下载 - 超级管理员 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,计算程序,下载统计" %}{% endblock %}
+{% block description %}{% trans "小影API 超级管理员：查看计算程序各条目的整包与单文件下载次数排行。" %}{% endblock %}
+
+{% block console_content %}
+{% blocktrans with n=total_downloads asvar ph_desc %}累计 {{ n }} 次下载；同 IP + 同程序 + 同入口 60 秒内只计一次。{% endblocktrans %}
+{% include 'console/_page_header.html' with icon='download' title='程序下载' desc=ph_desc %}
+
+{% include 'console/_messages.html' %}
+
+<div role="alert" class="alert alert-soft bg-base-200 mt-4 items-start py-3 text-sm">
+  <div class="space-y-1">
+    <p>{% trans "行清单以 CalculationProgram 目录为准；程序被移出目录后历史计数保留，目录恢复即重新出现。" %}</p>
+    <p class="text-xs opacity-80">{% trans "计数发生在用户发起下载时：整包下载计入「整包」，详情页逐个文件下载计入「单文件」。" %}</p>
+  </div>
+</div>
+
+<div class="mt-4 flex flex-wrap gap-2 text-sm">
+  <span class="badge badge-soft badge-primary">{% blocktrans with n=rows|length %}{{ n }} 个程序{% endblocktrans %}</span>
+  <span class="badge badge-soft badge-secondary">{% blocktrans with n=downloaded_programs %}有下载记录 {{ n }} 个{% endblocktrans %}</span>
+  <span class="badge badge-soft badge-info">{% blocktrans with n=total_downloads %}合计 {{ n }} 次{% endblocktrans %}</span>
+</div>
+
+<div class="con-table-wrap mt-3">
+  <table class="table table-sm">
+    <thead>
+      <tr>
+        <th class="whitespace-nowrap">{% trans "程序" %}</th>
+        <th class="whitespace-nowrap">{% trans "分类" %}</th>
+        <th class="whitespace-nowrap text-right">{% trans "整包下载" %}</th>
+        <th class="whitespace-nowrap text-right">{% trans "单文件下载" %}</th>
+        <th class="whitespace-nowrap text-right">{% trans "合计" %}</th>
+        <th class="whitespace-nowrap">{% trans "最近下载" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td class="max-w-md">
+          <a href="{% url 'website:programs_detail' row.rel %}" class="link link-hover font-mono text-sm">
+            {{ row.name }}
+          </a>
+          <div class="break-all font-mono text-xs text-base-content/60">{{ row.rel }}</div>
+        </td>
+        <td class="whitespace-nowrap text-sm">{{ row.category }}</td>
+        <td class="whitespace-nowrap text-right font-mono text-sm">{{ row.pack_count }}</td>
+        <td class="whitespace-nowrap text-right font-mono text-sm">{{ row.file_count }}</td>
+        <td class="whitespace-nowrap text-right font-mono text-sm font-semibold">{{ row.total_count }}</td>
+        <td class="whitespace-nowrap text-xs">
+          {% if row.last_download_time %}{{ row.last_download_time|date:"Y-m-d H:i:s" }}{% else %}—{% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="6" class="py-6 text-center text-sm text-base-content/60">{% trans "内容目录下暂无可统计的程序。" %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

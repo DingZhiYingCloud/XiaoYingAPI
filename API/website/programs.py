@@ -56,6 +56,9 @@ class Program:
     files: tuple        # tuple[ProgramFile, ...]，按路径排序
     total_size: int
     total_size_label: str
+    # 下载总次数（整包 + 单文件）。数据层不查库，由视图用 dataclasses.replace 填入，
+    # 默认 0 保证扫描结果的构造方式不变。
+    download_count: int = 0
 
 
 @dataclass(frozen=True)
@@ -194,6 +197,23 @@ def get_program(rel: str) -> Program | None:
         if program.rel == rel:
             return program
     return None
+
+
+def program_for_path(rel_path: str) -> Program | None:
+    """按「文件相对路径」找它所属的程序条目（用于单文件下载计数）。
+
+    rel_path 形如 cloak/dp-2026/1/dp-code.js；命中规则是等于程序 rel 或以其为前缀。
+    取最长的命中项，避免程序目录存在父子关系时归错账。
+    """
+    path = (rel_path or '').strip().strip('/')
+    if not path:
+        return None
+    matched = None
+    for program in all_programs():
+        if path == program.rel or path.startswith(program.rel + '/'):
+            if matched is None or len(program.rel) > len(matched.rel):
+                matched = program
+    return matched
 
 
 def read_readme(directory: Path) -> tuple:

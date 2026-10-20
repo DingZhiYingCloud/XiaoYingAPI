@@ -14,7 +14,7 @@
 
   <div class="feel-hero-inner mx-auto grid w-full max-w-6xl gap-12 px-4 py-16 sm:py-24 lg:grid-cols-12 lg:items-center lg:gap-10">
     {# -------- 左：文案 -------- #}
-    <div class="lg:col-span-7">
+    <div class="feel-copy lg:col-span-7">
       <span class="feel-eyebrow feel-rise">
         <i data-lucide="sparkles" class="h-3.5 w-3.5" aria-hidden="true"></i>
         {% if site_hero.badge %}{{ site_hero.badge }}{% else %}{% trans "通用 API 聚合服务平台" %}{% endif %}
@@ -36,7 +36,7 @@
       </p>
       {% endif %}
 
-      <div class="feel-rise mt-8 flex flex-wrap gap-3 [animation-delay:180ms]">
+      <div class="feel-actions feel-rise mt-8 flex flex-wrap gap-3 [animation-delay:180ms]">
         <a href="{% url 'website:register' %}" class="btn btn-primary btn-lg gap-2">
           <i data-lucide="rocket" class="h-5 w-5" aria-hidden="true"></i>{% trans "免费注册" %}
         </a>
@@ -45,7 +45,7 @@
         </a>
       </div>
 
-      <ul class="feel-rise mt-8 flex flex-wrap gap-2 [animation-delay:240ms]">
+      <ul class="feel-chips feel-rise mt-8 flex flex-wrap gap-2 [animation-delay:240ms]">
         <li class="feel-chip gap-1.5">
           <i data-lucide="shield-check" class="h-3.5 w-3.5 text-success" aria-hidden="true"></i>{% trans "统一签名认证" %}
         </li>

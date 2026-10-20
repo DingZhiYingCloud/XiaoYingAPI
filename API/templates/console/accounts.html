@@ -15,10 +15,13 @@
 <div role="alert" class="alert alert-soft bg-base-200 mt-4 items-start py-3 text-sm">
   <div class="space-y-1">
     <p>{% trans "这里存的是「平台代管的第三方账号」，各服务的接口会自动取一份可用凭据去访问，调用方无需传账号信息。" %}</p>
+    <p class="text-xs opacity-80">{% trans "不同平台的凭据形态不同：Cookie、accessToken、SendKey，或「用户 ID + Token」；表单会随平台切换字段，不再共用一套。" %}</p>
     <p class="text-xs opacity-80">{% trans "登录凭据与密码均 AES 加密落库、页面不回显；编辑时留空即「保持原值不变」。" %}</p>
     <p class="text-xs opacity-80">{% trans "「校验」会调用该平台已接入的校验器判断凭据是否过期，并把结果写回状态；未接入校验器的平台不显示该按钮。" %}</p>
   </div>
 </div>
+
+{{ platform_profiles|json_script:"account-profiles" }}
 
 {# ==================== 新增 / 编辑 ==================== #}
 <form method="post" action="{% url 'website:console_accounts' %}" class="mt-5" id="account-form">
@@ -43,17 +46,17 @@
       </label>
 
       <label class="grid gap-1">
-        <span class="font-semibold">{% trans "账号标识" %}</span>
+        <span class="font-semibold" id="account-label">{% trans "账号标识" %}</span>
         <input type="text" name="account" id="account-name" required maxlength="128"
                class="input input-bordered input-sm w-full"
                placeholder="{% trans '用户名 / 手机号 / 邮箱 / 备注名' %}" />
-        <span class="text-xs text-base-content/70">
+        <span class="text-xs text-base-content/70" id="account-help">
           {% trans "同一平台内唯一，用于在列表里辨认是哪个号。" %}
         </span>
       </label>
 
-      <label class="grid gap-1">
-        <span class="font-semibold">{% trans "密码（可选）" %}</span>
+      <label class="grid gap-1 hidden" id="account-password-group">
+        <span class="font-semibold" id="account-password-label">{% trans "密码（可选）" %}</span>
         <input type="password" name="password" id="account-password" maxlength="128"
                autocomplete="new-password"
                class="input input-bordered input-sm w-full max-w-sm"
@@ -67,15 +70,42 @@
       </label>
     </div>
 
-    <label class="mt-3 grid gap-1">
-      <span class="font-semibold">{% trans "登录凭据 / Cookie" %}</span>
+    {# 凭据区三选一，随平台切换：Cookie / 用户ID+Token / 单个 Token 或 SendKey #}
+    <div class="mt-3 grid gap-1" id="cred-cookie">
+      <span class="font-semibold" id="cred-cookie-label">{% trans "登录凭据 / Cookie" %}</span>
       <textarea name="credential" id="account-credential" rows="4"
                 class="textarea textarea-bordered w-full font-mono text-xs"
                 placeholder="{% trans '把浏览器里复制的 Cookie 整串粘进来（留空 = 不修改）' %}"></textarea>
-      <span class="text-xs text-base-content/70">
-        {% trans "原样一整串粘贴即可，形如：_xsrf=...; d_c0=...; z_c0=...；保存后页面不再回显。" %}
+      <span class="text-xs text-base-content/70" id="cred-cookie-help">
+        {% trans "原样一整串粘贴即可，保存后页面不再回显。" %}
       </span>
-    </label>
+    </div>
+
+    <div class="mt-3 grid gap-3 sm:grid-cols-2 hidden" id="cred-json">
+      <label class="grid gap-1">
+        <span class="font-semibold" id="cred-user-label">{% trans "用户 ID" %}</span>
+        <input type="text" name="cred_user_id" id="cred-user-id" maxlength="128"
+               class="input input-bordered input-sm w-full"
+               placeholder="{% trans '如 24479174' %}" />
+      </label>
+      <label class="grid gap-1">
+        <span class="font-semibold" id="cred-token-label">{% trans "Token" %}</span>
+        <input type="password" name="cred_token" id="cred-token" maxlength="4000"
+               autocomplete="off" class="input input-bordered input-sm w-full"
+               placeholder="{% trans '登录后取得的 Token' %}" />
+      </label>
+      <p class="text-xs text-base-content/70 sm:col-span-2" id="cred-json-help">
+        {% trans "用户 ID 与 Token 会合并成 JSON 保存；编辑时留空 = 保持原值。" %}
+      </p>
+    </div>
+
+    <div class="mt-3 grid gap-1 hidden" id="cred-single">
+      <span class="font-semibold" id="cred-single-label">{% trans "Token" %}</span>
+      <input type="password" name="credential_single" id="cred-single-input" maxlength="4000"
+             autocomplete="off" class="input input-bordered input-sm w-full max-w-xl"
+             placeholder="{% trans '粘贴 Token（留空 = 不修改）' %}" />
+      <span class="text-xs text-base-content/70" id="cred-single-help"></span>
+    </div>
 
     <div class="mt-4 flex justify-end gap-2">
       <button type="button" class="btn btn-ghost btn-sm hidden" id="account-cancel">
@@ -111,7 +141,7 @@
           <th class="whitespace-nowrap">{% trans "平台" %}</th>
           <th class="whitespace-nowrap">{% trans "账号标识" %}</th>
           <th class="whitespace-nowrap">{% trans "凭据状态" %}</th>
-          <th class="whitespace-nowrap">{% trans "登录凭据" %}</th>
+          <th class="whitespace-nowrap">{% trans "凭据" %}</th>
           <th class="whitespace-nowrap">{% trans "最近校验" %}</th>
           <th class="whitespace-nowrap">{% trans "备注" %}</th>
           <th class="whitespace-nowrap">{% trans "操作" %}</th>
@@ -135,6 +165,7 @@
           <td class="whitespace-nowrap text-xs">
             {% if row.has_credential %}
             <span class="badge badge-soft badge-info badge-sm">{% trans "已录入" %}</span>
+            <span class="ml-1 text-base-content/50">{{ row.credential_kind }}</span>
             {% else %}
             <span class="text-base-content/50">{% trans "未录入" %}</span>
             {% endif %}
@@ -196,26 +227,101 @@
 <script>
 (function () {
   'use strict';
-  /* 「编辑」把该行数据回填进表单；凭据与密码不回显（留空 = 不修改） */
+  /* 平台字段随选择切换：标签 / 占位提示 / 凭据输入形态全部取自 platform_profiles；
+     「编辑」只回填平台、账号标识与备注，凭据与密码不回显（留空 = 不修改）。 */
   var form = document.getElementById('account-form');
   if (!form) return;
+
+  var profilesEl = document.getElementById('account-profiles');
+  var PROFILES = {};
+  try {
+    PROFILES = JSON.parse((profilesEl && profilesEl.textContent) || '{}') || {};
+  } catch (e) {
+    PROFILES = {};
+  }
+
   var idInput = document.getElementById('account-id');
   var platformInput = document.getElementById('account-platform');
   var nameInput = document.getElementById('account-name');
   var passwordInput = document.getElementById('account-password');
-  var credentialInput = document.getElementById('account-credential');
   var remarkInput = document.getElementById('account-remark');
   var title = document.getElementById('account-form-title');
   var cancelBtn = document.getElementById('account-cancel');
   var ADD_TITLE = '{% trans "新增账号" %}';
   var EDIT_TITLE = '{% trans "编辑账号（凭据留空 = 不修改）" %}';
 
+  var boxes = {
+    cookie: document.getElementById('cred-cookie'),
+    json: document.getElementById('cred-json'),
+    single: document.getElementById('cred-single'),
+    password: document.getElementById('account-password-group')
+  };
+  var fields = {
+    cookie: document.getElementById('account-credential'),
+    userId: document.getElementById('cred-user-id'),
+    token: document.getElementById('cred-token'),
+    single: document.getElementById('cred-single-input')
+  };
+
+  function setText(id, value) {
+    var el = document.getElementById(id);
+    if (el && value) el.textContent = value;
+  }
+
+  function setPlaceholder(el, value) {
+    if (el && value) el.setAttribute('placeholder', value);
+  }
+
+  function toggle(box, visible) {
+    if (box) box.classList.toggle('hidden', !visible);
+  }
+
+  function applyProfile(platform) {
+    var p = PROFILES[platform] || PROFILES.other || {};
+    var mode = p.credential_mode || 'free';
+
+    setText('account-label', p.account_label);
+    setPlaceholder(nameInput, p.account_placeholder);
+    setText('account-help', p.account_help);
+
+    toggle(boxes.cookie, mode === 'cookie' || mode === 'free');
+    toggle(boxes.json, mode === 'json');
+    toggle(boxes.single, mode === 'token' || mode === 'sendkey');
+    toggle(boxes.password, !!p.show_password);
+
+    setText('cred-cookie-label', p.credential_label);
+    setPlaceholder(fields.cookie, p.credential_placeholder);
+    setText('cred-cookie-help', p.credential_help);
+
+    setText('cred-user-label', p.user_id_label);
+    setPlaceholder(fields.userId, p.user_id_placeholder);
+    setText('cred-token-label', p.token_label);
+    setPlaceholder(fields.token, p.token_placeholder);
+    setText('cred-json-help', p.credential_help);
+
+    setText('cred-single-label', p.token_label || p.credential_label);
+    setPlaceholder(fields.single, p.token_placeholder || p.credential_placeholder);
+    setText('cred-single-help', p.credential_help);
+  }
+
+  function clearCredentials() {
+    Object.keys(fields).forEach(function (key) {
+      if (fields[key]) fields[key].value = '';
+    });
+    if (passwordInput) passwordInput.value = '';
+  }
+
   function backToAdd() {
     form.reset();
     idInput.value = '';
     if (title) title.textContent = ADD_TITLE;
     if (cancelBtn) cancelBtn.classList.add('hidden');
+    applyProfile(platformInput.value);
   }
+
+  platformInput.addEventListener('change', function () {
+    applyProfile(platformInput.value);
+  });
 
   document.querySelectorAll('.account-edit').forEach(function (btn) {
     btn.addEventListener('click', function () {
@@ -225,8 +331,8 @@
       platformInput.value = tr.dataset.platform || '';
       nameInput.value = tr.dataset.account || '';
       remarkInput.value = tr.dataset.remark || '';
-      passwordInput.value = '';
-      credentialInput.value = '';
+      clearCredentials();
+      applyProfile(platformInput.value);
       if (title) title.textContent = EDIT_TITLE;
       if (cancelBtn) cancelBtn.classList.remove('hidden');
       form.scrollIntoView({behavior: 'smooth', block: 'start'});
@@ -235,6 +341,7 @@
   });
 
   if (cancelBtn) cancelBtn.addEventListener('click', backToAdd);
+  applyProfile(platformInput.value);
 })();
 </script>
 {% endblock %}

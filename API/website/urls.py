@@ -5,8 +5,8 @@ from django.views.i18n import JavaScriptCatalog
 
 from . import (console, console_accounts, console_ai, console_announcements,
                console_appearance, console_audit, console_email_tasks, console_feedback,
-               console_haijiao, console_ip_bans, console_pay, console_push,
-               console_quota, console_security, console_users, docs_views,
+               console_haijiao, console_ip_bans, console_pay, console_programs,
+               console_push, console_quota, console_security, console_users, docs_views,
                feedback_views, my_wallet, programs_views, views)
 # 第三方支付的异步通知：必须挂在 /api/ 之外（平台回调带不了我们的项目签名，靠平台公钥验签）
 from API.apis.pay.notify import notify_view as pay_notify_view
@@ -73,6 +73,9 @@ urlpatterns = [
     # 超级管理员控制台（服务端 is_superuser 二次鉴权；超管在 /login/ 登录后即可访问）
     path('console/', console.home_view, name='console_home'),                    # 控制台首页（侧栏导航 + 概览）
     path('console/projects/', console.projects_view, name='console_projects'),   # 接入项目管理
+    # 程序下载（超管专属）：「计算程序」各条目的整包 / 单文件下载次数排行
+    path('console/programs/', console_programs.program_downloads_view,
+         name='console_program_downloads'),
     path('console/services/', console.services_view, name='console_services'),   # API 服务策略（服务/线路/端点三级继承）
     # 支付设置（超管专属）：在线支付开关、各渠道商户配置、订单查单 / 退款
     path('console/pay/', console_pay.pay_view, name='console_pay'),

@@ -11,11 +11,14 @@
 的账户余额加钱**（单位：元）。接入项目本身不再有任何额度概念，本接口只是把「代收的钱」
 落到你自己用户的账上。
 """
+import ipaddress
+
 from django.views.decorators.http import require_http_methods
 
 from API.apis.pay import service
 from API.apis.pay.providers.base import PayError
-from API.apis.pay.utils import client_ip, format_money
+from API.apis.pay.utils import client_ip as detect_client_ip
+from API.apis.pay.utils import format_money
 from API.common import StatusCode
 from API.common.responses import json_response as _json_response
 from API.models import PayRefundRequest
@@ -42,6 +45,22 @@ def _order_brief(order) -> dict:
     }
 
 
+def _public_ip(text):
+    """把外部传入的 client_ip 归一成公网 IP 字符串；非法 / 内网 / 本机 / 保留地址返回 None
+
+    易支付等上游会把「127.0.0.1 / 内网 / 公共 DNS」当成风险 IP，直接返回
+    「系统异常无法完成付款」。故调用方显式传 client_ip 时先在这里拦住。
+    """
+    try:
+        addr = ipaddress.ip_address((text or '').strip())
+    except ValueError:
+        return None
+    if (addr.is_loopback or addr.is_private or addr.is_link_local
+            or addr.is_reserved or addr.is_multicast or addr.is_unspecified):
+        return None
+    return str(addr)
+
+
 def _find_own_order(request, out_trade_no):
     """按商户订单号取本调用方的订单（别人的单一律视为不存在）"""
     from API.models import PayOrder
@@ -64,6 +83,9 @@ def create_view(request):
         param     业务扩展参数（可选，回调/查单原样返回）
         method    调用方式（可选，默认 web；**移动端 App 建议 jump**）
         device    设备类型（可选，默认 pc；**移动端建议 mobile / wechat / alipay**）
+        client_ip 付款人公网 IP（可选）。**服务端代调用时建议显式传真实付款人 IP**：
+                  上游支付平台会做风险控制，传入本机 / 内网 / 代理 IP 会被拒成
+                  「系统异常无法完成付款」；不传则取请求来源 IP。
     返回：{out_trade_no, trade_no, provider, pay_type, amount, subject, status, pay_info, param}
 
     拿到返回后**按 `pay_type` 渲染**：`qrcode` 直接出二维码；`jump` / `html` 打开 `pay_info`
@@ -87,6 +109,16 @@ def create_view(request):
     if payer is None:
         return _json_response(StatusCode.PARAM_VALUE_INVALID, msg='user_id 对应的用户不存在')
 
+    payer_ip = (request.POST.get('client_ip') or '').strip()
+    if payer_ip:
+        payer_ip = _public_ip(payer_ip)
+        if not payer_ip:
+            return _json_response(
+                StatusCode.PARAM_VALUE_INVALID,
+                msg='client_ip 必须是公网 IP（不能是本机 / 内网 / 保留地址）')
+    else:
+        payer_ip = detect_client_ip(request)
+
     provider_code = (request.POST.get('provider') or '').strip()
     if not provider_code:
         channels = service.available_channels()
@@ -98,7 +130,7 @@ def create_view(request):
         order = service.create_order(
             provider_code=provider_code, amount=amount, pay_type=pay_type,
             subject=(request.POST.get('subject') or '订单支付').strip(),
-            user=payer, app=request.auth_app, client_ip=client_ip(request), request=request,
+            user=payer, app=request.auth_app, client_ip=payer_ip, request=request,
             return_url=(request.POST.get('return_url') or '').strip(),
             param=(request.POST.get('param') or '').strip(),
             method=(request.POST.get('method') or 'web').strip(),

@@ -16,15 +16,127 @@
   </div>
 </details>
 
-<aside class="hidden shrink-0 lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:w-56 lg:self-start lg:overflow-y-auto lg:pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+<aside class="hidden shrink-0 lg:sticky lg:top-20 lg:block lg:w-56 lg:self-start lg:pr-1"
+       style="height: calc(100vh - 6rem); width: clamp(14rem, 13vw, 17rem)"
        aria-label="{% trans '控制台导航' %}">
-  <nav class="con-panel p-2">
-    <div class="flex items-center gap-2 px-2 pb-2 pt-1">
+  <nav class="con-panel flex flex-col p-2" style="height: 100%">
+    <div class="flex shrink-0 items-center gap-2 px-2 pb-2 pt-1">
       <span class="flex h-6 w-6 items-center justify-center rounded-field bg-primary/10 text-primary">
         <i data-lucide="gauge" class="h-3.5 w-3.5"></i>
       </span>
       <span class="text-sm font-bold">{% trans "管理控制台" %}</span>
     </div>
-    {% include 'console/_menu.html' %}
+    {# 菜单区独立滚动：侧栏撑满视口高度，分组再多也只在栏内滚动，不带着右侧内容一起滚 #}
+    <div style="flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain">
+      {% include 'console/_menu.html' %}
+    </div>
   </nav>
 </aside>
+
+<script>
+/* 控制台侧边栏分组展开 / 折叠：
+   - 首次访问只展开「概览」，其余收起；当前页所在分组始终展开；
+   - 用户手动开合后写入 localStorage，下次进入按记忆恢复；
+   - 展开 / 收起对内容区做 height 过渡（180ms；prefers-reduced-motion 时直接切换）；
+   - 小屏折叠条与宽屏常驻栏各有一份菜单，同一分组的状态互相同步。 */
+(function () {
+  var STORAGE_KEY = 'xyapi_console_menu_groups_v1';
+  var DURATION = 180;
+  var groups = Array.prototype.slice.call(document.querySelectorAll('[data-console-group]'));
+  if (!groups.length) return;
+
+  var reduceMotion = !!(window.matchMedia
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  var saved = {};
+  try {
+    saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {};
+  } catch (e) {
+    saved = {};
+  }
+
+  // 内存里的开合意图：动画期间 el.open 仍是旧值，持久化必须读这里
+  var state = {};
+
+  function keyOf(el) { return el.getAttribute('data-console-group'); }
+  function bodyOf(el) { return el.querySelector('[data-console-group-body]'); }
+
+  function syncChevron(el) {
+    var icon = el.querySelector('[data-console-group-chevron]');
+    if (icon) icon.style.transform = el.open ? 'rotate(180deg)' : '';
+  }
+
+  function save() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {
+      /* 隐私模式 / 存储被禁用时忽略，不影响开合 */
+    }
+  }
+
+  function apply(el, open, animate) {
+    var body = bodyOf(el);
+    if (!body || !animate || reduceMotion) {
+      el.open = open;
+      if (body) {
+        clearTimeout(el._groupTimer);
+        body.style.transition = '';
+        body.style.height = '';
+      }
+      syncChevron(el);
+      return;
+    }
+
+    clearTimeout(el._groupTimer);
+    // 注意：<details> 关闭时内容仍可能报出布局高度（content-visibility），
+    // 所以「从关闭到展开」必须显式从 0 起算，不能量当前高度，否则等于原地不动。
+    var from = open
+      ? (el.open ? body.getBoundingClientRect().height : 0)
+      : body.getBoundingClientRect().height;
+    if (open) el.open = true;    // 展开后内容才有真实高度可量
+    body.style.transition = 'none';
+    body.style.height = from + 'px';
+    void body.offsetHeight;      // 强制回流，让起始高度生效后再过渡
+
+    var target = open ? body.scrollHeight : 0;
+    body.style.transition = 'height ' + DURATION + 'ms ease';
+    body.style.height = target + 'px';
+    syncChevron(el);
+    el._groupTimer = setTimeout(function () {
+      if (!open) el.open = false;
+      body.style.transition = '';
+      body.style.height = '';
+      syncChevron(el);
+    }, DURATION + 20);
+  }
+
+  // 计算初始状态：有存档按存档，没有则只展开「概览」，当前页所在分组强制展开
+  groups.forEach(function (el) {
+    var key = keyOf(el);
+    if (key in state) return;
+    var active = el.getAttribute('data-group-active') === '1';
+    state[key] = Object.prototype.hasOwnProperty.call(saved, key)
+      ? !!saved[key]
+      : (active || key === 'overview');
+    if (active) state[key] = true;
+  });
+
+  groups.forEach(function (el) {
+    apply(el, state[keyOf(el)], false);
+
+    var summary = el.querySelector('summary');
+    if (!summary) return;
+    summary.addEventListener('click', function (event) {
+      event.preventDefault();      // 关掉原生瞬时开合，交给上面的 height 过渡
+      var key = keyOf(el);
+      var open = !state[key];
+      state[key] = open;
+      apply(el, open, true);
+      groups.forEach(function (other) {
+        if (other !== el && keyOf(other) === key) apply(other, open, false);
+      });
+      save();
+    });
+  });
+})();
+</script>

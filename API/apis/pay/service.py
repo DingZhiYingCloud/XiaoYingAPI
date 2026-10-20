@@ -120,10 +120,17 @@ def create_order(*, provider_code, amount, pay_type, subject,
             pay_type=pay_type, client_ip=client_ip, notify_url=notify_url,
             return_url=back_url, param=order.param, method=method, device=device,
         )
-    except PayError:
-        # 下单失败：订单留痕为「失败」，便于后台看到「有单没拿到二维码」的真实原因
+    except PayError as exc:
+        # 下单失败：订单留痕为「失败」，便于后台看到「有单没拿到二维码」的真实原因。
+        # 同时把关键上下文写日志（不含密钥 / 签名）：上游常把风控原因压成一句
+        # 「系统异常无法完成付款」，排查时至少要能看到实际传给它的 client_ip。
         order.status = PayOrder.STATUS_FAILED
         order.save(update_fields=['status'])
+        logger.warning(
+            '支付下单失败 out_trade_no=%s provider=%s pay_type=%s method=%s device=%s '
+            'amount=%s client_ip=%s notify_url=%s return_url=%s msg=%s',
+            order.out_trade_no, provider_code, pay_type, method, device,
+            format_money(money), client_ip or '-', notify_url, back_url, exc)
         raise
 
     order.trade_no = (result.get('trade_no') or '')[:_TRADE_NO_MAX]

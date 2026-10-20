@@ -8227,6 +8227,18 @@ msgstr "數據運營"
 msgid "用户支持"
 msgstr "用戶支持"
 
+msgid "账号与交易"
+msgstr "賬號與交易"
+
+msgid "站点运营"
+msgstr "站點運營"
+
+msgid "消息与任务"
+msgstr "消息與任務"
+
+msgid "安全与审计"
+msgstr "安全與審計"
+
 msgid "管理控制台"
 msgstr "管理控制臺"
 
@@ -14670,3 +14682,243 @@ msgstr "發送間隔填 0 = 只發送一次；大於 0 = 每 N 分鐘重複發�
 
 msgid "每 %(n)s 分钟"
 msgstr "每 %(n)s 分鐘"
+
+
+# ===== 计算程序下载统计（2026-10-20） =====
+
+msgid "下载 %(n)s 次"
+msgstr "下載 %(n)s 次"
+
+msgid "程序"
+msgstr "程序"
+
+msgid "程序下载"
+msgstr "程序下載"
+
+msgid "程序下载 - 超级管理员 - 小影API"
+msgstr "程序下載 - 超級管理員 - 小影API"
+
+msgid "超级管理员,计算程序,下载统计"
+msgstr "超級管理員,計算程序,下載統計"
+
+msgid "小影API 超级管理员：查看计算程序各条目的整包与单文件下载次数排行。"
+msgstr "小影API 超級管理員：查看計算程序各條目的整包與單文件下載次數排行。"
+
+msgid "累计 %(n)s 次下载；同 IP + 同程序 + 同入口 60 秒内只计一次。"
+msgstr "累計 %(n)s 次下載；同 IP + 同程序 + 同入口 60 秒內只計一次。"
+
+msgid "行清单以 CalculationProgram 目录为准；程序被移出目录后历史计数保留，目录恢复即重新出现。"
+msgstr "行清單以 CalculationProgram 目錄為準；程序被移出目錄後歷史計數保留，目錄恢復即重新出現。"
+
+msgid "计数发生在用户发起下载时：整包下载计入「整包」，详情页逐个文件下载计入「单文件」。"
+msgstr "計數發生在用戶發起下載時：整包下載計入「整包」，詳情頁逐個文件下載計入「單文件」。"
+
+msgid "有下载记录 %(n)s 个"
+msgstr "有下載記錄 %(n)s 個"
+
+msgid "合计 %(n)s 次"
+msgstr "合計 %(n)s 次"
+
+msgid "整包下载"
+msgstr "整包下載"
+
+msgid "单文件下载"
+msgstr "單文件下載"
+
+msgid "最近下载"
+msgstr "最近下載"
+
+msgid "内容目录下暂无可统计的程序。"
+msgstr "內容目錄下暫無可統計的程序。"
+
+msgid "「计算程序」各条目的下载次数排行：整包与单文件分列，附合计与最近下载时间。"
+msgstr "「計算程序」各條目的下載次數排行：整包與單文件分列，附合計與最近下載時間。"
+
+
+# ===== 账号管理：按平台切换字段（2026-10-20） =====
+
+msgid "不同平台的凭据形态不同：Cookie、accessToken、SendKey，或「用户 ID + Token」；表单会随平台切换字段，不再共用一套。"
+msgstr "不同平臺的憑據形態不同：Cookie、accessToken、SendKey，或「用戶 ID + Token」；表單會隨平臺切換字段，不再共用一套。"
+
+msgid "凭据"
+msgstr "憑據"
+
+msgid "原样一整串粘贴即可，保存后页面不再回显。"
+msgstr "原樣一整串粘貼即可，保存後頁面不再回顯。"
+
+msgid "如 24479174"
+msgstr "如 24479174"
+
+msgid "登录后取得的 Token"
+msgstr "登錄後取得的 Token"
+
+msgid "用户 ID 与 Token 会合并成 JSON 保存；编辑时留空 = 保持原值。"
+msgstr "用戶 ID 與 Token 會合併成 JSON 保存；編輯時留空 = 保持原值。"
+
+msgid "粘贴 Token（留空 = 不修改）"
+msgstr "粘貼 Token（留空 = 不修改）"
+
+msgid "粘贴登录凭据（留空 = 不修改）"
+msgstr "粘貼登錄憑據（留空 = 不修改）"
+
+msgid "凭据 AES 加密落库，保存后页面不再回显。"
+msgstr "憑據 AES 加密落庫，保存後頁面不再回顯。"
+
+msgid "知乎账号"
+msgstr "知乎賬號"
+
+msgid "知乎昵称 / 手机号 / 邮箱"
+msgstr "知乎暱稱 / 手機號 / 郵箱"
+
+msgid "知乎 Cookie"
+msgstr "知乎 Cookie"
+
+msgid "粘贴知乎 Cookie 整串（如 z_c0=...）"
+msgstr "粘貼知乎 Cookie 整串（如 z_c0=...）"
+
+msgid "从浏览器开发者工具复制整串 Cookie，原样粘贴（留空 = 不修改）。"
+msgstr "從瀏覽器開發者工具複製整串 Cookie，原樣粘貼（留空 = 不修改）。"
+
+msgid "微博账号"
+msgstr "微博賬號"
+
+msgid "微博昵称 / 手机号 / 邮箱"
+msgstr "微博暱稱 / 手機號 / 郵箱"
+
+msgid "微博 Cookie"
+msgstr "微博 Cookie"
+
+msgid "粘贴微博 Cookie 整串（如 SUB=...）"
+msgstr "粘貼微博 Cookie 整串（如 SUB=...）"
+
+msgid "小红书账号"
+msgstr "小紅書賬號"
+
+msgid "小红书昵称 / 手机号"
+msgstr "小紅書暱稱 / 手機號"
+
+msgid "小红书 Cookie"
+msgstr "小紅書 Cookie"
+
+msgid "粘贴小红书 Cookie 整串（如 web_session=...）"
+msgstr "粘貼小紅書 Cookie 整串（如 web_session=...）"
+
+msgid "百家号账号"
+msgstr "百家號賬號"
+
+msgid "百家号名称 / 手机号"
+msgstr "百家號名稱 / 手機號"
+
+msgid "百家号 Cookie"
+msgstr "百家號 Cookie"
+
+msgid "粘贴百家号 Cookie 整串"
+msgstr "粘貼百家號 Cookie 整串"
+
+msgid "今日头条账号"
+msgstr "今日頭條賬號"
+
+msgid "头条号名称 / 手机号"
+msgstr "頭條號名稱 / 手機號"
+
+msgid "今日头条 Cookie"
+msgstr "今日頭條 Cookie"
+
+msgid "粘贴今日头条 Cookie 整串（如 sessionid=...）"
+msgstr "粘貼今日頭條 Cookie 整串（如 sessionid=...）"
+
+msgid "账号备注"
+msgstr "賬號備註"
+
+msgid "如：主号 / 24479174"
+msgstr "如：主號 / 24479174"
+
+msgid "代练通凭据"
+msgstr "代練通憑據"
+
+msgid "登录后取得的 token"
+msgstr "登錄後取得的 token"
+
+msgid "accessToken"
+msgstr "accessToken"
+
+msgid "粘贴 accessToken（也接受 {\"accessToken\": \"...\"}）"
+msgstr "粘貼 accessToken（也接受 {\"accessToken\": \"...\"}）"
+
+msgid "单个 accessToken 即可；编辑时留空 = 保持原值。"
+msgstr "單個 accessToken 即可；編輯時留空 = 保持原值。"
+
+msgid "粘贴 accessToken"
+msgstr "粘貼 accessToken"
+
+msgid "备注名"
+msgstr "備註名"
+
+msgid "如：主号 / 告警推送"
+msgstr "如：主號 / 告警推送"
+
+msgid "SendKey"
+msgstr "SendKey"
+
+msgid "粘贴 SendKey（SCT... 或 sctp...）"
+msgstr "粘貼 SendKey（SCT... 或 sctp...）"
+
+msgid "SendKey 在 Server酱后台获取；保存后不再回显。"
+msgstr "SendKey 在 Server醬後臺獲取；保存後不再回顯。"
+
+msgid "粘贴 SendKey"
+msgstr "粘貼 SendKey"
+
+msgid "用户 ID 与 Token 都必须填写"
+msgstr "用戶 ID 與 Token 都必須填寫"
+
+msgid "切换平台后请重新填写该平台的登录凭据"
+msgstr "切換平臺後請重新填寫該平臺的登錄憑據"
+
+
+# ===== 支付下单 client_ip（2026-10-20） =====
+
+msgid "付款人公网IP"
+msgstr "付款人公網IP"
+
+msgid "如 120.229.10.20"
+msgstr "如 120.229.10.20"
+
+msgid "选填。服务端代调用时建议传真实付款人 IP；上游风控会拒绝本机 / 内网 / 代理 IP（表现为「系统异常无法完成付款」）。不传则取请求来源 IP"
+msgstr "選填。服務端代調用時建議傳真實付款人 IP；上遊風控會拒絕本機 / 內網 / 代理 IP（表現為「系統異常無法完成付款」）。不傳則取請求來源 IP"
+
+msgid "**服务端代调用请传 `client_ip`**：支付平台按付款人 IP 做风控，传本机 / 内网 / 代理 IP 会被压成「系统异常无法完成付款」；本站已优先取 Cloudflare 的真实访客 IP，仍建议调用方显式传付款人 IP。"
+msgstr "**服務端代調用請傳 `client_ip`**：支付平臺按付款人 IP 做風控，傳本機 / 內網 / 代理 IP 會被壓成「系統異常無法完成付款」；本站已優先取 Cloudflare 的真實訪客 IP，仍建議調用方顯式傳付款人 IP。"
+
+
+# ===== 官网外观：新增 5 套视觉气质（2026-10-20） =====
+
+msgid "落日暖砂"
+msgstr "落日暖砂"
+
+msgid "暖色日落光晕、圆弧卡片与柔和大标题，偏生活方式产品的温润观感。"
+msgstr "暖色日落光暈、圓弧卡片與柔和大標題，偏生活方式產品的溫潤觀感。"
+
+msgid "蓝图工坊"
+msgstr "藍圖工坊"
+
+msgid "细网格蓝图底纹配虚线描边与等宽标签，工程图纸般的严谨感。"
+msgstr "細網格藍圖底紋配虛線描邊與等寬標籤，工程圖紙般的嚴謹感。"
+
+msgid "极简巨石"
+msgstr "極簡巨石"
+
+msgid "无装饰大字号配粗描边与硬投影，强对比的粗野主义构图。"
+msgstr "無裝飾大字號配粗描邊與硬投影，強對比的粗野主義構圖。"
+
+msgid "留白禅意"
+msgstr "留白禪意"
+
+msgid "大量留白、居中文字与极细描边，安静克制的东方极简。"
+msgstr "大量留白、居中文字與極細描邊，安靜克制的東方極簡。"
+
+msgid "复古报刊"
+msgstr "復古報刊"
+
+msgid "纸张底纹、双线分隔与衬线标题，旧报刊的印刷质感。"
+msgstr "紙張底紋、雙線分隔與襯線標題，舊報刊的印刷質感。"

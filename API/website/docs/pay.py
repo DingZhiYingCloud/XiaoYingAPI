@@ -162,8 +162,16 @@ SERVICE = ServiceSpec(
                                   desc='选填。移动端 H5 / WebView 建议 jump；原生 App 用 app'),
                         ParamSpec('device', '设备类型', kind='select', options=_DEVICES,
                                   desc='选填。移动端建议 mobile，微信内 wechat'),
+                        ParamSpec('client_ip', '付款人公网IP', kind='text',
+                                  placeholder='如 120.229.10.20',
+                                  desc='选填。服务端代调用时建议传真实付款人 IP；'
+                                       '上游风控会拒绝本机 / 内网 / 代理 IP（表现为「系统异常无法完成付款」）。'
+                                       '不传则取请求来源 IP'),
                     ],
                     notes=[
+                        '**服务端代调用请传 `client_ip`**：支付平台按付款人 IP 做风控，'
+                        '传本机 / 内网 / 代理 IP 会被压成「系统异常无法完成付款」；'
+                        '本站已优先取 Cloudflare 的真实访客 IP，仍建议调用方显式传付款人 IP。',
                         '拿到返回后**按 `pay_type` 渲染**：`qrcode` 直接把 `pay_info` 做成二维码；'
                         '`jump` 用浏览器 / WebView 打开 `pay_info`（收银台页自带二维码与付款入口）。'
                         '实测同一笔微信支付在 `method=web` 下返回 `qrcode`，'

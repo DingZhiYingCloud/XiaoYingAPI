@@ -69,6 +69,11 @@
             <span class="badge badge-ghost badge-sm shrink-0">{% blocktrans with n=program.files|length %}{{ n }} 个文件{% endblocktrans %}</span>
           </div>
           <p class="text-xs text-base-content/60">{{ program.total_size_label }}</p>
+          <div class="flex">
+            <span class="badge badge-soft badge-info badge-sm">
+              {% blocktrans with n=program.download_count %}下载 {{ n }} 次{% endblocktrans %}
+            </span>
+          </div>
           <div class="card-actions mt-2 justify-end">
             <a href="{% url 'website:programs_download' %}?pack={{ program.rel|urlencode }}"
                class="btn btn-ghost btn-sm">{% trans "打包下载" %}</a>

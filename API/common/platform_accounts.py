@@ -17,11 +17,182 @@
     2. 在 `SpiderServices/xiaohongshu/` 里实现
        ``check_credential(cookie: str) -> tuple[bool, str]``（True=有效，str 给人和后台看）；
     3. 在下面的 `_CHECKERS` 里加一行。**无需改模型、无需迁移。**
+
+后台表单的字段（账号标识叫什么、凭据是 Cookie 还是 Token / SendKey）由本文件的
+`PLATFORM_PROFILES` 决定：新增平台时**建议**补一条档案；不补则用默认档案
+（自由文本凭据 + 可选密码），仍可正常存取账号。
 """
 import importlib
+import json
 import logging
 
 logger = logging.getLogger('api.accounts')
+
+# ==================== 平台字段档案（后台表单据此切换字段） ====================
+# 各平台的「账号标识」与「登录凭据」形态并不相同：
+#   · 知乎 / 微博 / 小红书 / 百家号 / 今日头条 —— 一整串 Cookie
+#   · 代练通 —— 用户 ID + Token（落库时合并成 JSON，校验器按这个格式读）
+#   · 代练丸子 —— accessToken（JSON 或纯令牌都接受）
+#   · Server酱 —— SendKey
+#   · 其他 —— 自由文本凭据 + 可选密码
+# 因此后台表单不再固定一套字段，而是按平台切换标签 / 占位提示 / 输入形态。
+# 新增平台时在这里补一条档案（不补则用 _DEFAULT_PROFILE，仍可正常存账号）。
+CREDENTIAL_MODES = ('cookie', 'json', 'token', 'sendkey', 'free')
+
+_COOKIE_HELP = '从浏览器开发者工具复制整串 Cookie，原样粘贴（留空 = 不修改）。'
+
+_DEFAULT_PROFILE = {
+    'account_label': '账号标识',
+    'account_placeholder': '用户名 / 手机号 / 邮箱 / 备注名',
+    'account_help': '同一平台内唯一，用于在列表里辨认是哪个号。',
+    'credential_mode': 'free',
+    'credential_label': '登录凭据',
+    'credential_placeholder': '粘贴登录凭据（留空 = 不修改）',
+    'credential_help': '凭据 AES 加密落库，保存后页面不再回显。',
+    'credential_kind': '凭据',
+    'show_password': True,
+    'user_id_label': '用户 ID',
+    'user_id_placeholder': '',
+    'token_label': 'Token',
+    'token_placeholder': '',
+}
+
+PLATFORM_PROFILES = {
+    'zhihu': {
+        'account_label': '知乎账号',
+        'account_placeholder': '知乎昵称 / 手机号 / 邮箱',
+        'credential_mode': 'cookie',
+        'credential_label': '知乎 Cookie',
+        'credential_placeholder': '粘贴知乎 Cookie 整串（如 z_c0=...）',
+        'credential_help': _COOKIE_HELP,
+        'credential_kind': 'Cookie',
+        'show_password': False,
+    },
+    'weibo': {
+        'account_label': '微博账号',
+        'account_placeholder': '微博昵称 / 手机号 / 邮箱',
+        'credential_mode': 'cookie',
+        'credential_label': '微博 Cookie',
+        'credential_placeholder': '粘贴微博 Cookie 整串（如 SUB=...）',
+        'credential_help': _COOKIE_HELP,
+        'credential_kind': 'Cookie',
+        'show_password': False,
+    },
+    'xiaohongshu': {
+        'account_label': '小红书账号',
+        'account_placeholder': '小红书昵称 / 手机号',
+        'credential_mode': 'cookie',
+        'credential_label': '小红书 Cookie',
+        'credential_placeholder': '粘贴小红书 Cookie 整串（如 web_session=...）',
+        'credential_help': _COOKIE_HELP,
+        'credential_kind': 'Cookie',
+        'show_password': False,
+    },
+    'baijiahao': {
+        'account_label': '百家号账号',
+        'account_placeholder': '百家号名称 / 手机号',
+        'credential_mode': 'cookie',
+        'credential_label': '百家号 Cookie',
+        'credential_placeholder': '粘贴百家号 Cookie 整串',
+        'credential_help': _COOKIE_HELP,
+        'credential_kind': 'Cookie',
+        'show_password': False,
+    },
+    'toutiao': {
+        'account_label': '今日头条账号',
+        'account_placeholder': '头条号名称 / 手机号',
+        'credential_mode': 'cookie',
+        'credential_label': '今日头条 Cookie',
+        'credential_placeholder': '粘贴今日头条 Cookie 整串（如 sessionid=...）',
+        'credential_help': _COOKIE_HELP,
+        'credential_kind': 'Cookie',
+        'show_password': False,
+    },
+    'dlt': {
+        'account_label': '账号备注',
+        'account_placeholder': '如：主号 / 24479174',
+        'credential_mode': 'json',
+        'credential_label': '代练通凭据',
+        'credential_placeholder': '',
+        'credential_help': '用户 ID 与 Token 会合并成 JSON 保存；编辑时留空 = 保持原值。',
+        'credential_kind': 'Token',
+        'show_password': False,
+        'user_id_label': '用户 ID',
+        'user_id_placeholder': '如 24479174',
+        'token_label': 'Token',
+        'token_placeholder': '登录后取得的 token',
+    },
+    'dlwz': {
+        'account_label': '账号备注',
+        'account_placeholder': '如：主号 / 24479174',
+        'credential_mode': 'token',
+        'credential_label': 'accessToken',
+        'credential_placeholder': '粘贴 accessToken（也接受 {"accessToken": "..."}）',
+        'credential_help': '单个 accessToken 即可；编辑时留空 = 保持原值。',
+        'credential_kind': 'accessToken',
+        'show_password': False,
+        'token_label': 'accessToken',
+        'token_placeholder': '粘贴 accessToken',
+    },
+    'serverchan': {
+        'account_label': '备注名',
+        'account_placeholder': '如：主号 / 告警推送',
+        'credential_mode': 'sendkey',
+        'credential_label': 'SendKey',
+        'credential_placeholder': '粘贴 SendKey（SCT... 或 sctp...）',
+        'credential_help': 'SendKey 在 Server酱后台获取；保存后不再回显。',
+        'credential_kind': 'SendKey',
+        'show_password': False,
+        'token_label': 'SendKey',
+        'token_placeholder': '粘贴 SendKey',
+    },
+    'other': {
+        'account_label': '账号标识',
+        'account_placeholder': '用户名 / 手机号 / 邮箱 / 备注名',
+        'credential_mode': 'free',
+        'credential_label': '登录凭据',
+        'credential_placeholder': '粘贴登录凭据（留空 = 不修改）',
+        'credential_help': '凭据 AES 加密落库，保存后页面不再回显。',
+        'credential_kind': '凭据',
+        'show_password': True,
+    },
+}
+
+
+def profile_for(platform: str) -> dict:
+    """取某平台的字段档案（未登记的平台回退到默认档案）"""
+    profile = dict(_DEFAULT_PROFILE)
+    profile.update(PLATFORM_PROFILES.get(platform, {}))
+    return profile
+
+
+def compose_credential(platform: str, *, credential='', user_id='', token='', existing=''):
+    """按平台形态组装要落库的凭据字符串。
+
+    - 非 json 形态：原样返回 ``credential``（空串表示「保持原值」）
+    - json 形态（代练通）：把用户 ID 与 Token 合成 JSON；允许用 ``existing``
+      里已有的另一半补齐（编辑时只改 Token 不必重填用户 ID）
+
+    :return: (ok, 凭据字符串或错误说明)
+    """
+    if profile_for(platform)['credential_mode'] != 'json':
+        return True, (credential or '')
+
+    base = {}
+    if existing:
+        try:
+            parsed = json.loads(existing)
+            if isinstance(parsed, dict):
+                base = parsed
+        except (ValueError, TypeError):
+            base = {}
+
+    uid = (user_id or str(base.get('user_id') or '')).strip()
+    tok = (token or str(base.get('token') or '')).strip()
+    if not uid or not tok:
+        return False, '用户 ID 与 Token 都必须填写'
+    return True, json.dumps({'user_id': uid, 'token': tok}, ensure_ascii=False)
+
 
 # ==================== 校验器注册表 ====================
 # 平台标识 -> "模块路径:函数名"。函数签名：``(cookie: str) -> (bool, str)``

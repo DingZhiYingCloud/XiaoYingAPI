@@ -24,6 +24,7 @@
       <div class="mt-3 flex flex-wrap gap-2 text-sm">
         <span class="badge badge-soft badge-secondary badge-sm">{% blocktrans with n=program.files|length %}{{ n }} 个文件{% endblocktrans %}</span>
         <span class="badge badge-soft badge-accent badge-sm">{{ program.total_size_label }}</span>
+        <span class="badge badge-soft badge-info badge-sm">{% blocktrans with n=download_count %}下载 {{ n }} 次{% endblocktrans %}</span>
       </div>
     </div>
     <a href="{% url 'website:programs_download' %}?pack={{ program.rel|urlencode }}" class="btn btn-primary">

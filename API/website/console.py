@@ -48,6 +48,24 @@ HOME_REVENUE_DAYS = 30
 HOME_RANKING_LIMIT = 5
 
 
+def _money_display(value) -> str:
+    """金额展示：固定两位小数 + 千分位（仅展示，不参与计算）"""
+    return f'{Decimal(value or 0):,.2f}'
+
+
+def _int_display(value) -> str:
+    """计数展示：千分位（仅展示，不参与计算）"""
+    return f'{int(value or 0):,}'
+
+
+def _delta_display(value) -> str:
+    """环比展示：正数带 +，最多保留 2 位小数并去掉无意义的尾零"""
+    if value is None:
+        return ''
+    number = f'{float(value):.2f}'.rstrip('0').rstrip('.')
+    return f'+{number}' if value > 0 else number
+
+
 @superadmin_required
 def home_view(request):
     """控制台首页：KPI + 仪表盘（趋势 / 排行 / 收入 / 资源与告警）+ 各模块入口
@@ -70,17 +88,32 @@ def home_view(request):
         status__in=(PayOrder.STATUS_PAID, PayOrder.STATUS_PARTIAL_REFUNDED,
                     PayOrder.STATUS_REFUNDED))
     money = paid_orders.aggregate(amount=Sum('amount'), refund=Sum('refund_amount'))
+    amount = money['amount'] or Decimal('0')
+    refund = money['refund'] or Decimal('0')
+
+    # 展示用的预格式化字段：模板不做二次运算，金额固定两位小数、计数补千分位，
+    # 避免 SQLite 聚合出来的 Decimal 直接渲染成 79.0000 / 0 这类不统一的形态。
+    stats = stats_query.overview_compare(HOME_OVERVIEW_DAYS)
+    stats['calls_display'] = _int_display(stats['calls'])
+    stats['success_display'] = _int_display(stats['success'])
+    stats['failed_display'] = _int_display(stats['failed'])
+    stats['max_ms_display'] = _int_display(stats['max_ms'])
+    stats['calls_delta_display'] = _delta_display(stats['calls_delta'])
+    stats['success_rate_delta_display'] = _delta_display(stats['success_rate_delta'])
 
     return render(request, 'console/home.html', {
         'overview_days': HOME_OVERVIEW_DAYS,
         'trend_days': HOME_TREND_DAYS,
         'revenue_days': HOME_REVENUE_DAYS,
-        'stats': stats_query.overview_compare(HOME_OVERVIEW_DAYS),
+        'stats': stats,
         'trend': trend,
         'ranking': ranking,
         'revenue': {
-            'amount': money['amount'] or Decimal('0'),
-            'refund': money['refund'] or Decimal('0'),
+            'amount': amount,
+            'refund': refund,
+            'amount_display': _money_display(amount),
+            'refund_display': _money_display(refund),
+            'has_refund': refund > 0,
             'orders': paid_orders.count(),
             'refund_pending': PayRefundRequest.objects.filter(
                 status=PayRefundRequest.STATUS_PENDING).count(),

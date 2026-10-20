@@ -56,6 +56,7 @@ def _render(request):
     supported = set(platform_accounts.supported_platforms())
     # 平台名（模型选项）按当前语言翻译后展示，与「接口公告」等页口径一致
     platform_labels = {value: _(label) for value, label in Platform.choices}
+    profiles = _localized_profiles()
     paginator = Paginator(PlatformAccount.objects.all(), PER_PAGE)
     page = paginator.get_page(request.GET.get('page'))
     rows = []
@@ -63,6 +64,7 @@ def _render(request):
         # 模板据此决定是否渲染「校验」按钮（该平台有没有接入校验器）
         record.check_supported = record.platform in supported
         record.platform_label = platform_labels.get(record.platform, record.platform)
+        record.credential_kind = profiles.get(record.platform, {}).get('credential_kind', _('凭据'))
         rows.append(record)
     # 「已录入凭据」的**总数**：加密字段的空值原样存空串（见 EncryptedSecretField 的落库规则），
     # 因此在 SQL 侧数即可，不必把全表逐行取出来解密。
@@ -74,9 +76,30 @@ def _render(request):
         'total': paginator.count,
         'page_prefix': '',
         'platform_choices': list(platform_labels.items()),
+        'platform_profiles': profiles,
         'supported_platforms': supported,
         'has_credential_count': has_credential_count,
     })
+
+
+#: 档案里需要翻译的展示字段（credential_mode 是程序取值，保持原样）
+_PROFILE_TEXT_KEYS = (
+    'account_label', 'account_placeholder', 'account_help',
+    'credential_label', 'credential_placeholder', 'credential_help', 'credential_kind',
+    'user_id_label', 'user_id_placeholder', 'token_label', 'token_placeholder',
+)
+
+
+def _localized_profiles():
+    """把各平台字段档案翻成当前语言，供模板与前端脚本共用"""
+    profiles = {}
+    for value, _label in Platform.choices:
+        raw = platform_accounts.profile_for(value)
+        profiles[value] = {
+            key: (_(val) if key in _PROFILE_TEXT_KEYS and val else val)
+            for key, val in raw.items()
+        }
+    return profiles
 
 
 def _record_or_none(raw_id):
@@ -99,7 +122,10 @@ def _save(request):
     platform = (request.POST.get('platform') or '').strip()
     account_name = (request.POST.get('account') or '').strip()
     password = (request.POST.get('password') or '').strip()
-    credential = (request.POST.get('credential') or '').strip()
+    raw_credential = (request.POST.get('credential') or '').strip()
+    single_credential = (request.POST.get('credential_single') or '').strip()
+    user_id = (request.POST.get('cred_user_id') or '').strip()
+    token = (request.POST.get('cred_token') or '').strip()
     remark = (request.POST.get('remark') or '').strip()
 
     if platform not in {value for value, _label in Platform.choices}:
@@ -122,6 +148,33 @@ def _save(request):
         duplicated = duplicated.exclude(pk=record.pk)
     if duplicated.exists():
         messages.error(request, _('同一平台下该账号标识已存在'))
+        return redirect(REDIRECT_URL)
+
+    # 按平台档案取用对应的表单字段：
+    #   cookie / free  -> credential（整串 Cookie / 自由文本）
+    #   token / sendkey -> credential_single（单个 Token / SendKey）
+    #   json           -> cred_user_id + cred_token（合并成 JSON 落库）
+    mode = platform_accounts.profile_for(platform)['credential_mode']
+    platform_changed = bool(record.pk) and record.platform != platform
+    existing_credential = record.credential if (record.pk and not platform_changed) else ''
+
+    if mode == 'json':
+        if user_id or token:
+            ok, value = platform_accounts.compose_credential(
+                platform, user_id=user_id, token=token, existing=existing_credential)
+            if not ok:
+                messages.error(request, _(value))
+                return redirect(REDIRECT_URL)
+            credential = value
+        else:
+            credential = ''          # 两个子字段都留空 = 保持原值
+    elif mode in ('token', 'sendkey'):
+        credential = single_credential
+    else:
+        credential = raw_credential
+
+    if platform_changed and not credential:
+        messages.error(request, _('切换平台后请重新填写该平台的登录凭据'))
         return redirect(REDIRECT_URL)
 
     credential_changed = bool(credential) or not record.pk

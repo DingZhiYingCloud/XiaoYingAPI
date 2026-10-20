@@ -9,6 +9,7 @@
 """
 import tempfile
 import zipfile
+from dataclasses import replace
 
 from django.http import FileResponse, HttpResponseNotFound, JsonResponse
 from django.shortcuts import render
@@ -17,7 +18,7 @@ from django.views.decorators.http import require_GET
 
 from API.common import StatusCode
 
-from . import programs
+from . import programs, programs_stats
 
 
 def _json(code, msg='', data=None):
@@ -26,8 +27,18 @@ def _json(code, msg='', data=None):
 
 
 def index(request):
-    """/programs/ 列表页：按分类展示全部程序条目"""
+    """/programs/ 列表页：按分类展示全部程序条目（附下载次数）"""
     catalog = programs.load_catalog()
+    counts = {rel: stat.total_count for rel, stat in programs_stats.counts_by_rel().items()}
+    # Program / Category 都是 frozen dataclass，用 replace 派生带计数的副本，
+    # 数据层（programs.py）保持不查库
+    catalog = tuple(
+        replace(cat, programs=tuple(
+            replace(program, download_count=counts.get(program.rel, 0))
+            for program in cat.programs
+        ))
+        for cat in catalog
+    )
     return render(request, 'programs/index.html', {
         'categories': catalog,
         'intro_html': programs.module_intro(),
@@ -41,41 +52,46 @@ def detail(request, rel):
     if program is None:
         return render(request, '404.html', status=404)
     readme_html, readme_toc = programs.read_readme(program.directory)
+    stat = programs_stats.get_stat(program.rel)
     return render(request, 'programs/detail.html', {
         'program': program,
         'readme_html': readme_html,
         'readme_toc': readme_toc,
         'path_parts': program.rel.split('/'),
+        'download_count': stat.total_count if stat else 0,
     })
 
 
 def download(request):
-    """/programs/download/ 文件下载
+    """/programs/download/ 文件下载（同时累加对应程序的下载次数）
 
-    ?path=<相对路径>           下载单个文件
-    ?pack=<程序相对路径>       打包下载该程序目录下的全部文件（含 README）
+    ?path=<相对路径>           下载单个文件（计入该程序的「单文件下载」）
+    ?pack=<程序相对路径>       打包下载该程序目录下的全部文件（计入「整包下载」）
     """
     pack = (request.GET.get('pack') or '').strip()
     if pack:
-        return _download_pack(pack)
+        program = programs.get_program(pack.strip('/'))
+        if program is None:
+            return HttpResponseNotFound('程序不存在')
+        programs_stats.record_download(program.rel, 'pack', request)
+        return _download_pack(program)
 
     rel_path = (request.GET.get('path') or '').strip()
     target = programs.resolve_download(rel_path)
     if target is None:
         return HttpResponseNotFound('文件不存在')
+    owner = programs.program_for_path(rel_path)
+    if owner is not None:
+        programs_stats.record_download(owner.rel, 'file', request)
     return FileResponse(target.open('rb'), as_attachment=True, filename=target.name)
 
 
-def _download_pack(rel):
+def _download_pack(program):
     """打包下载：把程序目录下的全部文件写进临时文件再作为附件回传
 
     用临时文件而非内存缓冲，避免程序目录体积增长后整包占满内存；
     FileResponse 结束时关闭句柄，临时文件随之自动删除。
     """
-    program = programs.get_program(rel.strip('/'))
-    if program is None:
-        return HttpResponseNotFound('程序不存在')
-
     handle = tempfile.TemporaryFile()
     with zipfile.ZipFile(handle, 'w', zipfile.ZIP_DEFLATED) as zf:
         for entry in sorted(program.directory.rglob('*')):
