@@ -4,19 +4,50 @@
 而非项目统一 JSON 格式。此中间件拦截 /api/ 前缀的 404 响应并转为 JSON。
 不受 DEBUG 开关影响，生产环境同样生效。
 """
+import hashlib
 import logging
 import time
 import uuid
 
 from django.conf import settings
 from django.core import signing
-from django.http import JsonResponse
+from django.http import JsonResponse, QueryDict
 from django.middleware.csrf import CsrfViewMiddleware
 
 from API.common import StatusCode
 from API.common import api_stats
 
 _logger = logging.getLogger('api.request')
+
+
+def build_sign_params(request):
+    """构造参与验签的参数集合
+
+    - POST / GET：沿用历史口径（POST 表单 + query）；
+    - PATCH / DELETE 等：额外把**表单体**字段纳入待签串；非表单体（如 JSON）
+      则以 `body_sha256` 参与签名。
+
+    :return: (params, body_included)
+        body_included=True 表示本次业务字段（或 body 摘要）已纳入签名，
+        调用方应禁止旧口径签名回落（否则 body 可被篡改）。
+    """
+    params = request.POST.dict()
+    params.update({k: v for k, v in request.GET.items() if k not in params})
+
+    body_included = request.method not in ('GET', 'HEAD', 'POST')
+    if not body_included or not request.body:
+        return params, False
+
+    content_type = (request.content_type or '').lower()
+    if content_type.startswith('application/x-www-form-urlencoded'):
+        try:
+            params.update(QueryDict(request.body, encoding=request.encoding).dict())
+        except Exception:
+            # 解析失败时保持 query 里的签名参数，后续验签会按「缺少业务字段」失败
+            _logger.warning('解析 PATCH/DELETE 表单体失败: %s', request.path)
+    else:
+        params['body_sha256'] = hashlib.sha256(request.body).hexdigest()
+    return params, True
 
 
 # ==================== 服务策略查询缓存 ====================
@@ -366,11 +397,11 @@ class ApiAuthMiddleware:
                          and request.path in PUBLIC_PATHS)
             # 复用上面已算出的 effective，避免同一次请求把整条策略链再解析一遍
             if not is_public and requires_auth(request.path, effective):
-                params = request.POST.dict()
-                params.update({k: v for k, v in request.GET.items() if k not in params})
+                params, body_included = build_sign_params(request)
                 from API.apis.user_center.sign import verify_sign
                 # 签名绑定「请求方法 + 请求路径」：同一条签名不可被搬到其它端点复用
-                ok, result = verify_sign(params, request.method, request.path)
+                ok, result = verify_sign(params, request.method, request.path,
+                                         allow_legacy=not body_included)
                 if not ok:
                     return JsonResponse({
                         'code': StatusCode.AUTH_FAILED,

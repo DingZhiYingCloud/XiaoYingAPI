@@ -494,7 +494,7 @@ def stream_chat_completion(target, messages, timeout=None, attempts=None, backgr
     推理模型在吐出答案前会先流一串 reasoning，这段时间里 content 一帧都没有。
 
     错误处理：首次 yield 前出错 → 抛 ValueError（由视图转成错误 SSE 行）；
-    流中出错 → 记录后结束。
+    流中上游断流 → 关闭上游连接并抛 ValueError，视图会补一帧错误 + `[DONE]`，避免前端一直等待。
 
     :param background: 同 chat_completion —— 默认按**同步**口径（只发一次、超时更短），
         后台线程调用时显式传 True
@@ -509,33 +509,42 @@ def stream_chat_completion(target, messages, timeout=None, attempts=None, backgr
     if resp.status_code != 200:
         raise ValueError(f'上游返回错误 ({resp.status_code}): {_handle_api_error(resp)}')
 
-    for line in resp.iter_lines(decode_unicode=True):
-        if not line:
-            continue
-        if not line.startswith("data: "):
-            continue
-        chunk_data = line[6:]
-        if chunk_data == "[DONE]":
-            yield "data: [DONE]\n\n"
-            return
-        try:
-            chunk = json.loads(chunk_data)
-        except json.JSONDecodeError:
-            # 非 JSON 行直接透传（极少发生，做安全兜底）
-            yield f"data: {chunk_data}\n\n"
-            continue
-        choices = chunk.get("choices") or []
-        if not choices:
-            continue
-        delta = choices[0].get("delta") or {}
-        # 推理模型（DeepSeek 的 flash 等）会先流思考过程、再流答案；两者分字段下发，
-        # 调用方要展示思考过程就取 reasoning，只关心答案就只取 content。
-        reasoning = delta.get("reasoning_content")
-        if reasoning:
-            yield f"data: {json.dumps({'reasoning': reasoning}, ensure_ascii=False)}\n\n"
-        piece = delta.get("content")
-        if piece:
-            yield f"data: {json.dumps({'content': piece}, ensure_ascii=False)}\n\n"
+    try:
+        for line in resp.iter_lines(decode_unicode=True):
+            if not line:
+                continue
+            if not line.startswith("data: "):
+                continue
+            chunk_data = line[6:]
+            if chunk_data == "[DONE]":
+                yield "data: [DONE]\n\n"
+                return
+            try:
+                chunk = json.loads(chunk_data)
+            except json.JSONDecodeError:
+                # 非 JSON 行直接透传（极少发生，做安全兜底）
+                yield f"data: {chunk_data}\n\n"
+                continue
+            choices = chunk.get("choices") or []
+            if not choices:
+                continue
+            delta = choices[0].get("delta") or {}
+            # 推理模型（DeepSeek 的 flash 等）会先流思考过程、再流答案；两者分字段下发，
+            # 调用方要展示思考过程就取 reasoning，只关心答案就只取 content。
+            reasoning = delta.get("reasoning_content")
+            if reasoning:
+                yield f"data: {json.dumps({'reasoning': reasoning}, ensure_ascii=False)}\n\n"
+            piece = delta.get("content")
+            if piece:
+                yield f"data: {json.dumps({'content': piece}, ensure_ascii=False)}\n\n"
+    except requests.RequestException as exc:
+        # 上游中途断流（最常见：ChunkedEncodingError / ConnectionError）。
+        # 转成 ValueError 交给视图补一帧人话错误 + [DONE]，避免前端拿到半截流后一直转圈。
+        logger.warning('AI 流式上游连接中断: %s', exc)
+        raise ValueError('上游连接中断，请稍后重试') from exc
+    finally:
+        # 无论正常结束、上游断流还是客户端提前断开（GeneratorExit），都要归还连接
+        resp.close()
 
 
 def test_provider(provider, timeout=TEST_TIMEOUT):

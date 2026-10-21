@@ -22,13 +22,38 @@ import hmac
 import logging
 import time
 
+from django.core.cache import cache
+
 from API.common.security_guard import nonce_replayed
 from API.models.Projects.app import UserApp
 
 # 时间戳有效窗口（秒），超出即拒绝，防重放攻击
 SIGN_TIMESTAMP_WINDOW = 300
 
+# 接入项目缓存（进程内 locmem）：签名校验每个请求都要 app_id 查库 + 解密 app_secret。
+# 只缓存在内存里，**不落磁盘**（app_secret 是明文，写文件缓存等于把密钥落盘）。
+# 多 worker 下停用 / 轮换密钥最多滞后 TTL 生效；保存时 post_save 信号会清掉本进程的缓存。
+APP_CACHE_TTL = 30
+_APP_CACHE_KEY = 'sign:userapp:v1:{app_id}'
+
 logger = logging.getLogger('api.request')
+
+
+def _get_app(app_id: str) -> UserApp:
+    """按 app_id 取接入项目（带 30 秒进程内缓存）"""
+    key = _APP_CACHE_KEY.format(app_id=app_id)
+    app = cache.get(key)
+    if app is not None:
+        return app
+    app = UserApp.objects.get(app_id=app_id)
+    cache.set(key, app, APP_CACHE_TTL)
+    return app
+
+
+def invalidate_app_cache(app_id: str) -> None:
+    """清掉某个接入项目的缓存（保存 / 删除后由信号调用）"""
+    if app_id:
+        cache.delete(_APP_CACHE_KEY.format(app_id=app_id))
 
 
 def build_sign(params: dict, app_secret: str, method: str, path: str) -> str:
@@ -68,12 +93,15 @@ def _legacy_sign(params: dict, app_secret: str) -> str:
     ).hexdigest()
 
 
-def verify_sign(params: dict, method: str, path: str):
+def verify_sign(params: dict, method: str, path: str, allow_legacy: bool = True):
     """校验请求签名
 
     :param params: 请求参数字典（含 app_id/timestamp/nonce/sign）
     :param method: 本次请求的 HTTP 方法（中间件传入 request.method）
     :param path:   本次请求路径（中间件传入 request.path：含结尾斜杠、不含查询串）
+    :param allow_legacy: 是否允许旧口径（不含方法与路径）的签名。PATCH / DELETE 等
+                   带请求体的方法传 False —— 它们的业务字段已纳入待签串，若还放行
+                   旧口径，攻击者就能用一条不含 body 的旧签名篡改请求体。
     :return: (True, UserApp) 校验通过；或 (False, err_msg) 失败原因
     """
     app_id = (params.get('app_id') or '').strip()
@@ -93,7 +121,7 @@ def verify_sign(params: dict, method: str, path: str):
         return False, '签名过期: timestamp 超出有效窗口(±5分钟)'
 
     try:
-        app = UserApp.objects.get(app_id=app_id)
+        app = _get_app(app_id)
     except UserApp.DoesNotExist:
         return False, '未注册的接入项目: app_id 不存在'
     except Exception:
@@ -110,7 +138,9 @@ def verify_sign(params: dict, method: str, path: str):
     expect = build_sign(params, app.app_secret, method, path)
     if not hmac.compare_digest(expect, sign_lower):
         # 兼容期：旧口径（不含方法与路径）同样放行，并留日志便于统计未迁移的接入方。
-        # 全部迁移完成后删除本分支与 _legacy_sign()。
+        # 非 GET/POST 的请求（业务字段在 body）不允许旧口径：否则 body 可被篡改。
+        if not allow_legacy:
+            return False, '签名校验失败: sign 不匹配'
         if not hmac.compare_digest(_legacy_sign(params, app.app_secret), sign_lower):
             return False, '签名校验失败: sign 不匹配'
         logger.warning('接入方仍在使用旧口径签名（未含方法与路径），待迁移: app_id=%s %s %s',

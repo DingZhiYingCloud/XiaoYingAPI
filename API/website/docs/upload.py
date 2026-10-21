@@ -1,7 +1,7 @@
 """文件上传服务 - 接口文档与在线调试数据
 
 数据与 API/apis/uploads/ 实际实现对齐（服务策略 /api/upload/ 默认需签名）：
-- 本地上传：图片 / 视频 / 通用文件三类，白名单 + 校验文件头，落盘 /media/uploads/...。
+- 本地上传：图片 / 视频 / 通用文件 / 声音四类，白名单 + 校验文件头，落盘 /media/uploads/...。
 后续新增存储后端（OSS 等）时在 channels 追加即可。
 """
 from .schema import ChannelSpec, EndpointSpec, ParamSpec, ResponseFieldSpec, ServiceSpec
@@ -15,16 +15,29 @@ def _file_param(label, accept=''):
                      desc=_FILE_HINT)
 
 
-# 三类上传端点返回同一套字段（仅 type 取值不同），共用一份字段表
+# 四类上传端点共用基础字段（type 取值不同），声音另有 duration
 _RESP_FIELDS = [
     ResponseFieldSpec('filename', 'string', '存储后的文件名'),
     ResponseFieldSpec('original_name', 'string', '原始文件名'),
     ResponseFieldSpec('size', 'int', '文件大小（字节）'),
     ResponseFieldSpec('size_mb', 'float', '文件大小（MB，2 位小数）'),
     ResponseFieldSpec('ext', 'string', '扩展名'),
-    ResponseFieldSpec('type', 'string', '类型：image/video/file'),
+    ResponseFieldSpec('type', 'string', '类型：image/video/file/audio'),
     ResponseFieldSpec('relative_path', 'string', '相对 media 的路径'),
     ResponseFieldSpec('url', 'string', '可访问地址（/media/...）'),
+]
+
+# 声音端点额外返回真实时长（type 固定 audio）
+_VOICE_RESP_FIELDS = [
+    ResponseFieldSpec('filename', 'string', '存储后的文件名'),
+    ResponseFieldSpec('original_name', 'string', '原始文件名'),
+    ResponseFieldSpec('size', 'int', '文件大小（字节）'),
+    ResponseFieldSpec('size_mb', 'float', '文件大小（MB，2 位小数）'),
+    ResponseFieldSpec('ext', 'string', '扩展名'),
+    ResponseFieldSpec('type', 'string', '类型，固定为 audio'),
+    ResponseFieldSpec('duration', 'float', '声音真实时长（秒，2 位小数）'),
+    ResponseFieldSpec('relative_path', 'string', '相对 media 的路径'),
+    ResponseFieldSpec('url', 'string', '在线播放链接（完整地址，可直接用于 <audio src>）'),
 ]
 
 
@@ -32,15 +45,16 @@ SERVICE = ServiceSpec(
     slug='upload',
     name='文件上传',
     prefix='/api/upload/',
-    summary='通用文件上传能力：图片/视频/普通文件，白名单校验并存储到本地 /media，返回可访问 URL。',
-    keywords='文件上传API,图片上传接口',
+    summary='通用文件上传能力：图片/视频/声音/普通文件，白名单校验并存储到本地 /media，返回可访问 URL。',
+    keywords='文件上传API,图片上传接口,声音上传接口',
     intro=[
-        '文件上传服务提供图片、视频与通用文件三类上传入口，文件落盘到站点 /media 目录并返回可直接引用的 URL，'
+        '文件上传服务提供图片、视频、声音与通用文件四类上传入口，文件落盘到站点 /media 目录并返回可直接引用的 URL，'
         '适合作为业务系统的统一附件通道。',
         '全部接口使用 multipart/form-data，文件字段名固定为 file。服务端按白名单校验扩展名并校验文件头'
         '（magic bytes），可内联渲染或执行的文件类型（如 svg、html、脚本）一律拒绝，'
         '避免上传文件被当作存储型 XSS 利用。',
-        '体积限制：图片最大 20MB，视频与通用文件最大 100MB。本服务需项目签名。',
+        '体积限制：图片与声音最大 20MB，视频与通用文件最大 100MB。声音时长须在 3-60 秒之间，'
+        'WebM / OGG 等浏览器录音格式会自动转成 MP3 后再返回。本服务需项目签名。',
     ],
     channels=[
         ChannelSpec(
@@ -69,6 +83,27 @@ SERVICE = ServiceSpec(
                              notes=['最大 100MB；白名单制并校验文件头；返回 type=file。'],
                              response_fields=_RESP_FIELDS,
                              response_example='{"filename": "a1b2c3d4_20260627120000.pdf", "original_name": "report.pdf", "size": 204800, "size_mb": 0.2, "ext": "pdf", "type": "file", "relative_path": "uploads/files/a1b2c3d4_20260627120000.pdf", "url": "/media/uploads/files/a1b2c3d4_20260627120000.pdf"}'),
+                EndpointSpec('voice', '上传声音', 'POST', '/api/upload/voice',
+                             summary='上传 3-60 秒的声音文件，返回在线播放链接与真实时长。',
+                             params=[ParamSpec('file', '声音文件', kind='file', required=True,
+                                               accept='audio/*',
+                                               desc='multipart/form-data 文件字段 file：'
+                                                    '支持 mp3/wav/m4a/aac/ogg/flac/webm/amr/wma，'
+                                                    '最大 20MB，时长须在 3-60 秒之间。')],
+                             notes=[
+                                 '时长由服务端用 ffprobe 读取音频流，短于 3 秒或长于 60 秒返回 20003 并删除文件。',
+                                 'WebM / OGG / FLAC / AMR / WMA 会自动转成 MP3（128kbps）再返回，'
+                                 '保证微信、Safari 等环境也能直接播放；MP3 / M4A / WAV / AAC 原样保存。',
+                                 '返回的 url 为完整在线链接：配置了 XYAPI_SITE_URL 时用该域名，'
+                                 '否则按当前请求的域名推导。',
+                                 '音频文件可直接以内联方式播放（支持浏览器拖动进度条所需的 Range 请求）。',
+                                 '不想写代码时，可点下方「网页录音」直接在浏览器里录制、试听并上传（需登录）；'
+                                 '录音优先使用 MP4/AAC，Chrome / Safari 都能正常试听。',
+                             ],
+                             tool_path='/upload/record/',
+                             tool_label='网页录音',
+                             response_fields=_VOICE_RESP_FIELDS,
+                             response_example='{"filename": "a1b2c3d4_20260627120000.m4a", "original_name": "my_voice.m4a", "size": 204800, "size_mb": 0.2, "ext": "m4a", "type": "audio", "duration": 12.35, "relative_path": "uploads/voices/a1b2c3d4_20260627120000.m4a", "url": "https://example.com/media/uploads/voices/a1b2c3d4_20260627120000.m4a"}'),
             ],
         ),
     ],

@@ -1,13 +1,14 @@
 """官网前台路由（挂载在站点根路径下）"""
 from django.urls import path
-from django.views.generic import TemplateView
+from django.views.generic import RedirectView, TemplateView
 from django.views.i18n import JavaScriptCatalog
 
-from . import (console, console_accounts, console_ai, console_announcements,
-               console_appearance, console_audit, console_email_tasks, console_feedback,
-               console_haijiao, console_ip_bans, console_pay, console_programs,
-               console_push, console_quota, console_security, console_users, docs_views,
-               feedback_views, my_wallet, programs_views, views)
+from . import (captcha_click, captcha_slider, console, console_accounts, console_ai,
+               console_announcements, console_appearance, console_audit, console_captcha,
+               console_email_tasks, console_feedback, console_haijiao, console_ip_bans,
+               console_pay, console_programs, console_push, console_quota, console_security,
+               console_users, docs_views, feedback_views, my_wallet, programs_views, views,
+               voice_tool)
 # 第三方支付的异步通知：必须挂在 /api/ 之外（平台回调带不了我们的项目签名，靠平台公钥验签）
 from API.apis.pay.notify import notify_view as pay_notify_view
 
@@ -19,6 +20,15 @@ urlpatterns = [
     path('guide/', views.guide_view, name='guide'),            # 接入向导
     # 服务配套工具页：按「/<服务>/post/」归到所属服务命名空间，避免各服务的工具页在根路径上撞车
     path('haijiao/post/', views.haijiao_post_view, name='haijiao_post'),  # 海角社区发帖页
+    # 自研图形验证码配套工具页：滑块验证拖动演示（公开，调用开放接口）
+    path('captcha_self/slider/', captcha_slider.slider_demo_view, name='captcha_self_slider'),
+    # 自研图形验证码配套工具页：汉字点选演示（公开，调用开放接口）
+    path('captcha_self/click/', captcha_click.click_demo_view, name='captcha_self_click'),
+    # 文件上传配套工具页：网页录音 → 站内上传（会话鉴权），落盘与 API 共用一套校验
+    path('upload/record/', voice_tool.record_view, name='voice_record'),
+    path('upload/record/upload/', voice_tool.record_upload_view, name='voice_record_upload'),
+    # 旧地址兼容：声音上传已并入文件上传模块，旧书签跳到新路径
+    path('voice/record/', RedirectView.as_view(pattern_name='website:voice_record', permanent=True)),
     path('login/', views.login_view, name='login'),            # 登录页 / 登录动作
     path('login/send-code/', views.login_send_code_view, name='login_send_code'),
     path('register/', views.register_view, name='register'),   # 注册页 / 两步注册第一步
@@ -50,6 +60,9 @@ urlpatterns = [
     path('feedback/<str:app_id>/my/', feedback_views.feedback_mine, name='feedback_mine'),
     path('feedback/<str:app_id>/detail/<uuid:feedback_id>/', feedback_views.feedback_detail,
          name='feedback_detail'),
+    # 反馈附件受控下载：仅提交者本人 / 超管可读（不再直接暴露 /media/ 路径）
+    path('feedback/attachment/<uuid:attachment_id>/', feedback_views.feedback_attachment,
+         name='feedback_attachment'),
 
     # API 文档中心
     path('docs/', docs_views.index, name='docs_index'),        # 文档目录
@@ -80,6 +93,8 @@ urlpatterns = [
     # 支付设置（超管专属）：在线支付开关、各渠道商户配置、订单查单 / 退款
     path('console/pay/', console_pay.pay_view, name='console_pay'),
     path('console/stats/', console.stats_view, name='console_stats'),           # API 调用统计看板
+    path('console/captcha/', console_captcha.captcha_monitor_view,
+         name='console_captcha'),                                               # 验证码专项监控
     # 接口公告（超管专属）：给服务 / 线路 / 端点三级发布公告，前台文档中心展示
     path('console/announcements/', console_announcements.announcements_view,
          name='console_announcements'),

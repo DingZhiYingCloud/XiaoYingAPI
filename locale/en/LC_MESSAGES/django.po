@@ -1132,6 +1132,24 @@ msgstr "Call Volume"
 msgid "通用文件上传，统一接入与安全响应头处理。"
 msgstr "General-purpose file upload with unified integration and secure response headers."
 
+msgid "通用文件上传：图片 / 视频 / 声音 / 普通文件统一接入，声音（3-60 秒）返回在线播放链接，统一接入与安全响应头处理。"
+msgstr "General-purpose upload for images / videos / audio / documents; audio clips (3-60s) are returned with an online playback link, with unified integration and secure response headers."
+
+msgid "通用文件上传能力：图片/视频/声音/普通文件，白名单校验并存储到本地 /media，返回可访问 URL。"
+msgstr "General-purpose upload for images/videos/audio/documents: whitelist validation, stored under local /media, accessible URL returned."
+
+msgid "文件上传API,图片上传接口,声音上传接口"
+msgstr "file upload API,image upload API,audio upload API"
+
+msgid "文件上传服务提供图片、视频、声音与通用文件四类上传入口，文件落盘到站点 /media 目录并返回可直接引用的 URL，适合作为业务系统的统一附件通道。"
+msgstr "The file upload service provides four entry points — images, videos, audio and documents — writing files to the site's /media directory and returning directly usable URLs, making it a unified attachment channel for business systems."
+
+msgid "体积限制：图片与声音最大 20MB，视频与通用文件最大 100MB。声音时长须在 3-60 秒之间，WebM / OGG 等浏览器录音格式会自动转成 MP3 后再返回。本服务需项目签名。"
+msgstr "Size limits: images and audio up to 20MB; videos and documents up to 100MB. Audio must be between 3 and 60 seconds; browser recording formats such as WebM / OGG are transcoded to MP3 before being returned. This service requires the project signature."
+
+msgid "类型：image/video/file/audio"
+msgstr "Type: image/video/file/audio"
+
 msgid "邮件发送"
 msgstr "Email Sending"
 
@@ -2120,6 +2138,253 @@ msgstr "Self-developed CAPTCHA"
 
 msgid "该线路为开放接口，无需项目签名；生产环境建议同时限制单 IP、单账号的校验频率。"
 msgstr "This channel is open and needs no project signature; in production, also throttle verification attempts per IP and per account."
+
+msgid "接入为两步：先调用生成接口拿到 captcha_id 与 base64 图片（带有效期），用户作答后调用校验接口提交答案。答案是「一次性」的——无论校验成功还是失败都会立即失效，失败后需重新生成再试。服务端只保存答案的 HMAC-SHA256 摘要，不落明文。"
+msgstr "Integration takes two steps: call the generate endpoint to get a captcha_id and a base64 image (with an expiry), then call the verify endpoint with the user's answer. Answers are one-time — they become invalid immediately after verification, whether it succeeds or fails, so a failed attempt requires a new CAPTCHA. The server stores only an HMAC-SHA256 digest of the answer, never the plaintext."
+
+msgid "该线路为开放接口，无需项目签名；服务端已按客户端 IP 限流（生成 60 次/分、校验 120 次/分），并在响应上禁用缓存，避免图片被浏览器 / 代理复用。"
+msgstr "This channel is public and requires no project signature. The server applies per-IP rate limits (60 generates/min, 120 verifies/min) and disables caching on responses so images are not reused by browsers or proxies."
+
+msgid "响应头带 Cache-Control: no-store，图片不会被浏览器 / 代理缓存复用。"
+msgstr "The response includes Cache-Control: no-store, so CAPTCHA images are not cached or reused by browsers or proxies."
+
+msgid "同一 IP 每分钟最多生成 60 张，超出返回 20040。"
+msgstr "Each IP can generate at most 60 CAPTCHAs per minute; exceeding this returns 20040."
+
+msgid "同一 IP 每分钟最多校验 120 次，超出返回 20040；答案用恒定时间比较，库中只存摘要。"
+msgstr "Each IP can verify at most 120 times per minute; exceeding this returns 20040. Answers are compared in constant time and only a digest is stored."
+
+# ===== 自研图形验证码：滑块验证（/api/captcha_self/slider/ 与演示页） =====
+
+msgid "滑块验证 - 小影API"
+msgstr "Slider CAPTCHA - XiaoYingAPI"
+
+msgid "滑块验证,拼图验证码,自研验证码"
+msgstr "slider CAPTCHA,jigsaw CAPTCHA,self-developed CAPTCHA"
+
+msgid "自研滑块验证码演示：拖动拼图块对齐缺口，服务端校验位置与拖动轨迹。"
+msgstr "Self-developed slider CAPTCHA demo: drag the puzzle piece into the gap; the server validates the position and drag track."
+
+msgid "滑块验证"
+msgstr "Slider CAPTCHA"
+
+msgid "按住下方滑块向右拖动，让拼图块与背景缺口对齐后松手。服务端会校验位置误差与拖动轨迹，一次性有效。"
+msgstr "Press the slider below and drag it right until the puzzle piece lines up with the gap, then release. The server validates the position and drag track, and the challenge works only once."
+
+msgid "验证码背景"
+msgstr "CAPTCHA background"
+
+msgid "拼图块"
+msgstr "Puzzle piece"
+
+msgid "按住滑块拖动"
+msgstr "Press and drag the slider"
+
+msgid "拖动滑块"
+msgstr "Drag the slider"
+
+msgid "换一张"
+msgstr "New challenge"
+
+msgid "缺口横坐标不会下发给前端，服务端只保存答案摘要；提交时按容差范围枚举比对。"
+msgstr "The gap's horizontal coordinate is never sent to the client; the server stores only a digest of the answer and compares candidates within the tolerance range on submit."
+
+msgid "会检查拖动轨迹：点数过少、用时过短或瞬移都会被拒绝，脚本直接猜位置过不去。"
+msgstr "The drag track is validated: too few points, too short a duration, or instant jumps are rejected, so scripts cannot simply guess the position."
+
+msgid "每次挑战只能校验一次；连续失败会触发短时冷却，接口同时按 IP 限流。"
+msgstr "Each challenge can be verified only once; repeated failures trigger a short cooldown, and the endpoints are also rate-limited per IP."
+
+msgid "同一服务下另有「滑块验证」线路：拖动拼图块对齐缺口，缺口横坐标不下发，服务端按容差校验位置并检查拖动轨迹。"
+msgstr "This service also provides a Slider CAPTCHA channel: drag the puzzle piece into the gap; the gap's horizontal coordinate is not sent, and the server validates the position within a tolerance plus the drag track."
+
+msgid "Pillow 本地合成（背景图 + 拼图块）"
+msgstr "Pillow local composition (background + puzzle piece)"
+
+msgid "拖动拼图块对齐缺口；缺口横坐标不下发，服务端按 ±8px 容差比对摘要，并校验拖动轨迹（点数 / 时长 / 时间单调 / 终点一致）。"
+msgstr "Drag the puzzle piece into the gap; the horizontal coordinate is not sent, and the server compares digests within a ±8px tolerance while validating the drag track (points / duration / monotonic time / matching endpoint)."
+
+msgid "生成滑块"
+msgstr "Generate slider"
+
+msgid "生成背景图与拼图块，返回 slider_id、纵坐标与画布尺寸。"
+msgstr "Generate a background and puzzle piece; returns slider_id, vertical position and canvas size."
+
+msgid "请求方式 GET，公开接口，无需项目签名。"
+msgstr "GET request, public endpoint, no project signature required."
+
+msgid "background 为 JPEG、piece 为 PNG（均为 data URI）；**缺口横坐标不在响应里**，必须由用户拖动拼图块对齐。"
+msgstr "background is JPEG and piece is PNG (both data URIs); **the gap's horizontal coordinate is not in the response** and must be matched by the user dragging the piece."
+
+msgid "同一 IP 每分钟最多生成 30 张，超出返回 20040；响应禁止缓存。"
+msgstr "Each IP can generate at most 30 sliders per minute; exceeding this returns 20040. Responses are not cacheable."
+
+msgid "拖动体验"
+msgstr "Try dragging"
+
+msgid "滑块ID，校验时回传"
+msgstr "Slider ID, returned on verification"
+
+msgid "背景图（JPEG data URI）"
+msgstr "Background image (JPEG data URI)"
+
+msgid "拼图块（PNG data URI，透明背景）"
+msgstr "Puzzle piece (PNG data URI with transparency)"
+
+msgid "拼图块纵向位置（像素）"
+msgstr "Vertical position of the puzzle piece (px)"
+
+msgid "拼图块边长（像素）"
+msgstr "Puzzle piece edge length (px)"
+
+msgid "画布宽度（像素，320）"
+msgstr "Canvas width (px, 320)"
+
+msgid "画布高度（像素，160）"
+msgstr "Canvas height (px, 160)"
+
+msgid "校验滑块"
+msgstr "Verify slider"
+
+msgid "提交拼图块位置与拖动轨迹，一次性校验。"
+msgstr "Submit the puzzle piece position and drag track for one-time verification."
+
+msgid "滑块ID"
+msgstr "Slider ID"
+
+msgid "必填：生成接口返回的 slider_id（UUID）"
+msgstr "Required: the slider_id (UUID) returned by generate."
+
+msgid "横向位置"
+msgstr "Horizontal position"
+
+msgid "必填：拼图块左边缘的画布横坐标（可带小数）"
+msgstr "Required: the canvas x coordinate of the puzzle piece's left edge (decimals allowed)."
+
+msgid "拖动轨迹"
+msgstr "Drag track"
+
+msgid "必填：JSON 数组，元素为 {\"x\": 画布坐标, \"t\": 相对毫秒}；至少 5 个点，总时长 200ms-60s，终点须与 x 一致"
+msgstr "Required: JSON array with elements {\"x\": canvas coordinate, \"t\": relative milliseconds}; at least 5 points, total duration 200ms-60s, and the last point must match x."
+
+msgid "位置误差 ±8px 内视为对齐；缺口横坐标不下发，库中只存摘要。"
+msgstr "A position error within ±8px counts as aligned; the gap's horizontal coordinate is never sent and only a digest is stored."
+
+msgid "轨迹点数不足 / 用时过短 / 时间倒退 / 终点与 x 不一致都会被拒绝。"
+msgstr "Tracks with too few points, too short a duration, decreasing timestamps, or an endpoint that does not match x are rejected."
+
+msgid "一次性：无论成功失败，同一 slider_id 只能校验一次。"
+msgstr "One-time: regardless of success or failure, each slider_id can be verified only once."
+
+msgid "同一 IP 每分钟最多校验 60 次；连续失败 10 次冷却 10 分钟，两种拦截都返回 20040。"
+msgstr "Each IP can verify at most 60 times per minute; 10 consecutive failures trigger a 10-minute cooldown. Both cases return 20040."
+
+msgid "自研字符图片 / 算术 / 滑块验证码，本地绘制、无第三方依赖，答案一次性校验。"
+msgstr "Self-developed character-image / arithmetic / slider CAPTCHA, rendered locally with no third-party dependency and one-time verification."
+
+# ===== 自研图形验证码：汉字点选（/api/captcha_self/click/ 与演示页） =====
+
+msgid "汉字点选 - 小影API"
+msgstr "Chinese Character Picker - XiaoYingAPI"
+
+msgid "汉字点选,点选验证码,汉字识别验证码"
+msgstr "Chinese character picker,click CAPTCHA,Chinese character CAPTCHA"
+
+msgid "自研汉字点选验证码演示：按提示依次点击图片中的目标汉字。"
+msgstr "Self-developed Chinese character CAPTCHA demo: click the target characters in the image in the order shown."
+
+msgid "汉字点选"
+msgstr "Chinese Character Picker"
+
+msgid "按提示依次点击图片中的目标汉字，点够目标数量后自动提交。服务端校验点击顺序与命中位置，一次性有效。"
+msgstr "Click the target Chinese characters in the image in the order shown; the challenge submits automatically once you have clicked the required number. The server validates the click order and hit positions, and the challenge works only once."
+
+msgid "请依次点击："
+msgstr "Click in order:"
+
+msgid "汉字验证码"
+msgstr "Chinese character CAPTCHA"
+
+msgid "撤销"
+msgstr "Undo"
+
+msgid "目标汉字的坐标不会下发给前端，只存在服务端用于命中判断。"
+msgstr "Target character coordinates are never sent to the client; they are kept on the server only for hit testing."
+
+msgid "会校验点击顺序与总用时：顺序错、点偏、或瞬间点完都会被拒绝。"
+msgstr "Click order and total duration are validated: wrong order, missed targets, or instant clicking are rejected."
+
+msgid "同一服务下另有「滑块验证」与「汉字点选」线路：前者拖动拼图块对齐缺口，后者按提示依次点击 2-4 个汉字；两者的答案坐标都不下发，只存服务端用于校验。"
+msgstr "This service also provides Slider CAPTCHA and Chinese Character Picker channels: the former aligns a puzzle piece with the gap, the latter asks you to click 2-4 characters in order. Neither sends answer coordinates — they are kept server-side for verification."
+
+msgid "三条线路怎么选：表单防刷优先字符 / 算术（生成快、体积小）；想要拖动体验用滑块；面向中文用户、希望更直观可以用汉字点选。"
+msgstr "Choosing a channel: character/arithmetic is the lightest option for form anti-bot; slider offers a drag experience; the Chinese character picker is the most intuitive for Chinese-speaking users."
+
+msgid "Pillow + 内置中文字体（8 个候选汉字，点选 2-4 个）"
+msgstr "Pillow + bundled Chinese font (8 candidate characters, click 2-4)"
+
+msgid "按提示依次点击目标汉字；目标坐标不下发，服务端校验点击顺序、命中位置与总用时。"
+msgstr "Click the target characters in the order shown; target coordinates are not sent, and the server validates click order, hit positions and total duration."
+
+msgid "生成点选验证码"
+msgstr "Generate character challenge"
+
+msgid "生成一张含 8 个候选汉字的图片，返回挑战ID、图片与目标字顺序。"
+msgstr "Generate an image with 8 candidate characters; returns the challenge ID, image and target characters in order."
+
+msgid "chars 是**按顺序**需要点击的目标字（2-4 个）；每个字的坐标不在响应里，服务端只落库用于命中判断。"
+msgstr "chars are the target characters (2-4) to click **in order**; their coordinates are not in the response and are stored server-side only for hit testing."
+
+msgid "点选体验"
+msgstr "Try clicking"
+
+msgid "挑战ID，校验时回传"
+msgstr "Challenge ID, returned on verification"
+
+msgid "验证码图片（PNG data URI）"
+msgstr "CAPTCHA image (PNG data URI)"
+
+msgid "按顺序需要点击的目标汉字"
+msgstr "Target characters to click in order"
+
+msgid "目标字个数（2-4）"
+msgstr "Number of target characters (2-4)"
+
+msgid "画布宽度（像素，360）"
+msgstr "Canvas width (px, 360)"
+
+msgid "画布高度（像素，200）"
+msgstr "Canvas height (px, 200)"
+
+msgid "校验点选"
+msgstr "Verify character challenge"
+
+msgid "提交按顺序的点击点，校验顺序、命中位置与总用时。"
+msgstr "Submit ordered click points; validates order, hit positions and total duration."
+
+msgid "挑战ID"
+msgstr "Challenge ID"
+
+msgid "必填：生成接口返回的 challenge_id（UUID）"
+msgstr "Required: the challenge_id (UUID) returned by generate."
+
+msgid "点击点"
+msgstr "Click points"
+
+msgid "必填：JSON 数组，元素为 {\"x\": 画布横坐标, \"y\": 画布纵坐标, \"t\": 相对毫秒}；点数须等于 count，总时长不少于 300ms"
+msgstr "Required: JSON array with elements {\"x\": canvas x, \"y\": canvas y, \"t\": relative milliseconds}; the number of points must equal count and total duration must be at least 300ms."
+
+msgid "点击顺序必须与 chars 一致；每个点需落在对应目标字半径 26px 内。"
+msgstr "Click order must match chars; each point must land within 26px of its target character."
+
+msgid "点数不符 / 顺序错 / 点偏 / 总用时不足 300ms 都会被拒绝。"
+msgstr "Mismatched point count, wrong order, missed targets, or a total duration under 300ms are all rejected."
+
+msgid "一次性：无论成功失败，同一 challenge_id 只能校验一次。"
+msgstr "One-time: regardless of success or failure, each challenge_id can be verified only once."
+
+msgid "自研字符图片 / 算术 / 滑块 / 汉字点选验证码，本地绘制、无第三方依赖，答案一次性校验。"
+msgstr "Self-developed character-image / arithmetic / slider / Chinese-character-picker CAPTCHA, rendered locally with no third-party dependency and one-time verification."
 
 msgid "请求体为 application/x-www-form-urlencoded 表单；开放接口，无需项目签名。"
 msgstr "The request body is an application/x-www-form-urlencoded form; this is an open endpoint and needs no project signature."
@@ -10988,6 +11253,142 @@ msgstr "Path relative to media"
 msgid "可访问地址（/media/...）"
 msgstr "Accessible URL (/media/...)"
 
+msgid "声音上传"
+msgstr "Voice Upload"
+
+msgid "音频上传"
+msgstr "Audio Upload"
+
+msgid "在线播放"
+msgstr "Online Playback"
+
+msgid "上传自己的声音片段（3-60 秒）：服务端读取真实时长，合格后返回可直接播放的在线链接。"
+msgstr "Upload your own voice clip (3-60 seconds): the server reads the real duration and returns a directly playable online link once it passes."
+
+msgid "上传自己的声音（3-60 秒），服务端校验真实时长与音频内容，返回可直接播放的在线链接。"
+msgstr "Upload your own voice (3-60 seconds); the server validates the real duration and audio content, then returns a directly playable online link."
+
+msgid "声音上传API,音频上传接口,录音在线链接"
+msgstr "voice upload API,audio upload API,recording online link"
+
+msgid "声音上传服务用于保存你自己的录音片段：上传后服务端会读取出**真实音频流时长**，只接受 3 至 60 秒的片段，合格的文件落盘到站点 /media 目录，并返回一个可直接播放的在线链接。"
+msgstr "The voice upload service stores your own recordings: after upload the server reads the **real audio stream duration** and only accepts clips of 3 to 60 seconds; valid files are written to the site's /media directory and returned with a directly playable online link."
+
+msgid "时长判断不是按文件体积估算，而是调用服务器上的 ffprobe 读取音频流，因此改名、拼接、静音填充这类伪装都过不去；文件里没有音频流（例如无声视频）同样会被拒绝。"
+msgstr "Duration is not estimated from file size: the server calls ffprobe to read the audio stream, so disguises such as renaming, concatenation or silent padding do not pass; files without an audio stream (for example a muted video) are rejected as well."
+
+msgid "支持类型：mp3 / wav / m4a / aac / ogg / flac / webm / amr / wma，单文件最大 20MB。上传失败（时长越界、格式不符、文件损坏）时不会留下残留文件。本服务需项目签名。"
+msgstr "Supported types: mp3 / wav / m4a / aac / ogg / flac / webm / amr / wma, up to 20MB per file. Failed uploads (out-of-range duration, unsupported format, corrupted file) leave no residual files. This service requires the project signature."
+
+msgid "本地上传"
+msgstr "Local Upload"
+
+msgid "本地存储（/media/uploads/voices/…）"
+msgstr "Local storage (/media/uploads/voices/…)"
+
+msgid "multipart/form-data，文件字段固定为 file；返回的 url 已拼成完整地址，可直接在线播放。"
+msgstr "multipart/form-data with the fixed file field name file; the returned url is already a complete address and can be played online directly."
+
+msgid "上传声音"
+msgstr "Upload Voice"
+
+msgid "上传 3-60 秒的声音文件，返回在线播放链接与真实时长。"
+msgstr "Upload a 3-60 second voice file and get an online playback link with the real duration."
+
+msgid "声音文件"
+msgstr "Voice file"
+
+msgid "multipart/form-data 文件字段 file：支持 mp3/wav/m4a/aac/ogg/flac/webm/amr/wma，最大 20MB，时长须在 3-60 秒之间。"
+msgstr "multipart/form-data file field file: supports mp3/wav/m4a/aac/ogg/flac/webm/amr/wma, up to 20MB, duration must be between 3 and 60 seconds."
+
+msgid "时长由服务端用 ffprobe 读取音频流，短于 3 秒或长于 60 秒返回 20003 并删除文件。"
+msgstr "The server reads the audio stream with ffprobe; clips shorter than 3 seconds or longer than 60 seconds return 20003 and the file is deleted."
+
+msgid "返回的 url 为完整在线链接：配置了 XYAPI_SITE_URL 时用该域名，否则按当前请求的域名推导。"
+msgstr "The returned url is a complete online link: it uses XYAPI_SITE_URL when configured, otherwise it is derived from the current request's domain."
+
+msgid "音频文件可直接以内联方式播放（支持浏览器拖动进度条所需的 Range 请求）。"
+msgstr "Audio files play inline directly (HTTP Range requests needed for seeking in the browser are supported)."
+
+msgid "类型，固定为 audio"
+msgstr "Type, always audio"
+
+msgid "声音真实时长（秒，2 位小数）"
+msgstr "Real voice duration (seconds, 2 decimals)"
+
+msgid "在线播放链接（完整地址，可直接用于 <audio src>）"
+msgstr "Online playback link (complete address, ready for <audio src>)"
+
+# ===== 声音上传：网页录音工具页（/voice/record/） =====
+
+msgid "网页录音 - 小影API"
+msgstr "Web Recorder - XiaoYingAPI"
+
+msgid "网页录音,在线录音,声音上传,录音转链接"
+msgstr "web recorder,online recording,voice upload,recording link"
+
+msgid "在浏览器里直接录制自己的声音，试听后上传，3-60 秒即可获得可在线播放的链接。"
+msgstr "Record your own voice right in the browser, preview it, then upload it — a playable link is returned for clips of 3-60 seconds."
+
+msgid "网页录音"
+msgstr "Web Recorder"
+
+msgid "点「开始录音」授权麦克风，再点一次停止；录完可以先试听，满意后再上传。时长需在 %(min)s-%(max)s 秒之间。"
+msgstr "Click \"Start recording\" and allow the microphone, then click again to stop. Preview the clip and upload it when you are happy. Duration must be between %(min)s and %(max)s seconds."
+
+msgid "准备就绪"
+msgstr "Ready"
+
+msgid "开始录音"
+msgstr "Start recording"
+
+msgid "停止录音"
+msgstr "Stop recording"
+
+msgid "首次使用会请求麦克风权限，请选择「允许」；录音只在你的浏览器里进行。"
+msgstr "The first use asks for microphone permission — choose Allow. Recording happens only in your browser."
+
+msgid "重新录制"
+msgstr "Record again"
+
+msgid "上传并获取链接"
+msgstr "Upload and get link"
+
+msgid "上传成功"
+msgstr "Uploaded"
+
+msgid "在线链接"
+msgstr "Online link"
+
+msgid "复制"
+msgstr "Copy"
+
+msgid "打开"
+msgstr "Open"
+
+msgid "生成的链接是公开可访问的：拿到链接的人都能播放，请不要录制敏感内容。"
+msgstr "The generated link is publicly accessible: anyone with the link can play it, so do not record sensitive content."
+
+msgid "网页录音需要浏览器允许麦克风，且页面必须运行在 HTTPS 或 localhost 下（浏览器安全限制）。"
+msgstr "Web recording requires microphone permission and the page must run on HTTPS or localhost (a browser security restriction)."
+
+msgid "录音文件会自动校验格式与真实时长，单文件不超过 %(size)sMB；上传失败不会留下残留文件。"
+msgstr "The file's format and real duration are validated automatically, with a maximum of %(size)sMB per file; failed uploads leave no residual files."
+
+msgid "不想写代码时，可点下方「网页录音」直接在浏览器里录制、试听并上传（需登录）；录音优先使用 MP4/AAC，Chrome / Safari 都能正常试听。"
+msgstr "If you prefer not to write code, click \"Web Recorder\" below to record, preview and upload right in the browser (sign-in required); recordings prefer MP4/AAC so both Chrome and Safari can preview them normally."
+
+msgid "WebM / OGG / FLAC / AMR / WMA 会自动转成 MP3（128kbps）再返回，保证微信、Safari 等环境也能直接播放；MP3 / M4A / WAV / AAC 原样保存。"
+msgstr "WebM / OGG / FLAC / AMR / WMA are transcoded to MP3 (128kbps) so they play directly in WeChat, Safari and other environments; MP3 / M4A / WAV / AAC are kept as-is."
+
+msgid "浏览器录制的 WebM 会自动转成 MP3 再保存，微信、Safari 等环境也能直接播放。"
+msgstr "WebM recordings from the browser are transcoded to MP3, so they play directly in WeChat, Safari and other environments."
+
+msgid "输入音量"
+msgstr "Input level"
+
+
+
 msgid "CDN 外链地址"
 msgstr "CDN direct link"
 
@@ -14924,3 +15325,201 @@ msgstr "Retro Press"
 
 msgid "纸张底纹、双线分隔与衬线标题，旧报刊的印刷质感。"
 msgstr "Paper grain, double rules and serif headlines — the print texture of an old newspaper."
+
+
+# ==================== 控制台：验证码专项监控（console/captcha.html） ====================
+msgid "验证码监控"
+msgstr "CAPTCHA Monitor"
+
+msgid "验证码监控 - 超级管理员 - 小影API"
+msgstr "CAPTCHA Monitor - Super Admin - XiaoYingAPI"
+
+msgid "超级管理员,验证码,监控,通过率,失败原因"
+msgstr "super admin, captcha, monitor, pass rate, failure reasons"
+
+msgid "小影API 超级管理员：自研验证码的生成量、通过率、失败原因、限流拦截与在手库存监控。"
+msgstr "XiaoYingAPI Super Admin: generations, pass rate, failure reasons, rate-limit blocks and in-hand inventory of the in-house CAPTCHA."
+
+msgid "自研验证码（字符 / 算术 / 滑块 / 汉字点选）的专项监控：生成量、通过率、失败原因分布、限流与冷却拦截，以及三张挑战表的在手库存。官网表单与开放接口共用同一本账。"
+msgstr "Dedicated monitoring for the in-house CAPTCHA (text / arithmetic / slider / Chinese character picking): generations, pass rate, failure reason breakdown, rate-limit and cooldown blocks, plus in-hand inventory across the three challenge tables. Website forms and the open APIs share the same counters."
+
+msgid "时间窗口"
+msgstr "Time window"
+
+msgid "%(n)s 天"
+msgstr "%(n)s days"
+
+msgid "窗口：%(label)s"
+msgstr "Window: %(label)s"
+
+msgid "今日生成"
+msgstr "Generated today"
+
+msgid "今日通过"
+msgstr "Passed today"
+
+msgid "今日通过率"
+msgstr "Pass rate today"
+
+msgid "今日失败"
+msgstr "Failed today"
+
+msgid "今日拦截"
+msgstr "Blocked today"
+
+msgid "分线路（窗口累计）"
+msgstr "By channel (window total)"
+
+msgid "校验次数 = 通过 + 失败"
+msgstr "Checks = passed + failed"
+
+msgid "生成"
+msgstr "Generated"
+
+msgid "通过"
+msgstr "Passed"
+
+msgid "拦截"
+msgstr "Blocked"
+
+msgid "校验次数"
+msgstr "Checks"
+
+msgid "通过率"
+msgstr "Pass rate"
+
+msgid "每日趋势"
+msgstr "Daily trend"
+
+msgid "柱长按当日生成量归一"
+msgstr "Bars are normalized to the daily generation peak"
+
+msgid "生成量"
+msgstr "Generations"
+
+msgid "失败原因分布"
+msgstr "Failure reason breakdown"
+
+msgid "窗口内失败 %(n)s 次"
+msgstr "%(n)s failures in the window"
+
+msgid "窗口内还没有失败记录。"
+msgstr "No failures in this window yet."
+
+msgid "在手库存（实时）"
+msgstr "In-hand inventory (live)"
+
+msgid "有效在手"
+msgstr "Active"
+
+msgid "待清理"
+msgstr "Pending cleanup"
+
+msgid "有效在手 = 未使用且未过期；待清理 = 未使用但已过期，由下一次生成请求顺带删除。"
+msgstr "Active = unused and not expired; pending cleanup = unused but expired, removed by the next generate request."
+
+msgid "口径：生成 / 通过 / 失败按「天 + 线路」累计，官网登录、注册、发码、反馈与开放接口共用同一本账；失败只算业务失败（答案错 / 过期 / 已使用 / 轨迹异常 / 不存在），被 IP 限流或连续失败冷却挡下的请求单独计入「拦截」。"
+msgstr "Definitions: generations / passes / failures are accumulated per day and per channel; website login, sign-up, code sending, feedback and the open APIs share the same counters. Failures only count business failures (wrong answer / expired / already used / abnormal track / not found); requests blocked by IP rate limiting or the consecutive-failure cooldown are counted separately as blocked."
+
+msgid "字符图片"
+msgstr "Text image"
+
+msgid "算术"
+msgstr "Arithmetic"
+
+msgid "滑块"
+msgstr "Slider"
+
+msgid "字符 / 算术"
+msgstr "Text / arithmetic"
+
+msgid "答案错误"
+msgstr "Wrong answer"
+
+msgid "轨迹异常"
+msgstr "Abnormal track"
+
+msgid "不存在"
+msgstr "Not found"
+
+
+# ==================== 控制台：行为验证影子模式（console/captcha.html） ====================
+msgid "行为验证（影子模式）"
+msgstr "Behavior verification (shadow mode)"
+
+msgid "只记录，不拦截"
+msgstr "Record only, never block"
+
+msgid "样本保留 30 天；不上报输入内容与原始轨迹"
+msgstr "Samples are kept for 30 days; no input content or raw trajectories are reported"
+
+msgid "今日观察"
+msgstr "Observations today"
+
+msgid "今日平均风险分"
+msgstr "Average risk score today"
+
+msgid "窗口内观察"
+msgstr "Observations in window"
+
+msgid "高风险占比"
+msgstr "High-risk share"
+
+msgid "风险档位分布"
+msgstr "Risk band distribution"
+
+msgid "风险分分布"
+msgstr "Risk score distribution"
+
+msgid "命中规则"
+msgstr "Matched rules"
+
+msgid "窗口内没有命中任何规则。"
+msgstr "No rules were matched in this window."
+
+msgid "风险分"
+msgstr "Risk score"
+
+msgid "档位"
+msgstr "Band"
+
+msgid "命中"
+msgstr "Matched"
+
+msgid "还没有行为样本：在登录 / 注册 / 发码 / 反馈页提交一次表单即可产生。"
+msgstr "No behavior samples yet: submit any login / sign-up / code / feedback form once to generate one."
+
+msgid "低风险"
+msgstr "Low risk"
+
+msgid "中风险"
+msgstr "Medium risk"
+
+msgid "高风险"
+msgstr "High risk"
+
+msgid "提交过快"
+msgstr "Submitted too fast"
+
+msgid "无指针移动"
+msgstr "No pointer movement"
+
+msgid "击键过快"
+msgstr "Keystrokes too fast"
+
+msgid "自动化驱动"
+msgstr "Automation driver"
+
+msgid "无头浏览器"
+msgstr "Headless browser"
+
+msgid "多次切走页面"
+msgstr "Tab switched repeatedly"
+
+msgid "频繁失焦"
+msgstr "Frequent focus loss"
+
+msgid "同 IP 高频提交"
+msgstr "High-frequency submissions from the same IP"
+
+

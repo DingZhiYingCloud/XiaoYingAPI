@@ -10,6 +10,7 @@
 - SSE 响应（AI 接口 stream=true）逐块透传，调试面板可逐字打印，其余响应仍为一次性 JSON。
 """
 import copy
+import hashlib
 import html
 import json
 import secrets
@@ -567,9 +568,15 @@ def call(request):
             'timestamp': str(int(time.time())),
             'nonce': secrets.token_hex(16),
         }
-        if method in ('PATCH', 'DELETE'):
-            # PATCH/DELETE 的 request.POST 为空，中间件只校验 query 中的签名参数，
-            # 故签名仅覆盖签名参数本身（业务字段走表单体/无体，不参与验签）
+        if method == 'PATCH':
+            # 中间件会把 urlencoded 表单体字段一并纳入待签串
+            auth_params['sign'] = build_sign({**collapsed, **auth_params}, app_secret, method, path)
+        elif method == 'DELETE':
+            # 中间件对非表单体（JSON）用 body_sha256 参与验签；
+            # 无业务参数的 DELETE 没有 body，只签公共参数。
+            body_text = json.dumps(groups) if groups else ''
+            if body_text:
+                auth_params['body_sha256'] = hashlib.sha256(body_text.encode('utf-8')).hexdigest()
             auth_params['sign'] = build_sign(dict(auth_params), app_secret, method, path)
         else:
             auth_params['sign'] = build_sign({**collapsed, **auth_params}, app_secret, method, path)
@@ -616,9 +623,7 @@ def call(request):
                                 QUERY_STRING=urlencode(auth_params), **forwarded)
     elif method == 'DELETE':
         if groups:
-            # 需要业务参数的 DELETE（如静态代理按 ip:port 删除）：
-            # 业务字段以 JSON body 传递（非 POST 的 request.POST 为空，不参与验签），
-            # 签名公共参数仍放 query，与中间件验签口径一致。
+            # 需要业务参数的 DELETE：body_sha256 已参与签名，转发时必须是同一段 JSON
             response = client.delete(path, data=json.dumps(groups),
                                      content_type='application/json',
                                      QUERY_STRING=urlencode(auth_params), **forwarded)

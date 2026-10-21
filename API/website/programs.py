@@ -22,10 +22,17 @@ from pathlib import Path
 
 import markdown
 from django.conf import settings
+from django.core.cache import cache
 from django.utils.translation import gettext as _
 
 README_NAME = 'readme.md'        # 程序 / 分类说明文件名（大小写不敏感匹配）
 MODULE_DOC_NAME = 'Documents.md'  # 模块总述文件名（内容根目录下，可选）
+
+# 目录扫描结果缓存 TTL（秒）：内容目录由人工投放，60 秒延迟可接受；0 = 关闭。
+# 每次请求都递归 stat 整个内容目录（含 jre 这类上千文件的目录）代价很高，
+# 而列表 / 详情 / 下载都会调用 load_catalog()，故按「根目录路径」缓存扫描结果。
+CATALOG_CACHE_TTL = int(getattr(settings, 'PROGRAMS_CACHE_TTL', 60))
+_CATALOG_CACHE_KEY = 'programs:catalog:v1:{root}'
 
 # 在线预览的体积上限：超过该值的文件不提供「查看内容」，只能下载。
 # 判定在扫描时完成（模板块据此决定按钮是否可用），视图侧仍会再校验一次，防止直接调接口绕过。
@@ -163,12 +170,23 @@ def _walk(directory: Path, rel: str, category: str, out: list) -> None:
         _walk(child, f'{rel}/{child.name}', category, out)
 
 
-def load_catalog() -> tuple:
-    """扫描内容根目录，返回全部分类（每个分类含其下的程序条目）。
+def _catalog_key(root: Path) -> str:
+    """缓存键带上根目录：测试 / 多内容目录场景下互不串账"""
+    try:
+        marker = str(root.resolve())
+    except OSError:
+        marker = str(root)
+    return _CATALOG_CACHE_KEY.format(root=marker)
 
-    根目录不存在（如尚未投放内容）时返回空元组，由页面展示空态，不抛异常。
-    """
-    root = Path(settings.PROGRAMS_ROOT)
+
+def invalidate_catalog(root=None) -> None:
+    """清掉目录扫描缓存（内容目录变更后调用；测试也可用）"""
+    invalidate_root = Path(root) if root is not None else Path(settings.PROGRAMS_ROOT)
+    cache.delete(_catalog_key(invalidate_root))
+
+
+def _scan_catalog(root: Path) -> tuple:
+    """真正扫描磁盘（无缓存）"""
     if not root.is_dir():
         return ()
     categories = []
@@ -184,6 +202,24 @@ def load_catalog() -> tuple:
             programs=tuple(found),
         ))
     return tuple(categories)
+
+
+def load_catalog() -> tuple:
+    """扫描内容根目录，返回全部分类（每个分类含其下的程序条目）。
+
+    根目录不存在（如尚未投放内容）时返回空元组，由页面展示空态，不抛异常。
+    扫描结果按根目录缓存 60 秒（见 CATALOG_CACHE_TTL）。
+    """
+    root = Path(settings.PROGRAMS_ROOT)
+    if CATALOG_CACHE_TTL <= 0:
+        return _scan_catalog(root)
+    key = _catalog_key(root)
+    catalog = cache.get(key)
+    if catalog is not None:
+        return catalog
+    catalog = _scan_catalog(root)
+    cache.set(key, catalog, CATALOG_CACHE_TTL)
+    return catalog
 
 
 def all_programs() -> tuple:

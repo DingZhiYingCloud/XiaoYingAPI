@@ -18,7 +18,11 @@ from API.models.Feedback.feedback import (
 )
 from API.models.Feedback.setting import FeedbackSetting
 from API.models.Feedback.ticket import FeedbackTicket
+from API.models.Captcha.behavior import BehaviorSample
 from API.models.Captcha.captcha import CaptchaChallenge
+from API.models.Captcha.click_word import ClickWordChallenge
+from API.models.Captcha.slider import SliderChallenge
+from API.models.Captcha.stat import CaptchaStat
 from API.models.Statistics.api_call_stat import ApiCallStat, ApiCallStatHour
 from API.models.ImageHosting.image_hosting_token import ImageHostingToken
 from API.models.Haijiao.account import HaijiaoAccount
@@ -64,6 +68,10 @@ __all__ = [
     'ContactPlatform',
     'ProjectContact',
     'CaptchaChallenge',
+    'BehaviorSample',
+    'ClickWordChallenge',
+    'SliderChallenge',
+    'CaptchaStat',
     'ApiCallStat',
     'ApiCallStatHour',
     'ImageHostingToken',

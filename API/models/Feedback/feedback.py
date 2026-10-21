@@ -34,9 +34,9 @@
 import uuid
 from datetime import timedelta
 
-from django.conf import settings
 from django.db import models
 from django.db.models import Q
+from django.urls import reverse
 from django.utils import timezone
 
 from API.common.base import BaseModel
@@ -274,7 +274,8 @@ class AttachmentBase(BaseModel):
     """附件公共字段（抽象基类，不建表）
 
     图片与视频共用一套字段，靠 `kind` 区分；`path` 存**相对 MEDIA_ROOT 的路径**，
-    对外地址由 `url` 属性拼出（与文件上传服务返回的 `/media/...` 口径一致）。
+    对外**不再**直接暴露 `/media/...`：`url` 指向受控下载视图，由视图校验本人 / 超管
+    （或 AI 送审用的短时签名 token）后才读文件。
     """
 
     class Kind(models.TextChoices):
@@ -299,8 +300,13 @@ class AttachmentBase(BaseModel):
 
     @property
     def url(self) -> str:
-        """对外可访问地址（站内相对路径，如 /media/uploads/feedback/...）"""
-        return f'{settings.MEDIA_URL}{self.path}'
+        """受控下载地址（由 feedback_attachment 视图校验本人 / 超管后再读文件）
+
+        不再直接拼 `/media/...`：反馈附件可能含用户私人截图 / 视频，直接暴露媒体路径
+        等于任何拿到 URL 的人都能匿名读取；`/media/uploads/feedback/` 也已在
+        `_media_serve` 中统一拒绝，必须走这个受控入口。
+        """
+        return reverse('website:feedback_attachment', args=[self.pk])
 
     @property
     def is_image(self) -> bool:

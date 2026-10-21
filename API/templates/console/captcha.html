@@ -1,0 +1,366 @@
+{% extends 'console/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "验证码监控 - 超级管理员 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "超级管理员,验证码,监控,通过率,失败原因" %}{% endblock %}
+{% block description %}{% trans "小影API 超级管理员：自研验证码的生成量、通过率、失败原因、限流拦截与在手库存监控。" %}{% endblock %}
+
+{% block console_content %}
+{% trans "自研验证码（字符 / 算术 / 滑块 / 汉字点选）的专项监控：生成量、通过率、失败原因分布、限流与冷却拦截，以及三张挑战表的在手库存。官网表单与开放接口共用同一本账。" as ph_desc %}
+{% include 'console/_page_header.html' with icon='fingerprint' title='验证码监控' desc=ph_desc %}
+
+{% include 'console/_messages.html' %}
+
+<div class="con-toolbar mt-4">
+  <div class="flex flex-wrap items-center gap-2">
+    <span class="text-sm font-semibold">{% trans "时间窗口" %}</span>
+    {% for choice in window_choices %}
+    <a href="?days={{ choice }}"
+       class="btn btn-xs {% if choice == days %}btn-primary{% else %}btn-ghost{% endif %}">
+      {% blocktrans with n=choice %}{{ n }} 天{% endblocktrans %}
+    </a>
+    {% endfor %}
+  </div>
+  <div class="ml-auto flex flex-wrap items-center gap-2 text-xs text-base-content/60">
+    <span class="badge badge-soft badge-ghost">{{ today|date:"Y-m-d" }}</span>
+    <span class="badge badge-soft badge-info">{% blocktrans with label=window_label %}窗口：{{ label }}{% endblocktrans %}</span>
+  </div>
+</div>
+
+<div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+  <div class="con-metric">
+    <span class="con-metric-icon bg-primary/10 text-primary">
+      <i data-lucide="image" class="h-5 w-5" aria-hidden="true"></i>
+    </span>
+    <div class="min-w-0">
+      <div class="con-metric-value">{{ overview.generated }}</div>
+      <div class="con-metric-label">{% trans "今日生成" %}</div>
+    </div>
+  </div>
+  <div class="con-metric">
+    <span class="con-metric-icon bg-success/10 text-success">
+      <i data-lucide="circle-check" class="h-5 w-5" aria-hidden="true"></i>
+    </span>
+    <div class="min-w-0">
+      <div class="con-metric-value">{{ overview.passed }}</div>
+      <div class="con-metric-label">{% trans "今日通过" %}</div>
+    </div>
+  </div>
+  <div class="con-metric">
+    <span class="con-metric-icon bg-info/10 text-info">
+      <i data-lucide="percent" class="h-5 w-5" aria-hidden="true"></i>
+    </span>
+    <div class="min-w-0">
+      <div class="con-metric-value">{{ overview.rate }}%</div>
+      <div class="con-metric-label">{% trans "今日通过率" %}</div>
+    </div>
+  </div>
+  <div class="con-metric">
+    <span class="con-metric-icon bg-error/10 text-error">
+      <i data-lucide="circle-x" class="h-5 w-5" aria-hidden="true"></i>
+    </span>
+    <div class="min-w-0">
+      <div class="con-metric-value">{{ overview.failed }}</div>
+      <div class="con-metric-label">{% trans "今日失败" %}</div>
+    </div>
+  </div>
+  <div class="con-metric">
+    <span class="con-metric-icon bg-warning/10 text-warning">
+      <i data-lucide="shield-ban" class="h-5 w-5" aria-hidden="true"></i>
+    </span>
+    <div class="min-w-0">
+      <div class="con-metric-value">{{ overview.blocked }}</div>
+      <div class="con-metric-label">{% trans "今日拦截" %}</div>
+    </div>
+  </div>
+</div>
+
+<div class="con-panel mt-5">
+  <div class="con-panel-head">
+    <span class="text-sm font-semibold">{% trans "分线路（窗口累计）" %}</span>
+    <span class="badge badge-soft badge-ghost">{% trans "校验次数 = 通过 + 失败" %}</span>
+  </div>
+  <div class="con-table-wrap" style="border:0;border-radius:0;">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th class="whitespace-nowrap">{% trans "线路" %}</th>
+          <th class="whitespace-nowrap text-right">{% trans "生成" %}</th>
+          <th class="whitespace-nowrap text-right">{% trans "通过" %}</th>
+          <th class="whitespace-nowrap text-right">{% trans "失败" %}</th>
+          <th class="whitespace-nowrap text-right">{% trans "拦截" %}</th>
+          <th class="whitespace-nowrap text-right">{% trans "校验次数" %}</th>
+          <th class="whitespace-nowrap text-right">{% trans "通过率" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in line_rows %}
+        <tr>
+          <td class="whitespace-nowrap text-sm font-medium">{{ row.label }}</td>
+          <td class="whitespace-nowrap text-right font-mono text-sm">{{ row.generated }}</td>
+          <td class="whitespace-nowrap text-right font-mono text-sm text-success">{{ row.passed }}</td>
+          <td class="whitespace-nowrap text-right font-mono text-sm text-error">{{ row.failed }}</td>
+          <td class="whitespace-nowrap text-right font-mono text-sm text-warning">{{ row.blocked }}</td>
+          <td class="whitespace-nowrap text-right font-mono text-sm">{{ row.total_checks }}</td>
+          <td class="whitespace-nowrap text-right font-mono text-sm font-semibold">
+            {% if row.total_checks %}{{ row.rate }}%{% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th class="whitespace-nowrap">{% trans "合计" %}</th>
+          <th class="whitespace-nowrap text-right font-mono">{{ window.generated }}</th>
+          <th class="whitespace-nowrap text-right font-mono">{{ window.passed }}</th>
+          <th class="whitespace-nowrap text-right font-mono">{{ window.failed }}</th>
+          <th class="whitespace-nowrap text-right font-mono">{{ window.blocked }}</th>
+          <th class="whitespace-nowrap text-right font-mono">{{ window.total_checks }}</th>
+          <th class="whitespace-nowrap text-right font-mono">
+            {% if window.total_checks %}{{ window.rate }}%{% else %}—{% endif %}
+          </th>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<div class="con-panel mt-5">
+  <div class="con-panel-head">
+    <span class="text-sm font-semibold">{% trans "每日趋势" %}</span>
+    <span class="badge badge-soft badge-ghost">{% trans "柱长按当日生成量归一" %}</span>
+  </div>
+  <div class="con-table-wrap" style="border:0;border-radius:0;">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th class="whitespace-nowrap">{% trans "日期" %}</th>
+          <th class="whitespace-nowrap">{% trans "生成量" %}</th>
+          <th class="whitespace-nowrap text-right">{% trans "生成" %}</th>
+          <th class="whitespace-nowrap text-right">{% trans "通过" %}</th>
+          <th class="whitespace-nowrap text-right">{% trans "失败" %}</th>
+          <th class="whitespace-nowrap text-right">{% trans "拦截" %}</th>
+          <th class="whitespace-nowrap text-right">{% trans "通过率" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in trend %}
+        <tr>
+          <td class="whitespace-nowrap font-mono text-xs">{{ row.day|date:"Y-m-d" }}</td>
+          <td style="min-width:10rem;">
+            <div class="w-full overflow-hidden rounded-full bg-base-200" style="height:8px;">
+              <div class="rounded-full bg-primary" style="height:8px;width: {{ row.bar }}%;"></div>
+            </div>
+          </td>
+          <td class="whitespace-nowrap text-right font-mono text-sm">{{ row.generated }}</td>
+          <td class="whitespace-nowrap text-right font-mono text-sm text-success">{{ row.passed }}</td>
+          <td class="whitespace-nowrap text-right font-mono text-sm text-error">{{ row.failed }}</td>
+          <td class="whitespace-nowrap text-right font-mono text-sm text-warning">{{ row.blocked }}</td>
+          <td class="whitespace-nowrap text-right font-mono text-sm">
+            {% if row.total_checks %}{{ row.rate }}%{% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="mt-5 grid gap-5 lg:grid-cols-2">
+  <div class="con-panel">
+    <div class="con-panel-head">
+      <span class="text-sm font-semibold">{% trans "失败原因分布" %}</span>
+      <span class="badge badge-soft badge-ghost">
+        {% blocktrans with n=window.failed %}窗口内失败 {{ n }} 次{% endblocktrans %}
+      </span>
+    </div>
+    <div class="con-panel-body gap-3">
+      {% for row in reasons %}
+      <div>
+        <div class="flex items-center justify-between text-sm">
+          <span>{{ row.label }}</span>
+          <span class="font-mono text-xs text-base-content/70">{{ row.count }} · {{ row.rate }}%</span>
+        </div>
+        <div class="mt-1 w-full overflow-hidden rounded-full bg-base-200" style="height:8px;">
+          <div class="rounded-full" style="height:8px;width: {{ row.rate }}%;background:var(--color-error);"></div>
+        </div>
+      </div>
+      {% endfor %}
+      {% if not window.failed %}
+      <p class="text-sm text-base-content/60">{% trans "窗口内还没有失败记录。" %}</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="con-panel">
+    <div class="con-panel-head">
+      <span class="text-sm font-semibold">{% trans "在手库存（实时）" %}</span>
+    </div>
+    <div class="con-table-wrap" style="border:0;border-radius:0;">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th class="whitespace-nowrap">{% trans "类型" %}</th>
+            <th class="whitespace-nowrap text-right">{% trans "有效在手" %}</th>
+            <th class="whitespace-nowrap text-right">{% trans "已使用" %}</th>
+            <th class="whitespace-nowrap text-right">{% trans "待清理" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in inventory %}
+          <tr>
+            <td class="whitespace-nowrap text-sm">{{ row.label }}</td>
+            <td class="whitespace-nowrap text-right font-mono text-sm text-success">{{ row.active }}</td>
+            <td class="whitespace-nowrap text-right font-mono text-sm">{{ row.used }}</td>
+            <td class="whitespace-nowrap text-right font-mono text-sm text-warning">{{ row.expired }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="con-panel-body pt-0">
+      <p class="text-xs leading-relaxed text-base-content/60">
+        {% trans "有效在手 = 未使用且未过期；待清理 = 未使用但已过期，由下一次生成请求顺带删除。" %}
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="con-panel mt-5">
+  <div class="con-panel-head">
+    <span class="text-sm font-semibold">{% trans "行为验证（影子模式）" %}</span>
+    <span class="badge badge-soft badge-warning">{% trans "只记录，不拦截" %}</span>
+    <span class="ml-auto text-xs text-base-content/60">{% trans "样本保留 30 天；不上报输入内容与原始轨迹" %}</span>
+  </div>
+  <div class="con-panel-body gap-4">
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="con-metric">
+        <span class="con-metric-icon bg-primary/10 text-primary">
+          <i data-lucide="mouse-pointer-click" class="h-5 w-5" aria-hidden="true"></i>
+        </span>
+        <div class="min-w-0">
+          <div class="con-metric-value">{{ behavior.today_total }}</div>
+          <div class="con-metric-label">{% trans "今日观察" %}</div>
+        </div>
+      </div>
+      <div class="con-metric">
+        <span class="con-metric-icon bg-info/10 text-info">
+          <i data-lucide="gauge" class="h-5 w-5" aria-hidden="true"></i>
+        </span>
+        <div class="min-w-0">
+          <div class="con-metric-value">{{ behavior.today_average }}</div>
+          <div class="con-metric-label">{% trans "今日平均风险分" %}</div>
+        </div>
+      </div>
+      <div class="con-metric">
+        <span class="con-metric-icon bg-base-200 text-base-content">
+          <i data-lucide="scan-eye" class="h-5 w-5" aria-hidden="true"></i>
+        </span>
+        <div class="min-w-0">
+          <div class="con-metric-value">{{ behavior.total }}</div>
+          <div class="con-metric-label">{% trans "窗口内观察" %}</div>
+        </div>
+      </div>
+      <div class="con-metric">
+        <span class="con-metric-icon bg-error/10 text-error">
+          <i data-lucide="triangle-alert" class="h-5 w-5" aria-hidden="true"></i>
+        </span>
+        <div class="min-w-0">
+          <div class="con-metric-value">{{ behavior.high_rate }}%</div>
+          <div class="con-metric-label">{% trans "高风险占比" %}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid gap-5 lg:grid-cols-2">
+      <div>
+        <h3 class="mb-2 text-sm font-semibold">{% trans "风险档位分布" %}</h3>
+        {% for row in behavior.bands %}
+        <div class="mb-2">
+          <div class="flex items-center justify-between text-sm">
+            <span>{{ row.label }}</span>
+            <span class="font-mono text-xs text-base-content/70">{{ row.count }} · {{ row.rate }}%</span>
+          </div>
+          <div class="mt-1 w-full overflow-hidden rounded-full bg-base-200" style="height:8px;">
+            <div class="rounded-full" style="height:8px;width: {{ row.rate }}%;background:{% if row.key == 'low' %}var(--color-success){% elif row.key == 'mid' %}var(--color-warning){% else %}var(--color-error){% endif %};"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div>
+        <h3 class="mb-2 text-sm font-semibold">{% trans "风险分分布" %}</h3>
+        <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+          {% for row in behavior.buckets %}
+          <div>
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-mono">{{ row.label }}</span>
+              <span class="font-mono text-base-content/60">{{ row.count }}</span>
+            </div>
+            <div class="mt-1 w-full overflow-hidden rounded-full bg-base-200" style="height:6px;">
+              <div class="rounded-full bg-primary" style="height:6px;width: {{ row.rate }}%;"></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <h3 class="mb-2 text-sm font-semibold">{% trans "命中规则" %}</h3>
+      {% if behavior.top_hits %}
+      <div class="flex flex-wrap gap-2">
+        {% for row in behavior.top_hits %}
+        <span class="badge badge-soft badge-ghost">{{ row.label }} · {{ row.count }}</span>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-sm text-base-content/60">{% trans "窗口内没有命中任何规则。" %}</p>
+      {% endif %}
+    </div>
+
+    {% if behavior.recent %}
+    <div class="con-table-wrap" style="border:0;border-radius:0;">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th class="whitespace-nowrap">{% trans "时间" %}</th>
+            <th class="whitespace-nowrap">{% trans "场景" %}</th>
+            <th class="whitespace-nowrap text-right">{% trans "风险分" %}</th>
+            <th class="whitespace-nowrap">{% trans "档位" %}</th>
+            <th class="whitespace-nowrap">{% trans "命中" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in behavior.recent %}
+          <tr>
+            <td class="whitespace-nowrap font-mono text-xs">{{ row.time|date:"m-d H:i:s" }}</td>
+            <td class="whitespace-nowrap text-sm">{{ row.scene }}</td>
+            <td class="whitespace-nowrap text-right font-mono text-sm font-semibold">{{ row.score }}</td>
+            <td class="whitespace-nowrap text-sm">
+              {% if row.band_key == 'low' %}
+              <span class="badge badge-soft badge-success">{{ row.band }}</span>
+              {% elif row.band_key == 'mid' %}
+              <span class="badge badge-soft badge-warning">{{ row.band }}</span>
+              {% else %}
+              <span class="badge badge-soft badge-error">{{ row.band }}</span>
+              {% endif %}
+            </td>
+            <td class="text-xs text-base-content/70">{{ row.hits|join:"、" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-sm text-base-content/60">
+      {% trans "还没有行为样本：在登录 / 注册 / 发码 / 反馈页提交一次表单即可产生。" %}
+    </p>
+    {% endif %}
+  </div>
+</div>
+
+<p class="mt-4 text-xs leading-relaxed text-base-content/60">
+  {% blocktrans %}口径：生成 / 通过 / 失败按「天 + 线路」累计，官网登录、注册、发码、反馈与开放接口共用同一本账；失败只算业务失败（答案错 / 过期 / 已使用 / 轨迹异常 / 不存在），被 IP 限流或连续失败冷却挡下的请求单独计入「拦截」。{% endblocktrans %}
+</p>
+{% endblock %}

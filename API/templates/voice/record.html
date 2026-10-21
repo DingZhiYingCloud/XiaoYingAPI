@@ -1,0 +1,108 @@
+{% extends 'template.html' %}
+{% load static i18n %}
+
+{% block title %}{% trans "网页录音 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "网页录音,在线录音,声音上传,录音转链接" %}{% endblock %}
+{% block description %}{% trans "在浏览器里直接录制自己的声音，试听后上传，3-60 秒即可获得可在线播放的链接。" %}{% endblock %}
+
+{% block content %}
+<section class="mx-auto w-full max-w-3xl px-4 py-8 sm:py-10">
+  <nav class="breadcrumbs text-sm">
+    <ul>
+      <li><a href="/">{% trans "首页" %}</a></li>
+      <li><a href="/docs/upload/">{% trans "文件上传" %}</a></li>
+      <li>{% trans "网页录音" %}</li>
+    </ul>
+  </nav>
+
+  <h1 class="mt-2 text-2xl font-bold sm:text-3xl">{% trans "网页录音" %}</h1>
+  <p class="mt-2 max-w-2xl text-sm leading-relaxed text-base-content/70">
+    {% blocktrans with min=min_seconds max=max_seconds %}点「开始录音」授权麦克风，再点一次停止；录完可以先试听，满意后再上传。时长需在 {{ min }}-{{ max }} 秒之间。{% endblocktrans %}
+  </p>
+
+  {# 录音主体：data-* 把时长与上传地址交给页面脚本，避免前端再写死一份 #}
+  <div id="voice-recorder" class="mt-6 card border border-base-300 bg-base-100"
+       data-min="{{ min_seconds }}" data-max="{{ max_seconds }}"
+       data-max-size="{{ max_size_mb }}"
+       data-upload-url="{% url 'website:voice_record_upload' %}">
+    {% csrf_token %}
+    <div class="card-body items-center gap-4 text-center">
+      <div class="flex items-center gap-2">
+        <span data-state-dot class="status status-neutral"></span>
+        <span data-state-text class="text-sm text-base-content/70">{% trans "准备就绪" %}</span>
+      </div>
+
+      <p data-timer class="font-mono text-4xl font-semibold tabular-nums">00:00</p>
+      <progress data-progress class="progress progress-primary w-full max-w-sm" value="0" max="{{ max_seconds }}"></progress>
+
+      {# 输入电平：录音时实时跳动；如果一直是空的，说明麦克风没声音 #}
+      <div class="flex w-full max-w-sm items-center gap-2">
+        <span class="shrink-0 text-xs text-base-content/60">{% trans "输入音量" %}</span>
+        <progress data-level class="progress progress-success w-full" value="0" max="100"></progress>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button type="button" data-start
+                class="btn btn-primary btn-circle btn-lg"
+                aria-label="{% trans '开始录音' %}" title="{% trans '开始录音' %}">
+          <i data-lucide="mic" class="h-6 w-6"></i>
+        </button>
+        <button type="button" data-stop
+                class="btn btn-error btn-circle btn-lg hidden"
+                aria-label="{% trans '停止录音' %}" title="{% trans '停止录音' %}">
+          <i data-lucide="square" class="h-6 w-6"></i>
+        </button>
+      </div>
+
+      <p data-hint class="text-xs text-base-content/60">
+        {% trans "首次使用会请求麦克风权限，请选择「允许」；录音只在你的浏览器里进行。" %}
+      </p>
+
+      {# 试听区：停止后显示 #}
+      <div data-preview class="hidden w-full max-w-md">
+        <audio data-audio controls preload="metadata" class="w-full"></audio>
+        <p data-meta class="mt-2 text-xs text-base-content/60"></p>
+      </div>
+
+      {# 停止后的操作区：外层只负责显隐，内层负责布局（hidden 与 flex 不同时挂在一个元素上） #}
+      <div data-actions class="hidden">
+        <div class="flex flex-wrap justify-center gap-2">
+          <button type="button" data-reset class="btn btn-ghost">{% trans "重新录制" %}</button>
+          <button type="button" data-submit class="btn btn-primary">{% trans "上传并获取链接" %}</button>
+        </div>
+      </div>
+
+      <div data-alert role="alert" class="alert alert-error hidden w-full text-left text-sm"></div>
+      <div data-unsupported role="alert" class="alert alert-warning hidden w-full text-left text-sm"></div>
+    </div>
+  </div>
+
+  {# 上传结果：在线链接 + 播放器 #}
+  <div data-result class="mt-4 hidden card border border-success/40 bg-base-100">
+    <div class="card-body gap-3">
+      <h2 class="card-title text-base">
+        <span class="badge badge-soft badge-success badge-sm">{% trans "上传成功" %}</span>
+      </h2>
+      <audio data-result-audio controls preload="metadata" class="w-full"></audio>
+      <div class="join w-full">
+        <input data-result-url type="text" readonly
+               class="input join-item w-full font-mono text-xs" aria-label="{% trans '在线链接' %}" />
+        <button type="button" data-copy class="btn join-item">{% trans "复制" %}</button>
+        <a data-result-open class="btn join-item" target="_blank" rel="noopener noreferrer">{% trans "打开" %}</a>
+      </div>
+      <p data-result-meta class="text-xs text-base-content/60"></p>
+    </div>
+  </div>
+
+  <div class="mt-6 rounded-box border border-base-300 bg-base-200/40 p-4 text-xs leading-relaxed text-base-content/70">
+    <p>{% trans "生成的链接是公开可访问的：拿到链接的人都能播放，请不要录制敏感内容。" %}</p>
+    <p class="mt-1">{% trans "网页录音需要浏览器允许麦克风，且页面必须运行在 HTTPS 或 localhost 下（浏览器安全限制）。" %}</p>
+    <p class="mt-1">{% trans "浏览器录制的 WebM 会自动转成 MP3 再保存，微信、Safari 等环境也能直接播放。" %}</p>
+    <p class="mt-1">{% blocktrans with size=max_size_mb %}录音文件会自动校验格式与真实时长，单文件不超过 {{ size }}MB；上传失败不会留下残留文件。{% endblocktrans %}</p>
+  </div>
+</section>
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'js/site/voice_record.js' %}?v=20261021a"></script>
+{% endblock %}

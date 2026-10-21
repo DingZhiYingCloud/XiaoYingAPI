@@ -27,6 +27,7 @@
 | Django i18n                     | 多语言（简体中文 / 繁体中文 / English），词条见 `locale/`               |
 | Node.js                         | **抖音评论线路与海角视频的运行时依赖**（≥ 18，用于本地补环境生成请求签名，见第三章）             |
 | ffmpeg                          | **红果短剧网页直出需要**（第 4 集及以后 CENC 解密 + 转 H.264；需在 PATH 上，或由 `HONGGUO_FFMPEG_BIN` 指向可执行文件） |
+| ffprobe                         | **声音上传服务需要**（读取音频流真实时长，3-60 秒校验；默认取 PATH 上的 `ffprobe`，也可由 `XYAPI_FFPROBE_BIN` 指定绝对路径） |
 | 内置 JRE（jlink 裁剪）               | 红果短剧取流签名器（unidbg）的 Java 运行时，约 32 MB，**随代码入库**；因此**无需本机安装 Java** |
 | django-cors-headers             | 跨域请求支持                                                 |
 | whitenoise                      | 生产模式静态文件服务                                             |
@@ -101,6 +102,8 @@ XiaoYingAPI/
 - `Haijiao/account.py`：海角社区账号库（`HaijiaoAccount`，注册成功的账号自动入库；密码 / token 落库 AES 加密）
 - `AI/provider.py`：AI 厂商 / 模型 / 系统提示词（`AiProvider` + `AiModel` + `AiSystemPrompt`，平台 Key 密文落库）
 - `Captcha/captcha.py`：自研图形验证码一次性挑战（`CaptchaChallenge`）
+- `Captcha/slider.py`：自研滑块验证一次性挑战（`SliderChallenge`）
+- `Captcha/click_word.py`：自研汉字点选验证一次性挑战（`ClickWordChallenge`）
 - `Docs/announcement.py`：接口公告（`Announcement`，服务 / 线路 / 端点三级）
 - `ImageHosting/image_hosting_token.py`：图床服务端 Token 池（`ImageHostingToken`）
 - `Statistics/api_call_stat.py`：调用统计（`ApiCallStat` 按天 + `ApiCallStatHour` 按小时；只记调用量与成败，不记任何计费字段）
@@ -121,7 +124,7 @@ XiaoYingAPI/
 | ------- | --------------------------- | ---------------------------- |
 | 虚拟邮箱(mail.cx) | `/api/VMEmail_mailcx/`      | mail.cx 临时邮箱：随机生成地址收信（仅收信，需签名） |
 | 音乐服务    | `/api/music/`               | 爱听音乐网（2t58）、小影音乐             |
-| 文件上传    | `/api/upload/`              | 通用文件上传                       |
+| 文件上传    | `/api/upload/`              | 图片 / 视频 / 通用文件 / 声音四类上传；声音（3-60 秒）返回在线播放链接，配套网页录音页 `/upload/record/` |
 | 抖音      | `/api/douyin/`              | 抖音视频 / 图文解析 + 评论发布（均需签名）     |
 | 电影      | `/api/movies/`              | 影视聚合：分类 / 列表 / 详情 / 选集 / 播放地址（555 电影线路） |
 | 短剧      | `/api/dramas/`              | 红果短剧：榜单（4 种）/ 两级分类 / 搜索 / 详情 / 播放地址（第 4 集及以后由本站按需解密 + 转 H.264 直出） |
@@ -141,7 +144,7 @@ XiaoYingAPI/
 | 用户中心    | `/api/user_center/`         | 统一认证中心（项目接入 / 用户注册登录）        |
 | 短信验证    | `/api/sms_verify/`          | 短信验证码认证（阿里云）                 |
 | 图形验证    | `/api/captcha_auth/`        | 图形验证码集成（阿里云）                 |
-| 自研图形验证码 | `/api/captcha_self/`        | 自研字符图片 / 算术验证码（本地绘制，一次性校验）   |
+| 自研图形验证码 | `/api/captcha_self/`        | 自研字符图片 / 算术 / 滑块 / 汉字点选验证码（本地绘制，一次性校验）   |
 | 调用统计    | `/api/statistics/`          | 公开查询 API 调用量（仅调用次数，免签名）      |
 | 消息推送    | `/api/push/`                | 把消息推送到手机或邮箱：Server酱（`/serverchan/send` 发送、`/serverchan/status` 查送达状态，SendKey 由「账号管理」托管）+ 邮件（`/email/send`，原邮箱服务已并入）+ 邮件定时推送（`/email_task/create|list|detail|update|delete`，可只发一次或每 N 分钟重复，由站内常驻线程 24 小时调度、停机重启自动补发）；三条线路都记入「推送日志」，需签名 |
 
@@ -294,7 +297,9 @@ python manage.py runserver 0.0.0.0:10000
 | `EMAIL_VERIFY_EXPIRE_MINUTES` | 否  | 邮箱验证码有效期（分钟），默认 `30`                                                                    |
 | `PHONE_VERIFY_EXPIRE_MINUTES` | 否  | 短信验证码有效期（分钟），默认 `5`                                                                     |
 | `CAPTCHA_SELF_ENABLED`        | 否  | 官网表单是否启用自研图形验证，默认 `true`；设 `false` 可整体跳过                                                |
-| `CAPTCHA_SELF_EXPIRE_SECONDS` | 否  | 自研图形验证码有效期（秒），默认 `300`                                                                  |
+| `CAPTCHA_SELF_EXPIRE_SECONDS` | 否  | 字符 / 算术验证码有效期（秒），默认 `300`                                                          |
+| `CAPTCHA_SELF_SLIDER_EXPIRE_SECONDS` | 否  | 滑块验证有效期（秒），默认 `180`                                                              |
+| `CAPTCHA_SELF_CLICK_EXPIRE_SECONDS` | 否  | 汉字点选验证有效期（秒），默认 `180`                                                             |
 | `ALIYUN_ACCESS_KEY_ID`        | 否  | 阿里云 AccessKey ID（短信 / 图形验证等用）                                                           |
 | `ALIYUN_ACCESS_KEY_SECRET`    | 否  | 阿里云 AccessKey Secret                                                                   |
 | `CAPTCHA_APP_ID`              | 否  | 阿里云图形验证 captchaId（仅供 `/api/captcha_auth/aliyun/` 服务）                                  |

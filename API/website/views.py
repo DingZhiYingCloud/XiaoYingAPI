@@ -13,7 +13,7 @@ from urllib.parse import parse_qsl, quote, urlencode, urlsplit
 from xml.sax.saxutils import escape
 
 from django.conf import settings
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth import login as django_login
 from django.db import IntegrityError
 from django.http import HttpResponse, JsonResponse
@@ -311,14 +311,35 @@ def login_view(request):
 
     # ---------- 账号 + 密码：先判断是否“管理员”（Django 超管） ----------
     if login_type == 'account':
+        # 超管账号单独一套失败锁定：普通用户分支下面本来就有 login_locked / login_fail，
+        # 而超管分支此前完全没有限制，只靠一张可被程序化 OCR 的验证码，等于给后台全部权限
+        # 留了一个可以无限尝试的口子。只对「确实存在的超管账号」计数，避免误伤普通账号。
+        admin_guard_key = f'adminlogin:{account}:{_client_ip(request)}'
+        is_admin_account = bool(account) and get_user_model().objects.filter(
+            username=account, is_superuser=True, is_active=True).exists()
+        if is_admin_account:
+            locked, minutes_left = login_locked(admin_guard_key)
+            if locked:
+                return _json(StatusCode.RATE_LIMITED,
+                             f'登录失败次数过多，已临时锁定，请约 {minutes_left} 分钟后再试')
+
         admin = authenticate(request, username=account, password=password)
         if admin is not None:
             if admin.is_superuser and admin.is_active:
+                login_clear(admin_guard_key)
                 django_login(request, admin)
                 logger.info('超管账号登录成功: %s', admin.username)
                 return _json(StatusCode.SUCCESS, '登录成功', {'redirect': next_url})
             # 是 Django 账号但不是超管：不静默降级，明确提示
             return _json(StatusCode.FORBIDDEN, '该账号不是超级管理员，无管理权限')
+
+        if is_admin_account:
+            locked, minutes_left = login_fail(admin_guard_key)
+            if locked:
+                return _json(StatusCode.RATE_LIMITED,
+                             f'登录失败次数过多，已临时锁定，请约 {minutes_left} 分钟后再试')
+            # 与「账号不存在」保持同一文案，避免成为账号枚举口
+            return _json(StatusCode.AUTH_FAILED, '账号或密码错误')
 
         # 非管理员账号 → 尝试用户中心“账号+密码”
         guard_key = f'weblogin:{app.app_id}:{account}:{_client_ip(request)}'

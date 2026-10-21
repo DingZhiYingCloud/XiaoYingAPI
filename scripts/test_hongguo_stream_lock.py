@@ -81,22 +81,23 @@ def make_lock(ep, pid, age_seconds=0):
 
 
 def stub_transcode(*, writes_output=True, exc=None, block=None, counter=None):
-    """转码桩：可产出文件 / 抛异常 / 卡住，并像真实现那样在 finally 里释放锁"""
+    """转码桩：可产出文件 / 抛异常 / 卡住
+
+    刻意**不在桩里释放锁**：每集锁与全局槽位由 `_start` 的线程 finally 统一释放，
+    这样本脚本能真正验证「任何失败路径都不漏锁」。
+    """
     def fn(series_id, ep, width):
         if counter is not None:
             counter.append(1)
-        try:
-            if block is not None:
-                block.wait(5)
-            if exc is not None:
-                raise exc
-            if writes_output:
-                path = transcode.stream_path(series_id, ep, width)
-                os.makedirs(os.path.dirname(path), exist_ok=True)
-                with open(path, 'wb') as fh:
-                    fh.write(b'x' * 4096)
-        finally:
-            transcode._release_lock_file(transcode._lock_path(series_id, ep, width))
+        if block is not None:
+            block.wait(5)
+        if exc is not None:
+            raise exc
+        if writes_output:
+            path = transcode.stream_path(series_id, ep, width)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, 'wb') as fh:
+                fh.write(b'x' * 4096)
     return fn
 
 

@@ -11,7 +11,9 @@
 口径：
     - `interval_minutes=0` 只发一次；`>0` 每 N 分钟重复，直到停用或删除（无结束时间 / 次数上限）。
     - 停机跨多个周期后只**补发一次**（发送后按「当前时间 + 间隔」重排，绝不一次性轰炸）。
-    - 发送失败**不重试**：只记录结果，重复任务等下一周期、一次性任务就此结束。
+    - 发送失败不会让任务消失：调度时先打「租约」而不是直接推进最终游标；发送成功后才写最终
+      状态。一次性任务失败后每隔几分钟重试，连续失败达到上限才自动停用；重复任务失败后
+      等下一个周期再发。这样 SMTP 抖动或进程在发送途中被 kill 都不会静默丢任务。
 """
 import logging
 import threading
@@ -38,6 +40,9 @@ MAX_PAGE_SIZE = 100
 WORKER_INTERVAL_SECONDS = 30
 # 单轮最多处理的任务数，避免一次堆积过多时长时间占用线程
 BATCH_SIZE = 200
+# 发送失败后的重试间隔（分钟）与一次性任务的最大尝试次数
+RETRY_MINUTES = 5
+MAX_SEND_ATTEMPTS = 3
 
 
 def _fmt_dt(value):
@@ -181,37 +186,57 @@ def _claim_and_send(task, now):
     那一个进程负责发送，其余进程更新影响行数为 0、直接跳过 —— 与反馈中心 AI 审核、
     服务余量巡检同一口径，保证同一任务同一时刻只发一次。
 
-    重复任务：抢占时把游标推进到「当前时间 + 间隔」（只补发一次，不累加欠的周期）。
-    一次性任务：抢占即终止调度（enabled=False + 游标置空）。
+    抢占时只把游标推到「租约时间」（几分钟后），**发送成功后才写最终状态**：
+      - 重复任务：成功 → 当前时间 + 间隔；失败 → 当前时间 + 间隔（等下一周期）
+      - 一次性任务：成功 → 停用并清空游标；失败 → 5 分钟后重试，连续失败 3 次才停用
+    这样进程在「抢占后、写结果前」被 kill，任务会在租约到期后自动重跑（最坏重复发一次），
+    而不是像旧实现那样先停用、发信失败就永久丢失。
     """
-    if task.repeat:
-        advance = now + timedelta(minutes=task.interval_minutes)
-        claimed = EmailTask.objects.filter(
-            pk=task.pk, enabled=True, next_run_at=task.next_run_at,
-        ).update(next_run_at=advance, updated_time=now)
-    else:
-        claimed = EmailTask.objects.filter(
-            pk=task.pk, enabled=True, next_run_at=task.next_run_at,
-        ).update(enabled=False, next_run_at=None, updated_time=now)
+    lease_until = now + timedelta(minutes=RETRY_MINUTES)
+    claimed = EmailTask.objects.filter(
+        pk=task.pk, enabled=True, next_run_at=task.next_run_at,
+    ).update(next_run_at=lease_until, updated_time=now)
     if not claimed:
         return False
 
-    _deliver(task)
+    ok = _deliver(task)
+    finished = timezone.now()
+    if ok:
+        updates = {'fail_count': 0}
+        if task.repeat:
+            updates['next_run_at'] = finished + timedelta(minutes=max(1, task.interval_minutes))
+        else:
+            updates.update({'enabled': False, 'next_run_at': None})
+    else:
+        attempts = (task.fail_count or 0) + 1
+        updates = {'fail_count': attempts}
+        if task.repeat:
+            # 重复任务不额外补发，等下一个正常周期
+            updates['next_run_at'] = finished + timedelta(minutes=max(1, task.interval_minutes))
+        elif attempts >= MAX_SEND_ATTEMPTS:
+            updates.update({'enabled': False, 'next_run_at': None})
+            logger.warning('一次性邮件任务连续失败 %s 次，已自动停用 [%s]', attempts, task.pk)
+        else:
+            updates['next_run_at'] = finished + timedelta(minutes=RETRY_MINUTES)
+    EmailTask.objects.filter(pk=task.pk).update(updated_time=finished, **updates)
     return True
 
 
 def _deliver(task):
-    """发送一封邮件并回写结果（成功失败都记；失败不重试，等下一周期）"""
+    """发送一封邮件并回写结果（成功才累加 sent_count；失败原因留给调度层决定是否重试）"""
     recipients = [r for r in (task.recipients or '').split(',') if r]
     ok, message = send_email(task.subject, task.body, recipients, app_id=task.app_id)
     now = timezone.now()
-    EmailTask.objects.filter(pk=task.pk).update(
-        last_sent_at=now,
-        sent_count=F('sent_count') + 1,
-        last_ok=ok,
-        last_message=(message or '')[:500],
-        updated_time=now,
-    )
+    fields = {
+        'last_sent_at': now,
+        'last_ok': ok,
+        'last_message': (message or '')[:500],
+        'updated_time': now,
+    }
+    if ok:
+        EmailTask.objects.filter(pk=task.pk).update(sent_count=F('sent_count') + 1, **fields)
+    else:
+        EmailTask.objects.filter(pk=task.pk).update(**fields)
     return ok
 
 

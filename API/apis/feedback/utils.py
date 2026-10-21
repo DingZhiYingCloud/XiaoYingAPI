@@ -17,6 +17,7 @@
 
 `save_attachments()` 是反馈页与超管后台共用的附件落盘 + 校验逻辑（同一套上限口径）。
 """
+from django.core import signing
 from django.utils.translation import gettext as _
 
 from API.apis.uploads.utils import FileUploader
@@ -27,6 +28,28 @@ from API.common.credential_crypto import hash_token
 from API.common.ip_guard import client_ip
 from API.models import FeedbackAttachment, FeedbackTicket, ProjectContact, UserApp, UserToken
 from API.models.Feedback.ticket import TICKET_TTL_SECONDS
+
+# 反馈附件受控下载的短时签名：AI 审核需要让上游模型匿名抓取超大视频，
+# 又不能把 /media/ 目录重新放开，故签一个「只对该附件有效、1 小时后失效」的 token。
+ATTACHMENT_TOKEN_SALT = 'feedback.attachment.v1'
+ATTACHMENT_TOKEN_MAX_AGE = 3600
+
+
+def attachment_token(attachment_id) -> str:
+    """生成附件访问 token（签名绑定附件 ID）"""
+    return signing.dumps(str(attachment_id), salt=ATTACHMENT_TOKEN_SALT)
+
+
+def attachment_token_valid(token: str, attachment_id) -> bool:
+    """校验附件访问 token；过期、被改、附件不匹配都返回 False"""
+    if not token:
+        return False
+    try:
+        value = signing.loads(token, salt=ATTACHMENT_TOKEN_SALT,
+                              max_age=ATTACHMENT_TOKEN_MAX_AGE)
+    except signing.BadSignature:
+        return False
+    return str(value) == str(attachment_id)
 
 
 def serialize_contacts(app) -> list:

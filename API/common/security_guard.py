@@ -25,10 +25,14 @@
 """
 from datetime import timedelta
 import datetime
+import hashlib
+import os
 import threading
 import time
 from contextlib import contextmanager
+from pathlib import Path
 
+from django.conf import settings
 from django.db import connection
 from django.utils import timezone
 
@@ -250,13 +254,70 @@ def code_fail_exhausted(key: str, max_fails: int = CODE_MAX_FAILS) -> bool:
 
 
 # ==================== S-05：签名 nonce 去重 ====================
+# 快路径：在 cache/nonce/ 下用 O_CREAT|O_EXCL 原子创建占位文件，跨 worker 共享且不写数据库。
+# 为什么改：原先每个签名请求都要 INSERT 一次 api_nonce，和调用统计、验证码计数抢同一把
+# SQLite 写锁；签名请求越多，写竞争越重。文件名是 app_id+nonce 的 SHA-256，不含明文。
+# 数据库 api_nonce 保留为兜底：文件系统不可用（磁盘只读等）时仍能正确判重。
+_NONCE_PURGE_INTERVAL = 60
+_nonce_purge_lock = threading.Lock()
+_last_nonce_purge = 0.0
 
-def nonce_replayed(app_id: str, nonce: str) -> bool:
-    """nonce 是否已在窗口内出现过（True=重放，应拒绝）。
 
-    首次出现的 nonce 落库并返回 False；窗口内重复返回 True。
-    过期 nonce 由清理逻辑删除后可再次使用（窗口已过，无重放意义）。
-    """
+def _nonce_dir() -> Path:
+    return Path(settings.XYAPI_CACHE_ROOT) / 'nonce'
+
+
+def _purge_nonce_files(directory: Path) -> None:
+    """限频清理超过 nonce 窗口的占位文件"""
+    global _last_nonce_purge
+    now = time.monotonic()
+    if now - _last_nonce_purge < _NONCE_PURGE_INTERVAL:
+        return
+    with _nonce_purge_lock:
+        if now - _last_nonce_purge < _NONCE_PURGE_INTERVAL:
+            return
+        _last_nonce_purge = now
+        cutoff = time.time() - NONCE_WINDOW_SECONDS
+        try:
+            entries = list(directory.iterdir())
+        except OSError:
+            return
+        for entry in entries:
+            try:
+                if entry.stat().st_mtime < cutoff:
+                    entry.unlink()
+            except OSError:
+                pass
+
+
+def _nonce_via_files(app_id: str, nonce: str):
+    """文件存储判重；返回 True=重放 / False=首次，文件系统不可用返回 None"""
+    directory = _nonce_dir()
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        digest = hashlib.sha256(f'{app_id}\0{nonce}'.encode('utf-8')).hexdigest()
+        path = directory / digest
+        try:
+            fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            # 清理是限频的，可能留下刚过窗口的文件：按 mtime 再判一次，避免误报重放
+            try:
+                if time.time() - path.stat().st_mtime > NONCE_WINDOW_SECONDS:
+                    path.unlink()
+                    return _nonce_via_files(app_id, nonce)
+            except OSError:
+                pass
+            return True
+        os.close(fd)
+        _purge_nonce_files(directory)
+        return False
+    except OSError:
+        logger.warning('nonce 文件存储不可用，回退数据库判重', exc_info=True)
+        return None
+
+
+def _nonce_via_db(app_id: str, nonce: str) -> bool:
+    """数据库兜底判重（原实现）"""
     _ensure_tables()
     _purge_guard_rows()
     now = _now_str()
@@ -266,3 +327,15 @@ def nonce_replayed(app_id: str, nonce: str) -> bool:
             [app_id, nonce, now],
         )
         return cur.rowcount == 0
+
+
+def nonce_replayed(app_id: str, nonce: str) -> bool:
+    """nonce 是否已在窗口内出现过（True=重放，应拒绝）。
+
+    首次出现的 nonce 创建占位文件并返回 False；窗口内重复返回 True。
+    过期文件由限频清理删除（窗口已过，无重放意义）。
+    """
+    result = _nonce_via_files(app_id, nonce)
+    if result is not None:
+        return result
+    return _nonce_via_db(app_id, nonce)

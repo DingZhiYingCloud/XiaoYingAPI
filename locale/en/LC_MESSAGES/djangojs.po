@@ -1018,3 +1018,137 @@ msgstr "New task"
 msgid "编辑任务"
 msgstr "Edit task"
 
+# ===== 声音上传：网页录音（static/js/site/voice_record.js） =====
+
+msgid "当前浏览器不支持网页录音，请换用新版 Chrome / Edge / Safari。"
+msgstr "This browser does not support web recording. Please use a recent Chrome / Edge / Safari."
+
+msgid "当前页面不是 HTTPS（或 localhost），浏览器会拒绝访问麦克风。请改用 https 地址打开。"
+msgstr "This page is not HTTPS (or localhost), so the browser will block microphone access. Open it via an https address."
+
+msgid "正在录音…"
+msgstr "Recording…"
+
+msgid "再点一次红色按钮停止；录到 60 秒会自动停止。"
+msgstr "Click the red button again to stop; recording stops automatically at 60 seconds."
+
+msgid "无法开始录音"
+msgstr "Cannot start recording"
+
+msgid "麦克风权限被拒绝：请点地址栏左侧的权限图标，把麦克风改为「允许」后重试。"
+msgstr "Microphone permission was denied: open the permission icon in the address bar, set Microphone to Allow, then try again."
+
+msgid "没有找到可用的麦克风，请检查设备是否已连接。"
+msgstr "No available microphone was found. Check that the device is connected."
+
+msgid "麦克风正被其它程序占用，请关闭占用它的程序后重试。"
+msgstr "The microphone is in use by another program. Close it and try again."
+
+msgid "无法打开麦克风，请检查系统录音权限后重试。"
+msgstr "Cannot open the microphone. Check the system recording permission and try again."
+
+msgid "录音失败"
+msgstr "Recording failed"
+
+msgid "没有录到声音，请检查麦克风后重试。"
+msgstr "No audio was captured. Check the microphone and try again."
+
+msgid "录音过长"
+msgstr "Recording too large"
+
+msgid "录音文件超过大小限制，请缩短后重试。"
+msgstr "The recording exceeds the size limit. Record a shorter clip and try again."
+
+msgid "本次录音"
+msgstr "This recording"
+
+msgid "秒"
+msgstr "s"
+
+msgid "确认没问题就点「上传并获取链接」；不满意可以重新录制。"
+msgstr "Click \"Upload and get link\" when it sounds right; otherwise record again."
+
+msgid "录音太短"
+msgstr "Recording too short"
+
+msgid "录音需至少 3 秒，请点「重新录制」再录长一点。"
+msgstr "Recordings must be at least 3 seconds. Click \"Record again\" and record a bit longer."
+
+msgid "录音完成"
+msgstr "Recording ready"
+
+msgid "时长"
+msgstr "Duration"
+
+msgid "大小"
+msgstr "Size"
+
+msgid "上传中…"
+msgstr "Uploading…"
+
+msgid "登录状态已失效，请刷新页面重新登录。"
+msgstr "Your session has expired. Refresh the page and sign in again."
+
+msgid "服务返回异常，请稍后重试。"
+msgstr "The service returned an unexpected response. Please try again later."
+
+msgid "上传失败，请稍后重试。"
+msgstr "Upload failed. Please try again later."
+
+msgid "上传失败"
+msgstr "Upload failed"
+
+msgid "当前浏览器不支持网页录音（缺少 MediaRecorder）。请换用新版 Chrome / Edge / Safari，或改用 API 上传音频文件。"
+msgstr "This browser does not support web recording (MediaRecorder is missing). Use a recent Chrome / Edge / Safari, or upload an audio file via the API."
+
+msgid "已上传，复制下方链接即可使用；需要新录音请点「重新录制」。"
+msgstr "Uploaded — copy the link below to use it. To make a new recording, click \"Record again\"."
+
+msgid "没有检测到声音"
+msgstr "No sound detected"
+
+msgid "录音里没有检测到声音：请检查麦克风是否被静音、系统是否选对了输入设备，然后点「重新录制」。"
+msgstr "No sound was detected in the recording. Check that the microphone is not muted and that the correct input device is selected, then click \"Record again\"."
+
+# ===== 自研图形验证码：滑块验证演示（static/js/site/slider_captcha.js） =====
+
+msgid "加载失败"
+msgstr "Load failed"
+
+msgid "加载失败，请重试"
+msgstr "Load failed, please try again"
+
+msgid "拖动滑块完成拼图"
+msgstr "Drag the slider to complete the puzzle"
+
+msgid "拖动中…"
+msgstr "Dragging…"
+
+msgid "校验中…"
+msgstr "Verifying…"
+
+msgid "验证通过"
+msgstr "Verified"
+
+msgid "验证失败，请重试"
+msgstr "Verification failed, please try again"
+
+msgid "验证失败，正在换一张…"
+msgstr "Verification failed, loading a new challenge…"
+
+msgid "请按顺序点击图片中的汉字"
+msgstr "Click the Chinese characters in the image in order"
+
+msgid "滑块验证码"
+msgstr "Slider CAPTCHA"
+
+msgid "汉字点选验证码"
+msgstr "Chinese character CAPTCHA"
+
+msgid "拖动下方滑块，将拼图块对齐缺口"
+msgstr "Drag the slider below to align the puzzle piece with the gap"
+
+msgid "请依次点击图中的 %(count)s 个汉字，完成安全验证"
+msgstr "Click the %(count)s Chinese characters in order to complete verification"
+
+

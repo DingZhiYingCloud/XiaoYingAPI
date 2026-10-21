@@ -99,8 +99,15 @@
           <span class="h-px flex-1 bg-base-300"></span>
         </div>
         <p class="text-xs text-base-content/60">{% trans "为防止恶意刷屏，游客提交前需完成一次图形验证。" %}</p>
-        <input type="hidden" name="captcha_id" id="fb-captcha-id" />
-        <input type="hidden" name="answer" id="fb-captcha-answer" />
+        {# 校验参数随验证码类型不同：字符/算术用 captcha_id+answer，滑块用 slider_id+x+track，点选用 challenge_id+points #}
+        <input type="hidden" name="captcha_type" />
+        <input type="hidden" name="captcha_id" />
+        <input type="hidden" name="answer" />
+        <input type="hidden" name="slider_id" />
+        <input type="hidden" name="x" />
+        <input type="hidden" name="track" />
+        <input type="hidden" name="challenge_id" />
+        <input type="hidden" name="points" />
       </div>
       {% endif %}
 
@@ -122,9 +129,11 @@
 {% endblock %}
 
 {% block js %}
+{# 行为验证影子采集：只上报聚合特征用于阈值校准，不影响反馈提交 #}
+<script src="{% static 'js/site/behavior.js' %}?v=20261021a"></script>
 {% if captcha_required %}
-<script src="{% static 'js/captcha_auth/self/captcha-client.js' %}?v=20260926b"></script>
+<script src="{% static 'js/captcha_auth/self/captcha-client.js' %}?v=20261021a"></script>
 <script>window.XY_FB_CAPTCHA = true;</script>
-<script src="{% static 'js/site/feedback_submit.js' %}?v=20260930a"></script>
+<script src="{% static 'js/site/feedback_submit.js' %}?v=20261021a"></script>
 {% endif %}
 {% endblock %}

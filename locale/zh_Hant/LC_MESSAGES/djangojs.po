@@ -1016,3 +1016,137 @@ msgstr "新增任務"
 
 msgid "编辑任务"
 msgstr "編輯任務"
+
+# ===== 声音上传：网页录音（static/js/site/voice_record.js） =====
+
+msgid "当前浏览器不支持网页录音，请换用新版 Chrome / Edge / Safari。"
+msgstr "當前瀏覽器不支持網頁錄音，請換用新版 Chrome / Edge / Safari。"
+
+msgid "当前页面不是 HTTPS（或 localhost），浏览器会拒绝访问麦克风。请改用 https 地址打开。"
+msgstr "當前頁面不是 HTTPS（或 localhost），瀏覽器會拒絕訪問麥克風。請改用 https 地址打開。"
+
+msgid "正在录音…"
+msgstr "正在錄音…"
+
+msgid "再点一次红色按钮停止；录到 60 秒会自动停止。"
+msgstr "再點一次紅色按鈕停止；錄到 60 秒會自動停止。"
+
+msgid "无法开始录音"
+msgstr "無法開始錄音"
+
+msgid "麦克风权限被拒绝：请点地址栏左侧的权限图标，把麦克风改为「允许」后重试。"
+msgstr "麥克風權限被拒絕：請點地址欄左側的權限圖標，把麥克風改為「允許」後重試。"
+
+msgid "没有找到可用的麦克风，请检查设备是否已连接。"
+msgstr "沒有找到可用的麥克風，請檢查設備是否已連接。"
+
+msgid "麦克风正被其它程序占用，请关闭占用它的程序后重试。"
+msgstr "麥克風正被其它程序佔用，請關閉佔用它的程序後重試。"
+
+msgid "无法打开麦克风，请检查系统录音权限后重试。"
+msgstr "無法打開麥克風，請檢查系統錄音權限後重試。"
+
+msgid "录音失败"
+msgstr "錄音失敗"
+
+msgid "没有录到声音，请检查麦克风后重试。"
+msgstr "沒有錄到聲音，請檢查麥克風后重試。"
+
+msgid "录音过长"
+msgstr "錄音過長"
+
+msgid "录音文件超过大小限制，请缩短后重试。"
+msgstr "錄音文件超過大小限制，請縮短後重試。"
+
+msgid "本次录音"
+msgstr "本次錄音"
+
+msgid "秒"
+msgstr "秒"
+
+msgid "确认没问题就点「上传并获取链接」；不满意可以重新录制。"
+msgstr "確認沒問題就點「上傳並獲取鏈接」；不滿意可以重新錄製。"
+
+msgid "录音太短"
+msgstr "錄音太短"
+
+msgid "录音需至少 3 秒，请点「重新录制」再录长一点。"
+msgstr "錄音需至少 3 秒，請點「重新錄製」再錄長一點。"
+
+msgid "录音完成"
+msgstr "錄音完成"
+
+msgid "时长"
+msgstr "時長"
+
+msgid "大小"
+msgstr "大小"
+
+msgid "上传中…"
+msgstr "上傳中…"
+
+msgid "登录状态已失效，请刷新页面重新登录。"
+msgstr "登錄狀態已失效，請刷新頁面重新登錄。"
+
+msgid "服务返回异常，请稍后重试。"
+msgstr "服務返回異常，請稍後重試。"
+
+msgid "上传失败，请稍后重试。"
+msgstr "上傳失敗，請稍後重試。"
+
+msgid "上传失败"
+msgstr "上傳失敗"
+
+msgid "当前浏览器不支持网页录音（缺少 MediaRecorder）。请换用新版 Chrome / Edge / Safari，或改用 API 上传音频文件。"
+msgstr "當前瀏覽器不支持網頁錄音（缺少 MediaRecorder）。請換用新版 Chrome / Edge / Safari，或改用 API 上傳音頻文件。"
+
+msgid "已上传，复制下方链接即可使用；需要新录音请点「重新录制」。"
+msgstr "已上傳，複製下方鏈接即可使用；需要新錄音請點「重新錄製」。"
+
+msgid "没有检测到声音"
+msgstr "沒有檢測到聲音"
+
+msgid "录音里没有检测到声音：请检查麦克风是否被静音、系统是否选对了输入设备，然后点「重新录制」。"
+msgstr "錄音裡沒有檢測到聲音：請檢查麥克風是否被靜音、系統是否選對了輸入設備，然後點「重新錄製」。"
+
+# ===== 自研图形验证码：滑块验证演示（static/js/site/slider_captcha.js） =====
+
+msgid "加载失败"
+msgstr "加載失敗"
+
+msgid "加载失败，请重试"
+msgstr "加載失敗，請重試"
+
+msgid "拖动滑块完成拼图"
+msgstr "拖動滑塊完成拼圖"
+
+msgid "拖动中…"
+msgstr "拖動中…"
+
+msgid "校验中…"
+msgstr "校驗中…"
+
+msgid "验证通过"
+msgstr "驗證通過"
+
+msgid "验证失败，请重试"
+msgstr "驗證失敗，請重試"
+
+msgid "验证失败，正在换一张…"
+msgstr "驗證失敗，正在換一張…"
+
+msgid "请按顺序点击图片中的汉字"
+msgstr "請按順序點擊圖片中的漢字"
+
+msgid "滑块验证码"
+msgstr "滑塊驗證碼"
+
+msgid "汉字点选验证码"
+msgstr "漢字點選驗證碼"
+
+msgid "拖动下方滑块，将拼图块对齐缺口"
+msgstr "拖動下方滑塊，將拼圖塊對齊缺口"
+
+msgid "请依次点击图中的 %(count)s 个汉字，完成安全验证"
+msgstr "請依次點擊圖中的 %(count)s 個漢字，完成安全驗證"
+

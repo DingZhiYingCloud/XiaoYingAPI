@@ -82,6 +82,12 @@ MENU = [
                 'key': 'console_stats', 'name': '调用统计', 'url': 'website:console_stats',
                 'icon': 'chart-column', 'desc': '按服务、接口、项目与结果查看调用量与耗时。',
             },
+            {
+                'key': 'console_captcha', 'name': '验证码监控', 'url': 'website:console_captcha',
+                'icon': 'fingerprint',
+                'desc': '自研验证码的专项监控：生成量、通过率、失败原因分布、限流与冷却拦截，'
+                        '以及字符 / 滑块 / 汉字点选三张挑战表的在手库存。',
+            },
         ],
     },
     {

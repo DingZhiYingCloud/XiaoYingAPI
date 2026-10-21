@@ -12,6 +12,7 @@ max_tokens / stop）全部由后台「AI 模型」页（/console/ai/models/）�
 参数约定见各视图的 docstring；响应统一为 {"code", "msg", "data"}。
 """
 import json
+import logging
 
 from django.http import StreamingHttpResponse
 from django.views.decorators.http import require_http_methods
@@ -21,6 +22,8 @@ from API.common.errors import safe_error
 from API.common.responses import json_response as _json_response
 
 from . import utils
+
+logger = logging.getLogger('api.request')
 
 
 def _error_code(msg):
@@ -238,6 +241,12 @@ def _stream_response(target, messages):
         except ValueError as e:
             # 流启动阶段出错（Key 无效 / 地址不通 / 上游返回错误）
             yield f"data: {json.dumps({'code': StatusCode.EXTERNAL_API_FAILED, 'msg': safe_error('AI 对话', e)}, ensure_ascii=False)}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception:
+            # 兜底：任何未预料的异常也要给前端一帧人话错误 + 结束标记，
+            # 否则浏览器会拿着半截 SSE 一直等（比直接断开更难排查）。
+            logger.exception('AI 流式响应异常')
+            yield f"data: {json.dumps({'code': StatusCode.EXTERNAL_API_FAILED, 'msg': 'AI 服务异常，请稍后重试'}, ensure_ascii=False)}\n\n"
             yield "data: [DONE]\n\n"
 
     response = StreamingHttpResponse(streaming_content=sse_generator(),

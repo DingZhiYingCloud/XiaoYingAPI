@@ -13,6 +13,7 @@
 - 逐字符随机颜色 / 随机旋转角度 / 随机纵向偏移，叠加干扰线与噪点，提高 OCR 识别成本；
 - 无状态：每次调用独立生成，可安全并发。
 """
+import colorsys
 import io
 import math
 import random
@@ -25,7 +26,6 @@ CHAR_POOL = '23456789ABCDEFGHJKMNPQRSTUVWXYZ'
 # 画布尺寸与外观参数
 IMAGE_WIDTH = 180
 IMAGE_HEIGHT = 64
-BACKGROUND = (246, 248, 251)
 
 # 字符验证码长度范围（越界自动收敛）
 DEFAULT_LENGTH = 4
@@ -33,11 +33,11 @@ MIN_LENGTH = 4
 MAX_LENGTH = 6
 
 # 最大字号（按字符数自动收缩，避免多字符时重叠）
-MAX_FONT_SIZE = 40
+MAX_FONT_SIZE = 46
 
-# 干扰线 / 噪点数量
-LINE_COUNT = 5
-DOT_COUNT = 90
+# 干扰线 / 噪点数量（浅色，不盖住字符）
+LINE_COUNT = 4
+DOT_COUNT = 70
 
 # 字符旋转角度范围
 ROTATE_DEGREE = 28
@@ -50,23 +50,36 @@ WARP_WAVELENGTH = 110
 
 
 def _random_dark_color():
-    """随机深色（保证字符与浅色背景有足够对比度）"""
-    return (random.randint(0, 110), random.randint(0, 110), random.randint(0, 110))
+    """随机深色前景：固定低亮度、较高饱和度
+
+    之前 RGB 三通道各自独立随机，容易出现发灰、对比度不稳定的颜色；
+    改用 HSV 控制亮度上限，保证每张图的字符都足够清晰。
+    """
+    hue = random.random()
+    r, g, b = colorsys.hsv_to_rgb(
+        hue, random.uniform(0.55, 0.85), random.uniform(0.30, 0.50))
+    return int(r * 255), int(g * 255), int(b * 255)
 
 
 def _random_light_color():
     """随机浅色（干扰元素用，避免盖住字符）"""
-    return (random.randint(110, 210), random.randint(110, 210), random.randint(110, 210))
+    return (random.randint(165, 220), random.randint(165, 220), random.randint(165, 220))
+
+
+def _random_background():
+    """随机浅色背景：固定底色容易被 OCR 按固定阈值二值化"""
+    return (random.randint(240, 252), random.randint(242, 253), random.randint(244, 255))
 
 
 def _auto_font_size(text):
-    """按字符数自动计算字号：字符越多字号越小，保证不重叠"""
-    return min(MAX_FONT_SIZE, int((IMAGE_WIDTH - 10) / len(text) * 1.15))
+    """按字符数自动计算字号：字号不超过单格宽度的 1.15 倍，避免多字符时相互压字"""
+    cell_width = IMAGE_WIDTH / len(text)
+    return min(MAX_FONT_SIZE, int(cell_width * 1.15))
 
 
 def _draw_char(canvas, char, center_x, center_y, font_size):
     """把单个字符以随机颜色、随机角度绘制到画布指定中心位置"""
-    layer_size = font_size * 2
+    layer_size = int(font_size * 2.2)
     layer = Image.new('RGBA', (layer_size, layer_size), (0, 0, 0, 0))
     ImageDraw.Draw(layer).text(
         (layer_size / 2, layer_size / 2), char,
@@ -102,7 +115,7 @@ def _render(text):
         )
 
     # 2. 字符层整体做正弦扭曲，破坏规整字形
-    canvas = Image.new('RGB', (IMAGE_WIDTH, IMAGE_HEIGHT), BACKGROUND)
+    canvas = Image.new('RGB', (IMAGE_WIDTH, IMAGE_HEIGHT), _random_background())
     draw = ImageDraw.Draw(canvas)
 
     # 3. 干扰线（画在字符下层）

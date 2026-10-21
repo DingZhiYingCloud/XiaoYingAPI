@@ -47,9 +47,13 @@ class EmailTask(BaseModel):
     )
     last_sent_at = models.DateTimeField('上次发送时间', null=True, blank=True)
     sent_count = models.PositiveIntegerField('累计发送次数', default=0)
+    fail_count = models.PositiveIntegerField(
+        '连续失败次数', default=0,
+        help_text='发送失败累加，成功后清零；一次性任务连续失败达到上限后自动停用',
+    )
     last_ok = models.BooleanField(
         '上次是否成功', null=True, blank=True,
-        help_text='从未发送时为空；发送失败只记录、不自动重试',
+        help_text='从未发送时为空；失败会自动重试（重复任务等下一周期，一次性任务按短间隔重试）',
     )
     last_message = models.CharField('上次结果说明', max_length=500, blank=True, default='')
 

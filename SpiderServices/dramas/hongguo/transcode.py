@@ -16,7 +16,7 @@
     （内容是属主 pid，mtime 是开工时间）：多 worker 各读同一份文件，状态天然一致；
     属主进程已死（部署重启留下的僵尸锁）会被下一次点播立刻接管，不会把某集永久卡住。
 
-    另外设**全局并发上限**（`HONGGUO_STREAM_MAX_CONCURRENT`，默认 2）：只限「同一集」不够
+    另外设**全局并发上限**（`HONGGUO_STREAM_MAX_CONCURRENT`，默认 1）：只限「同一集」不够
     —— 多个不同剧集被同时点播时，每个都会起一个 ffmpeg（各吃满多核），把整机 CPU 打满、
     load 冲到 20+（线上事故）。槽位同样用锁文件原语做**跨进程**计数，超出的请求返回
     「准备中」交给前端轮询，等有槽位再转。
@@ -279,7 +279,13 @@ def ensure(series_id, ep, width):
 
 
 def _start(series_id, ep, width, key, slot):
-    """启动后台转码线程（转码结束/失败都在 finally 里释放占用的全局槽位）"""
+    """启动后台转码线程
+
+    **锁的释放放在这里而不是 `_transcode`**：取流 / 解包等步骤发生在 `_transcode` 的
+    `try` 之前，若只在 `_transcode` 的 finally 里释放，那些步骤一抛异常锁就永远留下，
+    该集会被判「正在转」直到 30 分钟僵尸超时（线上表现为一直 200/202「准备中」）。
+    线程的 finally 与「抢锁」处在同一层，才能保证任何失败路径都释放自己占的锁和槽位。
+    """
     def worker():
         try:
             _transcode(series_id, ep, width)
@@ -289,10 +295,17 @@ def _start(series_id, ep, width, key, slot):
             with _JOBS_LOCK:
                 _JOBS[key] = {'state': 'failed', 'error': str(exc)[:300]}
         finally:
+            _release_lock_file(_lock_path(series_id, ep, width))
             _release_lock_file(slot)
 
-    threading.Thread(target=worker, name=f'hongguo-transcode-{key}',
-                     daemon=True).start()
+    try:
+        threading.Thread(target=worker, name=f'hongguo-transcode-{key}',
+                         daemon=True).start()
+    except Exception:
+        # 线程都没起来：同样要把锁和槽位还回去，否则这一集会被永久占住
+        _release_lock_file(_lock_path(series_id, ep, width))
+        _release_lock_file(slot)
+        raise
 
 
 def _pick_track(tracks):
@@ -355,7 +368,8 @@ def _transcode(series_id, ep, width):
     series_id, ep, width = str(series_id), int(ep), int(width)
     out_path = stream_path(series_id, ep, width)
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    tmp_path = out_path + '.tmp.mp4'
+    # 临时文件带 pid + 线程 id：即便极端情况下发生锁接管，两个 ffmpeg 也不会写同一个临时文件
+    tmp_path = f'{out_path}.{os.getpid()}.{threading.get_ident()}.tmp.mp4'
 
     vids = app_api.get_episode_vids(series_id)
     vid = vids.get(ep)
@@ -401,4 +415,5 @@ def _transcode(series_id, ep, width):
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
-        _release_lock_file(out_path + '.lock')
+        # 注意：每集锁由 _start 的线程 finally 统一释放（见 _start 的说明），
+        # 这里不再释放 —— 否则取流 / 解包阶段的异常仍然会漏锁。

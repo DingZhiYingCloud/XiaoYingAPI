@@ -30,15 +30,18 @@ import os
 import sys
 import threading
 import time
+from urllib.parse import quote
 
 from datetime import timedelta
 
 from django.conf import settings
 from django.db import close_old_connections
 from django.db.models import Q
+from django.urls import reverse
 from django.utils import timezone
 
 from API.apis.ai.BuiltInModel import utils as ai_utils
+from API.apis.feedback.utils import attachment_token
 from API.models import (
     AI_RUNNING_STALE_MINUTES,
     AiModel,
@@ -204,16 +207,21 @@ _VIDEO_MIME = {
 """视频扩展名 → data URI 的 MIME（反馈页允许的上传格式，见 FileUploader.TYPE_CONFIG）"""
 
 
-def _media_absolute_url(path) -> str:
-    """把附件的相对路径拼成公网可访问的绝对地址（供上游模型抓取）
+def _media_absolute_url(att) -> str:
+    """把附件拼成公网可访问的绝对地址（供上游模型抓取）
+
+    `/media/uploads/feedback/` 已禁止匿名直读，故这里改用受控下载地址 + 短时签名 token：
+    上游拿到的是一个 1 小时后失效、只对这个附件有效的 URL，既不用放开媒体目录，
+    也不会把永久公开链接交给第三方。
 
     站点地址来自 .env 的 `XYAPI_SITE_URL`（见 settings.SITE_URL）。未配置时返回空串 ——
     宁可少审一个超大的视频，也不要拼出一个上游抓不到的地址白等一轮超时。
     """
     base = (getattr(settings, 'SITE_URL', '') or '').strip().rstrip('/')
-    if not base or not path:
+    if not base or att is None:
         return ''
-    return f'{base}{settings.MEDIA_URL}{path}'
+    path = reverse('website:feedback_attachment', args=[att.pk])
+    return f'{base}{path}?token={quote(attachment_token(att.pk))}'
 
 
 def _read_attachment(att) -> str:
@@ -276,7 +284,7 @@ def _review_media(feedback, target):
 
         url = _read_attachment(att)
         if not url:
-            url = _media_absolute_url(att.path)
+            url = _media_absolute_url(att)
             if url:
                 logger.info('反馈附件 %s 体积过大，回落公网地址送审', att.pk)
         if not url:

@@ -1,0 +1,71 @@
+{% extends 'template.html' %}
+{% load static i18n %}
+
+{% block title %}{% trans "滑块验证 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "滑块验证,拼图验证码,自研验证码" %}{% endblock %}
+{% block description %}{% trans "自研滑块验证码演示：拖动拼图块对齐缺口，服务端校验位置与拖动轨迹。" %}{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<section class="mx-auto w-full max-w-3xl px-4 py-8 sm:py-10">
+  <nav class="breadcrumbs text-sm">
+    <ul>
+      <li><a href="/">{% trans "首页" %}</a></li>
+      <li><a href="/docs/captcha_self/">{% trans "自研图形验证码" %}</a></li>
+      <li>{% trans "滑块验证" %}</li>
+    </ul>
+  </nav>
+
+  <h1 class="mt-2 text-2xl font-bold sm:text-3xl">{% trans "滑块验证" %}</h1>
+  <p class="mt-2 max-w-2xl text-sm leading-relaxed text-base-content/70">
+    {% trans "按住下方滑块向右拖动，让拼图块与背景缺口对齐后松手。服务端会校验位置误差与拖动轨迹，一次性有效。" %}
+  </p>
+
+  <div class="mt-6 card border border-base-300 bg-base-100">
+    <div class="card-body items-center gap-4">
+      <div id="slider-captcha" class="w-full" style="max-width: 320px;"
+           data-generate-url="/api/captcha_self/slider/generate"
+           data-verify-url="/api/captcha_self/slider/verify">
+        {% csrf_token %}
+        <div data-stage class="relative w-full overflow-hidden rounded-box border border-base-300 bg-base-200"
+             style="aspect-ratio: 320 / 160; touch-action: none;">
+          <img data-background alt="{% trans '验证码背景' %}" draggable="false"
+               class="block h-full w-full select-none" />
+          <img data-piece alt="{% trans '拼图块' %}" draggable="false"
+               class="absolute left-0 hidden select-none" />
+        </div>
+
+        <div data-track class="relative mt-3 h-11 overflow-hidden rounded-full bg-base-200">
+          <div data-fill class="pointer-events-none absolute inset-y-0 left-0 bg-primary/20" style="width: 0"></div>
+          <span data-track-hint class="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-base-content/60">
+            {% trans "按住滑块拖动" %}
+          </span>
+          <button type="button" data-handle
+                  class="btn btn-primary btn-circle absolute left-0 top-0 h-11 w-11"
+                  style="touch-action: none;"
+                  aria-label="{% trans '拖动滑块' %}" title="{% trans '拖动滑块' %}">
+            <i data-lucide="chevrons-right"></i>
+          </button>
+        </div>
+      </div>
+
+      <div data-alert role="alert" class="alert hidden w-full text-sm"></div>
+
+      <div class="flex items-center gap-2">
+        <button type="button" data-refresh class="btn btn-sm">{% trans "换一张" %}</button>
+        <span data-status class="text-xs text-base-content/60">{% trans "加载中…" %}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-6 rounded-box border border-base-300 bg-base-200/40 p-4 text-xs leading-relaxed text-base-content/70">
+    <p>{% trans "缺口横坐标不会下发给前端，服务端只保存答案摘要；提交时按容差范围枚举比对。" %}</p>
+    <p class="mt-1">{% trans "会检查拖动轨迹：点数过少、用时过短或瞬移都会被拒绝，脚本直接猜位置过不去。" %}</p>
+    <p class="mt-1">{% trans "每次挑战只能校验一次；连续失败会触发短时冷却，接口同时按 IP 限流。" %}</p>
+  </div>
+</section>
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'js/site/slider_captcha.js' %}?v=20261021a"></script>
+{% endblock %}

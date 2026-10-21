@@ -26,13 +26,18 @@
     captchaStarted = true;
     window.XYCaptchaSelf.init({
       autoVerify: false,
+      kind: 'random',   // 与登录 / 注册一致：随机抽一种自研验证码
       onReady: function () {
         captchaReady = true;
         window.XYCaptchaSelf.show();
       },
       onValidate: function (data) {
-        document.getElementById('fb-captcha-id').value = data.captcha_id;
-        document.getElementById('fb-captcha-answer').value = data.answer;
+        // data 的键随验证码类型不同（captcha_id+answer / slider_id+x+track / challenge_id+points），
+        // 统一按字段名回填到表单隐藏域，后端按 captcha_type 路由校验
+        Object.keys(data).forEach(function (name) {
+          var field = form.elements[name];
+          if (field) { field.value = data[name]; }
+        });
         passed = true;
         form.submit();
       },

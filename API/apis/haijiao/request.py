@@ -60,10 +60,23 @@ from django.http import HttpResponse, QueryDict
 from django.views.decorators.http import require_http_methods
 
 from API.common import StatusCode
+from API.common import ratelimit as _rl
 from API.common.errors import safe_error
+from API.common.ip_guard import client_ip
 from API.common.responses import json_response as _json_response
 from API.common.url_safety import check_public_http_url
 from . import utils
+
+# 两个开放端点（图片解码 / m3u8）的 IP 限流：它们会代理上游、派生真密钥（起 node 子进程），
+# 不限流时匿名者可无限刷，消耗平台账号与 CPU。
+IMAGE_RATE_LIMIT = 60          # 次 / 分钟
+VIDEO_M3U8_RATE_LIMIT = 30     # 次 / 分钟
+RATE_WINDOW_SECONDS = 60
+
+
+def _rate_limited(request, scope, limit):
+    return not _rl.allow(f'haijiao:{scope}:{client_ip(request)}', limit, RATE_WINDOW_SECONDS)
+
 
 # 可选的内容模块（与源站首页栏目一一对应）
 TABS = ('hot', 'news', 'events', 'original', 'essence', 'latest')
@@ -1211,6 +1224,9 @@ def video_m3u8_view(request):
         topic_id      (必填): 帖子 ID
         attachment_id (必填): 视频附件 ID（取自详情接口 videos[].id）
     """
+    if _rate_limited(request, 'video_m3u8', VIDEO_M3U8_RATE_LIMIT):
+        return _json_response(StatusCode.RATE_LIMITED, msg='请求过于频繁，请稍后重试')
+
     topic_id, err = _require_int(request.GET.get('topic_id', '').strip(), 'topic_id(帖子ID)')
     if err:
         return err
@@ -1236,6 +1252,9 @@ def image_view(request):
     查询参数:
         url (必填): 加密图片地址（http/https 公网地址）
     """
+    if _rate_limited(request, 'image', IMAGE_RATE_LIMIT):
+        return _json_response(StatusCode.RATE_LIMITED, msg='请求过于频繁，请稍后重试')
+
     url = request.GET.get('url', '').strip()
     if not url:
         return _json_response(StatusCode.PARAM_MISSING, msg='参数缺失: url(加密图片地址)')

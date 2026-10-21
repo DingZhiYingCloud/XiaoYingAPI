@@ -32,7 +32,7 @@
         <p class="text-sm leading-relaxed">{{ item.display_title }}</p>
         <p class="flex items-center gap-1 text-xs text-base-content/50">
           <i data-lucide="message-square" class="h-3.5 w-3.5"></i>
-          {% blocktrans with n=item.replies.count %}{{ n }} 条回复{% endblocktrans %}
+          {% blocktrans with n=item.reply_count %}{{ n }} 条回复{% endblocktrans %}
         </p>
       </div>
     </a>

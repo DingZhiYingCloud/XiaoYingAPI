@@ -1,0 +1,63 @@
+{% extends 'template.html' %}
+{% load static i18n %}
+
+{% block title %}{% trans "汉字点选 - 小影API" %}{% endblock %}
+{% block keywords %}{% trans "汉字点选,点选验证码,汉字识别验证码" %}{% endblock %}
+{% block description %}{% trans "自研汉字点选验证码演示：按提示依次点击图片中的目标汉字。" %}{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<section class="mx-auto w-full max-w-3xl px-4 py-8 sm:py-10">
+  <nav class="breadcrumbs text-sm">
+    <ul>
+      <li><a href="/">{% trans "首页" %}</a></li>
+      <li><a href="/docs/captcha_self/">{% trans "自研图形验证码" %}</a></li>
+      <li>{% trans "汉字点选" %}</li>
+    </ul>
+  </nav>
+
+  <h1 class="mt-2 text-2xl font-bold sm:text-3xl">{% trans "汉字点选" %}</h1>
+  <p class="mt-2 max-w-2xl text-sm leading-relaxed text-base-content/70">
+    {% trans "按提示依次点击图片中的目标汉字，点够目标数量后自动提交。服务端校验点击顺序与命中位置，一次性有效。" %}
+  </p>
+
+  <div class="mt-6 card border border-base-300 bg-base-100">
+    <div class="card-body items-center gap-4">
+      <div id="click-captcha" class="w-full" style="max-width: 360px;"
+           data-generate-url="/api/captcha_self/click/generate"
+           data-verify-url="/api/captcha_self/click/verify">
+        {% csrf_token %}
+        <div class="flex min-h-8 flex-wrap items-center justify-center gap-1 text-sm">
+          <span class="text-base-content/70">{% trans "请依次点击：" %}</span>
+          <span data-chars class="font-semibold">{% trans "加载中…" %}</span>
+        </div>
+
+        <div data-stage class="relative mt-2 w-full overflow-hidden rounded-box border border-base-300 bg-base-200"
+             style="aspect-ratio: 360 / 200; cursor: crosshair;">
+          <img data-image alt="{% trans '汉字验证码' %}" draggable="false"
+               class="block h-full w-full select-none" />
+        </div>
+
+        <div class="mt-3 flex items-center gap-2">
+          <button type="button" data-undo class="btn btn-ghost btn-sm">{% trans "撤销" %}</button>
+          <button type="button" data-refresh class="btn btn-sm">{% trans "换一张" %}</button>
+          <span data-progress class="ml-auto font-mono text-xs text-base-content/60">0 / 0</span>
+        </div>
+      </div>
+
+      <div data-alert role="alert" class="alert hidden w-full text-sm"></div>
+      <span data-status class="text-xs text-base-content/60">{% trans "加载中…" %}</span>
+    </div>
+  </div>
+
+  <div class="mt-6 rounded-box border border-base-300 bg-base-200/40 p-4 text-xs leading-relaxed text-base-content/70">
+    <p>{% trans "目标汉字的坐标不会下发给前端，只存在服务端用于命中判断。" %}</p>
+    <p class="mt-1">{% trans "会校验点击顺序与总用时：顺序错、点偏、或瞬间点完都会被拒绝。" %}</p>
+    <p class="mt-1">{% trans "每次挑战只能校验一次；连续失败会触发短时冷却，接口同时按 IP 限流。" %}</p>
+  </div>
+</section>
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'js/site/click_word_captcha.js' %}?v=20261021a"></script>
+{% endblock %}

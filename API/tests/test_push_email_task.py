@@ -216,14 +216,17 @@ class SchedulerTests(TestCase):
         self.assertEqual(task.sent_count, 1)
 
     @mock.patch(SEND_TARGET, return_value=(False, '邮件发送失败: SMTP down'))
-    def test_failure_recorded_no_retry(self, send):
+    def test_failure_recorded_and_next_cycle(self, send):
         task = _make_task(interval_minutes=30, next_run_at=timezone.now() - timedelta(minutes=1))
         task_utils.run_due_tasks()
         task.refresh_from_db()
         self.assertFalse(task.last_ok)
         self.assertIn('SMTP', task.last_message)
-        self.assertEqual(task.sent_count, 1)
-        # 失败也照常推进下一周期，第二轮不再命中
+        # sent_count 只统计成功发送；失败单独记在 fail_count，避免重试把次数刷虚
+        self.assertEqual(task.sent_count, 0)
+        self.assertEqual(task.fail_count, 1)
+        # 重复任务失败后等下一个正常周期，不额外补发
+        self.assertGreater(task.next_run_at, timezone.now() + timedelta(minutes=25))
         self.assertEqual(task_utils.run_due_tasks(), 0)
 
     @mock.patch(SEND_TARGET, return_value=(True, 'ok'))

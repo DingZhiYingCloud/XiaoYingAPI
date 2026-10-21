@@ -19,6 +19,22 @@ logger = logging.getLogger('api.request')
 _RL = caches['ratelimit']
 
 
+def _bump(key: str, window: int) -> int:
+    """把窗口计数 +1 并返回本次计数（allow / hit 共用的底层实现）"""
+    cache_key = f'rl:{key}'
+    now = time.time()
+    state = _RL.get(cache_key)
+    if state is None:                      # 新窗口
+        _RL.set(cache_key, (now, 1), window)
+        return 1
+    start, count = state
+    count += 1
+    # 距窗口结束至少留 1 秒，避免 TTL 算成 0 时键立刻过期、窗口被无限延长
+    remaining = max(1, int(round(window - (now - start))))
+    _RL.set(cache_key, (start, count), remaining)
+    return count
+
+
 def allow(key: str, limit: int, window: int) -> bool:
     """记一次访问并判断是否放行（窗口内累计超过 limit 即返回 False）
 
@@ -30,21 +46,47 @@ def allow(key: str, limit: int, window: int) -> bool:
     时间**。不能直接依赖缓存后端的自增计数 —— 它的实现是按后端默认 TTL 续期的，窗口会被
     一次次请求越拖越长（实测：60 秒窗口在持续请求后被拖成 300 秒，限流形同失效）。
     """
-    cache_key = f'rl:{key}'
-    now = time.time()
     try:
-        state = _RL.get(cache_key)
-        if state is None:                      # 新窗口
-            _RL.set(cache_key, (now, 1), window)
-            return True
-        start, count = state
-        count += 1
-        # 距窗口结束至少留 1 秒，避免 TTL 算成 0 时键立刻过期、窗口被无限延长
-        remaining = max(1, int(round(window - (now - start))))
-        _RL.set(cache_key, (start, count), remaining)
-        return count <= limit
+        return _bump(key, window) <= limit
     except Exception:
         # 限流是「附加保护」而不是业务前提：缓存不可用（磁盘满等）时放行，
         # 不能因为限流组件本身故障把正常接口一起拖挂。
         logger.exception('限流计数失败，本次放行: key=%s', key)
         return True
+
+
+def hit(key: str, window: int) -> int:
+    """只计数、不判定（用于「连续失败 N 次后冷却」这类业务计数）
+
+    :return: 当前窗口内的累计次数；缓存故障时返回 0（调用方据此不会误封）
+    """
+    try:
+        return _bump(key, window)
+    except Exception:
+        logger.exception('计数失败: key=%s', key)
+        return 0
+
+
+def reset(key: str) -> None:
+    """清空某个计数（如校验成功后把失败计数归零）"""
+    try:
+        _RL.delete(f'rl:{key}')
+    except Exception:
+        logger.exception('计数清零失败: key=%s', key)
+
+
+def block(key: str, seconds: int) -> None:
+    """封禁某个 key 一段时间（如连续失败后的冷却期）"""
+    try:
+        _RL.set(f'rl:block:{key}', True, max(1, int(seconds)))
+    except Exception:
+        logger.exception('封禁写入失败: key=%s', key)
+
+
+def blocked(key: str) -> bool:
+    """查询某个 key 是否处于封禁 / 冷却期（缓存故障时按未封禁处理）"""
+    try:
+        return bool(_RL.get(f'rl:block:{key}'))
+    except Exception:
+        logger.exception('封禁查询失败: key=%s', key)
+        return False

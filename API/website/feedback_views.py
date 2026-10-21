@@ -28,21 +28,28 @@
 （票据那套是给第三方域名 / iframe 场景准备的）。
 """
 import logging
+import mimetypes
 from datetime import timedelta
+from pathlib import Path
 
+from django.conf import settings
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.http import Http404, HttpResponseRedirect
+from django.db.models import Count
+from django.http import FileResponse, Http404, HttpResponseRedirect
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext as _
 
-from API.apis.captcha_self import utils as captcha_utils
 from API.apis.feedback.ai import resolve_review_target
-from API.apis.feedback.utils import client_ip, save_attachments, serialize_contacts
-from API.models import (Feedback, FeedbackAttachment, FeedbackReply, FeedbackSetting,
-                        FeedbackTicket, FeedbackType, User, UserApp)
+from API.apis.feedback.utils import (attachment_token_valid, client_ip, save_attachments,
+                                     serialize_contacts)
+from API.common.media import range_response
+from API.models import (Feedback, FeedbackAttachment, FeedbackReply, FeedbackReplyAttachment,
+                        FeedbackSetting, FeedbackTicket, FeedbackType, User, UserApp)
+
+from . import captcha as captcha_guard
 
 logger = logging.getLogger('api.feedback')
 
@@ -232,10 +239,9 @@ def _handle_submit(request, app, setting):
     if user is None:
         # 游客：图形验证码（服务端二次校验，与官网其它表单同一口径）
         if setting.captcha_required:
-            ok, err = captcha_utils.verify_challenge(
-                request.POST.get('captcha_id'), request.POST.get('answer'))
+            ok, _reason, detail = captcha_guard.check_params(request.POST)
             if not ok:
-                errors.append(_('图形验证未通过：%s') % err)
+                errors.append(_('图形验证未通过：%s') % detail)
         if _rate_limited(ip, setting):
             errors.append(_('提交过于频繁，请稍后再试'))
 
@@ -286,7 +292,9 @@ def feedback_public(request, app_id):
         raise Http404('接入项目不存在或已停用')
 
     keyword = (request.GET.get('q') or '').strip()
-    queryset = Feedback.public_queryset().filter(app=app).order_by('-create_time')
+    queryset = (Feedback.public_queryset().filter(app=app)
+                .annotate(reply_count=Count('replies'))
+                .order_by('-create_time'))
     if keyword:
         queryset = queryset.filter(content__icontains=keyword)
 
@@ -310,7 +318,9 @@ def feedback_mine(request, app_id):
         messages.info(request, _('登录后即可查看你提交的反馈'))
         return redirect('website:feedback', app_id=app.app_id)
 
-    queryset = Feedback.objects.filter(app=app, user=user).order_by('-create_time')
+    queryset = (Feedback.objects.filter(app=app, user=user)
+                .annotate(reply_count=Count('replies'))
+                .order_by('-create_time'))
     return render(request, 'feedback/mine.html', {
         'fb_app': app,
         'fb_tab': 'mine',
@@ -357,6 +367,60 @@ def feedback_detail(request, app_id, feedback_id):
         'can_reply': is_owner and feedback.status in _REPLYABLE_STATUSES,
         'show_attachments': is_owner,
     })
+
+
+def _can_view_attachment(request, feedback):
+    """附件读取权限：超管，或该反馈的提交者本人"""
+    if request.user.is_authenticated and request.user.is_superuser:
+        return True
+    user = _current_user(request, feedback.app)
+    return user is not None and feedback.user_id == user.pk
+
+
+def feedback_attachment(request, attachment_id):
+    """反馈附件受控下载（仅本人 / 超管）
+
+    反馈附件可能包含用户私人截图、视频。此前模板直接拼 `/media/...`，文件本身匿名可读：
+    URL 一旦外泄（转发、Referer、日志），任何未登录的人都能打开。
+    现在统一走本视图，并且 `/media/uploads/feedback/` 已在 `_media_serve` 中拒绝直读。
+
+    未授权与不存在统一返回 404，避免通过状态码探测反馈 / 附件是否存在。
+    """
+    attachment = (FeedbackAttachment.objects
+                  .select_related('feedback__app')
+                  .filter(pk=attachment_id).first())
+    if attachment is not None:
+        feedback = attachment.feedback
+    else:
+        attachment = (FeedbackReplyAttachment.objects
+                      .select_related('reply__feedback__app')
+                      .filter(pk=attachment_id).first())
+        if attachment is None:
+            raise Http404('附件不存在')
+        feedback = attachment.reply.feedback
+
+    if not _can_view_attachment(request, feedback):
+        # AI 审核送审超大视频时，会生成一个只对该附件有效、1 小时后失效的签名 token；
+        # 上游模型无法携带会话，只能靠这个短时链接匿名抓取。
+        if not attachment_token_valid(request.GET.get('token') or '', attachment_id):
+            raise Http404('附件不存在')
+
+    media_root = Path(settings.MEDIA_ROOT).resolve()
+    full_path = (media_root / attachment.path).resolve()
+    if not full_path.is_relative_to(media_root) or not full_path.is_file():
+        raise Http404('附件不存在')
+
+    # 原始文件名可能被用户控制：去掉换行，避免 Content-Disposition 头被注入
+    filename = (attachment.original_name or full_path.name).replace('\r', ' ').replace('\n', ' ')
+    response = range_response(request, str(full_path), filename=filename)
+    if response is None:
+        content_type = mimetypes.guess_type(str(full_path))[0] or (
+            'image/jpeg' if attachment.is_image else 'video/mp4')
+        response = FileResponse(open(full_path, 'rb'), content_type=content_type,
+                                filename=filename)
+    response['X-Content-Type-Options'] = 'nosniff'
+    response['Cache-Control'] = 'private, max-age=3600'
+    return response
 
 
 def _handle_followup(request, feedback, is_owner):

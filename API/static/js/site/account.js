@@ -130,11 +130,12 @@
     setAlert(alertEl, 'info', gettext('正在加载图形验证，请稍候…'));
     XYCaptchaSelf.init({
       autoVerify: false,   // 交后端二次校验；客户端先校验会消耗掉一次性验证码
+      kind: 'random',      // 每次从字符 / 算术 / 滑块 / 汉字点选里随机抽一种
       onReady: function () {
         captchaReady = true;
         if (captchaPending) XYCaptchaSelf.show();
       },
-      onValidate: function (data) {   // data = {captcha_id, answer}
+      onValidate: function (data) {   // data = {captcha_type, …}，字段随类型不同
         var job = captchaPending;
         captchaPending = null;
         if (job) job.post(Object.assign({}, job.payload, data));

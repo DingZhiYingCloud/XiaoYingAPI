@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -18,6 +19,15 @@ if not SECRET_KEY:
     )
 
 DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
+
+# 测试进程标记：manage.py test 下关闭「页面级」缓存。
+# 原因：TestCase 用事务回滚清理数据，不会触发 post_delete 信号，缓存里可能残留上一个用例的
+# 模型对象（友链 / 外观 / 联系方式），导致后面的用例读到已不存在的行。生产环境 TTL 正常生效。
+TESTING = 'test' in sys.argv
+
+# 全站页面上下文缓存（友链 / 联系方式 / 外观）的 TTL（秒）；0 = 关闭
+WEBSITE_CONTEXT_CACHE_TTL = 0 if TESTING else int(
+    os.getenv('WEBSITE_CONTEXT_CACHE_TTL', '60'))
 
 # S-08 整改：ALLOWED_HOSTS 缺省不再使用通配 '*'（生产必须显式声明访问域名/IP），
 # 未配置时仅允许本机回环，避免错误 Host 头被放行
@@ -308,6 +318,11 @@ HONGGUO_APP_TIMEOUT = int(os.getenv('HONGGUO_APP_TIMEOUT', '20'))
 # ffmpeg 可执行文件（CENC 解密 + 转 H.264 都要用；留空用 PATH 上的 ffmpeg）
 HONGGUO_FFMPEG_BIN = os.getenv('HONGGUO_FFMPEG_BIN') or 'ffmpeg'
 
+# 文件上传服务的声音端点（/api/upload/voice）用于校验时长的 ffprobe 可执行文件。
+# 留空则依次回退「ffmpeg 同目录的 ffprobe」与 PATH 上的 ffprobe；
+# 需要指定绝对路径时用环境变量 XYAPI_FFPROBE_BIN，如 D:\ffmpeg\bin\ffprobe.exe
+VOICE_FFPROBE_BIN = (os.getenv('XYAPI_FFPROBE_BIN') or '').strip()
+
 # 短剧 - 红果线路「网页直出」配置
 # 背景：源站第 4 集及以后只有 DRM 加密的 H.265，而浏览器（原生 / MSE / WebCodecs）
 # 在多数机器上都无法解 HEVC（实测 Chrome 三者全为 false），所以「网页能播」只能出
@@ -420,6 +435,8 @@ WEB_APP_NAME = os.getenv('XYAPI_WEB_APP_NAME', '小影API官网')
 # 用 or 而非 getenv 默认值兜底：.env 里留空（XYAPI_PROGRAMS_ROOT=）时 getenv 返回空串，
 # 而 Path('') 会解析成当前工作目录（即项目根），把整个项目当成内容目录扫描并对外提供下载。
 PROGRAMS_ROOT = Path(os.getenv('XYAPI_PROGRAMS_ROOT') or BASE_DIR / 'CalculationProgram')
+# 计算程序目录扫描结果缓存 TTL（秒）：目录是人工投放，60 秒延迟可接受；0 = 每次请求都扫描
+PROGRAMS_CACHE_TTL = int(os.getenv('PROGRAMS_CACHE_TTL', '60'))
 
 
 # ==================== 文件上传配置 ====================

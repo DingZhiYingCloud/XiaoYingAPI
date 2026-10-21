@@ -45,6 +45,18 @@ _MAGIC_SIGNATURES = {
     'mkv': [(0, b'\x1a\x45\xdf\xa3')],
     'webm': [(0, b'\x1a\x45\xdf\xa3')],
     'wmv': [(0, b'\x30\x26\xb2\x75\x8e\x66\xcf\x11')],
+    # 音频（声音上传服务复用本上传器）：MP3 常带 ID3 标签，也可能直接是帧同步；
+    # AAC(ADTS) 与 MP3 同属 0xFFFx 家族；WAV / WMA 分别是 RIFF 与 ASF 容器；
+    # M4A 与 MP4 同属 ISO BMFF，WebM 与 MKV 同一签名（上面已登记）。
+    'mp3': [(0, b'ID3'), (0, b'\xff\xfb'), (0, b'\xff\xfa'),
+            (0, b'\xff\xf3'), (0, b'\xff\xf2')],
+    'wav': [(0, b'RIFF')],
+    'm4a': [(4, b'ftyp')],
+    'aac': [(0, b'\xff\xf1'), (0, b'\xff\xf9')],
+    'ogg': [(0, b'OggS')],
+    'flac': [(0, b'fLaC')],
+    'amr': [(0, b'#!AMR')],
+    'wma': [(0, b'\x30\x26\xb2\x75\x8e\x66\xcf\x11')],
 }
 
 # 无固定魔数的类型（txt）：仅做内容前缀黑名单，拒绝 HTML/XML/SVG 等可渲染内容
@@ -60,7 +72,8 @@ _MAGIC_HEAD_SIZE = 512
 class FileUploader:
     """文件上传处理器
 
-    支持三种上传类型: image(图片) / video(视频) / file(通用文件)
+    支持四种上传类型: image(图片) / video(视频) / file(通用文件) / audio(音频，
+    供声音上传服务复用)
     每种类型对应独立存储目录，并有独立大小限制。
     """
 
@@ -81,6 +94,12 @@ class FileUploader:
             'max_size': 100 * 1024 * 1024,
             # S-02: 从"无扩展名限制"收敛为安全白名单，拒绝可执行/可渲染类型
             'allowed_ext': {'zip', 'pdf', 'docx', 'xlsx', 'txt'},
+        },
+        # 声音上传端点（/api/upload/voice）复用本上传器：60 秒无损 WAV 约 10MB，20MB 足够
+        'audio': {
+            'dir': 'voices',
+            'max_size': 20 * 1024 * 1024,
+            'allowed_ext': {'mp3', 'wav', 'm4a', 'aac', 'ogg', 'flac', 'webm', 'amr', 'wma'},
         },
     }
 

@@ -178,10 +178,14 @@ from API.common.responses import json_response as _json_response
 | 公开 GET 豁免 | 见第五章 5.3 |
 
 - 签名参数（`app_id/timestamp/nonce/sign`）由中间件统一校验，**视图内不再重复校验**；需要项目上下文时取 `request.auth_app`。
-- **签名覆盖范围（明确约定，勿当 bug 改）**：中间件只用 `request.POST`（+ `request.GET`）组参与签名的参数。因此：
-  - **GET / POST**：业务参数与签名参数一起参与验签；
-  - **PATCH / DELETE**：`request.POST` 为空，中间件**只签公共参数本身**，请求体（表单或 JSON）里的业务字段**不参与验签**（与 `/docs/` 在线调试面板的签名口径一致，见 `API/website/docs_views.py` 的 `build_sign` 调用处）。
-  这是**刻意约定**：改动会令所有按本规范签名的现有调用方验签失败（线上事故）。若某个 PATCH/DELETE 业务的完整性要求很高，请改用 GET / POST 承载，或作为一次**带对接方协同升级**的契约变更来推进。
+- **签名覆盖范围（明确约定，勿当 bug 改）**：中间件按请求方法组参与签名的参数：
+  - **GET / POST**：业务参数与签名参数一起参与验签（沿用历史口径）；
+  - **PATCH / DELETE 等非 GET/POST**：
+    - `application/x-www-form-urlencoded` 表单体：业务字段由中间件自动并入待签串；
+    - JSON 等其它请求体：把 `sha256(body)` 作为 `body_sha256` 参数参与验签，调用方需在签名参数里带上同名字段（值为请求体的 SHA-256 十六进制小写）；
+    - 带请求体的非 GET/POST **不再接受旧口径**（不含方法/路径）签名，防止请求体被中间人篡改。
+  `/docs/` 在线调试面板已按同一口径生成签名（PATCH 会签表单体、DELETE 会签 `body_sha256`）。
+  这是**契约变更**：仍在用旧口径调用 PATCH/DELETE 的接入方需同步升级。
 
 ### 4.5 分页规范
 

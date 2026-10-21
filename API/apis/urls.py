@@ -4,7 +4,7 @@ from django.urls import path, include
 # 域名前缀: /api/
 urlpatterns = [
     path('music/', include('API.apis.musics.urls')), # 音乐服务路由
-    path('upload/', include('API.apis.uploads.urls')), # 文件上传服务路由
+    path('upload/', include('API.apis.uploads.urls')), # 文件上传服务路由（图片 / 视频 / 文件 / 声音）
     path('ai/', include('API.apis.ai.urls')), # AI服务路由
     path('spider_verification/', include('API.apis.SpiderVerification.urls')), # 爬虫验证服务路由
     path('dlt/', include('API.apis.DaiLianTong.urls')), # 代练通服务路由

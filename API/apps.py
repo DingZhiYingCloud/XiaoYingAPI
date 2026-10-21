@@ -1,5 +1,7 @@
 import logging
 import os
+import threading
+import time
 
 from django.apps import AppConfig, apps
 from django.conf import settings
@@ -11,8 +13,15 @@ logger = logging.getLogger('api.workers')
 # 持有后台线程 leader 锁的文件句柄：进程存活期间不能释放（详见 _acquire_background_worker_lock）
 _WORKER_LOCK_HANDLE = None
 
+# 未选上 leader 时的重试间隔（秒）与“只起一个重试线程”的幂等标记。
+# 为什么需要重试：uwsgi --reload 时新 worker 先起、旧 worker 还持有锁，新进程全部落选；
+# 旧进程退出后如果没人再试，反馈审核 / 余量巡检 / 邮件推送 / 清理线程会一直停摆到下次重启。
+LEADER_RETRY_SECONDS = 30
+_LEADER_RETRY_STARTED = False
+_LEADER_RETRY_LOCK = threading.Lock()
 
-def _acquire_background_worker_lock() -> bool:
+
+def _acquire_background_worker_lock(quiet: bool = False) -> bool:
     """后台常驻线程的单实例选举：拿到文件锁的进程返回 True，其它进程返回 False
 
     为什么需要：反馈 AI 审核 / 服务余量巡检 / 邮件定时推送三个常驻线程，原先每个 uwsgi worker
@@ -50,11 +59,46 @@ def _acquire_background_worker_lock() -> bool:
             fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
         handle.close()
-        logger.info('后台线程 leader 已被其它进程持有，本进程不重复启动后台线程')
+        if not quiet:
+            logger.info('后台线程 leader 已被其它进程持有，本进程不重复启动后台线程')
         return False
     _WORKER_LOCK_HANDLE = handle
     logger.info('本进程已成为后台线程 leader（pid=%s）', os.getpid())
     return True
+
+
+def _start_background_workers() -> None:
+    """启动四个常驻线程（各 start_worker 自身幂等，重复调用无副作用）"""
+    from API.apis.feedback.ai import start_review_worker
+    from API.apis.push.email_task.utils import start_worker as start_email_task_worker
+    from API.apis.quota.utils import start_worker as start_quota_worker
+    from API.common.maintenance import start_worker as start_maintenance_worker
+
+    start_review_worker()
+    start_quota_worker()
+    start_email_task_worker()
+    start_maintenance_worker()
+
+
+def _start_leader_retry() -> None:
+    """落选 leader 后启动一个低频重试线程，抢到锁再启动常驻线程
+
+    只在「对外服务进程」里调用。fail-open 语义不变：锁不可用时
+    `_acquire_background_worker_lock` 会直接返回 True，重试线程首轮即启动业务线程。
+    """
+    global _LEADER_RETRY_STARTED
+    with _LEADER_RETRY_LOCK:
+        if _LEADER_RETRY_STARTED:
+            return
+        _LEADER_RETRY_STARTED = True
+
+    def retry():
+        while not _acquire_background_worker_lock(quiet=True):
+            time.sleep(LEADER_RETRY_SECONDS)
+        logger.info('重试取得后台线程 leader，开始启动常驻线程')
+        _start_background_workers()
+
+    threading.Thread(target=retry, name='api-worker-leader-retry', daemon=True).start()
 
 
 def _configure_sqlite(sender, connection, **kwargs):
@@ -106,42 +150,42 @@ class ApiConfig(AppConfig):
             post_save.connect(_invalidate_ai_cache, sender=model_cls, weak=False)
             post_delete.connect(_invalidate_ai_cache, sender=model_cls, weak=False)
 
+        # 页面级上下文缓存失效（友链 / 页脚联系方式 / 官网外观）：这些数据每个页面都会读，
+        # 现做 60 秒 TTL 缓存；后台保存或删除后立即失效，不必等 TTL。
+        from API.models import FriendLink, SiteAppearance, UserApp
+        from API.models.Feedback.contact import ContactPlatform, ProjectContact
+        from API.website.context import invalidate_context_cache
+
+        def _invalidate_page_cache(sender, instance, **kwargs):
+            invalidate_context_cache()
+
+        for model_cls in (FriendLink, SiteAppearance, UserApp, ProjectContact, ContactPlatform):
+            post_save.connect(_invalidate_page_cache, sender=model_cls, weak=False)
+            post_delete.connect(_invalidate_page_cache, sender=model_cls, weak=False)
+
+        # 签名校验的接入项目缓存（进程内）：停用 / 轮换密钥后立即清掉本进程缓存
+        from API.apis.user_center.sign import invalidate_app_cache
+
+        def _invalidate_sign_app_cache(sender, instance, **kwargs):
+            invalidate_app_cache(getattr(instance, 'app_id', ''))
+
+        post_save.connect(_invalidate_sign_app_cache, sender=UserApp, weak=False)
+        post_delete.connect(_invalidate_sign_app_cache, sender=UserApp, weak=False)
+
         # SQLite 连接级 PRAGMA（WAL + synchronous=NORMAL）
         connection_created.connect(_configure_sqlite, weak=False)
 
         # 这一组常驻线程只在「对外提供服务」的进程里启动（管理命令一律不起，
         # runserver 自动重载时只有子进程起）。
-        from API.apis.feedback.ai import is_serving_process, start_review_worker
+        from API.apis.feedback.ai import is_serving_process
 
-        # 单实例选举：下面这三个常驻线程只由拿到文件锁的那个「对外服务进程」来跑，
-        # 其余 worker 只服务请求（多 worker 下不再各跑一份）；选举不可用时 fail-open 退回原行为。
-        run_workers = is_serving_process() and _acquire_background_worker_lock()
-
-        # 反馈中心 AI 审核线程：线程内一次审一条、慢慢来，
-        # 多进程靠行级抢占保证同一条不会被审两次（见 API/apis/feedback/ai.py）
-        if run_workers:
-            start_review_worker()
-
-        # 服务余量巡检线程：定期取各上游服务账号的余量、低于阈值时发邮件；
-        # 多进程靠行级抢占保证同一轮告警只发一封（见 API/apis/quota/utils.py）
-        from API.apis.quota.utils import start_worker as start_quota_worker
-
-        if run_workers:
-            start_quota_worker()
-
-        # 邮件定时推送线程：按间隔扫描到期的 EmailTask 并发送；
-        # 多进程靠行级抢占保证同一任务同一时刻只发一次（见 API/apis/push/email_task/utils.py）
-        from API.apis.push.email_task.utils import start_worker as start_email_task_worker
-
-        if run_workers:
-            start_email_task_worker()
-
-        # 数据维护线程：定期清理小时级统计表（原先只有 management command，
-        # 靠人工在服务器上配计划任务，忘了配就无限增长；见 API/common/maintenance.py）
-        from API.common.maintenance import start_worker as start_maintenance_worker
-
-        if run_workers:
-            start_maintenance_worker()
+        # 单实例选举：拿到文件锁的进程启动常驻线程；落选的进程起一个低频重试线程，
+        # 等旧 leader 退出（如 uwsgi --reload）后自动补位，避免四个线程整站停摆。
+        if is_serving_process():
+            if _acquire_background_worker_lock():
+                _start_background_workers()
+            else:
+                _start_leader_retry()
 
         # collectstatic：把「前端编译源码与工具」排除在收集之外 —— 它们只服务编译期，不是运行时资源：
         #   - css/input.css 第 1 行的 @import "tailwindcss" 会被 Manifest 存储当成待解析的 URL，直接报错；
