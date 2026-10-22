@@ -18,7 +18,7 @@
 # 设计约定：任何环节出错只提示、不崩溃；本脚本不含任何注册口令。
 # =============================================================================
 
-$VERSION = '2.3.0'
+$VERSION = '2.4.0'
 
 # 密码/协议栈：必须显式开 TLS1.2/1.3（PS 5.1 默认可能只有 TLS1.0）
 try {
@@ -686,9 +686,9 @@ function Cmd-Enroll {
     $b2 = @{ enroll_id = $eid; proof = $proof } | ConvertTo-Json -Compress
     $r2 = Http-Req 'POST' ($global:BRAIN_URL + '/agent/enroll/verify') @{ 'Content-Type' = 'application/json' } ([Text.Encoding]::UTF8.GetBytes($b2)) 15
     if ((Bytes-ToStr $r2.Bytes) -match '"denied"') { Err '注册口令不正确，已被大脑拒绝。'; return 1 }
-    Warn '口令校验已通过，等待大脑侧人工批准（请在跑着 brain 的终端里确认）…'
+    if ((Bytes-ToStr $r2.Bytes) -match '"auto":true') { Good '口令校验通过，已自动批准接入（无需人工确认）…' }
+    else { Warn '口令校验已通过，等待大脑侧人工批准（请在跑着 brain 的终端里确认）…' }
     for ($i = 0; $i -lt 60; $i++) {
-        Start-Sleep -Seconds 5
         $b3 = @{ enroll_id = $eid } | ConvertTo-Json -Compress
         $r3 = Http-Req 'POST' ($global:BRAIN_URL + '/agent/enroll/status') @{ 'Content-Type' = 'application/json' } ([Text.Encoding]::UTF8.GetBytes($b3)) 15
         $t = Bytes-ToStr $r3.Bytes
@@ -706,6 +706,7 @@ function Cmd-Enroll {
         }
         if ($t -match '"denied"') { Err '大脑拒绝了本次注册。'; return 1 }
         if ($t -match '"expired"') { Err '注册请求已过期，请重试。'; return 1 }
+        Start-Sleep -Seconds 5      # 先查一次再睡：自动批准时立刻就能拿到令牌，不用干等 5 秒
     }
     Err '等待批准超时（5 分钟）。请在大脑那台批准后重试。'
     return 1

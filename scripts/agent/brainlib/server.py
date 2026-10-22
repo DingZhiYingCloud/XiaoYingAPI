@@ -288,8 +288,25 @@ class Handler(BaseHTTPRequestHandler):
             audit('agent', 'enroll-deny', row['agent_id'], '注册口令校验失败')
             return self._send({'status': 'denied', 'error': '注册口令不正确'}, 403)
         x('UPDATE enrollments SET secret_ok=1 WHERE id=?', (row['id'],))
+        # 开关：口令对了还要不要人点一下批准（AUTO_APPROVE，默认免批准；现读配置，改完立刻生效）
+        if C.auto_approve(self.live_conf()):
+            self._approve_enrollment(row, '自动批准（AUTO_APPROVE=1）')
+            return self._send({'status': 'approved', 'verified': True, 'auto': True})
         audit('agent', 'enroll-verified', row['agent_id'], '口令校验通过，等待人工批准')
         return self._send({'status': 'pending', 'verified': True})
+
+    def _approve_enrollment(self, row, by='人工批准'):
+        """批准一次注册：发令牌 + 登记/更新 agent（人工批准与自动放行共用）。"""
+        token = new_id(48)
+        x("UPDATE enrollments SET status='approved', token=?, decided_at=? WHERE id=?",
+          (token, now(), row['id']))
+        x('INSERT INTO agents(agent_id,token,fingerprint,host,os,version,created_at,last_seen)'
+          ' VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(agent_id) DO UPDATE SET token=excluded.token,'
+          ' fingerprint=excluded.fingerprint, host=excluded.host, os=excluded.os',
+          (row['agent_id'], token, row['fingerprint'], row['host'],
+           row.get('os') or 'linux', '', now(), 0))
+        audit('brain', 'enroll-approved', row['agent_id'], by)
+        return token
 
     def _agent_enroll_status(self):
         body = self._read()
@@ -660,15 +677,7 @@ class Handler(BaseHTTPRequestHandler):
                   (now(), row['id']))
                 audit('brain', 'enroll-denied', row['agent_id'], '人工拒绝')
                 return {'status': 'denied'}
-            token = new_id(48)
-            x("UPDATE enrollments SET status='approved', token=?, decided_at=? WHERE id=?",
-              (token, now(), row['id']))
-            x('INSERT INTO agents(agent_id,token,fingerprint,host,os,version,created_at,last_seen)'
-              ' VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(agent_id) DO UPDATE SET token=excluded.token,'
-              ' fingerprint=excluded.fingerprint, host=excluded.host, os=excluded.os',
-              (row['agent_id'], token, row['fingerprint'], row['host'],
-               row.get('os') or 'linux', '', now(), 0))
-            audit('brain', 'enroll-approved', row['agent_id'], '人工批准')
+            self._approve_enrollment(row, '人工批准')
             return {'status': 'approved', 'agent_id': row['agent_id']}
         return self._internal(go)
 

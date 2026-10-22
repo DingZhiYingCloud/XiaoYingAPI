@@ -34,6 +34,8 @@ DEFAULT_CONF = {
     'RDV_INDEX': '1',                 # 当前期号；换后台域名时 +1（用 brain rendezvous set <n>）
     'BRAIN_ADMIN_TOKEN': '',          # 自动生成（本机 CLI 用）
     'ENROLL_SECRET': '',              # 注册口令（部署子 agent 时用）
+    'AUTO_APPROVE': '1',              # 1=注册口令一对就**自动批准**接入，不用人工 brain approve；
+                                      # 0=退回人工批准（brain pending / approve）。改完立刻生效，不用重启 serve
     'PACK_KEY': '',                   # 【生产版】解密口令：只存在大脑上，运行时凭注册口令在线取
     'PACK_KEY_OLD': '',               # 轮换过渡期的旧口令（brain pack-key rotate 写入；新口令生效后，
                                       # 让还没升级的子 agent 也能开；全部升级后 brain pack-key drop-old 清掉）
@@ -89,6 +91,16 @@ def mode(conf) -> str:
 
 def is_auto(conf) -> bool:
     return mode(conf) == 'auto'
+
+
+def auto_approve(conf) -> bool:
+    """新子 agent 注册时是否**免人工批准**直接接入（AUTO_APPROVE，默认开）。
+
+    口令仍然要验；这里只决定"口令对了之后是否还要人点一下 approve"。
+    写成 0/no/false/off 才算关，其它（含没写）都当开。
+    """
+    v = str(conf.get('AUTO_APPROVE', DEFAULT_CONF['AUTO_APPROVE'])).strip().lower()
+    return v not in ('0', 'no', 'false', 'off')
 
 
 _DOMAIN_RE = re.compile(r'([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}$')

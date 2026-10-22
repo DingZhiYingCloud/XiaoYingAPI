@@ -38,7 +38,7 @@
 # 设计约定：不 set -e/-u，任何环节出错只提示不崩溃；本脚本不含任何注册口令。
 # ============================================================================
 
-VERSION='2.13.0'
+VERSION='2.14.0'
 # 强制 UTF-8 区域：否则 bash 的 ${var:0:N} 按字节截断，会把多字节汉字切成半个
 export LC_ALL="${LC_ALL:-C.UTF-8}"
 export LANG="${LANG:-C.UTF-8}"
@@ -602,10 +602,12 @@ cmd_enroll() {
     case "$resp" in
         *'"denied"'*) err '注册口令不正确，已被大脑拒绝。'; return 1 ;;
     esac
-    warn '口令校验已通过，等待大脑侧人工批准（请在跑着 brain 的终端里确认）…'
+    case "$resp" in
+        *'"auto":true'*) good '口令校验通过，已自动批准接入（无需人工确认）…' ;;
+        *) warn '口令校验已通过，等待大脑侧人工批准（请在跑着 brain 的终端里确认）…' ;;
+    esac
     local i
     for i in $(seq 1 60); do
-        sleep 5
         resp=$(curl -sS -m 15 -X POST -H 'Content-Type: application/json' \
             --data-raw '{"enroll_id":"'"$eid"'"}' "$BRAIN_URL/agent/enroll/status" 2>/dev/null)
         case "$resp" in
@@ -624,6 +626,7 @@ cmd_enroll() {
             *'"denied"'*) err '大脑拒绝了本次注册。'; return 1 ;;
             *'"expired"'*) err '注册请求已过期，请重试。'; return 1 ;;
         esac
+        sleep 5          # 先查一次再睡：自动批准时立刻就能拿到令牌，不用干等 5 秒
     done
     err '等待批准超时（5 分钟）。请在跑着 brain 的终端执行 /pending 批准后再重试。'
     return 1
