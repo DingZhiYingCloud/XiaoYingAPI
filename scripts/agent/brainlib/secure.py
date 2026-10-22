@@ -55,7 +55,12 @@ def verify_agent(handler, body: bytes):
         return None, '缺少签名头'
     row = q('SELECT * FROM agents WHERE agent_id=?', (agent_id,), one=True)
     if not row:
-        return None, '未注册的 agent'
+        # 改过名：旧名 → 新名（机器完全不用动，仍用旧名发请求）
+        al = q('SELECT agent_id FROM agent_alias WHERE alias=?', (agent_id,), one=True)
+        if al:
+            row = q('SELECT * FROM agents WHERE agent_id=?', (al['agent_id'],), one=True)
+    if not row:
+        return None, '未注册的 agent（可能已被大脑删除）'
     if not is_num(ts) or abs(now() - int(ts)) > 300:
         return None, '时间戳超窗（请校准服务器时间）'
     if q('SELECT 1 FROM nonces WHERE nonce=?', (nonce,), one=True):

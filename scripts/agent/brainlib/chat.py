@@ -64,6 +64,20 @@ def _do_action(conf, action) -> str:
             targets = [a['agent_id'] for a in agents if a['agent_id'] in wanted]
         if not targets:
             return '没有匹配到的在线子 agent，无法下发。'
+        # ① 先问一句"它们忙不忙"：忙的时候下发只会排队，等它做完才轮到这条
+        busy = {}
+        try:
+            br, _ = apicli.api(conf, 'POST', '/internal/busy', {'agents': targets})
+            busy = (br or {}).get('busy') or {}
+        except Exception:                                    # noqa: BLE001
+            busy = {}
+        if busy:
+            ui.warn('⚠ 下面这些机器正在执行别的任务，现在下发只会**排队**：')
+            for aid, b in busy.items():
+                ran = int(now() - (b.get('started_at') or now()))
+                tail = f'，后面还排着 {b["queued"]} 条' if b.get('queued') else ''
+                ui.dim(f'    【{aid}】已跑 {fmt_dur(ran)}：「{(b.get("task") or "").strip()[:50]}」{tail}')
+            ui.dim('    （它做完会自动接这条；不想等就等它回报完再发）')
         ui.act(f'将在 {len(targets)} 台执行：{", ".join(targets)}')
         ui.act(f'任务：{task}')
         verdict, note = ui.decide('确认下发？', action.get('suggestions'))
@@ -78,29 +92,63 @@ def _do_action(conf, action) -> str:
         if e or (r or {}).get('error'):
             return f'下发失败：{e or (r or {}).get("error")}'
         ids = r['task_ids']
+        if r.get('reused'):
+            ui.dim(f'  （其中 {len(r["reused"])} 条同一条任务已在队列里，直接等它那条，不再重复下发）')
         ui.act(f'已下发 {len(ids)} 条任务，等待各服务器回报…')
-        deadline = now() + int(conf['TASK_TIMEOUT'])
-        seen = {}
-        last_hint = now()
-        tasks = []
-        while now() < deadline:
+        # ② 等待看"有没有新进展"，不看总时长：
+        #    它还在报进展 → 一直等；连续 idle 秒没进展 → 先不等（另有硬上限兜底）。
+        #    这样"活干得慢但在动"不会被误判超时，"忙时排队的命令"也不会永远干等。
+        idle = max(30, int(conf['TASK_TIMEOUT']))
+        hard = max(idle, int(conf.get('TASK_MAX_WAIT') or 7200))
+        t0 = now()
+        last_change = t0
+        snap, seen, tasks = {}, {}, []
+        last_hint = 0
+        while True:
             tr, _ = apicli.api(conf, 'POST', '/internal/tasks', {'task_ids': ids})
             tasks = (tr or {}).get('tasks') or []
-            _show_progress(tasks, seen)              # 谁领了 / 谁回报了（仅状态变化时打印）
-            if tasks and all(t['state'] in ('done', 'failed') for t in tasks):
+            changed = False
+            for t in tasks:
+                k = (t['state'], (t.get('result') or '').strip())
+                if snap.get(t['id']) != k:
+                    snap[t['id']] = k
+                    changed = True
+            if changed:
+                last_change = now()
+                _show_progress(tasks, seen)          # 谁领了 / 跑到第几步 / 谁回报了
+            if tasks and all(t['state'] in ('done', 'failed', 'cancelled') for t in tasks):
                 break
-            if tasks and now() - last_hint >= 15:    # 15 秒没动静就报一次进度，别干等
+            if now() - t0 >= hard:
+                ui.warn(f'  … 已等满 {fmt_dur(hard)}，先不等了（任务没取消，做完它仍会回报）')
+                break
+            if now() - last_change >= idle:
+                ui.warn(f'  … 已经 {fmt_dur(idle)} 没有新进展，先不等了（它要是还在干，做完会自动回报）')
+                break
+            if now() - last_hint >= 15:              # 15 秒报一次进度，别干等
                 last_hint = now()
-                _wait_hint(tasks)
+                _wait_hint(conf, tasks, last_change, t0)
             time.sleep(2)
         tr, _ = apicli.api(conf, 'POST', '/internal/tasks', {'task_ids': ids})
         tasks = (tr or {}).get('tasks') or []
         lines = []
         for t in tasks:
-            st = {'done': '成功', 'failed': '失败', 'running': '超时未完成',
-                  'queued': '超时未开始'}.get(t['state'], t['state'])
-            body = (t['result'] or '').strip() or '(无结果)'
-            lines.append(f'【{t["agent_id"]}】{st}：{body}')
+            st = t['state']
+            body = (t['result'] or '').strip()
+            if st == 'done':
+                lines.append(f'【{t["agent_id"]}】成功：{body or "(无结果)"}')
+            elif st == 'failed':
+                lines.append(f'【{t["agent_id"]}】失败：{body or "(无结果)"}')
+            elif st == 'cancelled':
+                lines.append(f'【{t["agent_id"]}】**已取消**：{body or "主人下令取消"}')
+            elif st == 'running':
+                ran = int(now() - (t.get('started_at') or t0))
+                gap = int(now() - last_change)
+                lines.append(f'【{t["agent_id"]}】**还在执行**（已 {fmt_dur(ran)}；最近 {fmt_dur(gap)}前有进展）'
+                             f'—— 我先不等了，它做完会自己回报（`brain tasks` 可查）。'
+                             + (f'\n    当前进展：{body[:300]}' if body else ''))
+            else:
+                lines.append(f'【{t["agent_id"]}】**还在排队**（那台机器正忙，排到会自动执行）'
+                             f'—— 不用重发（重发也不会多跑一遍）。')
         return '各服务器回报如下：\n' + '\n'.join(lines)
 
     if name == 'run_local':
@@ -120,6 +168,28 @@ def _do_action(conf, action) -> str:
             return f'执行失败：{e or (r or {}).get("error")}'
         out = (r.get('output') or '').strip() or '(无输出)'
         return f'退出码={r.get("rc")}\n{out[:6000]}'
+
+    if name == 'rename_agent':
+        a = str(action.get('agent') or '').strip()
+        new = str(action.get('new_name') or '').strip()
+        if not (a and new):
+            return '缺少 agent 或 new_name。'
+        verdict, _ = ui.decide(f'把 {a} 改名为 {new}？')
+        if verdict != 'yes':
+            return '【系统】主人没有确认改名（什么都没做）。'
+        from . import admin                              # 懒加载，避免循环导入
+        rc = admin.cmd_rename(conf, [a, new])
+        return '【系统】' + ('已改名。' if rc == 0 else '改名失败（原因见上面输出）。')
+
+    if name == 'delete_agent':
+        a = str(action.get('agent') or '').strip()
+        if not a:
+            return '缺少 agent。'
+        ui.warn(f'⚠ 删除子 agent：{a}（会先命令它自毁，再从大脑删记录；不可恢复）')
+        from . import admin
+        args = [a] + (['--purge'] if action.get('purge') else [])
+        rc = admin.cmd_rm(conf, args)
+        return '【系统】' + ('已删除。' if rc == 0 else '删除没完成（原因见上面输出；也可能是主人取消了）。')
 
     return f'未知动作：{name}'
 
@@ -147,12 +217,44 @@ def _show_progress(tasks, seen):
             ui.act(f'【{aid}】已回报（失败）')
 
 
-def _wait_hint(tasks):
-    """迟迟没动静时的进度提示，别让主人干等。"""
-    q = sum(1 for t in tasks if t['state'] == 'queued')
-    r = sum(1 for t in tasks if t['state'] == 'running')
-    d = sum(1 for t in tasks if t['state'] in ('done', 'failed'))
-    ui.dim(f'  … 仍在等待：未领取 {q} 台 / 执行中 {r} 台 / 已回报 {d} 台')
+def fmt_dur(sec) -> str:
+    """秒 → 人话（12 秒 / 4 分 12 秒 / 1 小时 2 分）。"""
+    sec = max(0, int(sec))
+    if sec < 60:
+        return f'{sec} 秒'
+    if sec < 3600:
+        return f'{sec // 60} 分 {sec % 60} 秒'
+    return f'{sec // 3600} 小时 {(sec % 3600) // 60} 分'
+
+
+def _wait_hint(conf, tasks, last_change, t0):
+    """迟迟没动静时的进度提示：说清楚"卡在哪、还有没有在动、排队的那些它在忙什么"。"""
+    qn = sum(1 for t in tasks if t['state'] == 'queued')
+    rn = sum(1 for t in tasks if t['state'] == 'running')
+    dn = sum(1 for t in tasks if t['state'] in ('done', 'failed', 'cancelled'))
+    stalled = int(now() - last_change)
+    extra = f' ｜ 已 {fmt_dur(stalled)} 没有新进展' if stalled >= 30 else ''
+    ui.dim(f'  … 仍在等待（已 {fmt_dur(now() - t0)}）：排队 {qn} 台 / 执行中 {rn} 台 / 已回报 {dn} 台{extra}')
+    # 排队的那几台：说清楚它到底在忙什么。
+    # 否则"排队 1 台 / 执行中 0 台"看着像卡死（其实是它在跑**另一批**的任务，本批只统计自己）。
+    waiting = [t['agent_id'] for t in tasks if t['state'] == 'queued']
+    if not waiting:
+        return
+    busy = {}
+    try:
+        r, _ = apicli.api(conf, 'POST', '/internal/busy', {'agents': waiting})
+        busy = (r or {}).get('busy') or {}
+    except Exception:                                    # noqa: BLE001
+        busy = {}
+    for aid in waiting:
+        b = busy.get(aid)
+        if b:
+            ran = int(now() - (b.get('started_at') or now()))
+            tail = f'，后面还排着 {b["queued"]} 条' if b.get('queued') else ''
+            ui.dim(f'    · {aid} 正在跑另一条任务（已 {fmt_dur(ran)}）：'
+                   f'「{(b.get("task") or "").strip()[:36]}」{tail}')
+        else:
+            ui.dim(f'    · {aid} 没在跑任务 —— 可能离线，或还没来领（稍等再看）')
 
 
 # ==================== 待批准的新机器 ====================

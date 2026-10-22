@@ -826,3 +826,267 @@ def cmd_get(conf, args) -> int:
         return 1
     ui.good(f'已保存：{dst}（{_hsize(row["size"])}）')
     return 0
+
+
+# ==================== 任务列表 / 取消 ====================
+_ST_MAP = {'queued': '排队中', 'running': '执行中', 'done': '成功',
+           'failed': '失败', 'cancelled': '已取消'}
+
+
+def cmd_tasks(conf, args) -> int:
+    """brain tasks [agent_id|任务id] [-n N] [--running] —— 看任务与结果。"""
+    init()
+    agent_id = ''
+    limit = 20
+    only_open = False
+    for i, a in enumerate(args):
+        if a in ('-n', '--num') and i + 1 < len(args):
+            try:
+                limit = max(1, min(500, int(args[i + 1])))
+            except ValueError:
+                pass
+        elif a in ('--running', '-r', '--open'):
+            only_open = True
+        elif not a.startswith('-'):
+            agent_id = a
+    rows = []
+    if agent_id:                                     # 先当任务 id 试，再当 agent 名
+        rows = q('SELECT * FROM tasks WHERE id=?', (agent_id,))
+    if not rows:
+        where, params = [], []
+        if agent_id:
+            where.append('agent_id=?')
+            params.append(agent_id)
+        if only_open:
+            where.append("state IN ('queued','running')")
+        sql = 'SELECT * FROM tasks'
+        if where:
+            sql += ' WHERE ' + ' AND '.join(where)
+        sql += ' ORDER BY created_at DESC LIMIT ?'
+        params.append(limit)
+        rows = q(sql, tuple(params))
+    if not rows:
+        ui.dim('（没有任务）')
+        return 0
+    if agent_id and len(rows) == 1 and rows[0]['id'] == agent_id:     # 单条：全量看
+        r = rows[0]
+        ui.say(f'{ui.C_B}任务 {r["id"]}{ui.C_0}  {_ST_MAP.get(r["state"], r["state"])}  '
+               f'{r["agent_id"]}  ' + time.strftime('%m-%d %H:%M', time.localtime(r['created_at'] or 0)))
+        ui.say()
+        ui.say('任务：' + (r['task'] or ''))
+        ui.say()
+        ui.say('结果：' + ((r['result'] or '').strip() or '(无)'))
+        return 0
+    ui.say(f'{ui.C_B}任务{ui.C_0}: {len(rows)} 条（最新在前）')
+    ui.say(f'{"ID":<14}{"时间":<14}{"机器":<20}{"状态":<8}任务 / 结果')
+    for r in rows:
+        when = time.strftime('%m-%d %H:%M', time.localtime(r['created_at'] or 0))
+        st = _ST_MAP.get(r['state'], r['state'])
+        body = (r['result'] or r['task'] or '').strip().replace('\n', ' ')
+        ui.say(f'{r["id"]:<14}{when:<14}{str(r["agent_id"])[:19]:<20}{st:<8}{body[:60]}')
+    ui.dim('看单条全文：brain tasks <任务id>    只看在跑：brain tasks --running    取消：brain cancel <任务id>')
+    return 0
+
+
+def cmd_cancel(conf, args) -> int:
+    """brain cancel <任务id> ｜ --agent <agent_id> ｜ --all —— 真取消。"""
+    tid = aid = ''
+    do_all = False
+    for i, a in enumerate(args):
+        if a in ('--agent', '-a') and i + 1 < len(args):
+            aid = args[i + 1]
+        elif a in ('--all', '-A'):
+            do_all = True
+        elif not a.startswith('-'):
+            tid = a
+    if not (tid or aid or do_all):
+        ui.err('用法：brain cancel <任务id> ｜ brain cancel --agent <agent_id> ｜ brain cancel --all')
+        ui.dim('  先看有哪些在跑：brain tasks --running')
+        return 1
+    if do_all:
+        v, _ = ui.decide('要取消**所有**排队/执行中的任务吗？')
+        if v != 'yes':
+            ui.dim('已放弃。')
+            return 0
+    body = {'task_id': tid} if tid else ({'agent': aid} if aid else {})
+    r, e = apicli.api(conf, 'POST', '/internal/cancel', body)
+    if e or (r or {}).get('error'):
+        ui.err('取消失败：', e or (r or {}).get('error'))
+        return 1
+    got = (r or {}).get('cancelled') or []
+    if not got:
+        ui.dim('没有可取消的任务（可能已经跑完了）。')
+        return 0
+    ui.good(f'已取消 {len(got)} 条：')
+    for c in got:
+        ui.say(f'  {c["id"]}  {c["agent_id"]}  （取消前：{"排队中" if c["was"] == "queued" else "执行中"}）')
+    if any(c['was'] == 'running' for c in got):
+        ui.dim('  执行中的会在**下一步之前**停手（子 agent 每步都回报一次，通常几十秒内），')
+        ui.dim('  停手后它会回一条"已按主人指令取消"（`brain tasks <任务id>` 可查）。')
+    return 0
+
+
+# ==================== 改名 / 删除 ====================
+_BAD_ID = re.compile(r'[\s/\\\'"`$;|&<>]')
+
+
+def _valid_agent_id(s: str) -> bool:
+    return bool(s) and 1 <= len(s) <= 32 and not _BAD_ID.search(s)
+
+
+def _find_agent(aid: str):
+    """按名字找（自动跟随旧名别名），返回 (agents 行, 提示语)。"""
+    a = q('SELECT * FROM agents WHERE agent_id=?', (aid,), one=True)
+    if a:
+        return a, ''
+    al = q('SELECT agent_id FROM agent_alias WHERE alias=?', (aid,), one=True)
+    if al:
+        return (q('SELECT * FROM agents WHERE agent_id=?', (al['agent_id'],), one=True),
+                f'（{aid} 是旧名，它现在的名字是 {al["agent_id"]}）')
+    return None, ''
+
+
+def cmd_rename(conf, args) -> int:
+    """brain rename <旧名> <新名> —— 改名（只改大脑；旧名自动变别名，机器不用动）"""
+    if len(args) < 2:
+        ui.err('用法：brain rename <旧名> <新名>')
+        ui.dim('  例：brain rename VM-8-11-ubuntu 测试机-ubuntu')
+        return 1
+    old, new = args[0].strip(), args[1].strip()
+    init()
+    row, hint = _find_agent(old)
+    if not row:
+        ui.err(f'没有这台子 agent：{old}')
+        return 1
+    old = row['agent_id']
+    if hint:
+        ui.dim(f'  {hint}')
+    if not _valid_agent_id(new):
+        ui.err('新名字不合法：不能含空格 / 引号 / 斜杠等，长度 1~32')
+        return 1
+    if new == old:
+        ui.dim('新旧名字一样，什么都没做。')
+        return 0
+    if q('SELECT 1 FROM agents WHERE agent_id=?', (new,), one=True) or \
+            q('SELECT 1 FROM agent_alias WHERE alias=?', (new,), one=True):
+        ui.err(f'这个名字已被占用：{new}')
+        return 1
+    if q('SELECT 1 FROM blocked WHERE agent_id=?', (old,), one=True):
+        ui.err('这台已被拉黑（正在自毁），不能改名。')
+        return 1
+    n_t = q('SELECT COUNT(*) AS n FROM tasks WHERE agent_id=?', (old,), one=True)['n']
+    n_u = q('SELECT COUNT(*) AS n FROM uploads WHERE agent_id=?', (old,), one=True)['n']
+    try:
+        # 先把引用搬到新名，最后改 agents —— 中途失败也不会出现"任务指向一个不存在的人"
+        x('UPDATE tasks SET agent_id=? WHERE agent_id=?', (new, old))
+        x('UPDATE uploads SET agent_id=? WHERE agent_id=?', (new, old))
+        x('UPDATE agents SET agent_id=? WHERE agent_id=?', (new, old))
+        x('INSERT OR REPLACE INTO agent_alias(alias,agent_id,at) VALUES(?,?,?)', (old, new, now()))
+        x('UPDATE agent_alias SET agent_id=? WHERE agent_id=?', (new, old))   # 旧别名链也指向新名
+    except Exception as e:                                    # noqa: BLE001
+        ui.err(f'改名失败：{e}')
+        return 1
+    audit('brain', 'rename', new, f'{old} → {new}')
+    ui.good(f'已改名：{old} → {new}')
+    ui.dim(f'  一起搬过去：任务 {n_t} 条、上传 {n_u} 个')
+    ui.dim(f'  旧名 {old} 保留为别名 —— 那台机器**不用动**，它继续用旧名发请求也认。')
+    return 0
+
+
+def cmd_rm(conf, args) -> int:
+    """brain rm <名字> [--force] [--purge] —— 删除一台（先命令自毁，确认后再删记录）。"""
+    aid = ''
+    force = purge = False
+    for a in args:
+        if a == '--force':
+            force = True
+        elif a == '--purge':
+            purge = True
+        elif not a.startswith('-') and not aid:
+            aid = a
+    if not aid:
+        ui.err('用法：brain rm <名字> [--force] [--purge]')
+        ui.dim('  默认：先命令那台机器自毁 → 它确认清干净后，再从大脑彻底删掉记录')
+        ui.dim('  --force  不等确认，直接删（机器还活着的话，它下次连上来会自己发现"被删了"并自毁）')
+        ui.dim('  --purge  连它的任务记录与上传文件一起清掉')
+        return 1
+    init()
+    row, hint = _find_agent(aid)
+    if not row:
+        ui.err(f'没有这台子 agent：{aid}')
+        return 1
+    aid = row['agent_id']
+    if hint:
+        ui.dim(f'  {hint}')
+    # 在线状态直接读库（不走 HTTP：本地命令不该依赖 PUBLIC_URL / 服务在跑）
+    online = (now() - (row['last_seen'] or 0)) < 180
+    n_t = q('SELECT COUNT(*) AS n FROM tasks WHERE agent_id=?', (aid,), one=True)['n']
+    n_u = q('SELECT COUNT(*) AS n FROM uploads WHERE agent_id=?', (aid,), one=True)['n']
+    ui.say()
+    ui.warn(f'⚠ 要删除这台子 agent：{ui.C_Y}{aid}{ui.C_0}（{"在线" if online else "离线"}）')
+    ui.say('   1) 先命令它把**本机关于自己的一切**清掉（程序 / 配置 / 令牌 / 缓存 / 日志 / 开机自启）')
+    ui.say('   2) 它确认清干净后，再从大脑**彻底删掉**这条记录（含旧名别名、注册记录）')
+    ui.dim(f'   它的历史：任务 {n_t} 条、上传 {n_u} 个' +
+           ('（--purge：会一并清掉）' if purge else '（默认保留）'))
+    ui.say()
+    if not sys.stdin.isatty():
+        ui.err('删除必须在终端里人工操作（不接受管道 / 脚本输入）。')
+        return 1
+    try:
+        t = input(f'  原样输入它的名字以确认 —— {ui.C_Y}{aid}{ui.C_0}\n  > ').strip()
+    except (EOFError, UnicodeDecodeError):
+        ui.err('已取消（什么都没做）。')
+        return 1
+    if t != aid:
+        ui.err('输入不一致，已取消（什么都没做）。')
+        return 1
+    if purge:
+        try:
+            t = input(f'  还会**删掉 {n_t} 条任务与 {n_u} 个上传文件**：输入 '
+                      f'{ui.C_Y}PURGE{ui.C_0} 确认\n  > ').strip()
+        except (EOFError, UnicodeDecodeError):
+            ui.err('已取消（什么都没做）。')
+            return 1
+        if t != 'PURGE':
+            ui.err('确认不符，已取消（什么都没做）。')
+            return 1
+
+    # ① 命令自毁：写进 blocked（它下次领任务就会收到 wipe 指令）—— 直接写库，不依赖服务在跑
+    if not q('SELECT 1 FROM blocked WHERE agent_id=?', (aid,), one=True):
+        x('INSERT OR REPLACE INTO blocked(agent_id,reason,at,wipe,wipe_done) VALUES(?,?,?,1,0)',
+          (aid, '主人删除（brain rm）', now()))
+        audit('brain', 'block', aid, '主人删除（brain rm）')
+    ui.good('已下发自毁指令。')
+    done = False
+    if not force and online:
+        ui.dim('  等它确认清干净（最多 60 秒）…')
+        t0 = time.time()
+        while time.time() - t0 < 60:
+            bb = q('SELECT wipe_done FROM blocked WHERE agent_id=?', (aid,), one=True)
+            if bb and bb['wipe_done']:
+                done = True
+                break
+            time.sleep(2)
+
+    # ② 删记录
+    aliases = [x2['alias'] for x2 in q('SELECT alias FROM agent_alias WHERE agent_id=?', (aid,))]
+    x('DELETE FROM agents WHERE agent_id=?', (aid,))
+    x('DELETE FROM blocked WHERE agent_id=?', (aid,))
+    x('DELETE FROM enrollments WHERE agent_id=?', (aid,))
+    x('DELETE FROM agent_alias WHERE agent_id=?', (aid,))
+    x('DELETE FROM agent_alias WHERE alias=?', (aid,))
+    if purge:
+        x('DELETE FROM tasks WHERE agent_id=?', (aid,))
+        x('DELETE FROM uploads WHERE agent_id=?', (aid,))
+        shutil.rmtree(C.UPLOAD_DIR / aid, ignore_errors=True)
+    audit('brain', 'rm', aid, f'purge={purge} force={force} confirmed={done}')
+    ui.good(f'已删除 {aid}（从大脑里彻底移除）。')
+    if aliases:
+        ui.dim(f'  一并清掉别名：{", ".join(aliases)}')
+    if purge:
+        ui.dim(f'  已清掉：任务 {n_t} 条、上传 {n_u} 个（含磁盘文件）')
+    if not done:
+        ui.warn('  它没有确认"已自毁"（多半已离线 / 或在跑任务）。')
+        ui.dim('  若机器其实还活着：Linux 2.12+ / Windows 2.2+ 会在连续 3 次"未注册"后自己自毁；')
+        ui.dim('  更老的版本不会 —— 那就需要你手动去那台机器清理一遍。')
+    return 0

@@ -46,7 +46,8 @@ DEFAULT_CONF = {
     'AI_CMD_TIMEOUT': '120',          # run_local 单条命令最长秒数
     'AI_API_TIMEOUT': '180',          # 单次模型请求最长秒数
     'POLL_TIMEOUT': '25',             # 子 agent 领任务的长轮询秒数
-    'TASK_TIMEOUT': '300',            # 等所有服务器回报的最长秒数
+    'TASK_TIMEOUT': '180',            # **多久没有新进展**算"卡住"（秒）。只要子 agent 每步都在回报，就一直等
+    'TASK_MAX_WAIT': '7200',          # 单条任务最多等多久（硬上限，秒）；到点先不等，但任务没取消、做完仍会回报
     'MAX_UPLOAD_MB': '50',            # 子 agent 单个上传文件的大小上限（MB）
     'BRAIN_URLS': '',                 # 下发给子 agent 的“大脑地址清单”
     'PUSH_BASE': 'https://www.xiaoyingapi.com',   # 通知（邮件）走你的「消息推送」服务
@@ -61,7 +62,7 @@ DEFAULT_CONF = {
 }
 
 NUMERIC_KEYS = ('BRAIN_PORT', 'RDV_INDEX', 'AI_MAX_STEPS', 'AI_MAX_STEPS_AUTO', 'AI_CMD_TIMEOUT',
-                'AI_API_TIMEOUT', 'POLL_TIMEOUT', 'TASK_TIMEOUT', 'MAX_UPLOAD_MB',
+                'AI_API_TIMEOUT', 'POLL_TIMEOUT', 'TASK_TIMEOUT', 'TASK_MAX_WAIT', 'MAX_UPLOAD_MB',
                 'PUSH_MIN_INTERVAL', 'OFFLINE_ALERT_SEC')
 
 

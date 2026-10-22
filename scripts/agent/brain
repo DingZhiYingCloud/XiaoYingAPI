@@ -57,6 +57,14 @@ USAGE = f"""brain v{VERSION} — Agent 大脑
                                 看子 agent 传上来的文件（截图/日志…）：链接可在线打开；
                                 --rm 删一个、--clean 全清
   brain get <id> [-o 文件]      把某个上传的文件取回本机（默认存当前目录）
+  brain tasks [agent_id|任务id] [-n N] [--running]
+                                看任务与结果（默认最近 20 条；--running 只看排队/执行中）
+  brain cancel <任务id> | --agent <agent_id> | --all
+                                真取消：排队中的直接作废；执行中的在**下一步之前**停手
+  brain rename <旧名> <新名>    给一台子 agent 改名（只改大脑；旧名自动变别名，机器不用动）
+  brain rm <名字> [--force] [--purge]
+                                删除一台：先命令它自毁 → 确认后再从大脑删掉记录
+                                --force 不等确认；--purge 连任务与上传文件一起清
   brain test-mail               用当前配置发一封测试邮件（验证通知通道 / 邮件报警）
   brain -h | --help             本帮助
 
@@ -125,6 +133,14 @@ def main(argv) -> int:
         return admin.cmd_uploads(conf, argv[1:])
     if cmd == 'get':
         return admin.cmd_get(conf, argv[1:])
+    if cmd == 'tasks':
+        return admin.cmd_tasks(conf, argv[1:])
+    if cmd in ('cancel', 'kill'):
+        return admin.cmd_cancel(conf, argv[1:])
+    if cmd == 'rename':
+        return admin.cmd_rename(conf, argv[1:])
+    if cmd in ('rm', 'remove', 'delete'):
+        return admin.cmd_rm(conf, argv[1:])
     if cmd in ('test-mail', 'testmail'):
         return admin.cmd_notify_test(conf)
 

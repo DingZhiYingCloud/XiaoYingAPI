@@ -15,6 +15,8 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS agents(
   agent_id TEXT PRIMARY KEY, token TEXT, fingerprint TEXT, host TEXT, version TEXT, os TEXT,
   created_at REAL, last_seen REAL, load1 TEXT, disk TEXT, mem TEXT, extra TEXT);
+CREATE TABLE IF NOT EXISTS agent_alias(
+  alias TEXT PRIMARY KEY, agent_id TEXT, at REAL);
 CREATE TABLE IF NOT EXISTS tasks(
   id TEXT PRIMARY KEY, batch_id TEXT, agent_id TEXT, task TEXT, state TEXT,
   result TEXT, log TEXT, created_at REAL, started_at REAL, finished_at REAL);

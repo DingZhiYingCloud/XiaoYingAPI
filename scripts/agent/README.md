@@ -6,7 +6,7 @@
 > 面向"不想懂太多 Linux 也能照着做"：**每一步都有完整命令 + "看到什么算成功"**。
 > 出问题先看 **第 16 节《常见问题》**。
 
-**当前版本**　🧠 大脑 `3.0.0`　·　🐧 Linux 子 agent `2.9.0`　·　🪟 Windows 子 agent `2.0.0`
+**当前版本**　🧠 大脑 `3.4.0`　·　🐧 Linux 子 agent `2.13.0`　·　🪟 Windows 子 agent `2.3.0`
 
 ---
 
@@ -164,7 +164,7 @@ powershell -File .\win\pack-agent.ps1     # 内嵌口令（旧模式：文件里
 | **命令长相** | `./ai-agent <子命令>` | `.\ai-agent.ps1 <子命令>`（子命令同名） |
 | **数据目录** | `~/.ai-agent/` | 管理员：`C:\ProgramData\.ai-agent\`<br>非管理员：`%LOCALAPPDATA%\.ai-agent\` |
 | **隐藏副本目录** | `~/.local/.a-<8位哈希>/<1..N>/ai-agent` | 管理员：`C:\ProgramData\.a-<8位哈希>\<1..N>\ai-agent.ps1`<br>非管理员：`%LOCALAPPDATA%\.a-<8位哈希>\` |
-| **开机自启** | systemd 服务 `ai-agent`；没有 systemd 退回 cron `@reboot` | 管理员：**计划任务** `WinHealthCheck`（开机启动，SYSTEM）+ `WinHealthCheck1`（每分钟 watchdog）<br>非管理员：**注册表 Run 键** + 常驻"监工"进程 |
+| **开机自启** | root：systemd 服务 `ai-agent`（没有 systemd 就退回 cron `@reboot`）<br>**非 root：写进你自己的 crontab**（`@reboot` + 每分钟 watchdog，**不需要 sudo**） | 管理员：**计划任务** `WinHealthCheck`（开机启动，SYSTEM）+ `WinHealthCheck1`（每分钟 watchdog）<br>非管理员：**注册表 Run 键** + 常驻"监工"进程 |
 | **每分钟兜底** | cron `* * * * *` 跑 `watchdog` | 计划任务 `WinHealthCheck1` 每分钟跑 `watchdog`（非管理员则是常驻 `supervise` 进程） |
 | **暂停子 agent** | `systemctl stop ai-agent` / `pkill -f 'ai-agent run'` | `Stop-ScheduledTask -TaskName WinHealthCheck`（或 `Get-Process … \| Stop-Process`） |
 | **看运行日志** | `~/.ai-agent/agent.log` + `journalctl -u ai-agent -f` | `C:\ProgramData\.ai-agent\agent.log` |
@@ -449,6 +449,14 @@ python3 brain test-mail    # 发一封测试邮件，验证"邮件报警"通道�
 python3 brain uploads      # 看子 agent 传上来的文件（截图/日志…）：列表带在线链接
                            #   --rm <id> 删一个；--clean 全清
 python3 brain get <id>     # 把某个上传的文件取回本机（默认存当前目录，-o 指定路径）
+python3 brain tasks        # 看任务与结果（默认最近 20 条；--running 只看排队/执行中）
+                           #   参数可以是 agent_id，也可以直接是任务 id（那会显示全文）
+python3 brain cancel <任务id>  # **真取消**：排队的直接作废；执行中的会在**下一步之前**停手
+                           #   也支持 --agent <agent_id> / --all
+python3 brain rename <旧名> <新名>  # 给一台子 agent 改名（只改大脑；旧名自动变别名，机器不用动）
+python3 brain rm <名字> [--force] [--purge]
+                           # 删除一台：先命令它自毁 → 确认后再从大脑删掉记录
+                           #   --force 不等确认；--purge 连任务与上传文件一起清
 python3 brain release <包> --os linux|win --version <版本> [--notes "说明"]   # 发布子 agent 升级包
 
 # —— 看日志 ——
@@ -524,7 +532,8 @@ python3 brain explain "signing.key 删了会怎样？"   # 还能追问
 | `AI_CMD_TIMEOUT` | `120` | `run_local` 单条命令最长秒数 |
 | `AI_API_TIMEOUT` | `180` | 单次模型请求最长秒数 |
 | `POLL_TIMEOUT` | `25` | 子 agent 领任务的长轮询秒数 |
-| `TASK_TIMEOUT` | `300` | 等所有服务器回报的最长秒数 |
+| `TASK_TIMEOUT` | `180` | **多久没有新进展**算"卡住"（秒）：只要子 agent 每步都在回报就一直等；连续这么久**毫无动静**才先不等 |
+| `TASK_MAX_WAIT` | `7200` | 单条任务最多等多久（硬上限，秒）：到点先不等，但任务**没取消**、做完仍会回报 |
 | `MAX_UPLOAD_MB` | `50` | 子 agent `upload` **单个文件**的大小上限（MB）。改完要**重启 `serve`** 才生效 |
 | `BRAIN_URLS` | 空 | 下发给子 agent 的"大脑地址清单"（换地址用） |
 | `PUSH_BASE` | `https://www.xiaoyingapi.com` | 通知（邮件）走你的「消息推送」服务 |
@@ -705,11 +714,9 @@ python3 brain approve <那个id>
 
 #### 第 4 步｜确认上线（开机自启**已自动装好**）—— 【大脑那台】
 
-> 第 3 步注册成功时，子 agent **已经自动**把自己设成了开机自启（优先 systemd；
-> 没有 systemd 就退回 cron `@reboot`）—— **这一步你不用做任何事**，以后服务器重启它会自己起来。
-> ⚠️ **Linux 版的自启/多副本/自愈依赖 root**：非 root 装会提示"设置开机自启需要 root 权限"，
-> 此时不会装服务、也不会生成隐藏副本（自愈因此无从谈起）—— 生产上请用 root（或 `sudo`）部署。
-> 真要用非 root：只能自己把 `./ai-agent run` 挂到该用户的 crontab，且不要指望多副本/自愈。
+> 第 3 步注册成功时，子 agent **已经自动**把自己设成了开机自启：**root** 走 systemd（没有就退回 cron `@reboot`）；**非 root 也照样能装** —— 它会写进**你这个账号自己的 crontab**（`@reboot` 开机起一次 + 每分钟 `watchdog` 保活），**完全不需要 sudo**。
+> 非 root 时**多副本与自愈同样有效**（副本在你自己的 `~/.local/.a-…/` 下）；想改用 systemd（最稳）：`sudo ./ai-agent install`。
+> 自检：`crontab -l` 应能看到两行（`@reboot … watchdog` 和 `* * * * * … watchdog`）。
 
 **【在大脑那台】** 确认它上线：
 
@@ -1461,6 +1468,11 @@ ps -eo args | grep -E 'brain serve|ai-agent run' | grep -v grep
 | 注册后一直等批准 | 到大脑上 `python3 brain pending` → `python3 brain approve <id>` |
 | 子 agent 显示`离线` | 心跳 30s 一次、离线判定 180s；看进程还在不在、网络通不通 |
 | **发布了新版本，子 agent 却永远升不上去（版本号不变）** | 十有八九是**没重新打包**：`brain release` 只是"把你给的那个文件"登记发布，它 **不会**替你重新打包。若给的还是上次那个包，**两次发布的 sha256 会一模一样**，机器下载到的正文里 `$VERSION` 自然没变 → 每 10 分钟"升"一次、版本永远不动。**正确顺序**：① 在 Windows 上 `powershell -File win\pack-agent.ps1 -Online -Brain https://{大脑域名}/ai-brain -Key $pk -Out win\dist\ai-agent.ps1`（**必须先改好 `win\ai-agent.ps1` 里的 `$VERSION`**）；② 把产物传上大脑；③ `python3 brain release <产物> --os win --version <新版本> --notes "…"`。**自查**：`brain release` 会打印 sha256，换版本时它必须与上一版**不同**（相同就是没换包）；`brain version` 也能看到"已发布的最新版"。 |
+| 装完提示"设置开机自启需要 root 权限" / 重启后子 agent 不跑 | **2.10.0 起非 root 也能装**：`ai-agent install` 会写进**你这个账号的 crontab**（`@reboot` 开机起一次 + 每分钟 `watchdog` 保活），**不需要 sudo**。装完 `crontab -l` 应看到两行。≤2.9.0 的旧版才有这个限制，升到 2.10.0 即可；急用可先手写一行：`(crontab -l 2>/dev/null; echo '@reboot /bin/bash /usr/local/bin/ai-agent run >>$HOME/.ai-agent/run.out 2>&1 &\') \| crontab -` |
+| 下发后一直卡在"排队"、命令像是不接 | 子 agent **一次只做一条**，它正在跑别的任务。大脑现在会先告警"它已跑 X 分 Y 秒、后面还排着 N 条"；**同一条任务重复下发不会多跑一遍**（自动复用同一条）。急的话等它回报完再发，或先问它 `brain status`。 |
+| 任务发出去发现不对，想让它**立刻停手** | `brain tasks --running` 看 id → `brain cancel <任务id>`（也可 `--agent <id>` / `--all`）。**排队中的直接作废**（不会被领走）；**执行中的会在下一步之前停手**（子 agent 每步都回报一次，通常几十秒内），然后回一条"已按主人指令取消"。 |
+| 想给某台机器**起个好记的名字** / 把那台机器**彻底删掉** | 改名：`brain rename 旧名 新名`（只改大脑；**旧名自动变别名**，那台机器不用动）。删除：`brain rm 名字` —— 先命令它自毁，**确认清干净后再从大脑删记录**（要原样输入名字确认）；默认保留它的任务与上传，加 `--purge` 才连数据一起清。删掉后机器若还活着，会在连续 3 次"未注册"且确认是同一个大脑后**自己自毁**（防大脑重装误伤）。 |
+| 子 agent 突然失联、`ai-agent: command not found` | 先看它是不是**被某条任务自己删掉了**（真发生过：一条"清理测试痕迹"的任务把 agent 的程序/配置/crontab 一起清了）。2.13.0 / 2.3.0 起有**执行前硬拦截**：命令同时命中"自己的程序/配置/副本/计划任务/crontab"和"删/写/停"动作时**直接拒绝执行**，并回报"已拦截"。恢复：`~/.ai-agent/agent.conf` 还在就只把程序放回去；没了就得重新 `enroll`（见 §16 上文）。 |
 | `时间戳超窗` | 两台机器时钟差太多：Linux 装 `ntp`/`chrony` 对时；**Windows 确认"自动设置时间"开着**（PS5.1 用系统 UTC 时间签名） |
 | `nonce 重复（疑似重放）` | 请求被重复发送；重试即可（正常不会有） |
 | 没有颜色 / 没有 `── 结果 ──` 横线 | 当前不是"真终端"（输出被重定向、或某些面板终端）。**文字内容不受影响** |
@@ -1607,7 +1619,7 @@ python3 brain rendezvous next --check  # 看“下一期”域名，并顺带查
 
 ## 📝 21. 版本记录（**每次升级都要更新这里**）
 
-**当前版本：大脑 `3.0.0` ／ 子 agent(Linux) `2.9.0` ／ 子 agent(Windows) `2.0.0`**
+**当前版本：大脑 `3.4.0` ／ 子 agent(Linux) `2.13.0` ／ 子 agent(Windows) `2.3.0`**
 
 随时自己看，不用记：
 
@@ -1636,7 +1648,13 @@ win-pc-3            Windows    1.1.3            35s 前       与最新发布不
 
 | 日期 | 大脑 | 子 agent | 主要变化 |
 | --- | --- | --- | --- |
+| 2026-10-15 | **3.4.0** | Linux 2.13.0 ／ Windows 2.3.0（都不变） | **等待提示说人话：排队的机器到底在忙什么，一眼看到**。起因：主人看到"排队 1 台 / 执行中 0 台"以为卡死 —— 其实是那台机器正在跑**另一批**任务，而这个计数只统计当前这一批。改法：等待中每 15 秒的进度提示里，对**每一个排队中的任务**再问一次 `/internal/busy`，多打一行：`· FB客户服务器 正在跑另一条任务（已 5 分 12 秒）：「任务摘要」`；若那台机器**根本没在跑**，则打 `· X 没在跑任务 —— 可能离线，或还没来领`（这样"在忙"和"离线/不领任务"能一眼区分）。只改大脑，不用发子 agent。**实测（离线模拟两个场景）**：忙 → 输出"正在跑另一条任务（已 5 分 12 秒）：「另一件事：全盘搜日志」" ✓；不忙 → "没在跑任务 —— 可能离线，或还没来领" ✓；`py_compile` 通过；生产 `health` = `3.4.0` |
+| 2026-10-15 | 3.3.0（不变） | **Linux 2.13.0** ／ **Windows 2.3.0** | **护栏：执行前硬拦截"删/改 agent 自己"的命令**（起因：一条"清理测试痕迹"的任务把子 agent 的程序、`~/.ai-agent`、crontab 一起删了 → 机器直接失联）。做法：两端在**执行每一条本机命令之前**先判一次，只有"**动作是删/写/停**"且"**目标命中自己人**"两条同时成立才拒绝（避免误伤只读命令与正常运维）：① 自己人 = `$AGENT_HOME`(~/.ai-agent)、程序文件、隐藏副本 `.a-*`、`ai-agent.service`、裸的 `ai-agent`；② 动作 = `rm/unlink/shred/truncate/mv/cp/install/dd/chmod/chown/tee`、`> ` `>>` 重定向、`find -delete`、`systemctl disable|stop`、`| crontab -`、Windows 的 `Remove-Item/del/rmdir/Move-Item/Set-Content/Clear-Content/icacls/Unregister-ScheduledTask/schtasks /delete/Stop-Service/Disable-ScheduledTask`；③ **`crontab -r` / `crontab -e` 无条件拦**（会把保活任务一起清掉，且看不出是冲谁来）；④ 命中后：`LAST_RC=126` + 返回"⛔ 已拦截…"给模型，让它换做法；同时写 `agent.log`。⑤ 提示词也加了一节【绝不许动自己（硬规则）】（要求它遇到"把 agent 删干净"这类任务要明确回报不能删）。**实测**：从**真实脚本里抽出**护栏函数跑 20 个用例全过 —— 拦截 12 个（`rm -rf ~/.ai-agent`、`cp /dev/null 覆盖 agent.conf`、`crontab -r`、`systemctl disable ai-agent`、`find … -delete`、`chmod 000`、删副本…）、放行 8 个（`ls/cat/grep` 只读、`rm /var/log/nginx/*.gz`、`sed -i` 改 nginx 日志、`df -h`、`echo > /tmp/x`…）；`bash -n` 与 ps1 语法/BOM 均通过。发布包自验：Linux 29453 字节 `f25c9e32…`（自跑得 2.13.0）、Windows 103421 字节 `92ed2df7…`（自跑得 2.3.0） |
+| 2026-10-15 | **3.3.0** | **Linux 2.12.0** ／ **Windows 2.2.0** | **新增「自定义改名」与「自定义删除（删了就自毁）」**。① `brain rename <旧名> <新名>`：只改大脑侧；`agents`/`tasks`/`uploads` 一并改名，**旧名自动写进新表 `agent_alias`** —— 那台机器**完全不用动**（它继续用旧名签名请求也认，`verify_agent` 会顺着别名找到真身）；`/internal/dispatch`、`/internal/busy`、`/internal/cancel` 也都做了别名归一（否则按旧名派单会派给"不存在的人"）。② `brain rm <名字> [--force] [--purge]`：**两步走** —— 先写 `blocked(wipe=1)` 命令它自毁，在线的话等它回报"已清干净"（最多 60 秒），再从大脑**彻底删掉** `agents`/`blocked`/`enrollments`/别名；默认**保留**它的任务与上传记录，`--purge` 才连任务、上传记录与磁盘文件一起清。必须**原样输入名字**确认（非终端直接拒绝）；`--purge` 还要再输 `PURGE`。③ **机器侧兜底自毁**：子 agent 连大脑收到 `401 未注册` 时，必须同时满足"连续 ≥3 次 + 首次后发现 ≥10 分钟 + `/health` 的 `brain_id` 与本地缓存一致"才自毁 —— 少了最后一条，大脑重装/换库会让**全网机器集体自杀**；首次成功连上时会把 `brain_id` 记到 `~/.ai-agent/brain_id`，连上就清空误判计数。④ **大白话也能用**：新增动作 `rename_agent` / `delete_agent`（`prompts/actions.md` 已写明），删除走同一套"输入名字"确认。**实测（临时大脑 + 签名模拟 agent）12/12 全过**：改名后 `agents`/`tasks` 都变新名、旧名成为别名、**用旧名签名仍 200**、按旧名派单记在新名下；新名不能是别人的旧名、不能含空格；非终端 `rm` 被拒；pty 里输入名字后 `rm --force` 删净（任务保留）；删完该 agent 再连 → `401 未注册`。发布包自验：Linux 28365 字节 `cdd6e812…`（自跑得 2.12.0）、Windows 101009 字节 `87cc6e3f…`（自跑得 2.2.0）；生产 `health` = `3.3.0` |
+| 2026-10-15 | **3.2.0** | **Linux 2.11.0** ／ **Windows 2.1.0** | **新增「真取消」：`brain cancel`** —— 主人能中途叫停，子 agent 会**真的停手**（不是只在大脑里改状态）。做法：① 大脑新增 `/internal/cancel`（按任务 id / 某台机器 / 全部）、`brain cancel` 与 `brain tasks` 命令；② **取消的信道复用"进度回报"** —— 子 agent 每跑一步都会 POST `/agent/report`，大脑在那次响应里回 `{"cancel":true}`，子 agent 就在**执行下一步之前**停手并回报 `state=cancelled`（不用长连接、不用额外轮询）；③ 任务状态新增 `cancelled`：**排队中的**直接作废（`/agent/poll` 不会再派出），**执行中的**下一次回报时被告知停手（且大脑**不会被后续的 running 回报覆盖**掉已取消状态）；④ 两端子 agent 都检查"启动前那条 report running"的响应（覆盖"刚领到就被取消"的竞态）。**实测**：临时大脑 + **模拟子 agent 的签名回报** 7/7 全过 —— 正常回报 `cancel:false`；取消执行中 → 1 条、`was=running`、DB 变 `cancelled`；下一次回报 → **`cancel:true`** 且状态不被覆盖；子 agent 回报 cancelled → 终态正确；取消排队中的 → `/agent/poll` 拿不到该任务；`busy` 为空；取消不存在的 id → 0 条不报错。发布包均自验：Linux 27577 字节 `aa139ca4…`（自跑 `--version` 得 2.11.0）、Windows 97597 字节 `b08eb0f9…`（自跑得 2.1.0）；公开分发端点下载字节与本地**完全一致**；生产 `health` = `3.2.0` |
+| 2026-10-15 | **3.1.0** | Linux 2.10.0 ／ Windows 2.0.0（都不变） | **重做「大脑 ↔ 子 agent」的等待与下发逻辑（只改大脑，子 agent 不用重新发版）**。实测反馈："子 agent 还在干活，大脑却超时了；重发的新命令它一直不接"。根因三条：① 大脑按 **`TASK_TIMEOUT=300` 秒总时长**死等，**有进展也不续期**；② 超时后是人/模型**又发了一次**；③ `/internal/dispatch` **既不检查对方忙不忙、也不去重** → 每重试一次就多一条排队，子 agent 干完会**逐条重复执行**（带删除/重启的命令最危险）。改法：① 等待改成"**看进展**"：只要它每步都在回报就一直等，**连续 `TASK_TIMEOUT`（默认改成 180 秒）毫无新进展**才先不等；另加硬上限 `TASK_MAX_WAIT`（默认 2 小时）兜底；② 派发前先问新接口 `/internal/busy`：目标正忙就明确告警"它已跑 X 分 Y 秒、后面还排着 N 条"；③ **同一条任务自动去重**（同机器 + 同文本 + 队列中/执行中 → 复用，返回值带 `reused`）；④ 结束语**说实话**：不再是"超时未完成"，而是"**还在执行**（已 X；最近 Y 前有进展）—— 我先不等了，它做完会自己回报"或"**还在排队**（那台机器正忙，排到会自动执行）—— 不用重发"。**实测**：离线用例 4/4（慢但在动 600 秒完成不误判／真卡死 180 秒才放手／硬上限 60 秒／一直排队 180 秒）；临时大脑 HTTP 4/4（同一条连发两次 → 同一 task_id + `reused`、任务数仍 1；被领走后 `/internal/busy` 正确显示在忙与时长；在跑时再发同一条仍复用；换一条才新建）。生产发布后 `health` = `3.1.0`、`brain status` 正常、`serve` ppid=1 存活；顺手把一条 **8 天前的僵尸排队任务**标成"未执行（目标机器长期离线）"，避免它哪天突然执行 |
 | 2026-10-15 | **3.0.0** | **Windows 2.0.0**（Linux 2.9.0 不变） | **不兼容：移除「键盘换词」功能（两侧全删）+ 两处顺手的优化**。① **删除**：Windows 的 `swap` / `swap-daemon` 子命令、`$SWAP_CS`（C# 低级键鼠钩子）、`swap\` 目录与 `hook.ps1`、`WinHealthCheck2` 计划任务、提示词里的换词小节；大脑的 `POST /agent/swaplog`、`swaplogs` 表、`brain swaplogs` / `brain swap-popup` 命令、心跳里的 `swap_popup` 字段、配置项 `SWAP_POPUP`、`brain files` 里的登记；README 的第 10 节换词小节与相关 FAQ（§21 历史记录保留）。② **升级后的历史遗留清理**（必须有，否则删不干净）：老版本装过换词的机器，`WinHealthCheck2` 任务与 `swap\hook.ps1` 进程不会自己消失，而且那个任务**没有隐藏窗口**、在用户会话里每分钟闪一下；新版本在 `run` 启动与 `selfcheck` 时做一次**幂等清理**（注销任务、杀掉 `hook.ps1` 进程、删掉 `swap\` 目录），`uninstall` / `selfdestruct` 也一并处理。③ **优化一：计划任务加 `-WindowStyle Hidden`** —— `New-Tasks` 里的两个任务（主进程 `run` 与每分钟的 `watchdog`）原来没隐藏窗口，**非管理员安装**时它们跑在登录用户会话里 → 会闪 PS 控制台窗口（和之前那个"窗口一闪一闪"同一类问题）。④ **优化二：`brain release` 防呆** —— 新发的包若与上一版**字节完全相同**（sha256 一样）会明确告警。这正是这次"发布了 1.3.2 但机器永远升不上去"的真因：`release` 只是登记你给的文件、**不会替你重新打包**。**实测**：`py_compile` 全过、`brain -h`/`files`/`swap-*` 已无残留、Windows 脚本 `grep -i swap` 只剩上述清理代码、语法与 BOM 正常 |
+| 2026-10-15 | 3.0.0（不变） | **Linux 2.10.0**（Windows 2.0.0 不变） | **非 root 也能装开机自启（不用 sudo）**。实测反馈：`ubuntu` 用户装完子 agent，注册成功却提示"设置开机自启需要 root 权限"，而 `setup` 最后照样打印"安装完成 ✅ 以后服务器重启会自动运行" —— **假成功**，重启后不会跑。改法：`install_service` 不再直接拒绝非 root，改为**写进该用户自己的 crontab**：`@reboot` 开机起一次 + `* * * * * watchdog` 每分钟保活（`cmd_run` 有 pid 防重复，不会起两套；若本机 root 装过 systemd 服务，`watchdog` 会让位给它，不互相顶）。同时修三处：① `setup` 结束语按真实结果说（`AUTOSTART_OK`），没设好就**明确警告**；② `uninstall` 在非 root 时清掉自己 crontab 里那两行；③ `selfheal`/`selfcheck` 不再把"没有 systemd 单元"当作被清理（否则非 root 会每 5 分钟误报"本机被清理过"并上报大脑）。**实测（真实 Linux，临时非 root 用户）**：`install` → crontab 出现两行（`@reboot …` + `* * * * * …`）且**幂等**（再跑一次还是 2 行）；`uninstall` → 两行清空；`bash -n` 通过 |
 | 2026-10-15 | 2.12.1（不变） | **Windows 1.3.2** | **换词钩子改由主程序生成的独立小脚本运行 —— 真机实测的根因修复**。真机（`DINGZHIYING`）证据：`swap\daemon.log` 里只有"拉起常驻钩子"、**从来没有"钩子启动"**，`swap.pid` 也不存在 → 钩子一次都没起来过。根因：**加密生产版的 `ai-agent.ps1` 启动时必须读 `agent.conf`**（里面的 `PACK_SECRET`）才能向大脑换解密口令，而 `agent.conf` 的 ACL 只给 SYSTEM/Administrators；可换词钩子又必须跑在**登录用户会话（非提权）**里（SYSTEM/会话 0 钩不到键盘），计划任务用的是 `RunLevel Limited` → 读不到配置 → 进程立刻退出（现象：换词永远不生效 + 计划任务每分钟重启它 → **PS 窗口一闪一闪**）。改法：主程序把「钩子本体」生成成 `swap\hook.ps1`（**只含钩子逻辑，不含任何密钥 / 令牌 / 提示词，只读同目录的 rules.conf**），计划任务改为直接跑它 → 不再碰 `agent.conf`。另修三处：① `Ensure-SwapDaemon` 现在**每次都核对任务动作**（老版本任务指向 `ai-agent.ps1 swap-daemon`，只判"任务存在"会一直留着坏任务）；② 防重复实例 / 存活判断改用**大小写不敏感包含**（实测 `-like '-File*<路径>*'` 匹配失败，且任务里写小写盘符、`$MyInvocation` 给大写）；③ `"$MyInvocation.MyCommand.Path"` 在双引号里**不会取属性**（会变成类型名），必须写 `"$(...)"`。**实测（本机 PS5.1）**：`hook.ps1` 独立进程跑 → 读到规则、装上键盘+鼠标钩子、`swap.pid`/`daemon.log` 正常；再起一个被防重复挡回；`Stop` 后零残留；生成物**不含 `AGENT_TOKEN` / `SYS_TASK` / `PACK_KEY` / `sk-`** |
 | 2026-10-15 | 2.12.1（不变） | **Windows 1.3.1** | **修换词的两个真问题（实测反馈：配了规则"发送后没换成" + 那台机器"老是闪一个 PS 框"）**。① **只有一条规则时整套错乱** —— PowerShell 会把函数返回的 0/1 元素数组"拆包"成 `$null` / 单个字符串，于是 `$rules[0]` 拿到的是**字符串的第一个字符**：`swap list` 显示成空、`swap del 1` 删不掉甚至把规则表搞坏（多条规则时反而正常，所以第一轮没发现）。改为调用方一律用 `@(Get-SwapRules)` 接。② **PS 窗口一闪一闪** —— 常驻钩子必须跑在登录用户会话，而计划任务的动作**没带 `-WindowStyle Hidden`**，还配了 `RestartCount 999 / 1 分钟`：钩子一旦起不来就变成"每分钟闪一个黑框"；主循环也每分钟无条件重试拉起。改为：任务动作加 `-WindowStyle Hidden`、去掉自动重启、拉起失败**退避 5 分钟**（`swap/.last-try`）。③ **钩子闷死还不留痕** —— 写 pid 文件那行原本在 `try` **外面**，目录没写权限就带红字立刻死；而 `agent.log` 在 `ProgramData` 下普通用户写不进去（等于没有诊断）。改为全部包进 `try`，并新增 `swap/daemon.log` 轨迹（启动 / 规则数 / 钩子装没装上 / 每次触发）＋ `swap` 自检输出（钩子是否在跑 / 登录用户 / 规则文件可读性 / 计划任务状态 / 最近日志）。④ **鼠标点"发送"认不出来** —— 原来要求"敲完字 **1.5 秒**内点左键"，而打字完再移鼠标去点发送通常要几秒（QQ 邮箱写信页按回车是换行，多数人是点按钮）→ 等于不生效；放宽到 **6 秒**，并要求**前台窗口没变**（避免在别的程序里乱点也触发）。⑤ 其它：`Ensure-SwapDir` 的 ACL 授权改为幂等、`Stop-SwapDaemon` 按命令行兜底清理幽灵实例、`Cmd-SwapDaemon` 加**防重复实例**（两个钩子同时跑会把同一句话换两次）。**实测**：0/1/3 条规则下 `add/list/del/del all/同词覆盖` 全对；钩子起停、`daemon.log` 轨迹、防重复（起第 2 个被挡）、`Stop` 后零残留 全通 |
 | 2026-10-15 | **2.12.1** | Windows 1.3.0（不变） | **修一个"改了配置却不生效"的存量隐患**。根因：服务进程的 `conf` 是**启动时快照**，而好几个命令偏偏是**运行期**改配置 —— `brain rendezvous rotate` / `rendezvous set`（换会合主密钥 / 期号）、`brain pack-key rotate`（轮换生产版解密口令）、以及手工改 `BRAIN_URLS` / `SWAP_POPUP`。后果：① `rendezvous rotate` 后**新种子不下发**，更糟的是 `/health` 里的 `brain_id` 仍用**旧种子**算 → 子 agent 的"这是不是我们的大脑"身份校验**失败**，会合找回直接不工作；② `pack-key rotate` 后 `/agent/key` 仍发**旧口令** → 新打的包起不来（轮换等于没做，还误以为旧的已经失效）；③ 地址清单 / 换词弹窗开关同理不生效。改为：这几类"要**立刻下发**"的字段**每次请求现读配置文件**（新增 `Server.live_conf()`，用在 `/health`、注册批准下发、心跳下发、`/agent/key`）；纯启动期项（监听地址 / 端口）照旧。**实测（临时大脑，全程不重启 `serve`）**：`rendezvous rotate` 后 `/health` 的 `brain_id` 立刻变、心跳下发的 `rdv_seed` 立刻等于 conf 新值；模拟 `pack-key rotate` 写入后 `/agent/key` 立刻下发新口令 + 过渡期旧口令；`swap-popup off/on` 心跳立刻变 `0`/`1`；错口令仍 `403` |

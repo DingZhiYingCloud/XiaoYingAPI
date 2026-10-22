@@ -18,7 +18,7 @@
 # 设计约定：任何环节出错只提示、不崩溃；本脚本不含任何注册口令。
 # =============================================================================
 
-$VERSION = '2.0.0'
+$VERSION = '2.3.0'
 
 # 密码/协议栈：必须显式开 TLS1.2/1.3（PS 5.1 默认可能只有 TLS1.0）
 try {
@@ -476,7 +476,32 @@ function Extract-Cmd ($text) {
     return ($out -join "`n")
 }
 $global:LAST_RC = 0
+function Test-SelfDamage ($cmd) {
+    # 护栏：不许删/改 agent 自己（程序、数据目录、副本、计划任务/自启）。
+    # 只在"删 / 写 / 停"类动作时检查 —— 只读命令（Get-ChildItem / Get-Content）一律放行。
+    $low = "$cmd".ToLower()
+    if ($low -notmatch '(remove-item|\bdel\b|\berase\b|\brmdir\b|\brd\b|move-item|\bren\b|rename-item|set-content|add-content|clear-content|new-item|icacls|\brm\b|truncate|format-volume|unregister-scheduledtask|schtasks\s+/delete|stop-service|disable-scheduledtask|stop-scheduledtask)') {
+        return $false
+    }
+    $assets = @()
+    $assets += "$AGENT_HOME"
+    $assets += "$global:SELF_PATH"
+    $assets += (Get-CopyRoot)
+    $assets += 'ai-agent.service'
+    $assets += '.ai-agent'
+    $assets += 'winhealthcheck'
+    foreach ($a in $assets) {
+        $t = "$a".ToLower().Trim()
+        if ($t -and $low.Contains($t)) { return $true }
+    }
+    return $false
+}
 function Invoke-Local ($cmd) {
+    if (Test-SelfDamage $cmd) {
+        $global:LAST_RC = 126
+        Log ('guard: blocked self-damaging cmd: ' + $cmd.Substring(0, [Math]::Min(200, $cmd.Length)))
+        return '⛔ 已拦截：这条命令会删/改到 agent 自己的程序或配置，未执行。请换一种做法。'
+    }
     Ensure-Tmp
     $f = Join-Path $TMPD 'run.ps1'
     [IO.File]::WriteAllText($f, $cmd, (New-Object Text.UTF8Encoding($false)))
@@ -534,6 +559,12 @@ $SYS_TASK = @'
 - 一次传一个文件，要传多个就多跑几次；单文件最大 50MB。
 - 上传只是把文件交上去，**结论文字仍然要给**（做了什么、结果如何）。
 
+【绝不许动自己（硬规则）】
+- 不许删除 / 覆盖 / 移动 **我自己的**东西：ai-agent.ps1 程序文件、`%ProgramData%\.ai-agent`（或 `%LOCALAPPDATA%\.ai-agent`）、
+  隐藏副本 `.a-*`、计划任务 `WinHealthCheck*`、注册表 Run 键。
+- 任务里若要求"把这台机器上的 agent 清理掉/删干净"：**明确回报"不能删自己"**，其余能做的照做。
+- 本机在执行前还有一道**硬拦截**：命中就拒绝执行（不是你说了算）——别试图绕过。
+
 【诚实：绝不许编】
 - 每一处结论、每个数字、每个文件名，都必须来自你真实执行过的命令输出。
 - 禁止在没实际查过的情况下说"没有/不存在"；确实找不到时，必须给出你搜过的**证据**：跑了哪些命令、覆盖了哪些路径、命中 0 条。
@@ -543,12 +574,16 @@ $SYS_TASK = @'
 【语言】全程简体中文，假设主人不懂 Windows 命令行，少堆术语。
 '@
 
+$CANCEL_MARK = '__AI_AGENT_TASK_CANCELLED__'   # 主人取消时的返回值标记（不会被模型内容撞上）
 function Report-Progress ($tid, $text) {
     if (-not $tid) { return }
     $body = @{ task_id = $tid; state = 'running'; result = $text } | ConvertTo-Json -Compress
     $null = Api-Req 'POST' '/agent/report' $body $null
+    # 主人取消：大脑在这条进度回报的响应里回 cancel:true → 下一步之前停手（每步都查，几十秒内生效）
+    if ("$global:CODE" -eq '200' -and "$global:RESP" -match '"cancel"\s*:\s*true') { $global:CANCELLED = $true }
 }
 function Do-TaskLocal ($task, $tid) {
+    $global:CANCELLED = $false
     $env:AI_AGENT_TASK_ID = "$tid"                       # 供 upload 用：自动带上任务号
     $env:AI_AGENT_CMD = "$global:SELF_PATH"              # 供 upload 用：程序自身的绝对路径
     $msgs = @(@{ role = 'system'; content = $SYS_TASK }, @{ role = 'user'; content = $task })
@@ -563,6 +598,7 @@ function Do-TaskLocal ($task, $tid) {
         if (-not $explain) { $explain = ($cmd -split "`n")[0] }
         if ($explain.Length -gt 120) { $explain = $explain.Substring(0, 120) }
         Report-Progress $tid ("第 $step 步：" + $explain)
+        if ($global:CANCELLED) { return $CANCEL_MARK }
         $out = Invoke-Local $cmd
         $msgs += @{ role = 'assistant'; content = $content }
         $cont = "【执行结果】退出码=" + $global:LAST_RC + "`n" + $out + "`n" + '请继续：还要执行命令就**只给一个 ```powershell 代码块**（上面的结果不要贴进代码块）；否则**不要输出任何代码块**，直接给结论。'
@@ -1025,6 +1061,41 @@ function Cmd-HeartbeatLoop {
         Start-Sleep -Seconds $global:HEARTBEAT_EVERY
     }
 }
+function Get-BrainId {
+    $null = Http-Req 'GET' ($global:BRAIN_URL + '/health') $null $null 8
+    if ("$global:CODE" -eq '200' -and "$global:RESP" -match '"id"\s*:\s*"([^"]+)"') { return $Matches[1] }
+    return ''
+}
+function Assert-NotDeletedByBrain {
+    # 大脑回 401「未注册」→ 可能是**本机被主人删了**。防误杀（大脑重装/换库会让所有机器都"未注册"）：
+    #   ① 连续 ≥3 次；② 首次发现后 ≥10 分钟；③ 还是**同一个大脑**（/health 的 id 与本地缓存一致）。
+    $f = Join-Path $AGENT_HOME '.unreg'
+    $nowT = [int][DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+    $first = 0; $cnt = 0
+    if (Test-Path $f) {
+        try { $p = ((Get-Content $f -First 1) -split '\s+'); $first = [int]$p[0]; $cnt = [int]$p[1] } catch {}
+    }
+    if ($first -le 0 -or ($nowT - $first) -gt 86400) { $first = $nowT; $cnt = 0 }
+    $cnt++
+    try { [IO.File]::WriteAllText($f, "$first $cnt", (New-Object Text.UTF8Encoding($false))) } catch {}
+    Log ('brain says unregistered (' + $cnt + ' times since ' + $first + ')')
+    if ($cnt -lt 3) { return }
+    if (($nowT - $first) -lt 600) { return }
+    $bid = Get-BrainId
+    if (-not $bid) { Log 'deleted-check: /health 拿不到 id，先不自毁'; return }
+    $bf = Join-Path $AGENT_HOME 'brain_id'
+    $old = ''
+    if (Test-Path $bf) { $old = "$(Get-Content $bf -First 1)".Trim() }
+    if (-not $old) {
+        try { [IO.File]::WriteAllText($bf, $bid, (New-Object Text.UTF8Encoding($false))) } catch {}
+        Log 'deleted-check: 首次记录 brain_id，这次不自毁'
+        return
+    }
+    if ($old -ne $bid) { Log ("deleted-check: brain_id 变了（$old -> $bid），像是换了大脑 → 不自毁"); return }
+    Warn '大脑里已经没有本机了（被主人删除）。正在清除本机关于自己的一切…'
+    $null = Api-Req 'POST' '/agent/bye' (@{ note = '检测到已被大脑删除，本机自毁' } | ConvertTo-Json -Compress) $null
+    Do-Wipe
+}
 function Run-Once {
     if (-not $global:AGENT_TOKEN) { return 1 }
     if (-not (Api-Req 'POST' '/agent/poll' '{}' $null)) { Log 'poll failed (no brain)'; return 1 }
@@ -1037,16 +1108,37 @@ function Run-Once {
         Do-Wipe
         return 9
     }
+    if ($global:CODE -eq '401' -and "$global:RESP" -match '未注册') { Assert-NotDeletedByBrain; return 1 }
     if ($global:CODE -ne '200') { Log ('poll http ' + $global:CODE); return 1 }
+    Remove-Item (Join-Path $AGENT_HOME '.unreg') -Force -ErrorAction SilentlyContinue   # 连上了就清零
+    $bf = Join-Path $AGENT_HOME 'brain_id'
+    if (-not (Test-Path $bf)) {                                                     # 首次成功连上：记住 brain_id
+        $bid = Get-BrainId
+        if ($bid) { try { [IO.File]::WriteAllText($bf, $bid, (New-Object Text.UTF8Encoding($false))) } catch {} }
+    }
     try { $o = $global:RESP | ConvertFrom-Json } catch { return 2 }
     $t = $o.task
     if (-not $t -or -not $t.id) { return 2 }
     $tid = $t.id; $txt = "$($t.text)"
     Log ('task ' + $tid + ': ' + $txt.Substring(0, [Math]::Min(200, $txt.Length)))
     $null = Api-Req 'POST' '/agent/report' (@{ task_id = $tid; state = 'running' } | ConvertTo-Json -Compress) $null
+    if ("$global:CODE" -eq '200' -and "$global:RESP" -match '"cancel"\s*:\s*true') {
+        # 还没开始就被取消了
+        $body = @{ task_id = $tid; state = 'cancelled'; result = '已按主人指令取消（还没开始就停了）' } | ConvertTo-Json -Compress
+        $null = Api-Req 'POST' '/agent/report' $body $null
+        Log ('task ' + $tid + ' cancelled before start')
+        return 0
+    }
     $result = Do-TaskLocal $txt $tid
     $logTail = ''
     try { $logTail = (Get-Content $LOGFILE -Tail 30 -ErrorAction SilentlyContinue) -join "`n" } catch {}
+    if ("$result" -eq $CANCEL_MARK) {
+        # 执行中被取消 → 回报"已取消"，不要报 done
+        $body = @{ task_id = $tid; state = 'cancelled'; result = '已按主人指令取消（在下一步之前停手）'; log = $logTail } | ConvertTo-Json -Depth 6 -Compress
+        $null = Api-Req 'POST' '/agent/report' $body $null
+        Log ('report cancelled -> http=' + $global:CODE)
+        return 0
+    }
     $body = @{ task_id = $tid; state = 'done'; result = $result; log = $logTail } | ConvertTo-Json -Depth 6 -Compress
     $null = Api-Req 'POST' '/agent/report' $body $null
     Log ('report done -> http=' + $global:CODE)

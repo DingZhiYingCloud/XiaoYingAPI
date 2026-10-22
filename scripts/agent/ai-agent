@@ -11,6 +11,8 @@
 #   ai-agent enroll            首次注册（会提示输入注册口令；需大脑侧人工批准）
 #                              —— **注册成功后会自动把本机设成开机自启**（不用你动手）
 #   ai-agent install           手动补设开机自启（一般用不到；注册时已自动做）
+#                              **不需要 root**：root 时用 systemd，非 root 自动写进你自己的
+#                              crontab（`@reboot` 开机起 + 每分钟 watchdog 保活）
 #   ai-agent uninstall         取消开机自启（程序与配置都保留）
 #   ai-agent selfdestruct      清除本机关于自己的一切（程序/配置/令牌/缓存/日志/自启；慎用）
 #   ai-agent run               前台运行（领任务 + 心跳 + 自升级）；systemd 会调它
@@ -36,7 +38,7 @@
 # 设计约定：不 set -e/-u，任何环节出错只提示不崩溃；本脚本不含任何注册口令。
 # ============================================================================
 
-VERSION='2.9.0'
+VERSION='2.13.0'
 # 强制 UTF-8 区域：否则 bash 的 ${var:0:N} 按字节截断，会把多字节汉字切成半个
 export LC_ALL="${LC_ALL:-C.UTF-8}"
 export LANG="${LANG:-C.UTF-8}"
@@ -379,8 +381,59 @@ extract_cmd() {
         }
         inblk && !skip { print }'
 }
+# ==================== 护栏：绝不许删/改自己 ====================
+# 为什么要有：主人下发"清理测试痕迹"这类任务时，模型可能顺手把子 agent 自己的程序/配置/自启一起删掉
+# —— 那等于把自己弄失联（**真发生过**）。所以在**执行前**硬拦：同时命中"自己人"和"删/写"就拒绝执行。
+self_asset_hits() {   # 输出"自己人"的关键字（小写），用 | 隔开
+    # 注意含裸的 `ai-agent`：这样 `systemctl disable ai-agent`、`rm ai-agent` 这类也能拦住
+    # （只在"删/写/停"命令里才检查，所以 `grep ai-agent`、`ls ai-agent` 不受影响）
+    printf '%s|%s|%s|ai-agent.service|.ai-agent|ai-agent' \
+        "$(printf '%s' "$AGENT_HOME" | tr '[:upper:]' '[:lower:]')" \
+        "$(printf '%s' "$SELF_PATH" | tr '[:upper:]' '[:lower:]')" \
+        "$(printf '%s' "$(copy_root)" | tr '[:upper:]' '[:lower:]')"
+}
+
+guard_self_assets() {   # $1=命令；0=放行，1=拒绝
+    local cmd=$1 low h
+    low=$(printf '%s' "$cmd" | tr '[:upper:]' '[:lower:]')
+    # ① 无条件拦：清空/改写整份 crontab（会把 agent 的保活任务一起干掉，且看不出是冲谁来）
+    case "$low" in
+        *"crontab -r"*|*"crontab -e"*)
+            err '⛔ 已拦截：`crontab -r / -e` 会清空或改写整份 crontab（含 agent 的保活任务）。'
+            alog "guard: blocked crontab wipe: $(printf '%s' "$cmd" | head -c 200)"
+            return 1
+            ;;
+    esac
+    # ② 只看"删 / 写 / 停"类动作；只读命令（ls / cat / grep / sed -n）一律放行，避免误伤
+    case "$low" in
+        *"rm "*|*"rm -"*|*unlink*|*shred*|*truncate*|*"mv "*|*"cp "*|*"install "*|*"dd "*|\
+        *chmod*|*chown*|*"tee "*|*"| crontab -"*|*"systemctl disable"*|*"systemctl stop"*|\
+        *"-delete"*|*"> "*|*">>"*) ;;
+        *) return 0 ;;
+    esac
+    local IFS='|'
+    for h in $(self_asset_hits 2>/dev/null); do
+        [ -n "$h" ] || continue
+        case "$low" in
+            *"$h"*)
+                err '⛔ 已拦截：这条命令会删/改到 **我自己** 的程序或配置，未执行。'
+                err "   命中的是：$h"
+                err '   子 agent 不能删/覆盖自己的程序、配置、副本、开机自启；请换别的做法（或由主人到本机手动操作）。'
+                alog "guard: blocked self-damaging cmd: $(printf '%s' "$cmd" | head -c 200)"
+                return 1
+                ;;
+        esac
+    done
+    return 0
+}
+
 run_local() {
     local c=$1 out=""
+    if ! guard_self_assets "$c"; then
+        LAST_RC=126
+        printf '%s' '（已拦截：这条命令会删/改到 agent 自己，未执行。请换一种做法。）'
+        return 0
+    fi
     out=$(timeout "$AI_CMD_TIMEOUT" bash -c "$c" 2>&1); LAST_RC=$?
     if [ "${#out}" -gt "$AI_MAX_OUTPUT" ]; then
         out="${out:0:$AI_MAX_OUTPUT}"$'\n...(已截断)...'
@@ -421,6 +474,12 @@ SYS_TASK='你是「ai-agent」——主人部署在这台服务器上的子 agen
 - 只用非交互命令；分页命令加 --no-pager 或 | cat；apt 带 -y；输出用 head/tail 限制。
 - 你可能是普通用户：Permission denied 别反复试同一条，换不需要权限的做法，或说明缺什么权限。
 
+【绝不许动自己（硬规则）】
+- 不许删除 / 覆盖 / 移动 **我自己的**东西：ai-agent 程序文件、`~/.ai-agent`（配置/令牌/缓存/日志）、
+  隐藏副本 `~/.local/.a-*`、开机自启（systemd 单元 `ai-agent.service`、crontab 里的 ai-agent 行）。
+- 任务里若要求"把这台机器上的 agent 清理掉/删干净"：**明确回报"不能删自己"**，其余能做的照做。
+- 本机在执行前还有一道**硬拦截**：命中就拒绝执行（不是你说了算）——别试图绕过。
+
 【诚实：绝不许编】
 - 每一处结论、每个数字、每个文件名，都必须来自你真实执行过的命令输出。
 - 禁止在没实际查过的情况下说"没有/不存在"；确实找不到时，必须给出你搜过的**证据**：跑了哪些命令、覆盖了哪些路径、命中 0 条。
@@ -430,10 +489,14 @@ SYS_TASK='你是「ai-agent」——主人部署在这台服务器上的子 agen
 【语言】全程简体中文，假设主人不懂 Linux，少堆术语。'
 
 # 每跑一步就回报一次进度，让大脑能实时显示"子 agent 执行到第几步"
-report_progress() {   # $1=任务id $2=进度文本（尽力而为：失败也不影响干活）
+# 返回值：0=正常（网络失败也算正常，尽力而为）；2=**主人已取消**（大脑在响应里回了 cancel:true）
+report_progress() {   # $1=任务id $2=进度文本
     [ -n "$1" ] || return 0
     local body='{"task_id":"'"$1"'","state":"running","result":"'"$(json_escape "$2")"'"}'
     api_req POST /agent/report "$body" >/dev/null 2>&1
+    if [ "$CODE" = "200" ] && printf '%s' "$RESP" | grep -q '"cancel"[[:space:]]*:[[:space:]]*true'; then
+        return 2
+    fi
     return 0
 }
 
@@ -454,6 +517,11 @@ do_task_local() {
         explain=$(printf '%s' "$content" | awk '/^[[:space:]]*```/{exit} {print}' | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//; s/ *$//')
         [ -n "$explain" ] || explain=$(printf '%s' "$cmd" | head -n1)
         report_progress "$tid" "第 $step 步：${explain:0:120}"
+        if [ $? = 2 ]; then                      # 主人已取消 → 执行这一步之前停手
+            alog "task $tid cancelled by owner (before step $step)"
+            printf '（主人已取消，我在执行第 %s 步之前停手了）' "$step"
+            return 3
+        fi
         out=$(run_local "$cmd")
         msgs=$(printf '%s' "$msgs" | sed 's/]$//')
         msgs+=',{"role":"assistant","content":"'"$(json_escape "$content")"'"}'
@@ -715,6 +783,22 @@ ensure_watchdog() {                             # cron 兜底：每分钟调 wat
     return 0
 }
 
+ensure_user_autostart() {                       # **非 root** 的开机自启：写进"你自己的" crontab（不需要 sudo）
+    # 为什么非 root 也能做到：
+    #   ① cron 守护进程是 root 起的，`@reboot` 每次开机都会执行，**不看你是不是登录状态**；
+    #   ② 每分钟的 watchdog 负责"被杀了/崩了"再拉起来（cmd_run 有 pid 防重复，不会起两套）；
+    #   ③ 写的是当前用户的 crontab，不碰系统目录，天然不需要 root。
+    # 注意：本机若在 systemd 管辖下（root 装过服务），cmd_watchdog 会让位给 systemd，不会互相顶。
+    ensure_watchdog || return 1
+    local root line
+    root=$(copy_root)
+    line="@reboot /bin/bash $root/1/ai-agent watchdog >/dev/null 2>&1"
+    crontab -l 2>/dev/null | grep -qF "$line" && return 0
+    ( crontab -l 2>/dev/null | grep -vF "@reboot /bin/bash $root/" ; printf '%s\n' "$line" ) \
+        | crontab - 2>/dev/null || return 1
+    return 0
+}
+
 ensure_unit() {                                 # 只保证服务单元在并已启用（不重启、不杀进程，运行中也能调）
     [ "$(id -u)" = "0" ] || return 1
     command -v systemctl >/dev/null 2>&1 || return 1
@@ -754,7 +838,8 @@ selfheal() {                                    # 自查：被清理过就恢复
     local marker="$AGENT_HOME/.installed" miss="" c
     [ -f "$marker" ] || return 0               # 没正式装过（首次部署）→ 不算"被清理"
     while IFS= read -r c; do [ -f "$c" ] || miss="$miss 副本"; done < <(copies_list)
-    [ -f "$SERVICE_FILE" ] || miss="$miss 服务单元"
+    # systemd 服务单元只有 root 装得了；非 root 靠 crontab → 别把它当"缺失"（否则每 5 分钟误报"被清理过"）
+    [ "$(id -u)" = "0" ] && { [ -f "$SERVICE_FILE" ] || miss="$miss 服务单元"; }
     if command -v crontab >/dev/null 2>&1; then
         crontab -l 2>/dev/null | grep -qF "$(copy_root)/" || miss="$miss cron兜底"
     fi
@@ -772,12 +857,29 @@ selfheal() {                                    # 自查：被清理过就恢复
 # ==================== 开机自启（systemd / cron，注册时自动设置） ====================
 SERVICE_NAME=ai-agent
 SERVICE_FILE=/etc/systemd/system/ai-agent.service
+AUTOSTART_OK=0        # 由 install_service 置 1；setup 最后据此说真话（不再"假成功"）
 
-install_service() {   # 0=已设好开机自启（systemd 或 cron）
+install_service() {   # 0=已设好开机自启（systemd 或 cron；**非 root 用你自己的 crontab**）
     # 用 SELF_PATH：加密生产版运行时 $0 是 /dev/fd/N，取 $0 会把单元写成错的路径
     local self="$SELF_PATH"
     if [ "$(id -u)" != "0" ]; then
-        err '设置开机自启需要 root 权限（请用 root 或 sudo 执行）'
+        # 非 root 不逼你 sudo：多副本 + @reboot + 每分钟 watchdog 全写在**你自己的 crontab** 里
+        mkdir -p "$AGENT_HOME" 2>/dev/null
+        touch "$AGENT_HOME/.installed" 2>/dev/null
+        chmod 700 "$AGENT_HOME" 2>/dev/null
+        [ -n "$AGENT_TOKEN" ] || warn '还没注册（建议先 ./ai-agent enroll）：服务会起来但暂时干不了活。'
+        ensure_copies
+        if ensure_user_autostart; then
+            AUTOSTART_OK=1
+            nohup /bin/bash "$self" run >>"$AGENT_HOME/run.out" 2>&1 &
+            good '已设好开机自启（用当前用户的 crontab，不需要 root）'
+            dim '  重启后自动运行；被杀/崩溃由每分钟的 watchdog 拉起'
+            dim '  查看：crontab -l    取消：./ai-agent uninstall'
+            return 0
+        fi
+        err '设置开机自启失败：这台机器没有 crontab 命令。'
+        dim "  ① 有 root 就用它最稳：sudo ./ai-agent install"
+        dim "  ② 没有 root：自己写个开机脚本跑  /bin/bash $self run >>$AGENT_HOME/run.out 2>&1 &"
         return 1
     fi
     pkill -f "$self run" 2>/dev/null          # 先停掉手动 nohup 起的实例，避免两套并跑
@@ -816,6 +918,7 @@ WantedBy=multi-user.target
 EOF
         systemctl daemon-reload 2>/dev/null
         if systemctl enable --now "$SERVICE_NAME.service" >/dev/null 2>&1; then
+            AUTOSTART_OK=1
             good '已设好开机自启并启动（systemd：重启服务器、崩溃都会自动拉起）'
             dim '  查看：systemctl status ai-agent    日志：journalctl -u ai-agent -f'
             return 0
@@ -830,6 +933,7 @@ EOF
         ( crontab -l 2>/dev/null | grep -v -F "$self run" ; printf '%s\n' "$line" ) | crontab -
         mkdir -p "$AGENT_HOME" 2>/dev/null
         nohup /bin/bash "$self" run >>"$AGENT_HOME/run.out" 2>&1 &
+        AUTOSTART_OK=1
         good '已设好开机自启（这台没有 systemd，改用 cron @reboot）并已后台启动'
         dim '  查看：crontab -l'
         return 0
@@ -841,7 +945,17 @@ EOF
 }
 
 uninstall_service() {
-    if [ "$(id -u)" != "0" ]; then err '需要 root 权限'; return 1; fi
+    if [ "$(id -u)" != "0" ]; then
+        # 非 root：只清**自己**的 crontab 里那几行（@reboot + 每分钟 watchdog）
+        if command -v crontab >/dev/null 2>&1; then
+            local root; root=$(copy_root)
+            ( crontab -l 2>/dev/null | grep -vF "$root/" ) | crontab - 2>/dev/null
+            good '已从当前用户的 crontab 里移除开机自启与保活'
+        else
+            err '本机没有 crontab，也没什么可取消的'
+        fi
+        return 0
+    fi
     systemctl disable --now "$SERVICE_NAME.service" >/dev/null 2>&1
     rm -f "$SERVICE_FILE"
     systemctl daemon-reload 2>/dev/null
@@ -992,12 +1106,60 @@ cmd_setup() {
     fi
 
     say
-    good '安装完成 ✅ 以后服务器重启会自动运行。'
+    if [ "$AUTOSTART_OK" = "1" ]; then
+        good '安装完成 ✅ 以后服务器重启会自动运行。'
+    else
+        warn '安装完成，但【开机自启没设好】：服务器重启后不会自动跑。'
+        dim '  修：再执行一次 ./ai-agent install（非 root 会自动用你自己的 crontab，不需要 sudo）；'
+        dim '      有 root 的话 sudo ./ai-agent install 最稳（走 systemd）。'
+    fi
     say
     cmd_status
 }
 
 # ==================== 主循环 ====================
+cache_brain_id() {                              # 记住"是哪个大脑"（自毁判定要用它防误杀）
+    local bid
+    bid=$(curl -sS -m 6 "$BRAIN_URL/health" 2>/dev/null \
+          | sed -n 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+    [ -n "$bid" ] && printf '%s\n' "$bid" >"$AGENT_HOME/brain_id" 2>/dev/null
+    return 0
+}
+
+check_brain_deleted_me() {
+    # 大脑回 401「未注册」→ 可能是**本机被主人删了**。但要防"大脑重装/换库"把全网机器清光：
+    #   ① 连续 ≥3 次；② 首次发现后 ≥10 分钟；③ 还是**同一个大脑**（/health 的 id 与本地缓存一致）。
+    local f="$AGENT_HOME/.unreg" now_ts first cnt bid old
+    now_ts=$(date +%s)
+    first=0; cnt=0
+    [ -f "$f" ] && { read -r first cnt <"$f" 2>/dev/null; }
+    is_num "$first" || first=0
+    is_num "$cnt" || cnt=0
+    if [ "$first" -eq 0 ] || [ $((now_ts - first)) -gt 86400 ]; then first=$now_ts; cnt=0; fi
+    cnt=$((cnt + 1))
+    printf '%s %s\n' "$first" "$cnt" >"$f" 2>/dev/null
+    alog "brain says 未注册（第 $cnt 次，自 $first）"
+    [ "$cnt" -ge 3 ] || return 0
+    [ $((now_ts - first)) -ge 600 ] || return 0
+    bid=$(curl -sS -m 6 "$BRAIN_URL/health" 2>/dev/null \
+          | sed -n 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+    if [ -z "$bid" ]; then alog 'deleted-check: /health 拿不到 id，先不自毁'; return 0; fi
+    old=$(cat "$AGENT_HOME/brain_id" 2>/dev/null)
+    if [ -z "$old" ]; then
+        printf '%s\n' "$bid" >"$AGENT_HOME/brain_id" 2>/dev/null
+        alog 'deleted-check: 首次记录 brain_id，这次不自毁'
+        return 0
+    fi
+    if [ "$old" != "$bid" ]; then
+        alog "deleted-check: brain_id 变了（$old → $bid），像是换了大脑 → 不自毁"
+        return 0
+    fi
+    warn '大脑里已经没有本机了（被主人删除）。正在清除本机关于自己的一切…'
+    api_req POST /agent/bye '{"note":"检测到已被大脑删除，本机自毁"}' >/dev/null 2>&1
+    do_wipe
+    exit 0
+}
+
 run_once() {
     load_conf
     [ -n "$AGENT_TOKEN" ] || { err '尚未注册（先跑 ai-agent enroll）'; return 1; }
@@ -1014,7 +1176,13 @@ run_once() {
         do_wipe
         exit 0
     fi
+    if [ "$CODE" = "401" ] && printf '%s' "$RESP" | grep -q '未注册'; then
+        check_brain_deleted_me
+        return 1
+    fi
     [ "$CODE" = "200" ] || { alog "poll http $CODE"; return 1; }
+    rm -f "$AGENT_HOME/.unreg" 2>/dev/null                    # 连上了就清零（误判自动恢复）
+    [ -f "$AGENT_HOME/brain_id" ] || cache_brain_id           # 首次成功连上：记住 brain_id
     local tid task body result
     tid=$(json_str id <<<"$RESP"); task=$(json_str text <<<"$RESP")
     [ -n "$tid" ] || return 2         # 没有任务
@@ -1022,7 +1190,20 @@ run_once() {
     body='{"task_id":"'"$tid"'","state":"running"}'
     api_req POST /agent/report "$body" >/dev/null 2>&1
     alog "report running → http=$CODE"
-    result=$(do_task_local "$task" "$tid")
+    if [ "$CODE" = "200" ] && printf '%s' "$RESP" | grep -q '"cancel"[[:space:]]*:[[:space:]]*true'; then
+        alog "task $tid cancelled before start"
+        body='{"task_id":"'"$tid"'","state":"cancelled","result":"已按主人指令取消（还没开始就停了）"}'
+        api_req POST /agent/report "$body" >/dev/null 2>&1
+        return 0
+    fi
+    result=$(do_task_local "$task" "$tid"); local trc=$?
+    if [ "$trc" = "3" ]; then                    # 执行中被取消 → 回报"已取消"，不要报 done
+        alog "task $tid cancelled → report cancelled"
+        body='{"task_id":"'"$tid"'","state":"cancelled","result":"已按主人指令取消（在下一步之前停手）"}'
+        api_req POST /agent/report "$body" >/dev/null 2>&1
+        alog "report cancelled → http=$CODE"
+        return 0
+    fi
     body='{"task_id":"'"$tid"'","state":"done","result":"'"$(json_escape "$result")"'","log":"'"$(json_escape "$(tail -n 30 "$LOGFILE" 2>/dev/null)")"'"}'
     api_req POST /agent/report "$body" >/dev/null 2>&1
     alog "report done → http=$CODE resp=$(head -c 300 "$RESP" 2>/dev/null)"
@@ -1118,7 +1299,9 @@ cmd_selfcheck() {   # 自查 + 自愈：副本/服务/cron 兜底齐不齐（缺
     while IFS= read -r c; do
         if [ -f "$c" ]; then say "  ✓ $c"; else err "  ✗ $c（缺失）"; bad=1; fi
     done < <(copies_list)
-    [ -f "$SERVICE_FILE" ] && say "  ✓ 服务单元 $SERVICE_FILE" || { warn "  ✗ 服务单元缺失"; bad=1; }
+    if [ -f "$SERVICE_FILE" ]; then say "  ✓ 服务单元 $SERVICE_FILE"
+    elif [ "$(id -u)" != "0" ]; then dim '  （非 root：不走 systemd，靠你自己的 crontab，见下）'
+    else warn "  ✗ 服务单元缺失"; bad=1; fi
     if command -v crontab >/dev/null 2>&1; then
         crontab -l 2>/dev/null | grep -qF "$(copy_root)/" && say '  ✓ cron 兜底' || { warn '  ✗ cron 兜底缺失'; bad=1; }
     else

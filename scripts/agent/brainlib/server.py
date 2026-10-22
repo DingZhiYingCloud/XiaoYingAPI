@@ -236,6 +236,8 @@ class Handler(BaseHTTPRequestHandler):
             '/agent/key': self._agent_key,
             '/internal/decide': self._internal_decide,
             '/internal/dispatch': self._internal_dispatch,
+            '/internal/busy': self._internal_busy,
+            '/internal/cancel': self._internal_cancel,
             '/internal/tasks': self._internal_tasks,
             '/internal/block': self._internal_block,
             '/internal/unblock': self._internal_unblock,
@@ -345,13 +347,16 @@ class Handler(BaseHTTPRequestHandler):
             return self._send({'error': 'JSON 解析失败'}, 400)
         task_id = str(d.get('task_id') or '')
         state = str(d.get('state') or '')
-        if state not in ('running', 'done', 'failed'):
+        if state not in ('running', 'done', 'failed', 'cancelled'):
             return self._send({'error': 'state 非法'}, 400)
         t = q('SELECT * FROM tasks WHERE id=? AND agent_id=?',
               (task_id, row['agent_id']), one=True)
         if not t:
             return self._send({'error': '任务不存在或不属于该 agent'}, 404)
-        finished = now() if state in ('done', 'failed') else None
+        # 已被主人取消：不要再覆盖状态，直接回一句"停手"，子 agent 会在下一步之前退出
+        if t['state'] == 'cancelled' and state == 'running':
+            return self._send({'ok': True, 'cancel': True})
+        finished = now() if state in ('done', 'failed', 'cancelled') else None
         result = str(d.get('result') or '')
         if state in ('done', 'failed'):
             result = _with_uploads(self.conf, task_id, result)   # 附上本任务上传的文件链接
@@ -360,6 +365,8 @@ class Handler(BaseHTTPRequestHandler):
            finished, task_id))
         if state in ('done', 'failed'):
             audit('agent', f'task-{state}', row['agent_id'], f'任务 {task_id}', task_id)
+        if state == 'cancelled':
+            audit('agent', 'task-cancelled', row['agent_id'], f'任务 {task_id}', task_id)
         if state == 'failed':
             try:
                 notify.notify(self.conf, f'taskfail:{row["agent_id"]}',
@@ -367,7 +374,7 @@ class Handler(BaseHTTPRequestHandler):
                               f'服务器：{row["agent_id"]}\n任务：{t["task"]}\n结果：{str(d.get("result") or "")[:500]}\n\n时间：{time.strftime("%F %T")}')
             except Exception:                        # noqa: BLE001
                 pass
-        return self._send({'ok': True})
+        return self._send({'ok': True, 'cancel': t['state'] == 'cancelled'})
 
     def _agent_heartbeat(self):
         body = self._read()
@@ -711,15 +718,84 @@ class Handler(BaseHTTPRequestHandler):
                 ids = [str(a) for a in (sel if isinstance(sel, list) else [sel])]
             if not ids:
                 return {'error': '没有可用的在线 agent'}
+            # 旧名（改过名的）→ 当前名：否则会派给一个"不存在的人"
+            def _canon(a):
+                al = q('SELECT agent_id FROM agent_alias WHERE alias=?', (a,), one=True)
+                return al['agent_id'] if al else a
+            ids = list(dict.fromkeys(_canon(a) for a in ids))
             batch = new_id(8)
-            created = []
+            created, reused = [], []
             for aid in ids:
+                # 去重：同一条任务该机器已经在排队/在跑 → 复用那条，不再新建。
+                # 为什么必须去重：子 agent 执行期间不领新任务，重试一次就多一条排队；
+                # 等它干完会**逐条重复执行**同一条命令（带删除/重启的最危险）。
+                dup = q("SELECT id FROM tasks WHERE agent_id=? AND task=? "
+                        "AND state IN ('queued','running') ORDER BY created_at DESC LIMIT 1",
+                        (aid, task_text[:4000]), one=True)
+                if dup:
+                    created.append(dup['id'])
+                    reused.append(dup['id'])
+                    continue
                 tid = new_id(12)
                 x('INSERT INTO tasks(id,batch_id,agent_id,task,state,created_at) '
                   "VALUES(?,?,?,?, 'queued',?)", (tid, batch, aid, task_text[:4000], now()))
                 created.append(tid)
             audit('brain', 'dispatch', ','.join(ids), task_text, batch)
-            return {'batch_id': batch, 'task_ids': created, 'agents': ids}
+            return {'batch_id': batch, 'task_ids': created, 'agents': ids, 'reused': reused}
+        return self._internal(go)
+
+    def _internal_busy(self):
+        """某几台机器现在在忙什么（派单前问一句，避免"忙时闷头排队 → 命令一直不接"）。"""
+        def go():
+            d = secure.parse_body(self._read()) or {}
+            ids = [str(a) for a in (d.get('agents') or [])]
+            out = {}
+            for aid in ids:
+                al = q('SELECT agent_id FROM agent_alias WHERE alias=?', (aid,), one=True)
+                if al:
+                    aid = al['agent_id']
+                cur = q("SELECT id,task,started_at FROM tasks WHERE agent_id=? AND state='running'"
+                        ' ORDER BY created_at DESC LIMIT 1', (aid,), one=True)
+                if not cur:
+                    continue
+                nq = q("SELECT COUNT(*) AS n FROM tasks WHERE agent_id=? AND state='queued'",
+                       (aid,), one=True)
+                out[aid] = {'task_id': cur['id'], 'task': (cur['task'] or '')[:300],
+                            'started_at': cur['started_at'] or 0,
+                            'queued': (nq['n'] if nq else 0)}
+            return {'busy': out}
+        return self._internal(go)
+
+    def _internal_cancel(self):
+        """取消任务（真取消）：排队中的**直接作废**；执行中的会在**下一次进度回报**时被告知停手。
+
+        为什么用"进度回报"当信道：子 agent 每跑一步都会 POST /agent/report，
+        大脑在那次响应里回 `{"cancel":true}` 即可 —— 不用长连接、不用额外轮询。
+        """
+        def go():
+            d = secure.parse_body(self._read()) or {}
+            tid = str(d.get('task_id') or '').strip()
+            aid = str(d.get('agent') or '').strip()
+            if aid:                                  # 旧名也能取消
+                al = q('SELECT agent_id FROM agent_alias WHERE alias=?', (aid,), one=True)
+                if al:
+                    aid = al['agent_id']
+            if tid:
+                cond, args = 'id=?', (tid,)
+            elif aid:
+                cond, args = "agent_id=? AND state IN ('queued','running')", (aid,)
+            else:
+                cond, args = "state IN ('queued','running')", ()
+            rows = q(f'SELECT id,agent_id,state FROM tasks WHERE {cond}', args)
+            out = []
+            for r in rows:
+                if r['state'] not in ('queued', 'running'):
+                    continue
+                x("UPDATE tasks SET state='cancelled', result=?, finished_at=? WHERE id=?",
+                  ('已取消（主人下令）', now(), r['id']))
+                out.append({'id': r['id'], 'agent_id': r['agent_id'], 'was': r['state']})
+            audit('brain', 'cancel', tid or aid or '*', f'{len(out)} 条')
+            return {'cancelled': out, 'count': len(out)}
         return self._internal(go)
 
     def _internal_tasks(self):
